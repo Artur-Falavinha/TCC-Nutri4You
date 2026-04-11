@@ -1,0 +1,28 @@
+# SO
+.DS_Store
+Thumbs.db
+
+# Editores / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs e temporários
+*.log
+tmp/
+temp/
+
+# Ambiente (quando existir código)
+.env
+.env.local
+*.local
+
+# Dependências (quando existir)
+node_modules/
+dist/
+build/
+__pycache__/
+*.pyc
+.venv/
+venv/
