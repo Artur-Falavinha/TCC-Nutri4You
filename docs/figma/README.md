@@ -14,7 +14,7 @@ Material de referência sobre o arquivo de design e os **design tokens** do proj
 
 ## No Figma
 
-Além desta pasta no Git, existe uma **página** no arquivo chamada **`Tokens — documentação`**, com o frame **Guia de escopo (Web + Mobile)** — mantenha o texto do repositório alinhado quando houver mudanças nas coleções.
+Além desta pasta no Git, existe uma **página** no arquivo chamada **`Tokens — documentação`**, com o frame **Guia de escopo (Web + Mobile)**: texto-resumo das coleções **globais** (inclui **Opacidade**), **somente web** e **somente mobile**. Mantenha esse texto alinhado ao [`tokens - documentação/README.md`](tokens%20-%20documentação/README.md) quando houver mudanças nas coleções.
 
 ## Coleções de variáveis (referência rápida)
 
