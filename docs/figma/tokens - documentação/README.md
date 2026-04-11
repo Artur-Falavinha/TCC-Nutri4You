@@ -21,9 +21,10 @@ Documentação de referência dos **design tokens** do projeto **I Need a Nutri*
 7. [Traço](#7-traço)
 8. [Ícone](#8-ícone)
 9. [Camada](#9-camada-z-index)
-10. [Web · Espaçamento](#10-web--espaçamento)
-11. [Web · Layout](#11-web--layout)
-12. [Manutenção e governança](#12-manutenção-e-governança)
+10. [Opacidade](#10-opacidade)
+11. [Web · Espaçamento](#11-web--espaçamento)
+12. [Web · Layout](#12-web--layout)
+13. [Manutenção e governança](#13-manutenção-e-governança)
 
 ---
 
@@ -40,6 +41,7 @@ Documentação de referência dos **design tokens** do projeto **I Need a Nutri*
 | **Traço** | Espessura de borda em px. |
 | **Ícone** | Tamanhos de ícone e área mínima de toque. |
 | **Camada** | Escala de `z-index`. |
+| **Opacidade** | Alpha para overlays (ex.: scrim de modal) e estados como desativado. |
 
 ### Coleções exclusivas de Web
 
@@ -56,6 +58,7 @@ No **mobile**, quando existir escala própria, usar coleção separada (ex.: **M
 
 - **Barras (`/`)** separam níveis: categoria → subcategoria → variante (ex.: `cor/texto/principal`).
 - **Valores numéricos** nos nomes indicam tamanho em **px** (tipografia, raio, espaçamento, ícone), exceto onde indicado (ex.: `raio/pill`).
+- **Opacidade:** valores em **0–1** (como no CSS), para alpha de overlay ou `opacity` em elementos desativados.
 - **Prefixo `espaco/web/`** deixa explícito que o token pertence ao ritmo de layout **web**; tokens globais **não** carregam `web` no nome da coleção.
 - **Alias no Figma:** quando o valor é idêntico a outro token, o arquivo pode usar **alias** para um primitivo (ex.: branco) — ver [§3 Paleta](#3-paleta).
 
@@ -249,7 +252,25 @@ O **sufixo** corresponde ao **tamanho** associado (ex.: título 36 px → `fonte
 
 ---
 
-## 10. Web · Espaçamento
+## 10. Opacidade
+
+**Escopo:** global (Web + Mobile).  
+**Tipo:** `FLOAT` entre **0** e **1** (mesma escala que `opacity` no CSS e canal alpha em `rgba`).
+
+Use para **padronizar** o quanto o fundo escurece atrás de modais e painéis, e para **estado desativado** sem inventar valores soltos no código.
+
+| Token | Valor | Descrição | Uso sugerido |
+|-------|-------|-----------|----------------|
+| `opacidade/overlay/modal` | 0,5 | Scrim **padrão** atrás de modais e diálogos. | Camada semitransparente sobre a página; combine com `cor/neutro/preto` em `rgba(0,0,0, α)`. |
+| `opacidade/overlay/lev` | 0,4 | Overlay **mais claro**. | Drawers, painéis laterais ou quando o fundo não deve ficar muito escuro. |
+| `opacidade/overlay/forte` | 0,72 | Overlay **mais escuro**. | Quando o foco no conteúdo do modal deve ser mais forte. |
+| `opacidade/estado/desativado` | 0,5 | Conteúdo ou controle **desativado**. | Aplicar em `opacity` do bloco inteiro ou conforme padrão do componente. |
+
+> **Implementação:** no CSS, o token costuma virar variável `--opacidade-overlay-modal` e ser usada como último argumento de `rgba(0, 0, 0, var(--…))` no fundo do overlay, ou equivalente no tema. Não confunda com opacidade do **próprio** modal (geralmente 1); só o **scrim** usa esses valores.
+
+---
+
+## 11. Web · Espaçamento
 
 **Escopo:** somente **Web**.  
 **Tipo:** `FLOAT` (px).  
@@ -272,7 +293,7 @@ O **sufixo** corresponde ao **tamanho** associado (ex.: título 36 px → `fonte
 
 ---
 
-## 11. Web · Layout
+## 12. Web · Layout
 
 **Escopo:** somente **Web**.  
 **Tipo:** `FLOAT` (px).
@@ -290,7 +311,7 @@ O **sufixo** corresponde ao **tamanho** associado (ex.: título 36 px → `fonte
 
 ---
 
-## 12. Manutenção e governança
+## 13. Manutenção e governança
 
 1. **Fonte da verdade:** arquivo Figma + este documento; alterações de token devem refletir nos dois.
 2. **Conventional Commits:** exemplos — `docs(figma): atualizar sombra nivel-2`, `fix(tokens): corrigir alias do branco`.
@@ -310,6 +331,7 @@ O **sufixo** corresponde ao **tamanho** associado (ex.: título 36 px → `fonte
 | Traço | 2 |
 | Ícone | 4 |
 | Camada | 6 |
+| Opacidade | 4 |
 | Web · Espaçamento | 12 |
 | Web · Layout | 6 |
 

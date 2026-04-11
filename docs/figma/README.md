@@ -20,7 +20,7 @@ Além desta pasta no Git, existe uma **página** no arquivo chamada **`Tokens �
 
 | Escopo | Coleções |
 |--------|----------|
-| **Global (Web + Mobile)** | Paleta, Tipografia, Raio, Sombra, Traço, Ícone, Camada |
+| **Global (Web + Mobile)** | Paleta, Tipografia, Raio, Sombra, Traço, Ícone, Camada, Opacidade |
 | **Somente Web** | Web · Espaçamento, Web · Layout |
 
 Detalhes e regras de uso estão em [tokens - documentação](tokens%20-%20documentação/README.md).
