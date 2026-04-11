@@ -10,7 +10,7 @@ Material de referência sobre o arquivo de design e os **design tokens** do proj
 
 | Pasta / arquivo | Conteúdo |
 |-----------------|----------|
-| [tokens - documentação](tokens%20-%20documentação/README.md) | Escopo **global (Web + Mobile)** vs **somente Web**, observações (sem dark mode, paleta única) |
+| [tokens - documentação](tokens%20-%20documentação/README.md) | Referência **completa**: escopo, convenções, **tabela por token** (valor, tipo, descrição, uso sugerido) e governança |
 
 ## No Figma
 
