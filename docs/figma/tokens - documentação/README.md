@@ -24,7 +24,9 @@ Documentação de referência dos **design tokens** do projeto **I Need a Nutri*
 10. [Opacidade](#10-opacidade)
 11. [Web · Espaçamento](#11-web--espaçamento)
 12. [Web · Layout](#12-web--layout)
-13. [Manutenção e governança](#13-manutenção-e-governança)
+13. [Mobile · Espaçamento](#13-mobile--espaçamento)
+14. [Mobile · Layout](#14-mobile--layout)
+15. [Manutenção e governança](#15-manutenção-e-governança)
 
 ---
 
@@ -50,7 +52,14 @@ Documentação de referência dos **design tokens** do projeto **I Need a Nutri*
 | **Web · Espaçamento** | Ritmo e espaçamento de layout web (`espaco/web/…`). |
 | **Web · Layout** | Largura máxima, gutter e breakpoints em px. |
 
-No **mobile**, quando existir escala própria, usar coleção separada (ex.: **Mobile · Espaçamento**). A **paleta de cores permanece única** entre plataformas.
+### Coleções exclusivas de Mobile
+
+| Coleção | Função |
+|---------|--------|
+| **Mobile · Espaçamento** | Ritmo e espaçamento em telas estreitas (`espaco/mobile/…`); barras de app e navegação inferior. |
+| **Mobile · Layout** | Margens de tela, largura de artboard de referência e inset de área segura. |
+
+A **paleta** e os demais tokens **globais** são os **mesmos** no web e no mobile; só **espaçamento** e **layout** têm coleções específicas por plataforma.
 
 ---
 
@@ -59,7 +68,7 @@ No **mobile**, quando existir escala própria, usar coleção separada (ex.: **M
 - **Barras (`/`)** separam níveis: categoria → subcategoria → variante (ex.: `cor/texto/principal`).
 - **Valores numéricos** nos nomes indicam tamanho em **px** (tipografia, raio, espaçamento, ícone), exceto onde indicado (ex.: `raio/pill`).
 - **Opacidade:** valores em **0–1** (como no CSS), para alpha de overlay ou `opacity` em elementos desativados.
-- **Prefixo `espaco/web/`** deixa explícito que o token pertence ao ritmo de layout **web**; tokens globais **não** carregam `web` no nome da coleção.
+- **Prefixo `espaco/web/`** ou **`espaco/mobile/`** deixa explícito o ritmo de layout da plataforma; tokens globais **não** carregam esses prefixos no nome da coleção.
 - **Alias no Figma:** quando o valor é idêntico a outro token, o arquivo pode usar **alias** para um primitivo (ex.: branco) — ver [§3 Paleta](#3-paleta).
 
 ---
@@ -311,12 +320,53 @@ Use para **padronizar** o quanto o fundo escurece atrás de modais e painéis, e
 
 ---
 
-## 13. Manutenção e governança
+## 13. Mobile · Espaçamento
+
+**Escopo:** somente **Mobile** (apps / layouts estreitos).  
+**Tipo:** `FLOAT` (px).  
+**Uso:** `padding`, `margin`, `gap`; alturas de referência para **app bar** e **barra inferior**.
+
+| Token | Valor | Descrição | Uso sugerido |
+|-------|-------|-----------|----------------|
+| `espaco/mobile/nenhum` | 0 | Sem espaçamento. | Reset, alinhamento a grade. |
+| `espaco/mobile/tamanho-4` | 4 | Micro espaço. | Ajustes finos entre ícone e rótulo. |
+| `espaco/mobile/tamanho-8` | 8 | Espaço xs. | Pilhas compactas, chips. |
+| `espaco/mobile/tamanho-12` | 12 | Espaço sm. | Listas densas, células. |
+| `espaco/mobile/tamanho-16` | 16 | Espaço md (base comum). | Entre blocos em listas e formulários. |
+| `espaco/mobile/tamanho-20` | 20 | Entre md e lg. | Conforto em toque entre linhas. |
+| `espaco/mobile/tamanho-24` | 24 | Espaço lg. | Entre seções dentro da tela. |
+| `espaco/mobile/tamanho-32` | 32 | Espaço xl. | Grupos maiores de conteúdo. |
+| `espaco/mobile/tamanho-40` | 40 | Espaço 2xl. | Destaques e respiro forte. |
+| `espaco/mobile/tamanho-48` | 48 | Espaço 3xl. | Separação entre regiões principais. |
+| `espaco/mobile/cabecalho-altura` | 56 | Altura de referência da **barra superior** (app bar). | Alinhar frames e componentes de topo. |
+| `espaco/mobile/navegacao-inferior` | 56 | Altura de referência da **barra inferior** (tabs). | Área da navegação por abas. |
+
+> Inclui **`tamanho-20`**, que não existe na escala web, para ritmo típico de telas tocáveis. Ajuste valores no Figma se o time padronizar outra altura de header ou tab bar.
+
+---
+
+## 14. Mobile · Layout
+
+**Escopo:** somente **Mobile**.  
+**Tipo:** `FLOAT` (px), exceto onde o uso for **referência** (artboard).
+
+| Token | Valor | Descrição | Uso sugerido |
+|-------|-------|-----------|----------------|
+| `layout/margem-horizontal` | 16 | Padding horizontal **padrão** do conteúdo. | Margens laterais da tela em listas e formulários. |
+| `layout/margem-horizontal-grande` | 20 | Padding horizontal **maior**. | Telas largas ou quando o design pedir mais respiro lateral. |
+| `layout/largura-maxima-artboard` | 428 | Largura máxima de **artboard** (referência). | Frames no Figma; no código, `max-width` ou limite de conteúdo em tablets pequenos. |
+| `layout/inset-area-segura` | 34 | Inset inferior de **área segura** (referência). | Home indicator (iPhone); use `env(safe-area-inset-bottom)` no app real e este token como alinhamento visual no design. |
+
+> Tokens de **layout** mobile convivem com os de **Web · Layout** em coleções diferentes; nomes podem repetir o prefixo `layout/` porque pertencem a coleções distintas no Figma — no **código**, prefixe variáveis CSS (ex.: `--mobile-layout-margem-horizontal`) para evitar colisão com o web.
+
+---
+
+## 15. Manutenção e governança
 
 1. **Fonte da verdade:** arquivo Figma + este documento; alterações de token devem refletir nos dois.
 2. **Conventional Commits:** exemplos — `docs(figma): atualizar sombra nivel-2`, `fix(tokens): corrigir alias do branco`.
 3. **Alias:** novos aliases devem ser preferidos a hex duplicado para cores idênticas.
-4. **Mobile:** nova coleção de espaçamento não deve duplicar nomes da paleta nem redefinir cores sem decisão explícita.
+4. **Mobile vs web:** não duplicar **cores** nem tokens globais; só **Mobile · Espaçamento** e **Mobile · Layout** são específicos de mobile, além de **Web ·** * para web.
 
 ---
 
@@ -334,5 +384,7 @@ Use para **padronizar** o quanto o fundo escurece atrás de modais e painéis, e
 | Opacidade | 4 |
 | Web · Espaçamento | 12 |
 | Web · Layout | 6 |
+| Mobile · Espaçamento | 12 |
+| Mobile · Layout | 4 |
 
 *Quantidades podem mudar se variáveis forem adicionadas ou removidas no Figma.*
