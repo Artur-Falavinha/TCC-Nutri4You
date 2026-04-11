@@ -5,6 +5,7 @@ Material de referência sobre o arquivo de design e os **design tokens** do proj
 ## Arquivo no Figma
 
 - **Projeto:** TCC I need a Nutri (ajuste o link no repositório se o arquivo mudar de dono ou nome).
+- **System Design** ([frame na seção](https://www.figma.com/design/56pR0RpOtcJSxEphHUA1Z1/TCC-I-need-a-Nutri?node-id=189-522)): biblioteca em **Atomic Design** (Átomos, Moléculas, Organismos) — botões, campo, sidebar web *neutra* (sem link ativo), cabeçalho mobile, modal com scrim, etc. Componentes com múltiplos estados devem ganhar **variantes** ou **propriedades** depois; o baseline é sempre **neutro**.
 
 ## Conteúdo nesta pasta
 
