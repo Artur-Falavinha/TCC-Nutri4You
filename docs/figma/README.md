@@ -11,11 +11,11 @@ Material de referência sobre o arquivo de design e os **design tokens** do proj
 
 | Pasta / arquivo | Conteúdo |
 |-----------------|----------|
-| [tokens - documentação](tokens%20-%20documentação/README.md) | Referência **completa**: escopo, convenções, **tabela por token** (valor, tipo, descrição, uso sugerido) e governança |
+| [tokens - documentação](tokens%20-%20documentação/README.md) | Referência **completa**: escopo, convenções, **unidades (Figma em px vs frontend em rem/px)**, **tabela por token** (valor, tipo, descrição, uso sugerido) e governança |
 
 ## No Figma
 
-Além desta pasta no Git, existe uma **página** no arquivo chamada **`Tokens — documentação`**, com o frame **Guia de escopo (Web + Mobile)**: texto-resumo das coleções **globais** (inclui **Opacidade**), **somente web** e **somente mobile**. Mantenha esse texto alinhado ao [`tokens - documentação/README.md`](tokens%20-%20documentação/README.md) quando houver mudanças nas coleções.
+Além desta pasta no Git, existe uma **página** no arquivo chamada **`Tokens — documentação`**, com o frame **Guia de escopo (Web + Mobile)** (resumo das coleções) e o frame **Variáveis — rem vs px (referência CSS)** (tabela de cada variável: unidade no Figma vs CSS). Mantenha esses textos alinhados ao [`tokens - documentação/README.md`](tokens%20-%20documentação/README.md) quando houver mudanças nas coleções ou na política de `rem`/`px`.
 
 ## Coleções de variáveis (referência rápida)
 
