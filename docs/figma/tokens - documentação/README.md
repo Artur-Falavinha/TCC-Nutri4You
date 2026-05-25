@@ -459,6 +459,8 @@ O **sufixo** corresponde ao **tamanho** associado (ex.: título 36 px → `fonte
 **Escopo:** global.  
 **Tipo:** `FLOAT` (px).
 
+**Biblioteca de desenho e implementação:** os ícones do projeto seguem a família **[Phosphor Icons](https://phosphoricons.com)**. No Figma, os componentes **`Ícone · …`** do design system mapeiam esse vocabulário; no código, usar os **pacotes oficiais Phosphor** da stack escolhida, respeitando os tamanhos abaixo (não trocar por outra biblioteca na mesma UI sem decisão registrada).
+
 | Token | Valor | Descrição | Uso sugerido |
 |-------|-------|-----------|----------------|
 | `icone/16` | 16 | Ícone **compacto**. | Texto inline, metadados, densidade alta. |

@@ -13,7 +13,9 @@ docs/
 │       └── README.md         ← escopo dos tokens (global vs web)
 ├── arquitetura/              ← decisões e diagramas (quando houver)
 ├── api/                      ← documentação de API (se houver)
-└── onboarding/               ← setup do ambiente (quando houver código)
+├── onboarding/               ← setup do ambiente (quando houver código)
+└── glossario/                ← termos técnicos (nutrição, anamnese, interface)
+│   └── README.md
 ```
 
 ## Conteúdo atual
@@ -25,3 +27,4 @@ docs/
 | [Arquitetura](arquitetura/README.md) | Placeholder para ADRs e diagramas |
 | [API](api/README.md) | Placeholder para contratos de API |
 | [Onboarding](onboarding/README.md) | Placeholder para guia de ambiente local |
+| [Glossário — termos técnicos](glossario/README.md) | RCQ, dobras cutâneas, escalas hábitos, Bristol, contexto clínico; uso no produto |
