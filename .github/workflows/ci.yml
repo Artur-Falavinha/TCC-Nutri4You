@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validacao-markdown:
+    name: Validação de Markdown
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validar arquivos Markdown
+        uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+        with:
+          globs: "**/*.md"
+
+  deteccao-segredos:
+    name: Detecção de segredos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Baixar o histórico completo do repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Procurar segredos no histórico
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
+
+  gate:
+    name: Gate
+    if: ${{ always() }}
+    needs:
+      - validacao-markdown
+      - deteccao-segredos
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Consolidar resultado do CI
+        env:
+          RESULTADO_MARKDOWN: ${{ needs.validacao-markdown.result }}
+          RESULTADO_SEGREDOS: ${{ needs.deteccao-segredos.result }}
+        shell: bash
+        run: |
+          if [[ "$RESULTADO_MARKDOWN" != "success" ]]; then
+            echo "::error::A validação de Markdown não foi concluída com sucesso."
+            exit 1
+          fi
+
+          if [[ "$RESULTADO_SEGREDOS" != "success" ]]; then
+            echo "::error::A detecção de segredos não foi concluída com sucesso."
+            exit 1
+          fi
+
+          echo "Todas as validações obrigatórias foram concluídas com sucesso."
