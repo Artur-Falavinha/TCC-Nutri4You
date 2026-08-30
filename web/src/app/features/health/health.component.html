@@ -1,0 +1,26 @@
+<main class="page">
+  <h1>Status da API</h1>
+
+  @if (state === 'loading') {
+    <p>Consultando a API…</p>
+  }
+
+  @if (state === 'success') {
+    <div>
+      <p>API respondendo: <strong>{{ health?.status }}</strong></p>
+      @if (health?.service) {
+        <p>Serviço: {{ health?.service }}</p>
+      }
+    </div>
+  }
+
+  @if (state === 'error') {
+    <div>
+      <p>Não foi possível falar com a API ({{ error?.status }}).</p>
+      <p>{{ error?.message }}</p>
+      <p>Confira se a API Spring Boot está rodando em <code>environment.apiBaseUrl</code>.</p>
+    </div>
+  }
+
+  <button type="button" (click)="reload()">Tentar novamente</button>
+</main>
