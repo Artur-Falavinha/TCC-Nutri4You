@@ -182,3 +182,35 @@ CREATE TABLE Item_Refeicao (
     CONSTRAINT fk_itemrefeicao_refeicao FOREIGN KEY (id_refeicao) REFERENCES Refeicao(id_refeicao),
     CONSTRAINT fk_itemrefeicao_alimento FOREIGN KEY (id_alimento) REFERENCES Alimento(id_alimento)
 );
+
+-- ==========================================
+-- DADOS DE TESTE INICIAIS (Mock)
+-- ==========================================
+
+-- 1. NUTRICIONISTAS
+INSERT INTO Nutricionista (nome, email, senha, crn) VALUES
+('Gabriel de Paula Brasil', 'nutri@nutri4you.com', '$2a$10$ExemploDeHashBcryptParaSenha123', 'CRN8-12345');
+
+-- 2. PACIENTES
+INSERT INTO Paciente (nome, cpf, data_nascimento, sexo, telefone, email, senha) VALUES
+('Arthur Henrique Deretti', '111.222.333-44', '2000-01-01', 'Masculino', '41999999999', 'arthur@email.com', '$2a$10$ExemploDeHashBcrypt'),
+('Artur Lachoman Falavinha', '555.666.777-88', '2000-02-02', 'Masculino', '41988888888', 'artur@email.com', '$2a$10$ExemploDeHashBcrypt');
+
+-- 3. VÍNCULOS NUTRICIONAIS
+INSERT INTO Vinculo_Nutricional (id_paciente, id_nutricionista, data_inicio, status) VALUES
+(1, 1, '2026-09-01', 'ATIVO'),
+(2, 1, '2026-09-01', 'ATIVO');
+
+-- 4. ALIMENTOS (Base TACO simplificada)
+INSERT INTO Alimento (categoria, nome, kcal_100g, proteina_100g, carboidratos_100g) VALUES
+('Cereais', 'Arroz branco cozido', 128.00, 2.50, 28.10),
+('Leguminosas', 'Feijão carioca cozido', 76.00, 4.80, 13.60),
+('Carnes', 'Peito de frango grelhado', 159.00, 32.00, 0.00),
+('Ovos', 'Ovo de galinha cozido', 146.00, 13.30, 0.60),
+('Frutas', 'Banana prata', 98.00, 1.30, 26.00);
+
+-- 5. PERGUNTAS DE ANAMNESE PADRÃO
+INSERT INTO Pergunta_Anamnese (id_nutricionista, categoria, texto_pergunta, tipo_resposta, ativo) VALUES
+(1, 'Geral', 'Possui alguma alergia ou intolerância alimentar?', 'TEXTO', TRUE),
+(1, 'Hábitos', 'Quantos copos de água costuma beber por dia?', 'TEXTO', TRUE),
+(1, 'Saúde', 'Faz uso de algum medicamento contínuo?', 'TEXTO', TRUE);
