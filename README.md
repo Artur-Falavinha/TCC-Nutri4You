@@ -22,6 +22,63 @@ docker compose up -d --build
 
 ```
 
+## 📱 Executando o Aplicativo Mobile (React Native / Expo)
+
+O aplicativo mobile utiliza **Expo** e foi configurado para detectar automaticamente o IP da sua máquina na rede local através do `expo-constants`, dispensando a necessidade de configurar manualmente arquivos `.env` locais para o desenvolvimento.
+
+### Pré-requisitos
+
+Antes de iniciar, certifique-se de ter instalado em sua máquina:
+- [Node.js](https://nodejs.org/) (versão LTS recomendada)
+- Gerenciador de pacotes `npm` ou `yarn`
+- O aplicativo **Expo Go** instalado no seu celular (disponível na App Store ou Google Play)
+- O **Docker** rodando com o backend do Spring Boot inicializado.
+
+---
+
+### Passo a Passo para Execução
+
+1. **Abra o terminal e acesse a pasta do mobile:**
+   ```bash
+   cd mobile
+
+```
+
+2. **Instale as dependências do projeto:**
+```bash
+npm install
+
+```
+
+
+3. **Garanta que o Backend está rodando:**
+Certifique-se de que os contêineres do Docker (Backend e Banco de Dados) estão ativos na porta `8080`. Na raiz do projeto, você pode executar:
+```bash
+docker compose up -d
+
+```
+
+
+4. **Inicie o servidor de desenvolvimento (Metro Bundler):**
+```bash
+npm start
+
+```
+
+
+*(Caso precise limpar o cache de desenvolvimento do Expo em algum momento, utilize: `npx expo start --clear`)*
+5. **Conecte pelo celular:**
+* Um **QR Code** será exibido no seu terminal.
+* **No Android:** Abra o aplicativo **Expo Go** e selecione a opção de escanear o QR Code.
+* **No iOS:** Utilize a câmera nativa do iPhone para ler o QR Code, que abrirá automaticamente o Expo Go.
+* *Importante:* O seu celular e o seu computador precisam estar conectados exatamente à **mesma rede Wi-Fi** para que o app consiga se comunicar com a API local.
+
+
+
+```
+
+```
+
 ### Credenciais e Conexão com o Banco de Dados
 
 Para visualizar e gerenciar as tabelas e dados do PostgreSQL conteinerizado (através de extensões como o Database Client no VS Code), utilize os seguintes parâmetros de conexão:
