@@ -6,6 +6,10 @@
  * apenas variáveis com prefixo `EXPO_PUBLIC_`. Nenhum segredo deve usar esse
  * prefixo — só valores que já seriam públicos no app instalado (ex.: URL da API).
  */
+import Constants from 'expo-constants';
+
+const hostUri = Constants.expoConfig?.hostUri || Constants.manifest?.debuggerHost;
+const localIp = hostUri ? hostUri.split(':')[0] : 'localhost';
 
 function requireEnv(name: string, value: string | undefined): string {
   if (!value) {
@@ -17,5 +21,5 @@ function requireEnv(name: string, value: string | undefined): string {
 }
 
 export const env = {
-  apiBaseUrl: requireEnv('EXPO_PUBLIC_API_BASE_URL', process.env.EXPO_PUBLIC_API_BASE_URL)
+  apiBaseUrl: `http://${localIp}:8080/api/v1`
 };
