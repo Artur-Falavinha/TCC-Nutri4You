@@ -189,7 +189,7 @@ CREATE TABLE Item_Refeicao (
 
 -- 1. NUTRICIONISTAS
 INSERT INTO Nutricionista (nome, email, senha, crn) VALUES
-('Gabriel de Paula Brasil', 'nutri@nutri4you.com', '$2a$10$ExemploDeHashBcryptParaSenha123', 'CRN8-12345');
+('Gabriel de Paula Brasil', 'nutri@nutri4you.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', 'CRN8-12345');
 
 -- 2. PACIENTES
 INSERT INTO Paciente (nome, cpf, data_nascimento, sexo, telefone, email, senha) VALUES

@@ -31,6 +31,8 @@ services:
       - SPRING_DATASOURCE_USERNAME=springuser
       - SPRING_DATASOURCE_PASSWORD=password
       - SPRING_JPA_HIBERNATE_DDL_AUTO=none
+      - JWT_SECRET=${JWT_SECRET:-dev-only-change-this-secret-nutri4you}
+      - JWT_EXPIRATION_HOURS=${JWT_EXPIRATION_HOURS:-2}
     volumes:
       - ./backend:/app
       - maven-repo:/root/.m2
