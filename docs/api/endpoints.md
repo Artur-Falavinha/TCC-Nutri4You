@@ -57,7 +57,7 @@ Autentica um paciente ou nutricionista e retorna um token JWT.
 ```json
 {
   "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "token": "<token-jwt-exemplo>",
     "tipoUsuario": "NUTRICIONISTA"
   },
   "message": "Login realizado com sucesso.",

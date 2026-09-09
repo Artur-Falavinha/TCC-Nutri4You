@@ -57,16 +57,36 @@ JWT nos clientes web/mobile permanece para Sprint 2.
 
 | Item | Link |
 | --- | --- |
-| Commit | `11e5442` — feat: fechar Sprint 1 com envelope API, CI e documentacao |
+| Commits | `11e5442`, `c62ee64`, fix CI (pós-review) |
 | Issue GitHub | [Sprint 1 — Review concluída](https://github.com/Artur-Falavinha/TCC-Nutri4You/issues/1) |
 | CI (push) | [GitHub Actions](https://github.com/Artur-Falavinha/TCC-Nutri4You/actions) |
+| GitHub Projects | Adicionar issue #1 manualmente — token `gh` sem escopo `project` |
 
-Adicionar esta issue ao [GitHub Projects](https://github.com/users/Artur-Falavinha/projects/1) manualmente (token local sem escopo `read:project`).
+## Checklist manual (09/09/2026)
+
+| Item | Status | Observação |
+| --- | --- | --- |
+| Commits Sprint 1 | ✅ | `11e5442` + `c62ee64` |
+| Push para `origin/main` | ✅ | Conta `Artur-Falavinha` |
+| Issue GitHub #1 | ✅ | Sprint Review registrada |
+| Card no GitHub Projects | ⏳ | Requer `gh auth refresh -s project` |
+| Demo Docker (`/health`) | ⏳ | Docker daemon indisponível no ambiente local |
+| CI verde | ⏳ | Correções aplicadas; aguardar run pós-push |
 
 ## Validação da demo (09/09/2026)
 
 | Passo | Resultado |
 | --- | --- |
-| `docker compose up` | Pendente — Docker Desktop não estava em execução no ambiente do commit |
-| CI após push | Verificar em GitHub Actions |
-| Web/mobile `/health` | Validar localmente com Docker ativo |
+| `docker compose up -d --build` | ⏳ Docker daemon não respondeu (`dockerDesktopLinuxEngine`) |
+| `curl /api/v1/health` | ⏳ Depende do Docker |
+| Web `localhost:4200/health` | ⏳ Depende do Docker |
+| Mobile Expo Go | ⏳ Depende do Docker + mesma rede Wi-Fi |
+| CI após push | ⏳ Verificar run mais recente em Actions |
+
+### Correções de CI (pós-review)
+
+| Job | Causa | Correção |
+| --- | --- | --- |
+| Backend — testes | `./mvnw: Permission denied` | Bit executável em `backend/mvnw` |
+| Markdown | RoadMap + README | Ignorar `Outras Documentações/**`; README formatado |
+| Gitleaks | JWT de exemplo em `endpoints.md` | Placeholder `<token-jwt-exemplo>` |
