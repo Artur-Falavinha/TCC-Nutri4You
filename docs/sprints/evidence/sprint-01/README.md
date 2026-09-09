@@ -12,12 +12,10 @@
 | `03-web-health-curl.txt` | Web Angular respondendo na porta 4200 |
 | `04-mvn-test.txt` | `mvn test` local — 2 testes, BUILD SUCCESS |
 | `05-ci-latest.txt` | Último run do GitHub Actions |
-| `06-web-health-page.png` | Tela web `/health` (CORS bloqueia fetch no browser — Sprint 2) |
 | `07-integracao-api-db.txt` | Invoke-RestMethod + contagem de tabelas PostgreSQL |
 | `08-terminal-summary.txt` | Resumo da validação em terminal |
-| `09-desktop-screenshot.png` | Captura de tela do ambiente |
-| `10-validation-report.png` | Relatório visual da demo |
-| `validation-report.html` | Relatório HTML (abrir no browser) |
+| `10-validation-report.png` | Print do relatório de validação |
+| `validation-report.html` | Relatório HTML (fonte do print acima) |
 
 ## Comandos reproduzíveis
 
