@@ -55,4 +55,18 @@ JWT nos clientes web/mobile permanece para Sprint 2.
 
 ## Registro no quadro
 
-Criar/atualizar card no GitHub Projects com link para este documento e capturas da demo.
+| Item | Link |
+| --- | --- |
+| Commit | `11e5442` — feat: fechar Sprint 1 com envelope API, CI e documentacao |
+| Issue GitHub | [Sprint 1 — Review concluída](https://github.com/Artur-Falavinha/TCC-Nutri4You/issues/1) |
+| CI (push) | [GitHub Actions](https://github.com/Artur-Falavinha/TCC-Nutri4You/actions) |
+
+Adicionar esta issue ao [GitHub Projects](https://github.com/users/Artur-Falavinha/projects/1) manualmente (token local sem escopo `read:project`).
+
+## Validação da demo (09/09/2026)
+
+| Passo | Resultado |
+| --- | --- |
+| `docker compose up` | Pendente — Docker Desktop não estava em execução no ambiente do commit |
+| CI após push | Verificar em GitHub Actions |
+| Web/mobile `/health` | Validar localmente com Docker ativo |
