@@ -11,10 +11,51 @@ Guia para configurar e executar o Nutri4You localmente.
 | [Git](https://git-scm.com/) | Latest | Clone do repositório |
 | [Expo Go](https://expo.dev/go) | Latest | App mobile no celular |
 
-Opcional para desenvolvimento backend fora do Docker:
+Para desenvolvimento e testes do backend fora do Docker:
 
-- JDK 21
-- Maven (ou usar `./mvnw` incluso)
+- **JDK 21** (Eclipse Temurin recomendado)
+- Maven incluso via `./mvnw` (não é necessário instalar Maven separadamente)
+
+### Configurar Java 21 (Windows)
+
+Instale o JDK e configure `JAVA_HOME`:
+
+```powershell
+winget install EclipseAdoptium.Temurin.21.JDK
+```
+
+Após a instalação, defina as variáveis de usuário (ajuste o caminho se a versão patch for diferente):
+
+```powershell
+$javaHome = "C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot"
+[Environment]::SetEnvironmentVariable("JAVA_HOME", $javaHome, "User")
+$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+[Environment]::SetEnvironmentVariable("Path", "$javaHome\bin;$userPath", "User")
+```
+
+Reabra o terminal e valide:
+
+```powershell
+java -version
+# openjdk version "21.x" ...
+```
+
+### Executar testes do backend
+
+Na raiz do projeto:
+
+```powershell
+.\scripts\run-backend-tests.ps1
+```
+
+Ou diretamente na pasta `backend/`:
+
+```powershell
+cd backend
+.\mvnw.cmd -B test
+```
+
+O script `scripts/resolve-java-home.ps1` detecta automaticamente o Temurin 21 em `C:\Program Files\Eclipse Adoptium\` quando `JAVA_HOME` não estiver definido.
 
 ## Clone do repositório
 

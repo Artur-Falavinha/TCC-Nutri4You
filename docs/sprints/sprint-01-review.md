@@ -72,6 +72,7 @@ JWT nos clientes web/mobile permanece para Sprint 2.
 | Card no GitHub Projects | ⏳ | Requer `gh auth refresh -s project` |
 | Demo Docker (`/health`) | ⏳ | Docker daemon indisponível no ambiente local |
 | CI verde | ✅ | [Run #34363948999](https://github.com/Artur-Falavinha/TCC-Nutri4You/actions/runs/34363948999) |
+| Backend `mvn test` local | ✅ | JDK 21 (Temurin) + `JAVA_HOME` configurados — 2 testes OK |
 
 ## Validação da demo (09/09/2026)
 
