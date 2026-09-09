@@ -1,8 +1,10 @@
-/**
- * Envelope padrão de resposta da API (RNF09/RNF10 — tratamento padrão de
- * respostas). Mesmo contrato usado no cliente Angular; ajustar os dois em
- * conjunto quando o contrato real da API for publicado na Sprint 1.
- */
+/** Envelope padrão de resposta de sucesso (RNF09/RNF10). */
+export interface ApiResponse<T> {
+  data: T;
+  message?: string;
+  timestamp?: string;
+}
+
 export interface ApiErrorResponse {
   status: number;
   error: string;

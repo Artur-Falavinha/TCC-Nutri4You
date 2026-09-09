@@ -46,12 +46,102 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: "false"
 
+  backend-test:
+    name: Backend — testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      contains(toJSON(github.event.pull_request.files.*.path), 'backend/')
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Executar testes Maven
+        run: ./mvnw -B test
+
+  web-quality:
+    name: Web — lint e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      contains(toJSON(github.event.pull_request.files.*.path), 'web/')
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Executar lint
+        run: npm run lint
+
+      - name: Executar build
+        run: npm run build
+
+  mobile-quality:
+    name: Mobile — lint e typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      contains(toJSON(github.event.pull_request.files.*.path), 'mobile/')
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Executar lint
+        run: npm run lint
+
+      - name: Executar typecheck
+        run: npm run typecheck
+
   gate:
     name: Gate
     if: ${{ always() }}
     needs:
       - validacao-markdown
       - deteccao-segredos
+      - backend-test
+      - web-quality
+      - mobile-quality
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -59,6 +149,9 @@ jobs:
         env:
           RESULTADO_MARKDOWN: ${{ needs.validacao-markdown.result }}
           RESULTADO_SEGREDOS: ${{ needs.deteccao-segredos.result }}
+          RESULTADO_BACKEND: ${{ needs.backend-test.result }}
+          RESULTADO_WEB: ${{ needs.web-quality.result }}
+          RESULTADO_MOBILE: ${{ needs.mobile-quality.result }}
         shell: bash
         run: |
           if [[ "$RESULTADO_MARKDOWN" != "success" ]]; then
@@ -70,5 +163,12 @@ jobs:
             echo "::error::A detecção de segredos não foi concluída com sucesso."
             exit 1
           fi
+
+          for resultado in "$RESULTADO_BACKEND" "$RESULTADO_WEB" "$RESULTADO_MOBILE"; do
+            if [[ "$resultado" != "success" && "$resultado" != "skipped" ]]; then
+              echo "::error::Job de aplicação falhou: $resultado"
+              exit 1
+            fi
+          done
 
           echo "Todas as validações obrigatórias foram concluídas com sucesso."

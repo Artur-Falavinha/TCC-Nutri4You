@@ -1,5 +1,5 @@
 import { env } from '../config/env';
-import { ApiError, ApiErrorResponse } from './api-response.types';
+import { ApiError, ApiErrorResponse, ApiResponse } from './api-response.types';
 
 /**
  * Cliente de API genérico usado por todos os serviços de feature no mobile.
@@ -72,7 +72,8 @@ class ApiClient {
       return undefined as T;
     }
 
-    return this.safeParseJson<T>(response) as Promise<T>;
+    const envelope = await this.safeParseJson<ApiResponse<T>>(response);
+    return envelope?.data as T;
   }
 
   private buildUrl(path: string): string {

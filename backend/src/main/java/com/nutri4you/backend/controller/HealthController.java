@@ -1,4 +1,7 @@
 package com.nutri4you.backend.controller;
+
+import com.nutri4you.backend.dto.ApiResponse;
+import com.nutri4you.backend.dto.HealthStatusDTO;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -9,7 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class HealthController {
 
     @GetMapping("/health")
-    public ResponseEntity<String> checkHealth() {
-        return ResponseEntity.ok("API is running and connected!");
+    public ResponseEntity<ApiResponse<HealthStatusDTO>> checkHealth() {
+        return ResponseEntity.ok(ApiResponse.ok(
+                HealthStatusDTO.up("backend"),
+                "API operacional e conectada."));
     }
 }

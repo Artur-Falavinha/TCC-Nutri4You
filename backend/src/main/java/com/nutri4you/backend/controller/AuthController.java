@@ -1,7 +1,8 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.dto.ApiResponse;
+import com.nutri4you.backend.exception.UnauthorizedException;
 import com.nutri4you.backend.security.TokenService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,7 +25,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest dados) {
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody LoginRequest dados) {
         try {
             var credentials = new UsernamePasswordAuthenticationToken(dados.email(), dados.senha());
             var authentication = authenticationManager.authenticate(credentials);
@@ -33,15 +34,13 @@ public class AuthController {
                     .map(authority -> authority.getAuthority().replace("ROLE_", ""))
                     .orElse("USUARIO");
 
-            return ResponseEntity.ok(new LoginResponse(
-                    tokenService.gerarToken(authentication.getName()),
-                    tipoUsuario));
+            return ResponseEntity.ok(ApiResponse.ok(
+                    new LoginResponse(
+                            tokenService.gerarToken(authentication.getName()),
+                            tipoUsuario),
+                    "Login realizado com sucesso."));
         } catch (AuthenticationException exception) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ErrorResponse("E-mail ou senha incorretos."));
+            throw new UnauthorizedException("E-mail ou senha incorretos.");
         }
-    }
-
-    private record ErrorResponse(String erro) {
     }
 }
