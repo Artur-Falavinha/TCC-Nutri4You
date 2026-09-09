@@ -70,7 +70,7 @@ JWT nos clientes web/mobile permanece para Sprint 2.
 | Commits Sprint 1 | ✅ | `11e5442` … `dd60838` |
 | Push para `origin/main` | ✅ | Conta `Artur-Falavinha` |
 | Issue GitHub #1 | ✅ | Fechada com comentário de evidências |
-| Card no GitHub Projects | ⏳ | Token sem escopo `project` — adicionar manualmente |
+| Card no GitHub Projects | ⏳ | `gh auth refresh -h github.com -s project` + item-add |
 | Demo Docker (`/health`) | ✅ | 3 containers Up, API HTTP 200 |
 | CI verde | ✅ | [Run #34364127945](https://github.com/Artur-Falavinha/TCC-Nutri4You/actions/runs/34364127945) |
 | Backend `mvn test` local | ✅ | 2 testes, BUILD SUCCESS (Java 21) |
@@ -83,7 +83,7 @@ JWT nos clientes web/mobile permanece para Sprint 2.
 | `curl /api/v1/health` | ✅ `data.status: "UP"`, envelope RNF09/RNF10 |
 | PostgreSQL | ✅ 15 tabelas via `init.sql` |
 | Web `localhost:4200/health` | ⚠️ Tela carrega; fetch bloqueado por CORS (Sprint 2) |
-| Mobile Expo Go | ⏳ Requer celular; endpoint `/health` comprovado via API |
+| Mobile Expo Go | ✅ HealthScreen — API respondendo UP (09/09/2026, rede 192.168.15.11) |
 | `mvn test` local | ✅ 2 testes, BUILD SUCCESS |
 | CI após push | ✅ Gate verde |
 
