@@ -57,7 +57,7 @@ JWT nos clientes web/mobile permanece para Sprint 2.
 
 | Item | Link |
 | --- | --- |
-| Commits | `11e5442`, `c62ee64`, fix CI (pós-review) |
+| Commits | `11e5442`, `c62ee64`, `4f016c6`, `d742fd5` |
 | Issue GitHub | [Sprint 1 — Review concluída](https://github.com/Artur-Falavinha/TCC-Nutri4You/issues/1) |
 | CI (push) | [GitHub Actions](https://github.com/Artur-Falavinha/TCC-Nutri4You/actions) |
 | GitHub Projects | Adicionar issue #1 manualmente — token `gh` sem escopo `project` |
@@ -71,7 +71,7 @@ JWT nos clientes web/mobile permanece para Sprint 2.
 | Issue GitHub #1 | ✅ | Sprint Review registrada |
 | Card no GitHub Projects | ⏳ | Requer `gh auth refresh -s project` |
 | Demo Docker (`/health`) | ⏳ | Docker daemon indisponível no ambiente local |
-| CI verde | ⏳ | Correções aplicadas; aguardar run pós-push |
+| CI verde | ✅ | [Run #34363948999](https://github.com/Artur-Falavinha/TCC-Nutri4You/actions/runs/34363948999) |
 
 ## Validação da demo (09/09/2026)
 
@@ -81,7 +81,7 @@ JWT nos clientes web/mobile permanece para Sprint 2.
 | `curl /api/v1/health` | ⏳ Depende do Docker |
 | Web `localhost:4200/health` | ⏳ Depende do Docker |
 | Mobile Expo Go | ⏳ Depende do Docker + mesma rede Wi-Fi |
-| CI após push | ⏳ Verificar run mais recente em Actions |
+| CI após push | ✅ Gate verde — run [#34363948999](https://github.com/Artur-Falavinha/TCC-Nutri4You/actions/runs/34363948999) |
 
 ### Correções de CI (pós-review)
 
