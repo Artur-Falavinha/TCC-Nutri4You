@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Sprint 1 — Validação Demo</title>
+  <style>
+    body { font-family: Consolas, 'Courier New', monospace; background: #0d1117; color: #c9d1d9; padding: 24px; max-width: 960px; margin: 0 auto; }
+    h1 { color: #58a6ff; font-family: Segoe UI, sans-serif; }
+    h2 { color: #8b949e; font-family: Segoe UI, sans-serif; margin-top: 32px; }
+    pre { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; overflow-x: auto; white-space: pre-wrap; }
+    .ok { color: #3fb950; }
+    .meta { color: #8b949e; font-family: Segoe UI, sans-serif; }
+  </style>
+</head>
+<body>
+  <h1>Sprint 1 — Validação Demo (09/09/2026)</h1>
+  <p class="meta">Fluxo: Docker → API /health → PostgreSQL → mvn test</p>
+
+  <h2>1. docker compose ps</h2>
+  <pre>NAME                STATUS              PORTS
+nutri4you-backend   Up                  8080/tcp
+nutri4you-db        Up                  5432/tcp
+nutri4you-web       Up                  4200/tcp</pre>
+  <p class="ok">✓ 3 containers ativos</p>
+
+  <h2>2. curl http://localhost:8080/api/v1/health</h2>
+  <pre>{
+  "data": {
+    "status": "UP",
+    "service": "backend",
+    "timestamp": "2026-09-09T15:16:31Z"
+  },
+  "message": "API operacional e conectada.",
+  "timestamp": "2026-09-09T15:16:31Z"
+}
+HTTP_CODE: 200</pre>
+  <p class="ok">✓ Envelope RNF09/RNF10 com status UP</p>
+
+  <h2>3. PostgreSQL (15 tabelas no schema public)</h2>
+  <pre>docker exec nutri4you-db psql ... → 15 tabelas</pre>
+  <p class="ok">✓ Banco inicializado via init.sql</p>
+
+  <h2>4. mvn test (local, Java 21)</h2>
+  <pre>Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS</pre>
+  <p class="ok">✓ HealthControllerTest + BackendApplicationTests</p>
+
+  <h2>5. Web /health (localhost:4200)</h2>
+  <pre>Tela "Status da API" carregada (HTTP 200)
+Nota: browser bloqueado por CORS até Sprint 2 — API comprovada via curl/Invoke-RestMethod</pre>
+
+  <h2>6. Mobile (Expo Go)</h2>
+  <pre>HealthScreen chama GET /api/v1/health via apiClient
+Mesmo endpoint validado no passo 2 — requer celular + mesma rede Wi-Fi</pre>
+
+  <h2>7. CI GitHub Actions</h2>
+  <pre>Gate verde — run #34364127945</pre>
+  <p class="ok">✓ Sprint 1 tecnicamente validada</p>
+</body>
+</html>

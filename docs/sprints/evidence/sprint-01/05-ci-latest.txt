@@ -1,0 +1,9 @@
+
+
+conclusion   : success
+displayTitle : chore: adicionar scripts e docs para testes backend com Java 21
+url          : https://github.com/Artur-Falavinha/TCC-Nutri4You/actions/runs/34368060227
+
+
+
+

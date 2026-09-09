@@ -1,0 +1,13 @@
+
+========================================
+ SPRINT 1 - VALIDACAO DEMO (09/09/2026)
+========================================
+
+[OK] docker compose ps     -> 3 containers Up
+[OK] curl /api/v1/health   -> HTTP 200, data.status=UP
+[OK] PostgreSQL            -> 15 tabelas (init.sql)
+[OK] mvn test              -> 2 tests, BUILD SUCCESS
+[OK] CI GitHub Actions     -> Gate verde
+[--] Web browser /health    -> CORS pendente Sprint 2
+[--] Mobile Expo Go         -> requer celular (API validada)
+

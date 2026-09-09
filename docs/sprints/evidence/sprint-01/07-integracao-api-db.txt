@@ -1,0 +1,13 @@
+﻿=== Invoke-RestMethod (simula cliente web/mobile) ===
+{
+    "data":  {
+                 "status":  "UP",
+                 "service":  "backend",
+                 "timestamp":  "2026-09-09T15:19:01.287459581Z"
+             },
+    "message":  "API operacional e conectada.",
+    "timestamp":  "2026-09-09T15:19:01.287461591Z"
+}
+
+=== PostgreSQL (container ativo) ===
+ tabelas  ---------       15 (1 row) 
