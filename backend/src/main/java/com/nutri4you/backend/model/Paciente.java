@@ -44,6 +44,9 @@ public class Paciente implements UserDetails {
     @Column(nullable = false, length = 255)
     private String senha;
 
+    @Column(nullable = false)
+    private boolean ativo = true;
+
     protected Paciente() {
     }
 
@@ -74,6 +77,18 @@ public class Paciente implements UserDetails {
 
     public void setNome(String nome) {
         this.nome = nome;
+    }
+
+    public void setTelefone(String telefone) {
+        this.telefone = telefone;
+    }
+
+    public void setSexo(String sexo) {
+        this.sexo = sexo;
+    }
+
+    public void setDataNascimento(LocalDate dataNascimento) {
+        this.dataNascimento = dataNascimento;
     }
 
     public String getCpf() {
@@ -108,6 +123,14 @@ public class Paciente implements UserDetails {
         this.senha = senha;
     }
 
+    public boolean isAtivo() {
+        return ativo;
+    }
+
+    public void setAtivo(boolean ativo) {
+        this.ativo = ativo;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_PACIENTE"));
@@ -121,5 +144,10 @@ public class Paciente implements UserDetails {
     @Override
     public String getUsername() {
         return email;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return ativo;
     }
 }
