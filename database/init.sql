@@ -19,7 +19,8 @@ CREATE TABLE Paciente (
     sexo VARCHAR(20),
     telefone VARCHAR(20),
     email VARCHAR(100) UNIQUE NOT NULL,
-    senha VARCHAR(255) NOT NULL
+    senha VARCHAR(255) NOT NULL,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 CREATE TABLE Vinculo_Nutricional (

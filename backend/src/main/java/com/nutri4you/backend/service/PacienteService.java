@@ -1,11 +1,15 @@
 package com.nutri4you.backend.service;
 
 import com.nutri4you.backend.dto.PacienteCadastroDTO;
+import com.nutri4you.backend.dto.PacienteResponseDTO;
+import com.nutri4you.backend.dto.PacienteUpdateDTO;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.repository.NutricionistaRepository;
 import com.nutri4you.backend.repository.PacienteRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class PacienteService {
@@ -44,6 +48,57 @@ public class PacienteService {
                 senhaCriptografada);
 
         return pacienteRepository.save(novoPaciente);
+    }
+
+    public List<PacienteResponseDTO> listarTodos() {
+        return pacienteRepository.findAllByAtivoTrue().stream()
+                .map(this::paraResponse)
+                .toList();
+    }
+
+    public PacienteResponseDTO buscarPorId(Integer id) {
+        return pacienteRepository.findByIdAndAtivoTrue(id)
+                .map(this::paraResponse)
+                .orElseThrow(PacienteNaoEncontradoException::new);
+    }
+
+    public PacienteResponseDTO atualizar(Integer id, PacienteUpdateDTO dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("Dados de atualização são obrigatórios.");
+        }
+
+        Paciente paciente = pacienteRepository.findByIdAndAtivoTrue(id)
+            .orElseThrow(PacienteNaoEncontradoException::new);
+
+        if (vazio(dto.nome())) {
+            throw new IllegalArgumentException("Nome é obrigatório.");
+        }
+
+        paciente.setNome(dto.nome().trim());
+        paciente.setTelefone(dto.telefone());
+        paciente.setSexo(dto.sexo());
+        paciente.setDataNascimento(dto.dataNascimento());
+
+        return paraResponse(pacienteRepository.save(paciente));
+    }
+
+    public void excluir(Integer id) {
+        Paciente paciente = pacienteRepository.findByIdAndAtivoTrue(id)
+            .orElseThrow(PacienteNaoEncontradoException::new);
+
+        paciente.setAtivo(false);
+        pacienteRepository.save(paciente);
+    }
+
+    private PacienteResponseDTO paraResponse(Paciente paciente) {
+        return new PacienteResponseDTO(
+                paciente.getId(),
+                paciente.getNome(),
+                paciente.getCpf(),
+                paciente.getEmail(),
+                paciente.getTelefone(),
+                paciente.getSexo(),
+                paciente.getDataNascimento());
     }
 
     private boolean vazio(String valor) {

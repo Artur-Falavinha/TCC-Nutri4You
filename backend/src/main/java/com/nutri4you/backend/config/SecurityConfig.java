@@ -32,8 +32,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/pacientes/autocadastro").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/nutricionistas/cadastro").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/api/v1/gestao-pacientes/**").hasRole("NUTRICIONISTA")
                         .anyRequest().authenticated())
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
