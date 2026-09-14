@@ -2,7 +2,7 @@
 -- SCRIPT DDL: Nutri4You (PostgreSQL)
 -- ==========================================
 
--- 1. ATORES DO SISTEMA E VÍNCULO
+-- 1. ATORES DO SISTEMA
 CREATE TABLE Nutricionista (
     id_nutricionista SERIAL PRIMARY KEY,
     nome VARCHAR(150) NOT NULL,
@@ -21,18 +21,6 @@ CREATE TABLE Paciente (
     email VARCHAR(100) UNIQUE NOT NULL,
     senha VARCHAR(255) NOT NULL,
     ativo BOOLEAN NOT NULL DEFAULT TRUE
-);
-
-CREATE TABLE Vinculo_Nutricional (
-    id_vinculo SERIAL PRIMARY KEY,
-    id_paciente INT NOT NULL,
-    id_nutricionista INT NOT NULL,
-    data_inicio DATE NOT NULL,
-    data_fim DATE,
-    status VARCHAR(20) DEFAULT 'ATIVO',
-    CONSTRAINT unq_vinculo UNIQUE (id_paciente, id_nutricionista),
-    CONSTRAINT fk_vinculo_paciente FOREIGN KEY (id_paciente) REFERENCES Paciente(id_paciente),
-    CONSTRAINT fk_vinculo_nutricionista FOREIGN KEY (id_nutricionista) REFERENCES Nutricionista(id_nutricionista)
 );
 
 -- 2. ANAMNESE E HISTÓRICO CLÍNICO
@@ -197,10 +185,10 @@ INSERT INTO Paciente (nome, cpf, data_nascimento, sexo, telefone, email, senha) 
 ('Arthur Henrique Deretti', '111.222.333-44', '2000-01-01', 'Masculino', '41999999999', 'arthur@email.com', '$2a$10$ExemploDeHashBcrypt'),
 ('Artur Lachoman Falavinha', '555.666.777-88', '2000-02-02', 'Masculino', '41988888888', 'artur@email.com', '$2a$10$ExemploDeHashBcrypt');
 
--- 3. VÍNCULOS NUTRICIONAIS
-INSERT INTO Vinculo_Nutricional (id_paciente, id_nutricionista, data_inicio, status) VALUES
-(1, 1, '2026-09-01', 'ATIVO'),
-(2, 1, '2026-09-01', 'ATIVO');
+-- 3. CONSULTAS (relaciona paciente e nutricionista por evento)
+INSERT INTO Consulta (id_paciente, id_nutricionista, data_hora, status) VALUES
+(1, 1, '2026-09-01 10:00:00', 'REALIZADA'),
+(2, 1, '2026-09-01 11:00:00', 'REALIZADA');
 
 -- 4. ALIMENTOS (Base TACO simplificada)
 INSERT INTO Alimento (categoria, nome, kcal_100g, proteina_100g, carboidratos_100g) VALUES

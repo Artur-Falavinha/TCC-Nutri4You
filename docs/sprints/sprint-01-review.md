@@ -81,7 +81,7 @@ JWT nos clientes web/mobile permanece para Sprint 2.
 | --- | --- |
 | `docker compose up -d --build` | ✅ db + backend + web Up |
 | `curl /api/v1/health` | ✅ `data.status: "UP"`, envelope RNF09/RNF10 |
-| PostgreSQL | ✅ 15 tabelas via `init.sql` |
+| PostgreSQL | ✅ 15 tabelas via `init.sql` *(Sprint 1; schema atual: 14 — ver [sprint-02-alteracoes-escopo.md](sprint-02-alteracoes-escopo.md))* |
 | Web `localhost:4200/health` | ⚠️ Tela carrega; fetch bloqueado por CORS (Sprint 2) |
 | Mobile Expo Go | ✅ HealthScreen — API respondendo UP (09/09/2026, rede 192.168.15.11) |
 | `mvn test` local | ✅ 2 testes, BUILD SUCCESS |

@@ -22,8 +22,11 @@ docs/
 │   ├── README.md
 │   └── tokens - documentação/
 ├── onboarding/               ← setup do ambiente local
-├── sprints/                  ← evidências de Sprint Review
-│   └── sprint-01-review.md
+├── team/                     ← equipe, Spec Kit, worktrees
+├── sprints/                  ← evidências e decisões de sprint
+│   ├── sprint-01-review.md
+│   ├── sprint-02-alteracoes-escopo.md
+│   └── sprint-02-email-adapter.md
 └── glossario/                ← termos técnicos (nutrição, anamnese)
 ```
 
@@ -40,6 +43,13 @@ docs/
 | [ADRs](arquitetura/adr/README.md) | Decisões: monorepo/Docker, JWT, schema SQL |
 | [Clientes](clientes/README.md) | Angular 19 e Expo 57 — estrutura, rotas, configuração |
 | [Onboarding](onboarding/README.md) | Pré-requisitos, Docker Compose, mobile, CI |
+| [Equipe / Spec Kit](team/README.md) | Integrantes, worktrees, grilling, skills |
+| [Specs](../specs/002-sprint2-auth/spec.md) | Spec 002 — Sprint 2 (auth e pacientes) |
+| [E-mail Sprint 2](sprints/sprint-02-email-adapter.md) | Mock dev + adapter SMTP (grilling Q2) |
+| [Relação paciente↔nutri](arquitetura/modelo-relacao-paciente-nutricionista.md) | Relação por eventos clínicos (Q11) |
+| [Alterações escopo Sprint 2](sprints/sprint-02-alteracoes-escopo.md) | Checklist: schema, docs, desvios RoadMap |
+| [ADR 004](arquitetura/adr/004-relacao-por-eventos-clinicos.md) | Remoção de `Vinculo_Nutricional` |
+| [Pesquisa mercado](arquitetura/pesquisa-mercado-relacao-paciente-nutricionista.md) | Como Dietbox, Nutrium etc. tratam relação e planos |
 | [Figma](figma/README.md) | Índice da documentação de design |
 | [Tokens — documentação](figma/tokens%20-%20documentação/README.md) | Regras de tokens globais vs web |
 | [Glossário](glossario/README.md) | Termos clínicos e de interface |
@@ -60,4 +70,4 @@ docs/
 - Login JWT (`POST /api/v1/auth/login`)
 - Autocadastro de paciente (`POST /api/v1/pacientes/autocadastro`)
 - Clientes web e mobile com camada HTTP base
-- Schema completo do banco (15 tabelas), 2 entidades JPA
+- Schema completo do banco (14 tabelas), 2 entidades JPA

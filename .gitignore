@@ -18,6 +18,10 @@ temp/
 .env.local
 *.local
 
+# Spec Kit (local por máquina / worktree)
+.specify/
+.agents/
+
 # Dependências (quando existir)
 node_modules/
 dist/

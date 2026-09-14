@@ -18,13 +18,11 @@ Spring Boot usa `SPRING_JPA_HIBERNATE_DDL_AUTO=none` — o schema **não** é ge
 
 ```mermaid
 erDiagram
-    Nutricionista ||--o{ Vinculo_Nutricional : possui
-    Paciente ||--o{ Vinculo_Nutricional : vinculado
+    Nutricionista ||--o{ Consulta : atende
+    Paciente ||--o{ Consulta : agenda
     Nutricionista ||--o{ Pergunta_Anamnese : define
     Paciente ||--o{ Resposta_Anamnese : responde
     Pergunta_Anamnese ||--o{ Resposta_Anamnese : referencia
-    Paciente ||--o{ Consulta : agenda
-    Nutricionista ||--o{ Consulta : atende
     Consulta ||--o| Avaliacao_Antropometrica : gera
     Consulta ||--o| Plano_Alimentar : prescreve
     Plano_Alimentar ||--o| Lista_Compras : gera
@@ -43,19 +41,20 @@ erDiagram
 | --- | --- | --- | --- |
 | 1 | `Nutricionista` | Atores | Sim |
 | 2 | `Paciente` | Atores | Sim |
-| 3 | `Vinculo_Nutricional` | Relacionamento clínico | Não |
-| 4 | `Pergunta_Anamnese` | Anamnese | Não |
-| 5 | `Resposta_Anamnese` | Anamnese | Não |
-| 6 | `Consulta` | Atendimento | Não |
-| 7 | `Avaliacao_Antropometrica` | Antropometria | Não |
-| 8 | `Exame` | Exames | Não |
-| 9 | `Plano_Alimentar` | Prescrição | Não |
-| 10 | `Lista_Compras` | Prescrição | Não |
-| 11 | `Item_Lista_Compras` | Prescrição | Não |
-| 12 | `Refeicao` | Prescrição | Não |
-| 13 | `Consumo_Diario` | Acompanhamento mobile | Não |
-| 14 | `Alimento` | Banco TACO | Não |
-| 15 | `Item_Refeicao` | Prescrição | Não |
+| 3 | `Pergunta_Anamnese` | Anamnese | Não |
+| 4 | `Resposta_Anamnese` | Anamnese | Não |
+| 5 | `Consulta` | Atendimento (relaciona paciente ↔ nutricionista) | Não |
+| 6 | `Avaliacao_Antropometrica` | Antropometria | Não |
+| 7 | `Exame` | Exames | Não |
+| 8 | `Plano_Alimentar` | Prescrição | Não |
+| 9 | `Lista_Compras` | Prescrição | Não |
+| 10 | `Item_Lista_Compras` | Prescrição | Não |
+| 11 | `Refeicao` | Prescrição | Não |
+| 12 | `Consumo_Diario` | Acompanhamento mobile | Não |
+| 13 | `Alimento` | Banco TACO | Não |
+| 14 | `Item_Refeicao` | Prescrição | Não |
+
+> **Q11 (Sprint 2):** removida `Vinculo_Nutricional`. Relação clínica derivada de eventos — ver [modelo-relacao-paciente-nutricionista.md](./modelo-relacao-paciente-nutricionista.md).
 
 > Na Sprint 1, apenas `Paciente` e `Nutricionista` possuem entidades JPA mapeadas. As demais tabelas existem no DDL para suportar features futuras.
 
@@ -96,7 +95,7 @@ O `init.sql` inclui dados iniciais para desenvolvimento:
 | --- | --- | --- |
 | Nutricionistas | 1 | `nutri@nutri4you.com` |
 | Pacientes | 2 | `arthur@email.com`, `artur@email.com` |
-| Vínculos nutricionais | 2 | Status `ATIVO` |
+| Consultas demo | 2 | Pacientes seed ↔ nutricionista seed |
 | Alimentos (TACO) | 5 | Arroz, feijão, frango, ovo, banana |
 | Perguntas de anamnese | 3 | Categorias Geral, Hábitos, Saúde |
 
