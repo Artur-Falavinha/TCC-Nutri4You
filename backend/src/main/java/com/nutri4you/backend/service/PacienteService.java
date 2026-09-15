@@ -2,16 +2,12 @@ package com.nutri4you.backend.service;
 
 import com.nutri4you.backend.config.EmailProperties;
 import com.nutri4you.backend.dto.PacienteCadastroDTO;
-import com.nutri4you.backend.dto.PacienteResponseDTO;
-import com.nutri4you.backend.dto.PacienteUpdateDTO;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.repository.NutricionistaRepository;
 import com.nutri4you.backend.repository.PacienteRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class PacienteService {
@@ -65,49 +61,6 @@ public class PacienteService {
         Paciente salvo = pacienteRepository.save(novoPaciente);
         emailNotificationService.enviarConfirmacaoCadastro(salvo);
         return salvo;
-    }
-
-    public List<PacienteResponseDTO> listarTodos() {
-        return pacienteRepository.findAll().stream()
-                .map(this::paraResponse)
-                .toList();
-    }
-
-    public PacienteResponseDTO buscarPorId(Integer id) {
-        return pacienteRepository.findById(id)
-                .map(this::paraResponse)
-                .orElseThrow(PacienteNaoEncontradoException::new);
-    }
-
-    public PacienteResponseDTO atualizar(Integer id, PacienteUpdateDTO dto) {
-        if (dto == null) {
-            throw new IllegalArgumentException("Dados de atualização são obrigatórios.");
-        }
-
-        Paciente paciente = pacienteRepository.findById(id)
-                .orElseThrow(PacienteNaoEncontradoException::new);
-
-        if (vazio(dto.nome())) {
-            throw new IllegalArgumentException("Nome é obrigatório.");
-        }
-
-        paciente.setNome(dto.nome().trim());
-        paciente.setTelefone(dto.telefone());
-        paciente.setSexo(dto.sexo());
-        paciente.setDataNascimento(dto.dataNascimento());
-
-        return paraResponse(pacienteRepository.save(paciente));
-    }
-
-    private PacienteResponseDTO paraResponse(Paciente paciente) {
-        return new PacienteResponseDTO(
-                paciente.getId(),
-                paciente.getNome(),
-                paciente.getCpf(),
-                paciente.getEmail(),
-                paciente.getTelefone(),
-                paciente.getSexo(),
-                paciente.getDataNascimento());
     }
 
     private boolean vazio(String valor) {

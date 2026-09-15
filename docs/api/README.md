@@ -21,7 +21,7 @@ http://localhost:8080/api/v1
 | Documento | Conteúdo |
 | --- | --- |
 | [Endpoints](endpoints.md) | Referência de rotas, payloads e respostas |
-| [Autenticação](autenticacao.md) | Fluxo JWT, roles e rotas públicas/protegidas |
+| [Autenticação](autenticacao.md) | Fluxo JWT, roles, CORS e rotas públicas/protegidas |
 
 ## Convenções
 
@@ -65,15 +65,26 @@ Authorization: Bearer <token>
 
 Detalhes completos em [autenticacao.md](autenticacao.md).
 
+### CORS (Sprint 2)
+
+Origens permitidas por padrão:
+
+- `http://localhost:4200` (Angular dev)
+- `http://127.0.0.1:4200`
+
+Configurável via `APP_CORS_ALLOWED_ORIGINS` (lista separada por vírgula).  
+Apps mobile nativos (Expo Go) não passam por CORS de browser.
+
 ### Códigos HTTP usados
 
 | Código | Uso |
 | --- | --- |
-| `200` | Sucesso (login, health check) |
-| `201` | Recurso criado (autocadastro de paciente) |
-| `400` | Validação de negócio (e-mail duplicado, campos obrigatórios) |
+| `200` | Sucesso |
+| `201` | Recurso criado |
+| `400` | Validação de negócio |
 | `401` | Credenciais inválidas no login |
-| `403` | Token ausente ou inválido em rota protegida |
+| `403` | Token ausente/inválido ou role insuficiente |
+| `404` | Recurso não encontrado |
 
 ### Variáveis de ambiente (backend)
 
@@ -81,35 +92,48 @@ Detalhes completos em [autenticacao.md](autenticacao.md).
 | --- | --- | --- |
 | `JWT_SECRET` | `dev-only-change-this-secret-nutri4you` | Segredo HMAC256 do JWT |
 | `JWT_EXPIRATION_HOURS` | `2` | Validade do token em horas |
+| `APP_CORS_ALLOWED_ORIGINS` | `http://localhost:4200,http://127.0.0.1:4200` | Origens CORS permitidas |
+| `EMAIL_PROVIDER` | `console` | `console` (dev) ou `smtp` (Mailtrap demo) |
+| `SPRING_PROFILES_ACTIVE` | — | `dev` auto-confirma e-mail; `demo` usa SMTP |
+| `MAILTRAP_USERNAME` / `MAILTRAP_PASSWORD` | — | Credenciais Mailtrap (perfil demo) |
 | `SPRING_DATASOURCE_URL` | — | JDBC URL do PostgreSQL |
 | `SPRING_DATASOURCE_USERNAME` | — | Usuário do banco |
 | `SPRING_DATASOURCE_PASSWORD` | — | Senha do banco |
-| `SPRING_JPA_HIBERNATE_DDL_AUTO` | `none` | Schema gerenciado via `database/init.sql` |
+| `SPRING_JPA_HIBERNATE_DDL_AUTO` | `none` | Schema via `database/init.sql` |
 
-## Endpoints disponíveis (Sprint 1)
+## Endpoints disponíveis (Sprint 2 — parcial)
 
 | Método | Rota | Auth | Descrição |
 | --- | --- | --- | --- |
-| `GET` | `/health` | Pública | Health check da API |
-| `POST` | `/auth/login` | Pública | Login com e-mail e senha |
+| `GET` | `/health` | Pública | Health check |
+| `POST` | `/auth/login` | Pública | Login JWT |
 | `POST` | `/pacientes/autocadastro` | Pública | Cadastro de paciente |
+| `POST` | `/nutricionistas/cadastro` | `NUTRICIONISTA` | Cadastro de nutricionista |
+| `GET` | `/usuarios/me` | Autenticado | Dados do usuário logado (envelope) |
+| `DELETE` | `/usuarios/me/nutricionistas/{id}/relacao` | `PACIENTE` | Desvincular nutricionista |
+| `GET` | `/gestao-pacientes` | `NUTRICIONISTA` | Listagem Q16 |
+| `GET` | `/gestao-pacientes/busca` | `NUTRICIONISTA` | Busca por e-mail ou CPF |
+| `GET` | `/gestao-pacientes/{id}` | `NUTRICIONISTA` | Detalhe do paciente |
+| `PUT` | `/gestao-pacientes/{id}` | `NUTRICIONISTA` | Atualizar paciente |
+| `POST` | `/gestao-pacientes/{id}/vincular` | `NUTRICIONISTA` | Vincular relação recorrente |
+| `DELETE` | `/gestao-pacientes/{id}/relacao` | `NUTRICIONISTA` | Desvincular relação recorrente |
+| `GET` | `/auth/confirmar-email` | Pública | Confirmar e-mail |
+| `POST` | `/auth/recuperar-senha` | Pública | Solicitar reset de senha |
+| `POST` | `/auth/redefinir-senha` | Pública | Aplicar nova senha |
+| `GET` | `/dev/email-preview/{token}` | Pública *(dev)* | Preview de e-mail |
 
-Referência completa com exemplos em [endpoints.md](endpoints.md).
+Referência completa em [endpoints.md](endpoints.md).
 
 ## Dados de teste (seed)
 
-O script `database/init.sql` popula o banco com usuários mock:
-
-| Tipo | E-mail | Senha (seed) |
+| Tipo | E-mail | Observação |
 | --- | --- | --- |
-| Nutricionista | `nutri@nutri4you.com` | Hash BCrypt no SQL |
-| Paciente | `arthur@email.com` | Hash BCrypt no SQL |
-| Paciente | `artur@email.com` | Hash BCrypt no SQL |
+| Nutricionista | `nutri@nutri4you.com` | Senha BCrypt no seed |
+| Paciente | `arthur@email.com`, `artur@email.com` | `email_confirmado=true` no seed |
 
-> **Nota:** As senhas dos pacientes seed usam placeholder `$2a$10$ExemploDeHashBcrypt` — podem não funcionar para login até serem substituídas por hashes BCrypt válidos. Use o endpoint de autocadastro para criar pacientes testáveis.
+> Pacientes seed podem ter hash placeholder — prefira autocadastro ou usuários criados nos testes de integração.
 
-## Lacunas conhecidas (Sprint 1)
+## Lacunas conhecidas
 
-- CORS não configurado no backend.
-- JWT ainda não é enviado pelos clientes web e mobile.
-- OpenAPI/Swagger ainda não gerado (skill `spring-boot-openapi-documentation` disponível).
+- OpenAPI/Swagger ainda não gerado.
+- Interceptors JWT nos clientes web/mobile (Deretti / Artur W1).

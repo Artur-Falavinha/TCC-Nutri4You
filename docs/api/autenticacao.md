@@ -36,6 +36,7 @@ Configuração em `backend/src/main/resources/application.properties`:
 ```properties
 api.security.token.secret=${JWT_SECRET:dev-only-change-this-secret-nutri4you}
 api.security.token.expiration-hours=${JWT_EXPIRATION_HOURS:2}
+app.cors.allowed-origins=${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
 ```
 
 ## Validação em requisições protegidas
@@ -67,7 +68,25 @@ sequenceDiagram
 | `Paciente` | `ROLE_PACIENTE` | `PACIENTE` |
 | `Nutricionista` | `ROLE_NUTRICIONISTA` | `NUTRICIONISTA` |
 
-Ambas as entidades implementam `UserDetails`. O `DatabaseUserDetailsService` busca primeiro em `PacienteRepository`, depois em `NutricionistaRepository`.
+O `DatabaseUserDetailsService` busca primeiro em `NutricionistaRepository`, depois em `PacienteRepository`.
+
+## E-mail confirmado (Sprint 2)
+
+Pacientes autocadastrados nascem com `email_confirmado=false`. O login é bloqueado via `UserDetails.isEnabled()` até confirmação (S2-B3). Seed de demo usa `email_confirmado=true`.
+
+## CORS
+
+Configurado em `CorsConfig` e habilitado no `SecurityFilterChain`.
+
+| Origem padrão | Uso |
+| --- | --- |
+| `http://localhost:4200` | Angular (`ng serve` / Docker web) |
+| `http://127.0.0.1:4200` | Mesmo host, IP literal |
+
+Headers permitidos: `Authorization`, `Content-Type`, `Accept`.  
+Métodos: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`.
+
+**Mobile (Expo):** requisições nativas não aplicam política CORS de browser.
 
 ## Rotas públicas vs protegidas
 
@@ -76,36 +95,46 @@ Configuradas em `SecurityConfig`:
 | Rota | Método | Acesso |
 | --- | --- | --- |
 | `/api/v1/auth/login` | POST | Público |
+| `/api/v1/auth/confirmar-email` | GET | Público |
+| `/api/v1/auth/recuperar-senha` | POST | Público |
+| `/api/v1/auth/redefinir-senha` | POST | Público |
+| `/api/v1/dev/email-preview/{token}` | GET | Público *(perfil dev)* |
 | `/api/v1/pacientes/autocadastro` | POST | Público |
 | `/api/v1/health` | GET | Público |
+| `/api/v1/nutricionistas/cadastro` | POST | `ROLE_NUTRICIONISTA` |
+| `/api/v1/gestao-pacientes/**` | * | `ROLE_NUTRICIONISTA` |
 | `/error` | * | Público |
 | Demais rotas | * | Autenticado |
 
-Outras configurações de segurança:
+Outras configurações:
 
 - CSRF desabilitado (API REST stateless).
 - Sessão: `SessionCreationPolicy.STATELESS`.
 - Senhas: BCrypt via `PasswordEncoder`.
+- CORS integrado ao filtro de segurança.
 
 ## Uso do token no cliente
-
-Header obrigatório em rotas protegidas:
 
 ```http
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-### Status na Sprint 1
+### Status nos clientes
 
 | Cliente | Envio de JWT | Observação |
 | --- | --- | --- |
-| Web (Angular) | Não implementado | Interceptor `apiErrorInterceptor` existe; auth interceptor previsto Sprint 2 |
-| Mobile (Expo) | Não implementado | `apiClient` não adiciona header `Authorization` |
+| Web (Angular) | Pendente S2-W1 | CORS habilitado no backend |
+| Mobile (Expo) | Pendente S2-M1 | Sem restrição CORS nativa |
 
-## Próximos passos (Sprint 2+)
+## E-mail (S2-B3)
 
-- Interceptor HTTP no Angular para injetar JWT automaticamente.
-- Armazenamento seguro do token no mobile (SecureStore / AsyncStorage).
-- Refresh token ou re-login automático na expiração.
-- Endpoints protegidos por role (`@PreAuthorize`).
-- Configuração CORS para origens web e mobile.
+| Perfil | Provider | Auto-confirma | Uso |
+| --- | --- | --- | --- |
+| `dev` (Docker local) | `console` | Sim (Q20) | Log + `/dev/email-preview` |
+| `demo` (Sprint Review) | `smtp` (Mailtrap) | Não | Fluxo completo na caixa de testes |
+
+Adapter: `EmailSender` → `ConsoleEmailSender` ou `SmtpEmailSender`.
+
+## Próximos passos (Sprint 2)
+
+- Interceptor HTTP Angular / mobile para JWT (S2-W1 / S2-M1).
