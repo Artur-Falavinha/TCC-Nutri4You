@@ -24,7 +24,7 @@ public class DatabaseUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         return nutricionistaRepository.findByEmail(email)
                 .map(user -> (UserDetails) user)
-            .orElseGet(() -> pacienteRepository.findByEmailAndAtivoTrue(email)
+            .orElseGet(() -> pacienteRepository.findByEmail(email)
                         .map(user -> (UserDetails) user)
                         .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado")));
     }

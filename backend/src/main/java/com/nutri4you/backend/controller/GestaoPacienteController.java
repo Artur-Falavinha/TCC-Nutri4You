@@ -2,16 +2,14 @@ package com.nutri4you.backend.controller;
 
 import com.nutri4you.backend.dto.ApiResponse;
 import com.nutri4you.backend.dto.PacienteResponseDTO;
-import com.nutri4you.backend.dto.MensagemResponse;
 import com.nutri4you.backend.dto.PacienteUpdateDTO;
-import com.nutri4you.backend.service.PacienteService;
 import com.nutri4you.backend.service.PacienteNaoEncontradoException;
+import com.nutri4you.backend.service.PacienteService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -57,18 +55,6 @@ public class GestaoPacienteController {
             return ResponseEntity.notFound().build();
         } catch (IllegalArgumentException exception) {
             return ResponseEntity.badRequest().build();
-        }
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<MensagemResponse>> excluir(@PathVariable Integer id) {
-        try {
-            pacienteService.excluir(id);
-            return ResponseEntity.ok(ApiResponse.ok(
-                    new MensagemResponse("Paciente excluído com sucesso"),
-                    "Paciente excluído com sucesso"));
-        } catch (PacienteNaoEncontradoException exception) {
-            return ResponseEntity.notFound().build();
         }
     }
 }

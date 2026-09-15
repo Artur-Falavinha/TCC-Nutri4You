@@ -51,13 +51,13 @@ public class PacienteService {
     }
 
     public List<PacienteResponseDTO> listarTodos() {
-        return pacienteRepository.findAllByAtivoTrue().stream()
+        return pacienteRepository.findAll().stream()
                 .map(this::paraResponse)
                 .toList();
     }
 
     public PacienteResponseDTO buscarPorId(Integer id) {
-        return pacienteRepository.findByIdAndAtivoTrue(id)
+        return pacienteRepository.findById(id)
                 .map(this::paraResponse)
                 .orElseThrow(PacienteNaoEncontradoException::new);
     }
@@ -67,8 +67,8 @@ public class PacienteService {
             throw new IllegalArgumentException("Dados de atualização são obrigatórios.");
         }
 
-        Paciente paciente = pacienteRepository.findByIdAndAtivoTrue(id)
-            .orElseThrow(PacienteNaoEncontradoException::new);
+        Paciente paciente = pacienteRepository.findById(id)
+                .orElseThrow(PacienteNaoEncontradoException::new);
 
         if (vazio(dto.nome())) {
             throw new IllegalArgumentException("Nome é obrigatório.");
@@ -80,14 +80,6 @@ public class PacienteService {
         paciente.setDataNascimento(dto.dataNascimento());
 
         return paraResponse(pacienteRepository.save(paciente));
-    }
-
-    public void excluir(Integer id) {
-        Paciente paciente = pacienteRepository.findByIdAndAtivoTrue(id)
-            .orElseThrow(PacienteNaoEncontradoException::new);
-
-        paciente.setAtivo(false);
-        pacienteRepository.save(paciente);
     }
 
     private PacienteResponseDTO paraResponse(Paciente paciente) {

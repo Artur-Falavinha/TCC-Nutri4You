@@ -20,7 +20,29 @@ CREATE TABLE Paciente (
     telefone VARCHAR(20),
     email VARCHAR(100) UNIQUE NOT NULL,
     senha VARCHAR(255) NOT NULL,
-    ativo BOOLEAN NOT NULL DEFAULT TRUE
+    email_confirmado BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE Token_Email (
+    id_token SERIAL PRIMARY KEY,
+    token UUID NOT NULL UNIQUE,
+    tipo VARCHAR(30) NOT NULL,
+    id_paciente INT NOT NULL,
+    expira_em TIMESTAMP NOT NULL,
+    usado_em TIMESTAMP,
+    CONSTRAINT fk_token_paciente FOREIGN KEY (id_paciente) REFERENCES Paciente(id_paciente)
+);
+
+CREATE TABLE Relacao_Clinica (
+    id_relacao SERIAL PRIMARY KEY,
+    id_paciente INT NOT NULL,
+    id_nutricionista INT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ATIVA',
+    iniciada_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    encerrada_em TIMESTAMP,
+    CONSTRAINT fk_rel_paciente FOREIGN KEY (id_paciente) REFERENCES Paciente(id_paciente),
+    CONSTRAINT fk_rel_nutri FOREIGN KEY (id_nutricionista) REFERENCES Nutricionista(id_nutricionista),
+    CONSTRAINT uq_rel_par UNIQUE (id_paciente, id_nutricionista)
 );
 
 -- 2. ANAMNESE E HISTÓRICO CLÍNICO
@@ -181,9 +203,9 @@ INSERT INTO Nutricionista (nome, email, senha, crn) VALUES
 ('Gabriel de Paula Brasil', 'nutri@nutri4you.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', 'CRN8-12345');
 
 -- 2. PACIENTES
-INSERT INTO Paciente (nome, cpf, data_nascimento, sexo, telefone, email, senha) VALUES
-('Arthur Henrique Deretti', '111.222.333-44', '2000-01-01', 'Masculino', '41999999999', 'arthur@email.com', '$2a$10$ExemploDeHashBcrypt'),
-('Artur Lachoman Falavinha', '555.666.777-88', '2000-02-02', 'Masculino', '41988888888', 'artur@email.com', '$2a$10$ExemploDeHashBcrypt');
+INSERT INTO Paciente (nome, cpf, data_nascimento, sexo, telefone, email, senha, email_confirmado) VALUES
+('Arthur Henrique Deretti', '111.222.333-44', '2000-01-01', 'Masculino', '41999999999', 'arthur@email.com', '$2a$10$ExemploDeHashBcrypt', TRUE),
+('Artur Lachoman Falavinha', '555.666.777-88', '2000-02-02', 'Masculino', '41988888888', 'artur@email.com', '$2a$10$ExemploDeHashBcrypt', TRUE);
 
 -- 3. CONSULTAS (relaciona paciente e nutricionista por evento)
 INSERT INTO Consulta (id_paciente, id_nutricionista, data_hora, status) VALUES
