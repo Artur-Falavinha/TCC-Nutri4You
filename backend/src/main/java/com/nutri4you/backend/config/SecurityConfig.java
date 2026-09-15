@@ -35,6 +35,10 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/confirmar-email").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/recuperar-senha").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/redefinir-senha").permitAll()
+                        .requestMatchers("/api/v1/dev/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/pacientes/autocadastro").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/nutricionistas/cadastro").hasRole("NUTRICIONISTA")
                         .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
