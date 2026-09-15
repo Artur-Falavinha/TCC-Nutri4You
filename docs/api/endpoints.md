@@ -228,7 +228,7 @@ Paciente encerra relação clínica recorrente com um nutricionista (Q17).
 
 **Autenticação:** JWT de paciente
 
-### Resposta 200
+### Desvincular paciente — resposta 200
 
 ```json
 {
@@ -237,7 +237,7 @@ Paciente encerra relação clínica recorrente com um nutricionista (Q17).
 }
 ```
 
-### Erros
+### Desvincular paciente — erros
 
 | Código | Motivo |
 | --- | --- |
@@ -284,14 +284,14 @@ Busca global de paciente cadastrado por e-mail **ou** CPF (exatamente um parâme
 
 **Autenticação:** `ROLE_NUTRICIONISTA`
 
-### Query params
+### Busca — query params
 
 | Param | Obrigatório | Descrição |
 | --- | --- | --- |
 | `email` | Um de `email` ou `cpf` | E-mail do paciente (case-insensitive) |
 | `cpf` | Um de `email` ou `cpf` | CPF com ou sem máscara |
 
-### Resposta 200
+### Busca — resposta 200
 
 ```json
 {
@@ -305,7 +305,7 @@ Busca global de paciente cadastrado por e-mail **ou** CPF (exatamente um parâme
 }
 ```
 
-### Erros
+### Busca — erros
 
 | Código | Motivo |
 | --- | --- |
@@ -320,7 +320,7 @@ Busca paciente por ID. Exige relação clínica ativa ou consulta com o nutricio
 
 **Autenticação:** `ROLE_NUTRICIONISTA`
 
-### Erros
+### Detalhe gestão — erros
 
 | Código | Motivo |
 | --- | --- |
@@ -354,7 +354,7 @@ Cria ou reativa relação clínica recorrente entre nutricionista logado e pacie
 
 **Autenticação:** `ROLE_NUTRICIONISTA`
 
-### Resposta 200
+### Vincular — resposta 200
 
 ```json
 {
@@ -363,7 +363,7 @@ Cria ou reativa relação clínica recorrente entre nutricionista logado e pacie
 }
 ```
 
-### Erros
+### Vincular — erros
 
 | Código | Motivo |
 | --- | --- |
@@ -377,7 +377,7 @@ Nutricionista encerra relação clínica recorrente com o paciente (Q17).
 
 **Autenticação:** `ROLE_NUTRICIONISTA`
 
-### Resposta 200
+### Desvincular nutri — resposta 200
 
 ```json
 {
@@ -386,7 +386,7 @@ Nutricionista encerra relação clínica recorrente com o paciente (Q17).
 }
 ```
 
-### Erros
+### Desvincular nutri — erros
 
 | Código | Motivo |
 | --- | --- |
@@ -408,13 +408,13 @@ Confirma o e-mail do paciente após autocadastro.
 
 **Autenticação:** não requerida
 
-### Query params
+### Confirmar e-mail — query params
 
 | Param | Obrigatório | Descrição |
 | --- | --- | --- |
 | `token` | Sim | UUID do `Token_Email` (tipo `CONFIRMACAO_EMAIL`) |
 
-### Resposta 200
+### Confirmar e-mail — resposta 200
 
 ```json
 {
@@ -423,7 +423,7 @@ Confirma o e-mail do paciente após autocadastro.
 }
 ```
 
-### Erros
+### Confirmar e-mail — erros
 
 | Código | Motivo |
 | --- | --- |
@@ -437,13 +437,13 @@ Solicita link de redefinição de senha. Resposta **sempre genérica** (RNF02).
 
 **Autenticação:** não requerida
 
-### Corpo
+### Recuperar senha — corpo
 
 ```json
 { "email": "paciente@email.com" }
 ```
 
-### Resposta 200
+### Recuperar senha — resposta 200
 
 ```json
 {
@@ -461,7 +461,7 @@ Aplica nova senha usando token de recuperação.
 
 **Autenticação:** não requerida
 
-### Corpo
+### Redefinir senha — corpo
 
 ```json
 {

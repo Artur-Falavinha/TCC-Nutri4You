@@ -54,9 +54,7 @@ erDiagram
 | 13 | `Alimento` | Banco TACO | Não |
 | 14 | `Item_Refeicao` | Prescrição | Não |
 
-> **Q11 (Sprint 2):** removida `Vinculo_Nutricional`. Relação clínica derivada de eventos — ver [modelo-relacao-paciente-nutricionista.md](./modelo-relacao-paciente-nutricionista.md).
-
-> Na Sprint 1, apenas `Paciente` e `Nutricionista` possuem entidades JPA mapeadas. As demais tabelas existem no DDL para suportar features futuras.
+> **Q11 (Sprint 2):** removida `Vinculo_Nutricional`. Relação clínica derivada de eventos — ver [modelo-relacao-paciente-nutricionista.md](./modelo-relacao-paciente-nutricionista.md). Na Sprint 1, apenas `Paciente` e `Nutricionista` possuem entidades JPA mapeadas. As demais tabelas existem no DDL para suportar features futuras.
 
 ## Entidades JPA implementadas
 
