@@ -1,16 +1,16 @@
-# Sprint 2 — Alterações de escopo (Q11)
+# Sprint 2 — Alterações de escopo (Q11 + Round 5)
 
-Checklist de arquivos impactados pela remoção de `Vinculo_Nutricional` e adoção de **relação por eventos clínicos**.
+Checklist de arquivos impactados pela remoção de `Vinculo_Nutricional`, adoção de **eventos clínicos** e **`Relacao_Clinica`** (recorrente).
 
-**Decisão:** [ADR 004](../arquitetura/adr/004-relacao-por-eventos-clinicos.md) · [decisions.md](../../specs/002-sprint2-auth/decisions.md)
+**Decisões:** [ADR 004](../arquitetura/adr/004-relacao-por-eventos-clinicos.md) · [ADR 005](../arquitetura/adr/005-relacao-clinica-recorrente.md) · [decisions.md](../../specs/002-sprint2-auth/decisions.md)
 
 ## Código / schema
 
 | Arquivo | Status | O que mudou |
 | --- | --- | --- |
-| `database/init.sql` | ✅ Atualizado | Removida tabela `Vinculo_Nutricional`; seed com `Consulta` demo |
-| Backend Java | ⏳ Sprint 2 | Autorização por evento (Sprint 3); merge `rotas-login` |
-| Web / Mobile | ⏳ Sprint 2 | Gestão sem “inativar conta”; listagem por evento quando existir consulta |
+| `database/init.sql` | ⏳ Sprint 2 | + `Relacao_Clinica`, `Token_Email`, `email_confirmado`; seed `Consulta` demo |
+| Backend Java | ⏳ Sprint 2 | Vincular/desvincular; listagem Q16; e-mail Q19–Q20; remover soft delete |
+| Web / Mobile | ⏳ Sprint 2 | Gestão sem criar conta; desvincular (nutri web + paciente mobile) |
 
 **Ação local:** recriar banco após pull — `docker compose down -v && docker compose up -d --build`
 
@@ -25,6 +25,7 @@ Checklist de arquivos impactados pela remoção de `Vinculo_Nutricional` e adoç
 | `docs/arquitetura/banco-de-dados.md` | ✅ |
 | `docs/arquitetura/adr/003-schema-sql-versionado.md` | ✅ |
 | `docs/arquitetura/adr/004-relacao-por-eventos-clinicos.md` | ✅ |
+| `docs/arquitetura/adr/005-relacao-clinica-recorrente.md` | ✅ |
 | `docs/arquitetura/adr/README.md` | ✅ |
 | `docs/arquitetura/README.md` | ✅ |
 | `docs/README.md` | ✅ |
@@ -32,7 +33,7 @@ Checklist de arquivos impactados pela remoção de `Vinculo_Nutricional` e adoç
 
 ## Documentação histórica (não reescrever)
 
-Evidências da Sprint 1 registram **15 tabelas** — correto **na data da demo**. Schema passou a **14 tabelas** a partir da Sprint 2.
+Evidências da Sprint 1 registram **15 tabelas** — correto **na data da demo**. Schema passou a **14 tabelas** após Q11; **15 tabelas** novamente com `Relacao_Clinica` + `Token_Email` (Round 5).
 
 | Arquivo | Tratamento |
 | --- | --- |
@@ -47,4 +48,4 @@ Evidências da Sprint 1 registram **15 tabelas** — correto **na data da demo**
 
 ## Desvio RoadMap (texto para orientador)
 
-> “Inativar/reativar paciente” passa a significar encerrar **relação clínica** (consulta concluída, plano expirado), não bloquear login. Autorização usa **eventos clínicos** (consulta, plano, anamnese), não tabela de vínculo.
+> “Inativar/reativar paciente” passa a significar encerrar **relação clínica recorrente** (`Relacao_Clinica`) ou concluir consulta/plano — **não** bloquear login. Consultas avulsas coexistem com pacientes recorrentes. Conta nasce sempre por autocadastro.

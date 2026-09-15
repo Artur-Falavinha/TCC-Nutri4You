@@ -19,3 +19,4 @@ Cada ADR segue a estrutura:
 | [002](002-autenticacao-jwt-stateless.md) | Autenticação JWT stateless com Spring Security | Aceito |
 | [003](003-schema-sql-versionado.md) | Schema PostgreSQL versionado via init.sql | Aceito |
 | [004](004-relacao-por-eventos-clinicos.md) | Relação paciente↔nutricionista por eventos (sem `Vinculo_Nutricional`) | Aceito |
+| [005](005-relacao-clinica-recorrente.md) | Acompanhamento recorrente (`Relacao_Clinica`) + consulta avulsa | Aceito |

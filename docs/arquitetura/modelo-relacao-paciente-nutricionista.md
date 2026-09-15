@@ -1,69 +1,146 @@
 # Modelo de relação paciente ↔ nutricionista
 
-**Decisão Q11 (13/09/2026):** relação clínica **somente por eventos**. Sem `Vinculo_Nutricional`, sem nutri de referência.
+**Decisões:** Q11 (13/09) · Q16–Q18 (14/09) — ver [decisions.md Q11 e Round 5](../../specs/002-sprint2-auth/decisions.md).
 
 ## Princípio
 
-Não existe entidade “vínculo” entre paciente e nutricionista. A relação é **derivada** de registros clínicos que **já carregam** `id_paciente` e `id_nutricionista` (ou derivam deles).
+Existem **dois modos** de relação clínica, complementares:
 
-| Evento / registro | Liga paciente ↔ nutricionista? | Uso |
-| --- | --- | --- |
-| `Consulta` | Sim, direto | Agenda, atendimento, base do plano |
-| `Plano_Alimentar` | Sim, via `Consulta` | Dieta com vigência (Sprint 4+) |
-| `Pergunta_Anamnese` / `Resposta_Anamnese` | Sim, pergunta do nutri + resposta do paciente | Anamnese (Sprint 3+) |
-| `Avaliacao_Antropometrica` | Sim, via consulta ou paciente+nutri | Medidas |
-| `Exame` | Sim | Prescrição/resultado |
-| Cadastro manual na gestão (Sprint 2) | Implícito até 1ª consulta | Nutri cria ficha; listagem MVP |
+| Modo | O que é | Como nasce | O que desvincular encerra |
+| --- | --- | --- | --- |
+| **Consulta avulsa** | Atendimento pontual | `Consulta` entre paciente e nutricionista | Nada — histórico da consulta permanece |
+| **Paciente recorrente** | Acompanhamento contínuo explícito | Nutricionista **vincula** paciente já cadastrado | `Relacao_Clinica` passa a `ENCERRADA` |
+
+**Não** voltamos ao antigo `Vinculo_Nutricional`:
+
+- Desvincular **não** bloqueia login do paciente.
+- Desvincular **não** apaga conta nem soft delete em `Paciente`.
+- Autorização clínica continua derivada de **eventos** (`Consulta`, plano, anamnese, etc.).
+
+A tabela `Relacao_Clinica` registra apenas **preferência de acompanhamento recorrente** entre um par paciente ↔ nutricionista.
+
+## O que cada modo agrega (produto)
+
+### Consulta avulsa
+
+- Paciente já tem conta (autocadastro).
+- Nutricionista encontra o paciente (busca por e-mail/CPF), registra **uma consulta** e atende.
+- Nutricionista vê o paciente na listagem **por causa da consulta**.
+- Serve para: primeira consulta, segunda opinião, retorno único, paciente que consulta vários nutricionistas.
+
+**Valor:** flexibilidade clínica sem “prender” paciente a um nutricionista.
+
+### Paciente recorrente (vínculo explícito)
+
+- Nutricionista **vincula** paciente que já existe no sistema.
+- Paciente aparece no **painel recorrente** do nutricionista (dashboard web).
+- Facilita: listagem estável, anamnese contínua, planos futuros, comunicação de acompanhamento.
+- Paciente pode ter relação recorrente **ativa** com mais de um nutricionista (ex.: nutri esportivo + nutri clínico).
+
+**Valor:** painel de “meus pacientes em acompanhamento”, distinto de consulta pontual.
+
+### Cadastro de paciente pelo nutricionista — **fora do escopo Sprint 2**
+
+| Cenário | Fluxo adotado |
+| --- | --- |
+| Paciente na consulta sem app | Paciente faz **autocadastro** no celular (rápido); nutricionista **busca** e **vincula** ou **inicia consulta** |
+| Consulta marcada fora do app | Mesmo fluxo: conta nasce pelo paciente; nutricionista só opera sobre paciente **existente** |
+| Paciente sem smartphone | Backlog futuro (convite por e-mail / cadastro assistido — **não** Sprint 2) |
+
+**Motivo:** autocadastro já cobre o caso principal; criar conta pelo nutricionista duplica fluxo, senha temporária e suporte — baixo retorno na demo Sprint 2.
 
 ## Quem vê o quê
 
-**Paciente:** histórico **completo** dele (todas consultas, planos, respostas).
+**Paciente (mobile):** histórico **completo** dele; vê nutricionistas com relação recorrente ativa ou consultas passadas; pode **desvincular** de um nutricionista recorrente (configurações/perfil).
 
-**Nutricionista logado:** só pacientes e registros em que **ele participou** — filtro por `id_nutricionista` nos eventos acima.
+**Nutricionista (web):** pacientes que atendem por:
 
-**403:** nutricionista tenta acessar paciente/dado sem consulta, plano ou registro clínico **dele** para aquele paciente.
+1. `Relacao_Clinica` com `status = ATIVA`, **ou**
+2. `Consulta` em que participou (inclui avulsas).
 
-## Regras de produto
+**403:** nutricionista acessa dado de paciente sem consulta, plano ou registro clínico **dele** para aquele paciente.
 
-| Situação | Comportamento |
-| --- | --- |
-| Autocadastro | Sem nutricionista associado |
-| Paciente consulta vários nutris | Permitido; cada um vê só os eventos dele |
-| Paciente “troca de nutri” | Marca consulta com outro; **nada a desvincular** |
-| Nutricionista “inativa” paciente | **Não** — não bloqueia login nem apaga conta |
-| Nutricionista arquiva da lista | Filtro de UI (opcional Sprint 3+), sem efeito na conta |
-| Vários planos alimentares | Vários no histórico; **1 dieta ativa** na home mobile (vigência) |
-| Conta inativa global | Apenas admin/suporte (futuro HU019) |
+## Desvincular (Q17)
 
-## Listagem web do nutricionista
+Substitui o antigo `DELETE /gestao-pacientes/{id}` (soft delete / inativar conta).
+
+| Ator | Onde (UI) | Efeito |
+| --- | --- | --- |
+| Nutricionista | Gestão de pacientes | Encerra `Relacao_Clinica` **ativa** com aquele paciente |
+| Paciente | Perfil / configurações (mobile) | Encerra relação recorrente com aquele nutricionista |
+
+**Regras:**
+
+- Modal de confirmação nos dois lados.
+- Mesma regra de negócio; **dois endpoints** (autorização diferente).
+- Consultas e histórico clínico **permanecem**.
+- Conta do paciente **permanece** ativa.
+- Se só existia consulta avulsa (sem `Relacao_Clinica`), desvincular recorrente não se aplica — paciente some da listagem “recorrentes”, mas pode permanecer em histórico de consultas.
+
+### Endpoints previstos
+
+| Método | Rota | Quem |
+| --- | --- | --- |
+| `POST` | `/api/v1/gestao-pacientes/{idPaciente}/vincular` | Nutricionista |
+| `DELETE` | `/api/v1/gestao-pacientes/{idPaciente}/relacao` | Nutricionista |
+| `DELETE` | `/api/v1/usuarios/me/nutricionistas/{idNutricionista}/relacao` | Paciente |
+
+## Listagem web do nutricionista (Sprint 2)
 
 ```sql
--- Pacientes "meus" (conceito derivado)
 SELECT DISTINCT p.*
 FROM Paciente p
-WHERE EXISTS (
-  SELECT 1 FROM Consulta c
-  WHERE c.id_paciente = p.id_paciente
-    AND c.id_nutricionista = :nutriLogado
-)
--- Sprint 4+: OR EXISTS plano via consulta do nutri
--- Sprint 2 MVP: pacientes cadastrados pelo nutri na gestão (até existir consulta)
+WHERE p.ativo = TRUE
+  AND (
+    EXISTS (
+      SELECT 1 FROM Relacao_Clinica r
+      WHERE r.id_paciente = p.id_paciente
+        AND r.id_nutricionista = :nutriLogado
+        AND r.status = 'ATIVA'
+    )
+    OR EXISTS (
+      SELECT 1 FROM Consulta c
+      WHERE c.id_paciente = p.id_paciente
+        AND c.id_nutricionista = :nutriLogado
+    )
+  );
 ```
-
-## Desvio do RoadMap
-
-O RoadMap menciona “vínculo nutricional” e “inativar/reativar paciente”. Para o TCC:
-
-- **Inativar** = encerrar **relação clínica** (consulta concluída, plano expirado), **não** bloquear login.
-- **Autorização** = evento participado, não vínculo ATIVO.
-
-Registrar alinhamento com orientador na Sprint Review.
 
 ## Schema
 
-Tabela `Vinculo_Nutricional` **removida** de `database/init.sql` (14 tabelas). Seed de dev usa `Consulta` para ligar pacientes demo ao nutricionista seed.
+| Tabela | Papel |
+| --- | --- |
+| `Consulta` | Evento clínico (avulso ou dentro de acompanhamento) |
+| `Relacao_Clinica` | Acompanhamento recorrente explícito (`ATIVA` / `ENCERRADA`) |
+| ~~`Vinculo_Nutricional`~~ | **Removida** (Q11) — não confundir com `Relacao_Clinica` |
+
+### `Relacao_Clinica` (nova)
+
+```sql
+CREATE TABLE Relacao_Clinica (
+    id_relacao SERIAL PRIMARY KEY,
+    id_paciente INT NOT NULL,
+    id_nutricionista INT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ATIVA',  -- ATIVA | ENCERRADA
+    iniciada_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    encerrada_em TIMESTAMP,
+    CONSTRAINT fk_rel_paciente FOREIGN KEY (id_paciente) REFERENCES Paciente(id_paciente),
+    CONSTRAINT fk_rel_nutri FOREIGN KEY (id_nutricionista) REFERENCES Nutricionista(id_nutricionista),
+    CONSTRAINT uq_rel_par UNIQUE (id_paciente, id_nutricionista)
+);
+```
+
+Reativar par encerrado: novo `INSERT` ou `UPDATE status = ATIVA` (definir na implementação S2-B4).
+
+## Desvio do RoadMap
+
+- **Inativar paciente** → encerrar **relação clínica recorrente** ou concluir consulta/plano — **não** bloquear login.
+- **Vínculo nutricional** do RoadMap → reinterpretado como `Relacao_Clinica` + eventos, sem inativar conta.
+
+Registrar alinhamento com orientador na Sprint Review.
 
 ## Referências
 
 - [pesquisa-mercado-relacao-paciente-nutricionista.md](./pesquisa-mercado-relacao-paciente-nutricionista.md)
-- [spec 002](../../specs/002-sprint2-auth/decisions.md) Q11
+- [spec 002](../../specs/002-sprint2-auth/decisions.md)
+- [sprint-02-alteracoes-escopo.md](../sprints/sprint-02-alteracoes-escopo.md)

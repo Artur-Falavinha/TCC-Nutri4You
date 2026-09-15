@@ -43,7 +43,8 @@ docs/
 | [ADRs](arquitetura/adr/README.md) | Decisões: monorepo/Docker, JWT, schema SQL |
 | [Clientes](clientes/README.md) | Angular 19 e Expo 57 — estrutura, rotas, configuração |
 | [Onboarding](onboarding/README.md) | Pré-requisitos, Docker Compose, mobile, CI |
-| [Equipe / Spec Kit](team/README.md) | Integrantes, worktrees, grilling, skills |
+| [Equipe / Spec Kit](team/README.md) | Integrantes, worktrees, grilling |
+| [Setup worktree](team/worktree-setup.md) | Copiar `specs/` + `skills.md` ao criar worktree *(obrigatório)* |
 | [Specs](../specs/002-sprint2-auth/spec.md) | Spec 002 — Sprint 2 (auth e pacientes) |
 | [E-mail Sprint 2](sprints/sprint-02-email-adapter.md) | Mock dev + adapter SMTP (grilling Q2) |
 | [Relação paciente↔nutri](arquitetura/modelo-relacao-paciente-nutricionista.md) | Relação por eventos clínicos (Q11) |
