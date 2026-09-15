@@ -33,6 +33,9 @@ services:
       - SPRING_JPA_HIBERNATE_DDL_AUTO=none
       - JWT_SECRET=${JWT_SECRET:-dev-only-change-this-secret-nutri4you}
       - JWT_EXPIRATION_HOURS=${JWT_EXPIRATION_HOURS:-2}
+      - APP_CORS_ALLOWED_ORIGINS=${APP_CORS_ALLOWED_ORIGINS:-http://localhost:4200,http://127.0.0.1:4200}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - EMAIL_PROVIDER=${EMAIL_PROVIDER:-console}
     volumes:
       - ./backend:/app
       - maven-repo:/root/.m2
