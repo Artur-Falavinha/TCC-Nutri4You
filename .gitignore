@@ -22,6 +22,7 @@ temp/
 .specify/
 .agents/
 specs/
+pr-assets/
 
 # Dependências (quando existir)
 node_modules/
