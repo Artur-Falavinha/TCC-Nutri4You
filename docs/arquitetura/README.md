@@ -38,7 +38,8 @@ flowchart TB
 | Documento | Conteúdo |
 | --- | --- |
 | [Visão geral](visao-geral.md) | Estrutura do monorepo, camadas e fluxo de dados |
-| [Banco de dados](banco-de-dados.md) | Schema PostgreSQL, entidades JPA e seed |
+| [Banco de dados](banco-de-dados.md) | Schema PostgreSQL (14 tabelas), entidades JPA e seed |
+| [Relação paciente↔nutri](modelo-relacao-paciente-nutricionista.md) | Decisão Q11: eventos clínicos, sem vínculo |
 | [ADRs](adr/README.md) | Registro de decisões arquiteturais |
 | [PoCs — serviços externos](pocs-servicos-externos.md) | TACO, Calendar, storage, deploy |
 
@@ -54,7 +55,7 @@ flowchart TB
 
 ### Pendente (próximas sprints)
 
-- Entidades JPA para as demais 13 tabelas do schema.
+- Entidades JPA para as demais 12 tabelas do schema.
 - Módulos de negócio (anamnese, consultas, plano alimentar, etc.).
 - Integração JWT nos clientes.
 - CORS e OpenAPI/Swagger.

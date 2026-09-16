@@ -128,6 +128,7 @@ Cadastra um novo paciente no sistema.
 - E-mail é normalizado (`trim` + `toLowerCase`).
 - E-mail duplicado (Paciente ou Nutricionista) retorna `400`.
 - Senha nunca é armazenada em texto plano.
+- Paciente nasce com `email_confirmado=false` (confirmação em S2-B3).
 
 ### Autocadastro — resposta 201
 
@@ -167,13 +168,330 @@ curl -X POST http://localhost:8080/api/v1/pacientes/autocadastro \
 
 ---
 
-## Rotas protegidas (Sprint 1)
+## POST /nutricionistas/cadastro
 
-Qualquer rota **não listada** como pública exige JWT válido. Na Sprint 1, apenas os três endpoints acima estão implementados; demais rotas retornarão `403 Forbidden` até serem desenvolvidas.
+Cadastra um nutricionista. **Não é rota pública** — exige JWT de nutricionista logado.
 
-Para testar uma rota protegida futura:
+**Autenticação:** `ROLE_NUTRICIONISTA`
+
+### Cadastro nutri — corpo
+
+```json
+{
+  "nome": "Novo Nutricionista",
+  "email": "novo@nutri.com",
+  "senha": "senhaSegura123",
+  "crn": "CRN8-54321"
+}
+```
+
+### Cadastro nutri — resposta 201
+
+Envelope padrão com `data.mensagem`.
+
+### Cadastro nutri — resposta 403
+
+Sem token ou token de paciente.
+
+---
+
+## GET /usuarios/me
+
+Retorna dados do usuário autenticado.
+
+**Autenticação:** JWT válido (paciente ou nutricionista)
+
+### /me — resposta 200
+
+```json
+{
+  "data": {
+    "id": 1,
+    "nome": "Gabriel de Paula Brasil",
+    "email": "nutri@nutri4you.com",
+    "perfil": "NUTRICIONISTA"
+  },
+  "message": "Usuário autenticado.",
+  "timestamp": "2026-09-15T12:00:00Z"
+}
+```
+
+| Campo | Valores |
+| --- | --- |
+| `data.perfil` | `PACIENTE` ou `NUTRICIONISTA` |
+
+---
+
+## DELETE /usuarios/me/nutricionistas/{idNutricionista}/relacao
+
+Paciente encerra relação clínica recorrente com um nutricionista (Q17).
+
+**Autenticação:** JWT de paciente
+
+### Desvincular paciente — resposta 200
+
+```json
+{
+  "data": { "mensagem": "Relação recorrente encerrada com sucesso." },
+  "message": "Relação recorrente encerrada com sucesso."
+}
+```
+
+### Desvincular paciente — erros
+
+| Código | Motivo |
+| --- | --- |
+| `403` | Token de nutricionista ou ausente |
+| `400` | Relação ativa inexistente |
+
+---
+
+## GET /gestao-pacientes
+
+Lista pacientes visíveis ao nutricionista logado (filtro Q16: relação clínica **ATIVA** ou consulta registrada).
+
+**Autenticação:** `ROLE_NUTRICIONISTA`
+
+### Listagem — resposta 200
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "nome": "Arthur Henrique Deretti",
+      "cpf": "111.222.333-44",
+      "email": "arthur@email.com",
+      "telefone": "41999999999",
+      "sexo": "Masculino",
+      "dataNascimento": "2000-01-01"
+    }
+  ],
+  "message": "Pacientes listados com sucesso.",
+  "timestamp": "2026-09-15T12:00:00Z"
+}
+```
+
+### Listagem — resposta 403
+
+Token ausente ou usuário sem role nutricionista.
+
+---
+
+## GET /gestao-pacientes/busca
+
+Busca global de paciente cadastrado por e-mail **ou** CPF (exatamente um parâmetro).
+
+**Autenticação:** `ROLE_NUTRICIONISTA`
+
+### Busca — query params
+
+| Param | Obrigatório | Descrição |
+| --- | --- | --- |
+| `email` | Um de `email` ou `cpf` | E-mail do paciente (case-insensitive) |
+| `cpf` | Um de `email` ou `cpf` | CPF com ou sem máscara |
+
+### Busca — resposta 200
+
+```json
+{
+  "data": {
+    "id": 2,
+    "nome": "Arthur Henrique Deretti",
+    "email": "arthur@email.com",
+    "cpf": "111.222.333-44"
+  },
+  "message": "Paciente encontrado com sucesso."
+}
+```
+
+### Busca — erros
+
+| Código | Motivo |
+| --- | --- |
+| `400` | Nenhum ou ambos os parâmetros informados |
+| `404` | Paciente não encontrado |
+
+---
+
+## GET /gestao-pacientes/{id}
+
+Busca paciente por ID. Exige relação clínica ativa ou consulta com o nutricionista logado.
+
+**Autenticação:** `ROLE_NUTRICIONISTA`
+
+### Detalhe gestão — erros
+
+| Código | Motivo |
+| --- | --- |
+| `403` | Paciente existe, mas nutricionista sem acesso |
+| `404` | ID inexistente |
+
+---
+
+## PUT /gestao-pacientes/{id}
+
+Atualiza nome, telefone, sexo e data de nascimento.
+
+**Autenticação:** `ROLE_NUTRICIONISTA`
+
+### Atualização — corpo
+
+```json
+{
+  "nome": "Nome Atualizado",
+  "telefone": "41988887777",
+  "sexo": "Masculino",
+  "dataNascimento": "1990-05-20"
+}
+```
+
+---
+
+## POST /gestao-pacientes/{id}/vincular
+
+Cria ou reativa relação clínica recorrente entre nutricionista logado e paciente (Q17).
+
+**Autenticação:** `ROLE_NUTRICIONISTA`
+
+### Vincular — resposta 200
+
+```json
+{
+  "data": { "mensagem": "Paciente vinculado com sucesso." },
+  "message": "Paciente vinculado com sucesso."
+}
+```
+
+### Vincular — erros
+
+| Código | Motivo |
+| --- | --- |
+| `404` | Paciente inexistente |
+
+---
+
+## DELETE /gestao-pacientes/{id}/relacao
+
+Nutricionista encerra relação clínica recorrente com o paciente (Q17).
+
+**Autenticação:** `ROLE_NUTRICIONISTA`
+
+### Desvincular nutri — resposta 200
+
+```json
+{
+  "data": { "mensagem": "Relação recorrente encerrada com sucesso." },
+  "message": "Relação recorrente encerrada com sucesso."
+}
+```
+
+### Desvincular nutri — erros
+
+| Código | Motivo |
+| --- | --- |
+| `400` | Relação ativa inexistente |
+
+---
+
+## Rotas removidas (S2-B1)
+
+| Rota | Motivo |
+| --- | --- |
+| `DELETE /gestao-pacientes/{id}` | Soft delete removido (Q17). Desvincular recorrente → S2-B4 (`DELETE .../relacao`). |
+
+---
+
+## GET /auth/confirmar-email
+
+Confirma o e-mail do paciente após autocadastro.
+
+**Autenticação:** não requerida
+
+### Confirmar e-mail — query params
+
+| Param | Obrigatório | Descrição |
+| --- | --- | --- |
+| `token` | Sim | UUID do `Token_Email` (tipo `CONFIRMACAO_EMAIL`) |
+
+### Confirmar e-mail — resposta 200
+
+```json
+{
+  "data": { "mensagem": "E-mail confirmado com sucesso." },
+  "message": "E-mail confirmado com sucesso."
+}
+```
+
+### Confirmar e-mail — erros
+
+| Código | Motivo |
+| --- | --- |
+| `400` | Token inválido, expirado ou já utilizado |
+
+---
+
+## POST /auth/recuperar-senha
+
+Solicita link de redefinição de senha. Resposta **sempre genérica** (RNF02).
+
+**Autenticação:** não requerida
+
+### Recuperar senha — corpo
+
+```json
+{ "email": "paciente@email.com" }
+```
+
+### Recuperar senha — resposta 200
+
+```json
+{
+  "data": {
+    "mensagem": "Se o e-mail estiver cadastrado, você receberá instruções para redefinir a senha."
+  }
+}
+```
+
+---
+
+## POST /auth/redefinir-senha
+
+Aplica nova senha usando token de recuperação.
+
+**Autenticação:** não requerida
+
+### Redefinir senha — corpo
+
+```json
+{
+  "token": "uuid-do-token",
+  "senha": "novaSenha123"
+}
+```
+
+| Regra | Detalhe |
+| --- | --- |
+| Senha | Mínimo 8 caracteres (Q7) |
+| Token | Tipo `RECUPERACAO_SENHA`, uso único, TTL 1h (padrão) |
+
+---
+
+## GET /dev/email-preview/{token} *(somente perfil `dev`)*
+
+Preview do e-mail enviado — link de confirmação/recuperação para debug local.
+
+**Autenticação:** pública (apenas com `spring.profiles.active=dev`)
+
+---
+
+### Testar rota protegida
 
 ```bash
-curl http://localhost:8080/api/v1/exemplo \
-  -H "Authorization: Bearer <token-do-login>"
+TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"nutri@nutri4you.com","senha":"sua-senha"}' | jq -r '.data.token')
+
+curl http://localhost:8080/api/v1/gestao-pacientes \
+  -H "Authorization: Bearer $TOKEN"
 ```

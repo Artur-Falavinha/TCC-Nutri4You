@@ -113,12 +113,14 @@ O roadmap organiza o desenvolvimento do Nutri4You em entregas quinzenais baseada
 
 **Objetivo:** entregar os fluxos de autocadastro, validação de e-mail e acesso seguro para nutricionista e paciente, além da gestão de pacientes pelo nutricionista.
 
+**Decisão de escopo (13/09/2026 — Q11):** removida a tabela `Vinculo_Nutricional` do schema. Relação paciente↔nutricionista derivada de **eventos clínicos** (`Consulta`, plano via consulta, anamnese, etc.). Nutricionista não inativa login do paciente. Detalhes: `docs/arquitetura/adr/004-relacao-por-eventos-clinicos.md` e `specs/002-sprint2-auth/decisions.md`.
+
 **Requisitos e histórias:** RF01 a RF04; HU001, HU017, HU002, HU018, HU003, parte cadastral da HU004 e HU019; autocadastro e validação de e-mail, ainda pendentes de formalização na especificação; RNF01, RNF02 e RNF04.
 
 **Entregáveis:** 
 
 * Implementar autocadastro do paciente, validação de e-mail, login, validação de token, recuperação e redefinição de senha, expiração e perfis NUTRICIONISTA e PACIENTE.  
-* Implementar /usuarios/me e os endpoints de pacientes para listar, buscar, cadastrar, editar, inativar e reativar.  
+* Implementar /usuarios/me e os endpoints de pacientes para listar, buscar, cadastrar e editar *(“inativar/reativar” reinterpretado: encerrar relação clínica, não bloquear login — ver Q11)*.  
 * Construir no Angular as telas de autocadastro, validação de e-mail, login, recuperação de senha e gestão de pacientes, incluindo filtros e estados de vazio, erro e confirmação.  
 * Construir no React Native login, recuperação de senha e edição dos dados pessoais permitidos.  
 * Padronizar validações, mensagens genéricas de autenticação e tratamento de usuário inativo, token expirado e acesso proibido.
@@ -126,12 +128,12 @@ O roadmap organiza o desenvolvimento do Nutri4You em entregas quinzenais baseada
 **Critérios de aceite:** 
 
 * Paciente conclui o autocadastro, valida o e-mail e acessa a conta com o perfil correto. Credenciais inválidas, usuário inativo e token expirado são rejeitados conforme a regra definida.  
-* Nutricionista executa o ciclo completo de cadastro, busca, edição, inativação e reativação de paciente.  
+* Nutricionista executa cadastro, busca e edição de paciente *(sem inativar conta do paciente)*.  
 * Paciente altera somente os próprios dados permitidos e não acessa rotas exclusivas do nutricionista.  
 * Testes automatizados cobrem autocadastro, validação de e-mail, autenticação, perfis, validações e principais códigos HTTP.  
 * Logs e respostas não expõem senha, hash, token temporário ou dados sensíveis desnecessários.
 
-**Dependências e riscos:** serviço de e-mail, definição das regras de autocadastro e validação, política de senha, vínculo nutricional e consistência entre usuários e pacientes. Os requisitos e endpoints ainda ausentes devem ser incluídos na especificação durante a sprint.
+**Dependências e riscos:** serviço de e-mail, definição das regras de autocadastro e validação, política de senha, **relação por eventos clínicos** (substitui vínculo nutricional) e consistência entre usuários e pacientes. Os requisitos e endpoints ainda ausentes devem ser incluídos na especificação durante a sprint.
 
 **Marco da Sprint Review:** demonstrar autocadastro, validação de e-mail e login, além da gestão completa de pacientes pela aplicação web.
 
@@ -157,7 +159,7 @@ O roadmap organiza o desenvolvimento do Nutri4You em entregas quinzenais baseada
 * Nutricionista registra e atualiza anamnese válida sem perda indevida dos dados anteriores.  
 * Peso, altura e demais medidas válidas geram cálculos determinísticos e cobertos por testes de unidade.  
 * Histórico exibe registros em ordem cronológica e apresenta estado vazio quando não há dados.  
-* A API retorna 403 para acesso a paciente sem vínculo e 404 para identificador inexistente.  
+* A API retorna 403 para acesso a paciente **sem relação clínica com o nutricionista logado** (sem consulta/plano/registro dele) e 404 para identificador inexistente.  
 * Uma nova medida registrada aparece no histórico após atualização da tela.
 
 **Dependências e riscos:** validação das fórmulas, unidades de medida, decisão sobre versionamento da anamnese e consistência entre consulta e avaliação.
@@ -296,7 +298,7 @@ O roadmap organiza o desenvolvimento do Nutri4You em entregas quinzenais baseada
 # **6\. Caminho crítico e dependências**
 
 1. Fundação técnica, migrações e CI habilitam todos os demais módulos.  
-2. Autenticação, perfis e vínculo nutricional antecedem qualquer acesso a dados clínicos.  
+2. Autenticação, perfis e **relação clínica por evento** (consulta/plano) antecedem acesso a dados clínicos sensíveis.  
 3. Cadastro do paciente antecede anamnese, medidas, histórico, dieta, agenda e exames.  
 4. Anamnese e medidas geram os dados necessários aos históricos e dashboards.  
 5. Prescrição e publicação da dieta antecedem consumo diário e lista de compras no mobile.  

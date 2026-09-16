@@ -18,6 +18,12 @@ temp/
 .env.local
 *.local
 
+# Spec Kit + specs locais (não commitar)
+.specify/
+.agents/
+specs/
+pr-assets/
+
 # Dependências (quando existir)
 node_modules/
 dist/
