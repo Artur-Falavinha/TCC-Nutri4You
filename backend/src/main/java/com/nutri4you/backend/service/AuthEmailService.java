@@ -56,6 +56,7 @@ public class AuthEmailService {
         TokenEmail tokenEmail = tokenEmailService.validarToken(token, TipoTokenEmail.RECUPERACAO_SENHA);
         Paciente paciente = tokenEmail.getPaciente();
         paciente.setSenha(passwordEncoder.encode(novaSenha));
+        paciente.setEmailConfirmado(true);
         pacienteRepository.save(paciente);
         tokenEmailService.marcarComoUsado(tokenEmail);
     }

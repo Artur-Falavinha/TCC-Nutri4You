@@ -65,6 +65,17 @@ class AuthControllerTest {
     }
 
     @Test
+    void loginAceitaEmailSemDistincaoDeMaiusculas() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"Paciente@Teste.com","senha":"senha123"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.tipoUsuario").value("PACIENTE"));
+    }
+
+    @Test
     void loginComCredenciaisInvalidasRetorna401() throws Exception {
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

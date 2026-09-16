@@ -63,9 +63,9 @@ class GestaoPacienteControllerTest {
     }
 
     @Test
-    void listagemSemTokenRetorna403() throws Exception {
+    void listagemSemTokenRetorna401() throws Exception {
         mockMvc.perform(get("/api/v1/gestao-pacientes"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -148,7 +148,7 @@ class GestaoPacienteControllerTest {
     }
 
     @Test
-    void cadastroNutricionistaPublicoRetorna403() throws Exception {
+    void cadastroNutricionistaPublicoRetorna401() throws Exception {
         mockMvc.perform(post("/api/v1/nutricionistas/cadastro")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -159,7 +159,7 @@ class GestaoPacienteControllerTest {
                                   "crn": "CRN8-00001"
                                 }
                                 """))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     private String loginComoNutricionista() throws Exception {

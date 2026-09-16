@@ -45,7 +45,8 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody LoginRequest dados) {
         try {
-            var credentials = new UsernamePasswordAuthenticationToken(dados.email(), dados.senha());
+            var credentials = new UsernamePasswordAuthenticationToken(
+                    normalizarEmail(dados.email()), dados.senha());
             var authentication = authenticationManager.authenticate(credentials);
             String tipoUsuario = authentication.getAuthorities().stream()
                     .findFirst()
@@ -94,5 +95,9 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok(
                 new MensagemResponse("Senha redefinida com sucesso."),
                 "Senha redefinida com sucesso."));
+    }
+
+    private static String normalizarEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase();
     }
 }

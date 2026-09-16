@@ -22,9 +22,9 @@ public class DatabaseUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return nutricionistaRepository.findByEmail(email)
+        return nutricionistaRepository.findByEmailIgnoreCase(email)
                 .map(user -> (UserDetails) user)
-            .orElseGet(() -> pacienteRepository.findByEmail(email)
+                .orElseGet(() -> pacienteRepository.findByEmailIgnoreCase(email)
                         .map(user -> (UserDetails) user)
                         .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado")));
     }

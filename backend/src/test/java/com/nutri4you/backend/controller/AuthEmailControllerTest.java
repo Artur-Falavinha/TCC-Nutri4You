@@ -3,6 +3,7 @@ package com.nutri4you.backend.controller;
 import com.nutri4you.backend.model.TipoTokenEmail;
 import com.nutri4you.backend.repository.PacienteRepository;
 import com.nutri4you.backend.repository.TokenEmailRepository;
+import com.nutri4you.backend.security.TokenService;
 import com.nutri4you.backend.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,9 @@ class AuthEmailControllerTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private TokenService tokenService;
 
     @BeforeEach
     void seed() {
@@ -95,6 +99,70 @@ class AuthEmailControllerTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.tipoUsuario").value("PACIENTE"));
+    }
+
+    @Test
+    void jwtContaNaoConfirmadaNaoAutenticaRequisicao() throws Exception {
+        mockMvc.perform(post("/api/v1/pacientes/autocadastro")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nome": "JWT Bloqueado",
+                                  "email": "jwt.bloqueado@teste.com",
+                                  "senha": "senhaSegura123"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        String token = tokenService.gerarToken("jwt.bloqueado@teste.com");
+
+        mockMvc.perform(get("/api/v1/usuarios/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void redefinirSenhaConfirmaEmailDePacienteNaoConfirmado() throws Exception {
+        mockMvc.perform(post("/api/v1/pacientes/autocadastro")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nome": "Recuperar Confirmacao",
+                                  "email": "recuperar.confirmacao@teste.com",
+                                  "senha": "senhaSegura123"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/auth/recuperar-senha")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"recuperar.confirmacao@teste.com"}
+                                """))
+                .andExpect(status().isOk());
+
+        var token = tokenEmailRepository.findAll().stream()
+                .filter(t -> t.getTipo() == TipoTokenEmail.RECUPERACAO_SENHA)
+                .filter(t -> t.getPaciente().getEmail().equals("recuperar.confirmacao@teste.com"))
+                .findFirst()
+                .orElseThrow();
+
+        mockMvc.perform(post("/api/v1/auth/redefinir-senha")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"token":"%s","senha":"novaSenha123"}
+                                """.formatted(token.getToken())))
+                .andExpect(status().isOk());
+
+        assertThat(pacienteRepository.findByEmail("recuperar.confirmacao@teste.com").orElseThrow()
+                .isEmailConfirmado()).isTrue();
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"recuperar.confirmacao@teste.com","senha":"novaSenha123"}
+                                """))
+                .andExpect(status().isOk());
     }
 
     @Test
