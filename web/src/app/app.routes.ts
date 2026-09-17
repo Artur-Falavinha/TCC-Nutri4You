@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 
+import { AnamneseComponent } from './features/anamnese/anamnese.component';
 import { HealthComponent } from './features/health/health.component';
 import { HomeComponent } from './features/home/home.component';
 import { NotFoundComponent } from './features/not-found/not-found.component';
@@ -12,6 +13,7 @@ import { NotFoundComponent } from './features/not-found/not-found.component';
  */
 export const routes: Routes = [
   { path: '', component: HomeComponent, title: 'Nutri4You' },
+  { path: 'anamnese', component: AnamneseComponent, title: 'Anamnese | Nutri4You' },
   { path: 'health', component: HealthComponent, title: 'Status da API' },
   { path: '**', component: NotFoundComponent, title: 'Página não encontrada' }
 ];
