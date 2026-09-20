@@ -11,7 +11,7 @@ O domínio clínico do Nutri4You envolve múltiplas entidades (anamnese, consult
 
 Manter o schema completo em um único arquivo SQL versionado:
 
-- `database/init.sql` — DDL de 15 tabelas + dados seed.
+- `database/init.sql` — DDL de 14 tabelas + dados seed (sem `Vinculo_Nutricional` desde Q11 Sprint 2).
 - Montado no container PostgreSQL via `/docker-entrypoint-initdb.d/`.
 - Spring JPA com `ddl-auto=none` — Hibernate não altera o schema.
 - Entidades JPA criadas incrementalmente conforme endpoints são implementados.

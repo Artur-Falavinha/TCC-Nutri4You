@@ -9,5 +9,7 @@ public interface NutricionistaRepository extends JpaRepository<Nutricionista, In
 
     Optional<Nutricionista> findByEmail(String email);
 
+    Optional<Nutricionista> findByEmailIgnoreCase(String email);
+
     boolean existsByEmail(String email);
 }

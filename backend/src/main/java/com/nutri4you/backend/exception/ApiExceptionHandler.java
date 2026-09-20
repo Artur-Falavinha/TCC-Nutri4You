@@ -33,6 +33,17 @@ public class ApiExceptionHandler {
                 request.getRequestURI()));
     }
 
+    @ExceptionHandler(AcessoNegadoException.class)
+    public ResponseEntity<ApiErrorResponse> handleAcessoNegado(
+            AcessoNegadoException exception,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiErrorResponse.of(
+                HttpStatus.FORBIDDEN.value(),
+                "ACESSO_NEGADO",
+                exception.getMessage(),
+                request.getRequestURI()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(
             Exception exception,

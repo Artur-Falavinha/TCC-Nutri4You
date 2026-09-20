@@ -50,10 +50,6 @@ jobs:
     name: Backend — testes
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'push' ||
-      contains(toJSON(github.event.pull_request.files.*.path), 'backend/')
     defaults:
       run:
         working-directory: backend
@@ -75,10 +71,6 @@ jobs:
     name: Web — lint e build
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'push' ||
-      contains(toJSON(github.event.pull_request.files.*.path), 'web/')
     defaults:
       run:
         working-directory: web
@@ -106,10 +98,6 @@ jobs:
     name: Mobile — lint e typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'push' ||
-      contains(toJSON(github.event.pull_request.files.*.path), 'mobile/')
     defaults:
       run:
         working-directory: mobile
