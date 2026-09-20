@@ -41,6 +41,7 @@ export default function CriarContaScreen() {
         // navigation.navigate('Login');
       }
     } catch (err: any) {
+      console.error(err);
       Alert.alert('Erro', 'Ocorreu um erro ao tentar criar a conta. Tente novamente mais tarde.');
     } finally {
       setIsLoading(false);

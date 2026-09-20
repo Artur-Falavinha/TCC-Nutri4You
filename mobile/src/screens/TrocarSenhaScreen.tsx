@@ -69,7 +69,7 @@ export default function TrocarSenhaScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Esqueceu a senha?</Text>
           <Text style={styles.subtitle}>
-            Informe o e-mail cadastrado e clique em "Enviar token por e-mail". Use o código recebido no campo abaixo; o sistema validará o token antes de seguir com a redefinição
+            {'Informe o e-mail cadastrado e clique em "Enviar token por e-mail". Use o código recebido no campo abaixo; o sistema validará o token antes de seguir com a redefinição'}
           </Text>
         </View>
 
