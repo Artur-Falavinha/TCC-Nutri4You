@@ -1,0 +1,12 @@
+# Extende a config padrao do gitleaks e ignora falsos positivos conhecidos.
+title = "Nutri4You"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Nomes de itens localStorage/sessionStorage (nao sao credenciais)"
+paths = [
+  '''web/src/app/core/services/token-storage\.service\.ts''',
+  '''web/src/app/features/auth/services/register-flow\.service\.ts''',
+]
