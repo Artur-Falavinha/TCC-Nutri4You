@@ -34,7 +34,7 @@ Não é preciso editar código para trocar de ambiente — o Angular CLI já tro
 npm start          # ng serve, http://localhost:4200
 ```
 
-Auth (Sprint 2): **http://localhost:4200/login** · Health: **http://localhost:4200/health**
+Auth (Sprint 2): **[http://localhost:4200/login](http://localhost:4200/login)** · Health: **[http://localhost:4200/health](http://localhost:4200/health)**
 
 ## Scripts
 

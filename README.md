@@ -31,12 +31,12 @@ docker compose up --build
 | --- | --- |
 | 1 | Aguarde logs de `nutri4you-backend` com `Started BackendApplication` |
 | 2 | Aguarde `nutri4you-web` com `Compiled successfully` / `Application bundle generation complete` |
-| 3 | Abra **http://localhost:4200/login** |
+| 3 | Abra **[http://localhost:4200/login](http://localhost:4200/login)** |
 | 4 | Login nutricionista seed: `nutri@nutri4you.com` / senha `password` |
-| 4b | Autocadastro nutri: **http://localhost:4200/cadastro** → senha → login |
+| 4b | Autocadastro nutri: **[http://localhost:4200/cadastro](http://localhost:4200/cadastro)** → senha → login |
 | 5 | Após login → redirect para **/dashboard** |
 
-Health check da API: **http://localhost:8080/api/v1/health**
+Health check da API: **[http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/health)**
 
 ### Solução de problemas
 

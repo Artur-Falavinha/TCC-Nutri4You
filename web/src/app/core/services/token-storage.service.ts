@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 
 import { UserProfile } from '../models/auth.models';
 
+/** Nomes de itens no localStorage (nao sao credenciais). */
 const JWT_LS_ITEM = 'nutri4you.jwt';
 const PERFIL_LS_ITEM = 'nutri4you.perfil';
 
