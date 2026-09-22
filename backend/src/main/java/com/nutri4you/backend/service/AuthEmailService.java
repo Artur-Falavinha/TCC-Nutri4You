@@ -41,7 +41,7 @@ public class AuthEmailService {
         tokenEmailService.marcarComoUsado(tokenEmail);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public String solicitarRecuperacaoSenha(String email) {
         if (email != null && !email.isBlank()) {
             pacienteRepository.findByEmail(email.trim().toLowerCase())
