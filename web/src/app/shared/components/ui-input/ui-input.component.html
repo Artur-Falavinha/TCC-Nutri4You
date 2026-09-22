@@ -1,0 +1,41 @@
+<div class="ui-input" [class.ui-input--invalid]="!!errorMessage">
+  <label class="ui-input__label" [for]="id">
+    {{ label }}
+    @if (required) {
+      <span class="ui-input__required" aria-hidden="true">*</span>
+    }
+  </label>
+  <div class="ui-input__control" [class.ui-input__control--password]="isPasswordField">
+    <input
+      class="ui-input__field"
+      [id]="id"
+      [type]="resolvedInputType"
+      [placeholder]="placeholder"
+      [value]="value"
+      [disabled]="disabled"
+      [autocomplete]="autocomplete"
+      (input)="onInput($event)"
+      (blur)="onBlur()"
+    />
+    @if (isPasswordField) {
+      <button
+        class="ui-input__toggle"
+        type="button"
+        [disabled]="disabled"
+        [attr.aria-label]="passwordVisible ? 'Ocultar senha' : 'Mostrar senha'"
+        [attr.aria-pressed]="passwordVisible"
+        (click)="togglePasswordVisibility()"
+      >
+        <i
+          class="ph ui-input__toggle-icon"
+          [class.ph-eye]="passwordVisible"
+          [class.ph-eye-closed]="!passwordVisible"
+          aria-hidden="true"
+        ></i>
+      </button>
+    }
+  </div>
+  @if (errorMessage) {
+    <p class="ui-input__error" role="alert">{{ errorMessage }}</p>
+  }
+</div>

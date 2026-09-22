@@ -20,9 +20,18 @@ export class ApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = environment.apiBaseUrl;
 
-  get<T>(path: string, params?: Record<string, string | number | boolean>): Observable<T> {
+  get<T>(
+    path: string,
+    options?: {
+      params?: Record<string, string | number | boolean>;
+      headers?: Record<string, string>;
+    }
+  ): Observable<T> {
     return this.http
-      .get<ApiResponse<T>>(this.buildUrl(path), { params: this.buildParams(params) })
+      .get<ApiResponse<T>>(this.buildUrl(path), {
+        params: this.buildParams(options?.params),
+        headers: options?.headers
+      })
       .pipe(map((response) => response.data));
   }
 

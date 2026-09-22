@@ -1,0 +1,19 @@
+<button
+  class="ui-button"
+  [class.ui-button--full]="fullWidth"
+  [type]="type"
+  [disabled]="isDisabled"
+  [attr.aria-busy]="loading"
+>
+  <span class="ui-button__icon-slot" aria-hidden="true">
+    <span class="ui-button__icon" [class.ui-button__icon--visible]="!loading">
+      @if (icon) {
+        <i class="ph" [class]="'ph-' + icon"></i>
+      }
+    </span>
+    <span class="ui-button__icon ui-button__icon--loading" [class.ui-button__icon--visible]="loading">
+      <i class="ph ph-circle-notch ph-spin"></i>
+    </span>
+  </span>
+  <span class="ui-button__label">{{ label }}</span>
+</button>

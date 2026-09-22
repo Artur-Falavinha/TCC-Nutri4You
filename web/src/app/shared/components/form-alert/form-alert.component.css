@@ -1,0 +1,28 @@
+:host {
+  display: none;
+}
+
+:host.form-alert-host--visible {
+  display: block;
+}
+
+.form-alert {
+  margin: 0;
+  padding: var(--space-12);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-error);
+  background-color: var(--color-error-surface);
+}
+
+.form-alert--success {
+  color: var(--color-brand-primary);
+  background-color: rgba(0, 111, 30, 0.08);
+}
+
+.form-alert--info {
+  color: var(--color-text-secondary);
+  background-color: transparent;
+  padding: 0;
+}
