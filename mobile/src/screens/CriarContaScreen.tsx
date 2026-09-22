@@ -1,68 +1,125 @@
 import React, { useState } from 'react';
+import { CommonActions, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  KeyboardAvoidingView, 
-  Platform, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
   Alert,
   ScrollView,
   ActivityIndicator
 } from 'react-native';
-import axios from 'axios';
+
+import { autocadastrarPaciente } from '../core/auth/auth.service';
+import { ApiError } from '../core/api/api-response.types';
+import type { RootStackParamList } from '../navigation/types';
+
+function toIsoDate(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  const brMatch = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed);
+  if (brMatch) {
+    return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+  }
+  return undefined;
+}
 
 export default function CriarContaScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
   const [cpf, setCpf] = useState('');
   const [telefone, setTelefone] = useState('');
   const [sexo, setSexo] = useState('');
   const [dataNascimento, setDataNascimento] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!nome || !email || !cpf || !telefone || !sexo || !dataNascimento) {
-      Alert.alert('Atenção', 'Preencha todos os campos.');
+    if (!nome.trim() || !email.trim() || !senha || !confirmarSenha) {
+      Alert.alert('Atenção', 'Preencha nome, e-mail e senha.');
+      return;
+    }
+
+    if (senha.length < 8) {
+      Alert.alert('Atenção', 'A senha deve ter no mínimo 8 caracteres.');
+      return;
+    }
+
+    if (senha !== confirmarSenha) {
+      Alert.alert('Erro', 'As senhas não coincidem.');
+      return;
+    }
+
+    const isoDate = dataNascimento.trim() ? toIsoDate(dataNascimento) : undefined;
+    if (dataNascimento.trim() && !isoDate) {
+      Alert.alert('Atenção', 'Data de nascimento inválida. Use AAAA-MM-DD ou DD/MM/AAAA.');
       return;
     }
 
     setIsLoading(true);
 
-    const payload = { nome, email, cpf, telefone, sexo, dataNascimento };
-
     try {
-      const response = await axios.post('http://localhost:8080/api/v1/auth/register', payload);
-      
-      if (response.status === 201 || response.status === 200) {
-        Alert.alert('Sucesso', 'Conta criada com sucesso!');
-        // navigation.navigate('Login');
-      }
-    } catch (err: any) {
-      console.error(err);
-      Alert.alert('Erro', 'Ocorreu um erro ao tentar criar a conta. Tente novamente mais tarde.');
+      await autocadastrarPaciente({
+        nome,
+        email,
+        senha,
+        cpf: cpf || undefined,
+        telefone: telefone || undefined,
+        sexo: sexo || undefined,
+        dataNascimento: isoDate
+      });
+
+      Alert.alert('Sucesso', 'Conta criada com sucesso! Faça login para continuar.', [
+        {
+          text: 'OK',
+          onPress: () =>
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'Login' }]
+              })
+            )
+        }
+      ]);
+    } catch (err: unknown) {
+      const apiError = err instanceof ApiError ? err : null;
+      Alert.alert(
+        'Erro',
+        apiError?.message ??
+          'Ocorreu um erro ao tentar criar a conta. Tente novamente mais tarde.'
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
+    <KeyboardAvoidingView
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
         <View style={styles.header}>
           <Text style={styles.title}>Crie Sua Conta</Text>
+          <Text style={styles.subtitle}>Cadastro de paciente no Nutri4You</Text>
         </View>
 
         <View style={styles.formCard}>
-          
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>NOME COMPLETO</Text>
+            <Text style={styles.label}>NOME COMPLETO *</Text>
             <View style={styles.inputContainer}>
               <Feather name="user" size={20} color="#64748b" style={styles.inputIconLeft} />
               <TextInput
@@ -76,7 +133,7 @@ export default function CriarContaScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>E-MAIL</Text>
+            <Text style={styles.label}>E-MAIL *</Text>
             <View style={styles.inputContainer}>
               <Feather name="mail" size={20} color="#64748b" style={styles.inputIconLeft} />
               <TextInput
@@ -87,6 +144,46 @@ export default function CriarContaScreen() {
                 autoCapitalize="none"
                 value={email}
                 onChangeText={setEmail}
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>SENHA *</Text>
+            <View style={styles.inputContainer}>
+              <Feather name="lock" size={20} color="#64748b" style={styles.inputIconLeft} />
+              <TextInput
+                style={styles.input}
+                placeholder="Mínimo 8 caracteres"
+                placeholderTextColor="#94a3b8"
+                secureTextEntry={!showPassword}
+                value={senha}
+                onChangeText={setSenha}
+              />
+              <TouchableOpacity
+                style={styles.iconRight}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Feather
+                  name={showPassword ? 'eye-off' : 'eye'}
+                  size={20}
+                  color="#64748b"
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>CONFIRMAR SENHA *</Text>
+            <View style={styles.inputContainer}>
+              <Feather name="lock" size={20} color="#64748b" style={styles.inputIconLeft} />
+              <TextInput
+                style={styles.input}
+                placeholder="Repita a senha"
+                placeholderTextColor="#94a3b8"
+                secureTextEntry={!showPassword}
+                value={confirmarSenha}
+                onChangeText={setConfirmarSenha}
               />
             </View>
           </View>
@@ -143,7 +240,7 @@ export default function CriarContaScreen() {
                 <Feather name="calendar" size={20} color="#64748b" style={styles.inputIconLeft} />
                 <TextInput
                   style={styles.input}
-                  placeholder="DD/MM/AAAA"
+                  placeholder="AAAA-MM-DD"
                   placeholderTextColor="#94a3b8"
                   value={dataNascimento}
                   onChangeText={setDataNascimento}
@@ -152,8 +249,8 @@ export default function CriarContaScreen() {
             </View>
           </View>
 
-          <TouchableOpacity 
-            style={styles.button} 
+          <TouchableOpacity
+            style={styles.button}
             onPress={handleRegister}
             disabled={isLoading}
             activeOpacity={0.8}
@@ -161,10 +258,16 @@ export default function CriarContaScreen() {
             {isLoading ? (
               <ActivityIndicator color="#ffffff" />
             ) : (
-              <Text style={styles.buttonText}>Salvar Dados</Text>
+              <Text style={styles.buttonText}>Criar conta</Text>
             )}
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={styles.loginLink}
+            onPress={() => navigation.navigate('Login')}
+          >
+            <Text style={styles.loginLinkText}>Já tenho conta</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -174,24 +277,30 @@ export default function CriarContaScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f5f5f5'
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 50,
-    paddingHorizontal: 20,
+    paddingHorizontal: 20
   },
   header: {
     marginBottom: 35,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   title: {
-    fontFamily: 'Manrope-ExtraBold',
     fontSize: 30,
+    fontWeight: '800',
     color: '#006f1e',
-    textAlign: 'center',
+    textAlign: 'center'
+  },
+  subtitle: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center'
   },
   formCard: {
     width: '100%',
@@ -203,26 +312,26 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 1,
     shadowRadius: 1,
-    elevation: 2,
+    elevation: 2
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 20
   },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-between'
   },
   flex1: {
-    flex: 1,
+    flex: 1
   },
   label: {
-    fontFamily: 'Manrope-Bold',
     fontSize: 10,
+    fontWeight: '700',
     color: '#94a3b8',
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: 6,
-    marginLeft: 4,
+    marginLeft: 4
   },
   inputContainer: {
     flexDirection: 'row',
@@ -232,20 +341,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 56,
     borderRadius: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 16
   },
   inputIconLeft: {
-    width: 15,
-    height: 15,
-    marginRight: 12,
-    resizeMode: 'contain',
+    marginRight: 12
+  },
+  iconRight: {
+    padding: 5
   },
   input: {
     flex: 1,
-    fontFamily: 'Manrope-Regular',
     fontSize: 14,
     color: '#2d3335',
-    height: '100%',
+    height: '100%'
   },
   button: {
     backgroundColor: '#006f1e',
@@ -259,12 +367,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 1,
     shadowRadius: 6,
-    elevation: 3,
+    elevation: 3
   },
   buttonText: {
-    fontFamily: 'Manrope-Bold',
     fontSize: 16,
-    color: '#ffffff',
+    fontWeight: '700',
+    color: '#ffffff'
   },
+  loginLink: {
+    alignItems: 'center',
+    marginTop: 16
+  },
+  loginLinkText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#006f1e'
+  }
 });
-
