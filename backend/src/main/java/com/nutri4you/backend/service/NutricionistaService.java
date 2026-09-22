@@ -6,6 +6,7 @@ import com.nutri4you.backend.repository.NutricionistaRepository;
 import com.nutri4you.backend.repository.PacienteRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class NutricionistaService {
@@ -23,11 +24,19 @@ public class NutricionistaService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    @Transactional
+    public Nutricionista autocadastrar(NutricionistaCadastroDTO dto) {
+        return cadastrarNutricionista(dto);
+    }
+
+    @Transactional
     public Nutricionista cadastrarNutricionista(NutricionistaCadastroDTO dto) {
         if (dto == null || vazio(dto.nome()) || vazio(dto.email())
                 || vazio(dto.senha()) || vazio(dto.crn())) {
             throw new IllegalArgumentException("Nome, e-mail, senha e CRN são obrigatórios.");
         }
+
+        AuthEmailService.validarSenha(dto.senha());
 
         String email = dto.email().trim().toLowerCase();
         if (nutricionistaRepository.existsByEmail(email) || pacienteRepository.existsByEmail(email)) {
