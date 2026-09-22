@@ -21,6 +21,14 @@ public class NutricionistaController {
         this.nutricionistaService = nutricionistaService;
     }
 
+    @PostMapping("/autocadastro")
+    public ResponseEntity<ApiResponse<MensagemResponse>> autocadastro(@RequestBody NutricionistaCadastroDTO dto) {
+        nutricionistaService.autocadastrar(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(
+                new MensagemResponse("Nutricionista cadastrado com sucesso!"),
+                "Nutricionista cadastrado com sucesso!"));
+    }
+
     @PostMapping("/cadastro")
     public ResponseEntity<ApiResponse<MensagemResponse>> cadastrar(
             @RequestBody NutricionistaCadastroDTO dto) {

@@ -1,0 +1,5 @@
+@if (message) {
+  <p class="form-alert" [class.form-alert--success]="type === 'success'" [class.form-alert--info]="type === 'info'" role="alert">
+    {{ message }}
+  </p>
+}

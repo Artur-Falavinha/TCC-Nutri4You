@@ -59,7 +59,9 @@ public class PacienteService {
         }
 
         Paciente salvo = pacienteRepository.save(novoPaciente);
-        emailNotificationService.enviarConfirmacaoCadastro(salvo);
+        if (!emailProperties.isAutoConfirm()) {
+            emailNotificationService.agendarConfirmacaoCadastro(salvo);
+        }
         return salvo;
     }
 

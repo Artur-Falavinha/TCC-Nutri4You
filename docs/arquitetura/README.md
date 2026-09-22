@@ -43,22 +43,23 @@ flowchart TB
 | [ADRs](adr/README.md) | Registro de decisões arquiteturais |
 | [PoCs — serviços externos](pocs-servicos-externos.md) | TACO, Calendar, storage, deploy |
 
-## Estado atual (Sprint 1)
+## Estado atual (Sprint 2 — auth)
 
 ### Implementado
 
 - Monorepo com backend, web, mobile e banco containerizados.
 - Autenticação JWT stateless com roles `PACIENTE` e `NUTRICIONISTA`.
-- Endpoints: health check, login e autocadastro de paciente.
-- Clientes web e mobile com camada HTTP base e tela de health check.
+- Endpoints: health, login, autocadastro paciente/nutricionista, e-mail, gestão de pacientes.
+- Web (Angular): telas auth + interceptor JWT + dashboard provisório (S2-W1/W2).
+- Mobile: camada HTTP base e health check (JWT mobile = S2-M1).
 - CI com Markdown, gitleaks, testes backend, lint/build web e lint/typecheck mobile.
 
-### Pendente (próximas sprints)
+### Pendente (próximas sprints / backlog)
 
-- Entidades JPA para as demais 12 tabelas do schema.
+- Entidades JPA para as demais tabelas do schema.
 - Módulos de negócio (anamnese, consultas, plano alimentar, etc.).
-- Integração JWT nos clientes.
-- CORS e OpenAPI/Swagger.
+- Interceptor JWT no mobile (S2-M1).
+- OpenAPI/Swagger; rate limiting / fila de e-mail completa.
 
 ## Mapa de diretórios
 

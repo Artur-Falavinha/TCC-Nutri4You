@@ -26,11 +26,15 @@ Não é preciso editar código para trocar de ambiente — o Angular CLI já tro
 
 ## Rodando localmente
 
+**Recomendado (stack completo):** na raiz do repositório, `docker compose up --build` — sobe Postgres + API + este frontend. Ver [README.md](../README.md#como-rodar-o-ambiente-docker).
+
+**Alternativa (só frontend):** requer backend em `localhost:8080` em outro terminal.
+
 ```bash
 npm start          # ng serve, http://localhost:4200
 ```
 
-Com a API Spring Boot rodando em `localhost:8080` (Sprint 1), acesse `http://localhost:4200/health` para conferir o fluxo cliente -> API.
+Auth (Sprint 2): **[http://localhost:4200/login](http://localhost:4200/login)** · Health: **[http://localhost:4200/health](http://localhost:4200/health)**
 
 ## Scripts
 

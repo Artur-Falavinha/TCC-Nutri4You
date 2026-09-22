@@ -108,7 +108,8 @@ Apps mobile nativos (Expo Go) não passam por CORS de browser.
 | `GET` | `/health` | Pública | Health check |
 | `POST` | `/auth/login` | Pública | Login JWT |
 | `POST` | `/pacientes/autocadastro` | Pública | Cadastro de paciente |
-| `POST` | `/nutricionistas/cadastro` | `NUTRICIONISTA` | Cadastro de nutricionista |
+| `POST` | `/nutricionistas/autocadastro` | Pública | Autocadastro de nutricionista (Q29) |
+| `POST` | `/nutricionistas/cadastro` | `NUTRICIONISTA` | Cadastro assistido de nutricionista |
 | `GET` | `/usuarios/me` | Autenticado | Dados do usuário logado (envelope) |
 | `DELETE` | `/usuarios/me/nutricionistas/{id}/relacao` | `PACIENTE` | Desvincular nutricionista |
 | `GET` | `/gestao-pacientes` | `NUTRICIONISTA` | Listagem Q16 |
@@ -128,7 +129,7 @@ Referência completa em [endpoints.md](endpoints.md).
 
 | Tipo | E-mail | Observação |
 | --- | --- | --- |
-| Nutricionista | `nutri@nutri4you.com` | Senha BCrypt no seed |
+| Nutricionista | `nutri@nutri4you.com` | Senha dev: `password` |
 | Paciente | `arthur@email.com`, `artur@email.com` | `email_confirmado=true` no seed |
 
 > Pacientes seed podem ter hash placeholder — prefira autocadastro ou usuários criados nos testes de integração.
@@ -136,4 +137,4 @@ Referência completa em [endpoints.md](endpoints.md).
 ## Lacunas conhecidas
 
 - OpenAPI/Swagger ainda não gerado.
-- Interceptors JWT nos clientes web/mobile (Deretti / Artur W1).
+- Interceptor JWT no mobile (S2-M1). Web concluído (S2-W1).

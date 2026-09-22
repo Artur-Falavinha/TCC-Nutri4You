@@ -15,11 +15,42 @@ Repositório do projeto **I Need a Nutri** (TCC).
 
 ## Como Rodar o Ambiente (Docker)
 
-Certifique-se de que o **Docker Desktop** está aberto e rodando na sua máquina. Na raiz do projeto, execute o comando para subir os contêineres do banco de dados, backend e frontend:
+**Pré-requisito:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) aberto e em execução (ícone da baleia ativo na bandeja).
+
+Na **raiz do projeto**, um único comando sobe Postgres, backend (8080) e web (4200) — **não é necessário** abrir terminais separados com `mvnw` e `npm start`:
 
 ```bash
-docker compose up -d --build
+docker compose up --build
 ```
+
+*(Modo detached: `docker compose up --build -d`)*
+
+### Testar auth web (Sprint 2)
+
+| Passo | Ação |
+| --- | --- |
+| 1 | Aguarde logs de `nutri4you-backend` com `Started BackendApplication` |
+| 2 | Aguarde `nutri4you-web` com `Compiled successfully` / `Application bundle generation complete` |
+| 3 | Abra **[http://localhost:4200/login](http://localhost:4200/login)** |
+| 4 | Login nutricionista seed: `nutri@nutri4you.com` / senha `password` |
+| 4b | Autocadastro nutri: **[http://localhost:4200/cadastro](http://localhost:4200/cadastro)** → senha → login |
+| 5 | Após login → redirect para **/dashboard** |
+
+Health check da API: **[http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/health)**
+
+### Solução de problemas
+
+| Sintoma | Comando / ação |
+| --- | --- |
+| Erro de schema / tabela inexistente (Postgres antigo) | `docker compose down -v` e `docker compose up --build` *(recria volume + aplica `database/init.sql`)* |
+| Frontend não acha pacote novo (`@phosphor-icons/web`, etc.) | `docker compose up --build web` *(entrypoint roda `npm install` ao iniciar)* |
+| Porta 8080 ou 4200 ocupada | Pare o processo local ou ajuste as portas no `docker-compose.yaml` |
+| Backend sobe antes do Postgres | Resolvido: `depends_on` + healthcheck no compose |
+| Ver logs | `docker compose logs -f backend web` |
+
+### Desenvolvimento sem Docker *(opcional)*
+
+Use dois terminais só se preferir debug nativo (breakpoint Java na porta **5005**) ou iterar sem rebuild de imagem. Para demo e teste do fluxo auth, **Docker basta**.
 
 ## Executando o Aplicativo Mobile (React Native / Expo)
 
