@@ -56,6 +56,10 @@ public class Nutricionista implements UserDetails {
         return email;
     }
 
+    public void setSenha(String senha) {
+        this.senha = senha;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_NUTRICIONISTA"));
