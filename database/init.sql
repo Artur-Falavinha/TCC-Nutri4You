@@ -211,7 +211,7 @@ INSERT INTO Nutricionista (nome, email, senha, crn) VALUES
 
 -- 2. PACIENTES
 INSERT INTO Paciente (nome, cpf, data_nascimento, sexo, telefone, email, senha, email_confirmado) VALUES
-('Arthur Henrique Deretti', '111.222.333-44', '2000-01-01', 'Masculino', '41999999999', 'arthur@email.com', '$2a$10$ExemploDeHashBcrypt', TRUE),
+('Arthur Henrique Deretti', '111.222.333-44', '2000-01-01', 'Masculino', '41999999999', 'arthur@email.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
 ('Artur Lachoman Falavinha', '555.666.777-88', '2000-02-02', 'Masculino', '41988888888', 'artur@email.com', '$2a$10$ExemploDeHashBcrypt', TRUE);
 
 -- 3. CONSULTAS (relaciona paciente e nutricionista por evento)

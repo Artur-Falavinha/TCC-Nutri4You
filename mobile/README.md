@@ -1,13 +1,13 @@
 # Nutri4You — Mobile (Expo / React Native)
 
-App do paciente do Nutri4You (TCC). Gerado com Expo (managed workflow) + TypeScript.
+App do **paciente** do Nutri4You (TCC). Gerado com Expo (managed workflow) + TypeScript.
 
 ## Requisitos
 
 - Node.js 20 LTS ou 22
 - npm 10+
-- App **Expo Go** no celular (Android/iOS) ou um emulador Android/simulador iOS
-- Nenhuma pasta nativa (`android/`, `ios/`) é versionada — o Expo as gera sob demanda quando necessário (`expo prebuild`)
+- App **Expo Go** no celular (Android/iOS) ou emulador
+- Backend Spring Boot em `http://<IP>:8080` (Docker Compose na raiz do monorepo)
 
 ## Instalação
 
@@ -17,29 +17,44 @@ npm install
 
 ## Ambientes
 
-A URL base da API vem de variáveis `EXPO_PUBLIC_*`, carregadas automaticamente pelo Expo:
+A URL base da API vem de `EXPO_PUBLIC_API_BASE_URL`. Sem a variável, o app usa o IP do Metro (`hostUri`) em `http://<ip>:8080/api/v1`.
 
-| Arquivo | Usado por | EXPO_PUBLIC_API_BASE_URL |
-|---|---|---|
-| `.env.development` | `expo start` (modo padrão) | `http://localhost:8080/api/v1` |
-| `.env.production` | `expo export` / EAS Build | ajustar para a URL real implantada |
+| Arquivo | Uso |
+|---|---|
+| `.env.development` | `expo start` |
+| `.env.local` | override local (não versionado) |
 
-Se for testar em um celular físico, `localhost` não funciona — troque por o IP da sua máquina na rede local (ex.: `http://192.168.0.10:8080/api/v1`) em `.env.development`, ou crie um `.env.local` (não versionado) com o override.
+Em celular físico, `localhost` não funciona — use o IP da máquina na LAN.
+
+## Auth (Sprint 2)
+
+Fluxo do paciente:
+
+1. **Login** — `POST /auth/login`; só `PACIENTE` entra (nutricionista é bloqueado).
+2. **Criar conta** — `POST /pacientes/autocadastro` (nome, e-mail, senha ≥ 8; opcionais CPF/telefone/sexo/data ISO).
+3. **Esqueci a senha** — `POST /auth/recuperar-senha` (mensagem genérica RNF02) → cole o UUID (log do console Docker) → `NovaSenha` → `POST /auth/redefinir-senha`.
+
+Seed local: `arthur@email.com` / `password`.
+
+Deep link: scheme `nutri4you` — ex. `nutri4you://redefinir-senha?token=<uuid>`.
+
+JWT fica no SecureStore (`nutri4you.jwt`). Cold start com token válido abre `Home`.
 
 ## Rodando localmente
 
 ```bash
+# na raiz do monorepo
+docker compose up --build -d
+
+cd mobile
 npm start
 ```
-
-Isso abre o Metro Bundler; escaneie o QR code com o app Expo Go, ou pressione `a` (Android) / `i` (iOS) se tiver um emulador configurado.
-
-Com a API Spring Boot rodando (Sprint 1), abra a tela inicial e toque em "Ver status da API" para conferir o fluxo cliente -> API.
 
 ## Scripts
 
 ```bash
-npm run lint         # ESLint (eslint-config-expo)
+npm test             # Jest
+npm run lint         # ESLint
 npm run typecheck    # tsc --noEmit
 ```
 
@@ -48,19 +63,10 @@ npm run typecheck    # tsc --noEmit
 ```
 src/
 ├── core/
-│   ├── config/env.ts       # leitura das variáveis EXPO_PUBLIC_*
-│   └── api/                # apiClient (fetch), tipos de resposta, healthService
+│   ├── auth/               # token storage, auth.service, models
+│   ├── config/env.ts
+│   ├── api/                # apiClient (fetch + JWT + 401)
+│   └── utils/              # UUID, deep-link
 ├── navigation/
-│   ├── RootNavigator.tsx    # stack principal (@react-navigation/native-stack)
-│   └── types.ts             # RootStackParamList (navegação tipada)
-└── screens/
-    ├── home/                # placeholder — vira dieta ativa/consumo na Sprint 5
-    └── health/              # tela de status da API (critério de aceite da Sprint 1)
-App.tsx                       # host do NavigationContainer
+└── screens/                # Login, CriarConta, TrocarSenha, NovaSenha, Home, Health
 ```
-
-A partir da Sprint 2, o `RootNavigator` deve ganhar um fluxo de autenticação (login, autocadastro, validação de e-mail) antes das telas atuais.
-
-## Referências
-
-- Roadmap do TCC — Sprint 1: fundação técnica e primeiro fluxo integrado
