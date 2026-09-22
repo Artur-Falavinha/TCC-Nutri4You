@@ -22,7 +22,13 @@ Implementar autenticação **JWT stateless** com:
 - Entidades `Paciente` e `Nutricionista` implementando `UserDetails`.
 - Senhas com BCrypt.
 
-Rotas públicas na Sprint 1: login, autocadastro e health check.
+Rotas públicas na Sprint 1: login, autocadastro de paciente e health check.
+
+## Emenda — Sprint 2 (2026-09)
+
+- Rotas públicas ampliadas: confirmação/recuperação de senha, preview de e-mail (perfil `dev`), `POST /nutricionistas/autocadastro` (Q29).
+- Web envia JWT via `authInterceptor` + `TokenStorageService` (S2-W1). Mobile ainda pendente (S2-M1).
+- CORS configurado para origens do Angular em desenvolvimento.
 
 ## Consequências
 
@@ -34,9 +40,7 @@ Rotas públicas na Sprint 1: login, autocadastro e health check.
 
 ### Trade-offs
 
-- Sem refresh token na Sprint 1 — expiração exige novo login.
-- Clientes ainda não enviam JWT (implementação prevista Sprint 2).
-- CORS não configurado — pode bloquear requisições cross-origin na web.
+- Sem refresh token — expiração exige novo login.
 - Segredo JWT com default de desenvolvimento — deve ser sobrescrito em produção.
 
 ## Referências

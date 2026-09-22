@@ -35,9 +35,9 @@ docs/
 | Tópico | Descrição |
 | --- | --- |
 | [API](api/README.md) | Endpoints, autenticação JWT, convenções e variáveis de ambiente |
-| [Endpoints](api/endpoints.md) | Referência detalhada: health, login, autocadastro |
-| [Autenticação](api/autenticacao.md) | Fluxo JWT, roles, rotas públicas/protegidas |
-| [Arquitetura](arquitetura/README.md) | Visão geral do monorepo, stack e estado da Sprint 1 |
+| [Endpoints](api/endpoints.md) | Referência: health, login, autocadastro paciente/nutri, gestão, e-mail |
+| [Autenticação](api/autenticacao.md) | Fluxo JWT, roles, rotas públicas/protegidas, recuperação (Q26–Q30) |
+| [Arquitetura](arquitetura/README.md) | Visão geral do monorepo, stack e estado atual (Sprint 2) |
 | [Visão geral](arquitetura/visao-geral.md) | Camadas backend/web/mobile, Docker, fluxo de dados |
 | [Banco de dados](arquitetura/banco-de-dados.md) | Schema PostgreSQL, entidades JPA, seed |
 | [ADRs](arquitetura/adr/README.md) | Decisões: monorepo/Docker, JWT, schema SQL |
@@ -72,3 +72,10 @@ docs/
 - Autocadastro de paciente (`POST /api/v1/pacientes/autocadastro`)
 - Clientes web e mobile com camada HTTP base
 - Schema completo do banco (14 tabelas), 2 entidades JPA
+
+## Sprint 2 — auth (parcial documentado)
+
+- Autocadastro público de nutricionista (`POST /api/v1/nutricionistas/autocadastro`, Q29)
+- Confirmação/recuperação de senha (paciente e nutricionista, Q26–Q28); envio de e-mail assíncrono (RNF02)
+- Web: login, wizard de cadastro (dados → senha), esqueci/redefinir senha, interceptor JWT (S2-W1/W2)
+- Gestão de pacientes e `Relacao_Clinica` (Q16–Q17) — ver [endpoints](api/endpoints.md)

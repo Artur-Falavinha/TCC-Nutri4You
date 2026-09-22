@@ -24,7 +24,7 @@ Trocar mock por SMTP = **configuração + bean**, sem reescrever regras de negó
 | Log | Link completo no console do backend |
 | Preview | `GET /api/v1/dev/email-preview/{token}` (somente perfil dev) |
 | Confirmação | `GET /api/v1/auth/confirmar-email?token=` → `emailConfirmado=true` |
-| Recuperação | `POST /auth/recuperar-senha` gera token; `POST /auth/redefinir-senha` aplica nova senha |
+| Recuperação | `POST /auth/recuperar-senha` gera token (paciente **ou** nutricionista, Q26); `POST /auth/redefinir-senha` aplica nova senha |
 
 ## Perfil `demo` (Sprint Review / TCC)
 
@@ -48,8 +48,10 @@ email.from=noreply@nutri4you.local
 
 ## Segurança
 
-- Tokens de uso único, hash opcional no banco.
+- Tokens de uso único; consumo atômico (lock + update condicional) e invalidação de tokens de recuperação anteriores do mesmo titular.
+- Persistência do token **antes** do envio; envio assíncrono (`@Async`) — falha SMTP/console **não** retorna 500 (RNF02).
 - Respostas não revelam se e-mail existe (RNF02), exceto mensagem específica "confirme seu e-mail" **após** login com credenciais corretas (decisions Q7).
+- `Token_Email` com titular XOR paciente **ou** nutricionista (Q27).
 - Endpoint `/dev/email-preview` desabilitado fora do perfil `dev`.
 
 ## Referências
