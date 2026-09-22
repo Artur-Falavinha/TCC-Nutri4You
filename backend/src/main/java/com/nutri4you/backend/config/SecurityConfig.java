@@ -43,6 +43,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/recuperar-senha").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/redefinir-senha").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/pacientes/autocadastro").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/nutricionistas/autocadastro").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/nutricionistas/cadastro").hasRole("NUTRICIONISTA")
                         .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
                         .requestMatchers("/error").permitAll()

@@ -27,10 +27,16 @@ CREATE TABLE Token_Email (
     id_token SERIAL PRIMARY KEY,
     token UUID NOT NULL UNIQUE,
     tipo VARCHAR(30) NOT NULL,
-    id_paciente INT NOT NULL,
+    id_paciente INT,
+    id_nutricionista INT,
     expira_em TIMESTAMP NOT NULL,
     usado_em TIMESTAMP,
-    CONSTRAINT fk_token_paciente FOREIGN KEY (id_paciente) REFERENCES Paciente(id_paciente)
+    CONSTRAINT fk_token_paciente FOREIGN KEY (id_paciente) REFERENCES Paciente(id_paciente),
+    CONSTRAINT fk_token_nutricionista FOREIGN KEY (id_nutricionista) REFERENCES Nutricionista(id_nutricionista),
+    CONSTRAINT chk_token_titular CHECK (
+        (id_paciente IS NOT NULL AND id_nutricionista IS NULL)
+        OR (id_paciente IS NULL AND id_nutricionista IS NOT NULL)
+    )
 );
 
 CREATE TABLE Relacao_Clinica (
@@ -199,6 +205,7 @@ CREATE TABLE Item_Refeicao (
 -- ==========================================
 
 -- 1. NUTRICIONISTAS
+-- Senha dev em texto: password
 INSERT INTO Nutricionista (nome, email, senha, crn) VALUES
 ('Gabriel de Paula Brasil', 'nutri@nutri4you.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', 'CRN8-12345');
 

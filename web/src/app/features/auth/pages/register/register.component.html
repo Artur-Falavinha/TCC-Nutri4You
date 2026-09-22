@@ -1,0 +1,51 @@
+<app-auth-page-layout>
+  <app-auth-form-card title="Criar conta">
+    <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <app-ui-input
+        label="Nome completo"
+        placeholder="Seu nome"
+        autocomplete="name"
+        [required]="true"
+        formControlName="nome"
+        [errorMessage]="fieldError('nome')"
+      />
+
+      <app-ui-input
+        label="CRN"
+        placeholder="CRN-0 00000"
+        mask="crn"
+        autocomplete="off"
+        [required]="true"
+        formControlName="crn"
+        [errorMessage]="fieldError('crn')"
+      />
+
+      <app-ui-input
+        label="E-mail"
+        placeholder="seu@email.com"
+        type="email"
+        autocomplete="email"
+        [required]="true"
+        formControlName="email"
+        [errorMessage]="fieldError('email')"
+      />
+
+      <app-ui-checkbox
+        checkboxId="terms"
+        label="Declaro que todas as informações fornecidas, especialmente meu número de registro no Conselho Regional de Nutrição (CRN), são exatas e verdadeiras. Estou ciente de que a falsidade ideológica e o exercício ilegal da profissão são crimes previstos em lei, assumindo total responsabilidade civil e criminal pelos meus atos dentro da plataforma Nutri4You."
+        [required]="true"
+        formControlName="termsAccepted"
+        [errorMessage]="termsError()"
+      />
+
+      <app-ui-button label="Continuar" icon="arrow-right" type="submit" />
+
+      <app-ui-link
+        label="Voltar ao login"
+        route="/login"
+        icon="arrow-left"
+        [centered]="true"
+      />
+    </form>
+  </app-auth-form-card>
+</app-auth-page-layout>

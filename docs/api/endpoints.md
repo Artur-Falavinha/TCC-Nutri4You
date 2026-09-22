@@ -168,9 +168,58 @@ curl -X POST http://localhost:8080/api/v1/pacientes/autocadastro \
 
 ---
 
+## POST /nutricionistas/autocadastro
+
+Cadastro público de nutricionista (Q29). Paridade com `POST /pacientes/autocadastro`. Após sucesso, o nutricionista pode fazer login imediatamente — **não** exige confirmação de e-mail na Sprint 2.
+
+**Autenticação:** não requerida
+
+### Autocadastro nutri — corpo
+
+```json
+{
+  "nome": "Novo Nutricionista",
+  "email": "novo@nutri.com",
+  "senha": "senhaSegura123",
+  "crn": "CRN8-54321"
+}
+```
+
+| Campo | Obrigatório | Regras |
+| --- | --- | --- |
+| `nome` | Sim | — |
+| `email` | Sim | Único entre nutricionistas e pacientes |
+| `senha` | Sim | Mínimo 8 caracteres |
+| `crn` | Sim | Formato CRN |
+
+### Autocadastro nutri — resposta 201
+
+Envelope padrão com `data.mensagem`.
+
+### Autocadastro nutri — erros
+
+| Código | Motivo |
+| --- | --- |
+| `400` | Campos obrigatórios ausentes, senha fraca ou e-mail já cadastrado |
+
+### Autocadastro nutri — exemplo curl
+
+```bash
+curl -X POST http://localhost:8080/api/v1/nutricionistas/autocadastro \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nome": "Novo Nutricionista",
+    "email": "novo@nutri.com",
+    "senha": "senhaSegura123",
+    "crn": "CRN8-54321"
+  }'
+```
+
+---
+
 ## POST /nutricionistas/cadastro
 
-Cadastra um nutricionista. **Não é rota pública** — exige JWT de nutricionista logado.
+Cadastro assistido de nutricionista por outro nutricionista autenticado (backlog HU019). **Não é rota pública** — exige JWT de nutricionista logado.
 
 **Autenticação:** `ROLE_NUTRICIONISTA`
 
@@ -427,20 +476,24 @@ Confirma o e-mail do paciente após autocadastro.
 
 | Código | Motivo |
 | --- | --- |
-| `400` | Token inválido, expirado ou já utilizado |
+| `400` | `Token inválido ou expirado.` *(mensagem unificada — Q7)* |
 
 ---
 
 ## POST /auth/recuperar-senha
 
-Solicita link de redefinição de senha. Resposta **sempre genérica** (RNF02).
+Solicita link de redefinição de senha para **paciente ou nutricionista** (Q26). Resposta **sempre genérica** (RNF02).
 
 **Autenticação:** não requerida
+
+| Lookup | Ordem |
+| --- | --- |
+| E-mail cadastrado | Nutricionista primeiro, depois paciente (mesma ordem do login) |
 
 ### Recuperar senha — corpo
 
 ```json
-{ "email": "paciente@email.com" }
+{ "email": "usuario@email.com" }
 ```
 
 ### Recuperar senha — resposta 200
@@ -474,6 +527,17 @@ Aplica nova senha usando token de recuperação.
 | --- | --- |
 | Senha | Mínimo 8 caracteres (Q7) |
 | Token | Tipo `RECUPERACAO_SENHA`, uso único, TTL 1h (padrão) |
+| Titular | `Token_Email` referencia paciente **ou** nutricionista (Q27) |
+| Side-effect | Redefinir senha de paciente não confirmado também confirma o e-mail (Q19); nutricionista só atualiza a senha (Q28) |
+
+### Redefinir senha — erros
+
+| Código | Motivo |
+| --- | --- |
+| `400` | `Token inválido ou expirado.` *(inexistente, expirado, já usado ou tipo incorreto)* |
+| `400` | Senha com menos de 8 caracteres |
+
+> Falha no envio de e-mail em `recuperar-senha` **não** retorna 500 — resposta genérica 200 (RNF02).
 
 ---
 

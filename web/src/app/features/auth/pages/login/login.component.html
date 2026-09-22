@@ -1,0 +1,41 @@
+<app-auth-page-layout>
+  <app-auth-form-card title="Login">
+    <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()">
+      <app-form-alert [message]="errorMessage" />
+      <app-form-alert [message]="successMessage" type="success" />
+
+      <app-ui-input
+        label="Email"
+        placeholder="seu@email.com"
+        type="email"
+        autocomplete="email"
+        [required]="true"
+        formControlName="email"
+        [errorMessage]="fieldError('email')"
+      />
+
+      <app-ui-input
+        label="Senha"
+        placeholder="••••••••"
+        type="password"
+        autocomplete="current-password"
+        [required]="true"
+        formControlName="senha"
+        [errorMessage]="fieldError('senha')"
+      />
+
+      <div class="auth-form__row">
+        <app-ui-link label="Esqueci minha senha" route="/esqueci-senha" />
+      </div>
+
+      <app-ui-button label="Entrar" icon="sign-in" type="submit" [loading]="loading" />
+
+      <app-ui-link
+        label="Não tem conta? Cadastre-se"
+        route="/cadastro"
+        variant="secondary"
+        [centered]="true"
+      />
+    </form>
+  </app-auth-form-card>
+</app-auth-page-layout>

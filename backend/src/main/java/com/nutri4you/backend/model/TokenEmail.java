@@ -1,6 +1,7 @@
 package com.nutri4you.backend.model;
 
 import jakarta.persistence.Column;
+import org.hibernate.annotations.Check;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -17,6 +18,10 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "Token_Email")
+@Check(constraints = """
+        (id_paciente IS NOT NULL AND id_nutricionista IS NULL)
+        OR (id_paciente IS NULL AND id_nutricionista IS NOT NULL)
+        """)
 public class TokenEmail {
 
     @Id
@@ -31,9 +36,13 @@ public class TokenEmail {
     @Column(nullable = false, length = 30)
     private TipoTokenEmail tipo;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_paciente", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_paciente")
     private Paciente paciente;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_nutricionista")
+    private Nutricionista nutricionista;
 
     @Column(name = "expira_em", nullable = false)
     private LocalDateTime expiraEm;
@@ -44,10 +53,22 @@ public class TokenEmail {
     protected TokenEmail() {
     }
 
-    public static TokenEmail criar(Paciente paciente, TipoTokenEmail tipo, LocalDateTime expiraEm) {
+    public static TokenEmail criarParaPaciente(Paciente paciente, TipoTokenEmail tipo, LocalDateTime expiraEm) {
         TokenEmail tokenEmail = new TokenEmail();
         tokenEmail.token = UUID.randomUUID();
         tokenEmail.paciente = paciente;
+        tokenEmail.tipo = tipo;
+        tokenEmail.expiraEm = expiraEm;
+        return tokenEmail;
+    }
+
+    public static TokenEmail criarParaNutricionista(
+            Nutricionista nutricionista,
+            TipoTokenEmail tipo,
+            LocalDateTime expiraEm) {
+        TokenEmail tokenEmail = new TokenEmail();
+        tokenEmail.token = UUID.randomUUID();
+        tokenEmail.nutricionista = nutricionista;
         tokenEmail.tipo = tipo;
         tokenEmail.expiraEm = expiraEm;
         return tokenEmail;
@@ -65,6 +86,26 @@ public class TokenEmail {
         return usadoEm != null;
     }
 
+    public String getEmailDestinatario() {
+        if (paciente != null) {
+            return paciente.getEmail();
+        }
+        if (nutricionista != null) {
+            return nutricionista.getEmail();
+        }
+        throw new IllegalStateException("Token sem titular associado.");
+    }
+
+    public String getNomeDestinatario() {
+        if (paciente != null) {
+            return paciente.getNome();
+        }
+        if (nutricionista != null) {
+            return nutricionista.getNome();
+        }
+        throw new IllegalStateException("Token sem titular associado.");
+    }
+
     public Integer getId() {
         return id;
     }
@@ -79,6 +120,10 @@ public class TokenEmail {
 
     public Paciente getPaciente() {
         return paciente;
+    }
+
+    public Nutricionista getNutricionista() {
+        return nutricionista;
     }
 
     public LocalDateTime getExpiraEm() {
