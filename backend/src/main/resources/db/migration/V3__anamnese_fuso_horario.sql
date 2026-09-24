@@ -1,0 +1,3 @@
+ALTER TABLE Anamnese
+    ALTER COLUMN finalizada_em TYPE TIMESTAMPTZ USING finalizada_em AT TIME ZONE 'UTC',
+    ALTER COLUMN atualizada_em TYPE TIMESTAMPTZ USING atualizada_em AT TIME ZONE 'UTC';

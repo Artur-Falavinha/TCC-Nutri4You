@@ -15,6 +15,7 @@ export const apiErrorInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error: HttpErrorResponse) => {
       const normalized: ApiErrorResponse = {
         status: error.status,
+        fields: error.error?.fields,
         error: error.error?.error ?? error.statusText ?? 'ERRO_DESCONHECIDO',
         message: error.error?.message ?? 'Não foi possível completar a requisição.',
         path: req.url,
