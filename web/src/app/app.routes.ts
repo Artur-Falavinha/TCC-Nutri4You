@@ -3,6 +3,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { AUTH_ROUTES } from './features/auth/auth.routes';
 import { AnamneseComponent } from './features/anamnese/anamnese.component';
+import { anamneseGuard } from './features/anamnese/anamnese.guard';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
 import { HealthComponent } from './features/health/health.component';
 import { NotFoundComponent } from './features/not-found/not-found.component';
@@ -20,7 +21,15 @@ export const routes: Routes = [
     path: 'anamnese',
     component: AnamneseComponent,
     title: 'Anamnese | Nutri4You',
-    canActivate: [authGuard]
+    canActivate: [authGuard],
+    canDeactivate: [anamneseGuard]
+  },
+  {
+    path: 'pacientes/:id/anamnese',
+    component: AnamneseComponent,
+    title: 'Anamnese | Nutri4You',
+    canActivate: [authGuard],
+    canDeactivate: [anamneseGuard]
   },
   { path: 'health', component: HealthComponent, title: 'Status da API' },
   { path: '**', component: NotFoundComponent, title: 'Página não encontrada' }

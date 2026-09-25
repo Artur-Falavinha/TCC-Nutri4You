@@ -9,6 +9,7 @@ export interface ApiResponse<T> {
 }
 
 export interface ApiErrorResponse {
+  fields?: Record<string, string>;
   status: number;
   error: string;
   message: string;

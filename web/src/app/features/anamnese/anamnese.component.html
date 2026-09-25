@@ -2,552 +2,209 @@
   <aside class="sidebar" aria-label="Navegação principal">
     <div class="sidebar__top">
       <img class="sidebar__logo" src="/logo-principal.png" alt="Nutri4You" />
-
       <nav class="sidebar__nav">
-        @for (item of navItems; track item.label) {
-          <a class="sidebar__link" [class.sidebar__link--active]="item.active" href="#">
-            <span class="sidebar__icon" aria-hidden="true">{{ item.icon }}</span>
-            <span>{{ item.label }}</span>
-          </a>
-        }
+        <a class="sidebar__link" routerLink="/">Home</a>
+        <a class="sidebar__link sidebar__link--active" routerLink="/anamnese">Pacientes</a>
       </nav>
     </div>
-
-    <div class="sidebar__footer">
-      <div class="profile">
-        <span class="profile__avatar" aria-hidden="true"></span>
-        <span>Dra. Ana Silva</span>
+    @if (auth.authenticated) {
+      <div class="sidebar__footer">
+        <div class="profile"><span class="profile__avatar" aria-hidden="true"></span><span>{{ nutritionist }}</span></div>
+        <app-ui-button label="Sair" variant="secondary" [fullWidth]="false" (click)="logout()" [disabled]="saving" />
       </div>
-      <a class="sidebar__link" href="#">
-        <span class="sidebar__icon" aria-hidden="true">↩</span>
-        <span>Logout</span>
-      </a>
-    </div>
+    }
   </aside>
 
   <section class="workspace">
     <header class="patient-header">
       <div>
-        <h1>Ana Clara Martins</h1>
-        <nav class="patient-tabs" aria-label="Seções da paciente">
-          @for (tab of tabs; track tab.label) {
-            <a href="#" [class.patient-tabs__item--active]="tab.active" class="patient-tabs__item">{{ tab.label }}</a>
-          }
+        <h1>{{ data?.paciente?.nome || 'Pacientes' }}</h1>
+        <nav class="patient-tabs" aria-label="Seções do paciente">
+          <span class="patient-tabs__item patient-tabs__item--active" aria-current="page">Anamnese</span>
         </nav>
       </div>
-      <button class="notification-button" type="button" aria-label="Notificações">○</button>
     </header>
-
-    <form class="form-canvas" (submit)="finishAnamnese($event)">
-      <div class="actions">
-        <button class="primary-button" type="button">
-          <span aria-hidden="true">＋</span>
-          Nova Anamnese
-        </button>
-      </div>
-
-      <section class="form-section form-section--readonly" aria-labelledby="identificacao">
-        <h2 id="identificacao">Identificação</h2>
-        <label class="field field--full">
-          <span>Nome completo</span>
-          <input type="text" value="Ana Clara Martins" maxlength="120" autocomplete="name" disabled />
-        </label>
-        <label class="field field--full">
-          <span>E-mail</span>
-          <input type="email" value="ana.clara@email.com" maxlength="120" autocomplete="email" disabled />
-        </label>
-        <div class="field-row">
-          <label class="field">
-            <span>Data de nascimento</span>
-            <input
-              type="text"
-              value="12/03/1994"
-              placeholder="dd/mm/aaaa"
-              maxlength="10"
-              inputmode="numeric"
-              pattern="\d{2}/\d{2}/\d{4}"
-              autocomplete="bday"
-              (input)="maskDate($event)"
-              disabled
-            />
-          </label>
-          <label class="field">
-            <span>Sexo</span>
-            <select disabled>
-              @for (option of sexOptions; track option) {
-                <option [selected]="option === 'Feminino'">{{ option }}</option>
-              }
-            </select>
-          </label>
-        </div>
-      </section>
-
-      <section class="form-section" aria-labelledby="medidas">
-        <h2 id="medidas">Medidas corporais</h2>
-        <div class="field-row">
-          <label class="field">
-            <span>Altura</span>
-            <input
-              type="text"
-              placeholder="Ex.: 1,68"
-              maxlength="4"
-              inputmode="decimal"
-              pattern="\d,\d{2}"
-              (input)="maskHeight($event)"
-              required
-            />
-          </label>
-          <label class="field">
-            <span>Peso atual</span>
-            <input
-              type="text"
-              placeholder="Ex.: 72,5"
-              maxlength="5"
-              inputmode="decimal"
-              pattern="\d{2,3}(,\d)?"
-              (input)="maskWeight($event)"
-              required
-            />
-          </label>
-        </div>
-      </section>
-
-      <section class="form-section" aria-labelledby="trabalho">
-        <h2 id="trabalho">Trabalho e contato</h2>
-        <div class="field-row">
-          <label class="field">
-            <span>Profissão</span>
-            <input type="text" placeholder="Digite sua profissão" maxlength="80" autocomplete="organization-title" required />
-          </label>
-          <label class="field">
-            <span>Número/WhatsApp</span>
-            <input
-              type="tel"
-              placeholder="(00) 00000-0000"
-              maxlength="15"
-              inputmode="tel"
-              autocomplete="tel"
-              pattern="\(\d{2}\) \d{4,5}-\d{4}"
-              (input)="maskPhone($event)"
-              required
-            />
-          </label>
-        </div>
-      </section>
-
-      <section class="form-section" aria-labelledby="origem">
-        <h2 id="origem">Origem</h2>
-        <label class="field field--full">
-          <span>Como chegou até nós?</span>
-          <select required (change)="setSelection('origin', $event)">
-            <option value="" disabled selected>Selecione</option>
-            @for (option of originOptions; track option) {
-              <option>{{ option }}</option>
-            }
-          </select>
-        </label>
-        @if (selected.origin === 'Outro') {
-          <label class="field field--full">
-            <span>Informe como chegou até nós</span>
-            <input type="text" placeholder="Descreva a origem" maxlength="120" required />
-          </label>
-        }
-      </section>
-
-      <section class="form-section" aria-labelledby="relacao-comida">
-        <h2 id="relacao-comida">Relacionamento com Comida e Hábitos</h2>
-        <label class="field field--full">
-          <span>Como você se sente em relação ao seu corpo e saúde no dia a dia?</span>
-          <textarea placeholder="Descreva com detalhes..." maxlength="500" required></textarea>
-        </label>
-        <label class="field field--full">
-          <span>Como está sua rotina alimentar?</span>
-          <textarea placeholder="Descreva com detalhes..." maxlength="500" required></textarea>
-        </label>
-        <label class="field field--full">
-          <span>Quais alimentos ou preparações você gosta, evita ou sente dificuldade em incluir?</span>
-          <textarea placeholder="Descreva com detalhes..." maxlength="500" required></textarea>
-        </label>
-        <label class="field field--full">
-          <span>Em quais momentos você percebe mais fome ou vontade de comer?</span>
-          <textarea placeholder="Descreva com detalhes..." maxlength="500" required></textarea>
-        </label>
-        <label class="field field--full">
-          <span>Como costuma lidar com emoções, ansiedade ou cansaço na alimentação?</span>
-          <textarea placeholder="Descreva com detalhes..." maxlength="500" required></textarea>
-        </label>
-        <label class="field field--full">
-          <span>Existe algum medo ou regra alimentar que você sente que pesa na sua rotina?</span>
-          <textarea placeholder="Descreva com detalhes..." maxlength="500" required></textarea>
-        </label>
-        <div class="scale-row">
-          <label class="scale-field">
-            <span>Fome emocional</span>
-            <span class="range-value" [style.left]="rangePosition('emotionalHunger')">{{ rangeValues.emotionalHunger }}</span>
-            <input type="range" min="1" max="10" [value]="rangeValues.emotionalHunger" required (input)="updateRange('emotionalHunger', $event)" />
-          </label>
-          <label class="scale-field">
-            <span>Satisfação corporal</span>
-            <span class="range-value" [style.left]="rangePosition('bodySatisfaction')">{{ rangeValues.bodySatisfaction }}</span>
-            <input type="range" min="1" max="10" [value]="rangeValues.bodySatisfaction" required (input)="updateRange('bodySatisfaction', $event)" />
-          </label>
-          <label class="scale-field">
-            <span>Prazer ao se alimentar</span>
-            <span class="range-value" [style.left]="rangePosition('mealPleasure')">{{ rangeValues.mealPleasure }}</span>
-            <input type="range" min="1" max="10" [value]="rangeValues.mealPleasure" required (input)="updateRange('mealPleasure', $event)" />
-          </label>
-        </div>
-      </section>
-
-      <section class="form-section" aria-labelledby="rotina">
-        <h2 id="rotina">Rotina Alimentar</h2>
-        <label class="field field--full">
-          <span>Conte como costuma ser um dia alimentar típico</span>
-          <textarea placeholder="Descreva com detalhes..." maxlength="500" required></textarea>
-        </label>
-        <div class="field-row">
-          <label class="field">
-            <span>Quantas refeições faz por dia?</span>
-            <input
-              type="text"
-              placeholder="Ex.: 4"
-              maxlength="2"
-              inputmode="numeric"
-              pattern="\d{1,2}"
-              (input)="limitInteger($event, 2)"
-              required
-            />
-          </label>
-          <label class="field">
-            <span>Costuma fazer refeições fora de casa?</span>
-            <select required>
-              <option value="" disabled selected>Selecione</option>
-              @for (option of yesNoOptions; track option) {
-                <option>{{ option }}</option>
-              }
-            </select>
-          </label>
-        </div>
-        <label class="field field--full">
-          <span>Tem alguma dieta específica?</span>
-          <select required (change)="setSelection('diet', $event)">
-            <option value="" disabled selected>Selecione</option>
-            @for (option of dietOptions; track option) {
-              <option>{{ option }}</option>
-            }
-          </select>
-        </label>
-        @if (selected.diet === 'Outra') {
-          <label class="field field--full">
-            <span>Qual dieta específica?</span>
-            <input type="text" placeholder="Informe a dieta" maxlength="120" required />
-          </label>
-        }
-        <label class="field field--full">
-          <span>Você faz uso de suplementos?</span>
-          <select required (change)="setSelection('supplement', $event)">
-            <option value="" disabled selected>Selecione</option>
-            @for (option of yesNoOptions; track option) {
-              <option>{{ option }}</option>
-            }
-          </select>
-        </label>
-        @if (selected.supplement === 'Sim') {
-          <label class="field field--full">
-            <span>Quais suplementos utiliza?</span>
-            <input type="text" placeholder="Digite quais suplementos utiliza" maxlength="160" required />
-          </label>
-        }
-        <label class="field field--full">
-          <span>Há algo na sua rotina alimentar que gostaria de melhorar?</span>
-          <textarea placeholder="Descreva com detalhes..." maxlength="500" required></textarea>
-        </label>
-      </section>
-
-      <section class="form-section" aria-labelledby="historico">
-        <h2 id="historico">Histórico de Saúde</h2>
-        <fieldset class="checkbox-group" data-checkbox-group>
-          <legend>{{ healthHistory.label }}</legend>
-          @for (option of healthHistory.options; track option) {
-            <label>
-              <input #diagnosticoOption type="checkbox" name="diagnosticoAtual" (change)="clearCheckboxGroupValidity($event)" />
-              {{ option }}
-            </label>
-            @if (option === 'Outro' && diagnosticoOption.checked) {
-              <label class="field field--full field--nested">
-                <span>Qual diagnóstico?</span>
-                <input type="text" placeholder="Informe o diagnóstico" maxlength="120" required />
-              </label>
-            }
+    <div class="form-canvas">
+      @if (error) {
+        <div id="anamnese-error" tabindex="-1" class="anamnese-alert anamnese-alert--error" role="alert">
+          {{ error }}
+          @if (conflict) {
+            <app-ui-button label="Recarregar dados" variant="secondary" [fullWidth]="false" (click)="reload()" />
           }
-        </fieldset>
-        <label class="field field--full">
-          <span>Usa medicação atualmente?</span>
-          <select required (change)="setSelection('medication', $event)">
-            <option value="" disabled selected>Selecione</option>
-            @for (option of yesNoOptions; track option) {
-              <option>{{ option }}</option>
-            }
-          </select>
-        </label>
-        @if (selected.medication === 'Sim') {
-          <label class="field field--full">
-            <span>Quais medicações utiliza?</span>
-            <textarea placeholder="Descreva com detalhes..." maxlength="500" required></textarea>
-          </label>
-        }
-        <label class="field field--full">
-          <span>Tem alergias?</span>
-          <select required (change)="setSelection('allergy', $event)">
-            <option value="" disabled selected>Selecione</option>
-            @for (option of yesNoOptions; track option) {
-              <option>{{ option }}</option>
-            }
-          </select>
-        </label>
-        @if (selected.allergy === 'Sim') {
-          <label class="field field--full">
-            <span>Quais alergias?</span>
-            <textarea placeholder="Descreva com detalhes..." maxlength="500" required></textarea>
-          </label>
-        }
-        <label class="field field--full">
-          <span>Frequência intestinal</span>
-          <select required>
-            <option value="" disabled selected>Selecione</option>
-            @for (option of frequencyOptions; track option) {
-              <option>{{ option }}</option>
-            }
-          </select>
-        </label>
-        <label class="field field--full">
-          <span>Observações sobre saúde digestiva</span>
-          <textarea placeholder="Descreva com detalhes..." maxlength="500" required></textarea>
-        </label>
-        <div class="urine-reference" role="img" aria-label="Referência de cores da urina">
-          <span>Tabela de cores da urina</span>
-          <div class="urine-reference__bar"></div>
+          @else if (auth.authenticated && !editing) {
+            <app-ui-button label="Tentar novamente" variant="secondary" [fullWidth]="false" (click)="patientId ? reload() : initialize()" />
+          }
         </div>
-        <div class="field-row">
-          <label class="field">
-            <span>Cor da urina habitual</span>
-            <select required>
-              <option value="" disabled selected>Selecione</option>
-              @for (option of urineColorOptions; track option) {
-                <option>{{ option }}</option>
-              }
-            </select>
-          </label>
-          <label class="field">
-            <span>Faz uso de laxantes?</span>
-            <select required (change)="setSelection('laxative', $event)">
-              <option value="" disabled selected>Selecione</option>
-              @for (option of yesNoOptions; track option) {
-                <option>{{ option }}</option>
-              }
-            </select>
-          </label>
-        </div>
-        @if (selected.laxative === 'Sim') {
-          <label class="field field--full">
-            <span>Qual laxante e frequência de uso?</span>
-            <input type="text" placeholder="Informe o laxante e a frequência" maxlength="160" required />
-          </label>
-        }
-        <div class="bristol-placeholder">Imagem da Escala de Bristol — aguardando arte final</div>
-        <div class="field-row">
-          <label class="field">
-            <span>Possui exames recentes?</span>
-            <select required (change)="setSelection('recentExams', $event)">
-              <option value="" disabled selected>Selecione</option>
-              @for (option of yesNoOptions; track option) {
-                <option>{{ option }}</option>
-              }
-            </select>
-          </label>
-          @if (selected.recentExams === 'Sim') {
-            <label class="field">
-              <span>Qual exame?</span>
-              <select required (change)="setSelection('exam', $event)">
-                <option value="" disabled selected>Selecione</option>
-                @for (option of examOptions; track option) {
-                  <option>{{ option }}</option>
+      }
+      @if (message) { <p class="anamnese-alert" role="status">{{ message }}</p> }
+      @if (!auth.authenticated) {
+        <form class="anamnese-login form-section" (ngSubmit)="login()">
+          <h2>Acesso do nutricionista</h2>
+          <label class="field"><span>E-mail</span><input type="email" name="email" [(ngModel)]="email" required maxlength="100" autocomplete="username" /></label>
+          <label class="field"><span>Senha</span><input type="password" name="password" [(ngModel)]="password" required maxlength="255" autocomplete="current-password" /></label>
+          <app-ui-button
+            [label]="loading ? 'Entrando...' : 'Entrar'"
+            type="submit"
+            [loading]="loading"
+            [disabled]="!email || !password"
+          />
+        </form>
+      } @else {
+        <label class="field">
+          <span>Paciente</span>
+          <select aria-label="Paciente" [ngModel]="patientId" (ngModelChange)="selectPatient($event)" [disabled]="loading || saving || editing">
+            <option [ngValue]="null" disabled>Selecione o paciente</option>
+            @for (patient of patients; track patient.id) { <option [ngValue]="patient.id">{{ patient.nome }}</option> }
+          </select>
+        </label>
+        @if (loading) { <p role="status">Carregando...</p> }
+        @else if (!patients.length && !error) { <p>Nenhum paciente vinculado.</p> }
+
+        @if (data && !loading) {
+          @if (!editing) {
+            <section class="anamnese-overview">
+              <div>
+                <h2>Anamnese</h2>
+                <p class="anamnese-status">{{ data.status === 'NAO_INICIADA' ? 'Não iniciada' : data.status === 'RASCUNHO' ? 'Rascunho salvo' : 'Finalizada' }}</p>
+                @if (data.atualizadaEm) { <p>Última atualização: {{ data.atualizadaEm | date:'dd/MM/yyyy HH:mm' }}</p> }
+              </div>
+              <div class="actions">
+                @if (data.rascunho !== null) {
+                  <app-ui-button label="Descartar rascunho" variant="secondary" [fullWidth]="false" (click)="discardDraft()" [disabled]="saving" />
                 }
-              </select>
-            </label>
-            @if (selected.exam === 'Outro') {
-              <label class="field field--full">
-                <span>Informe o exame</span>
-                <input type="text" placeholder="Digite o nome do exame" maxlength="120" required />
-              </label>
-            }
-          }
-        </div>
-        <div class="field-row">
-          <label class="field">
-            <span>Histórico familiar relevante?</span>
-            <select required (change)="setSelection('familyHistory', $event)">
-              <option value="" disabled selected>Selecione</option>
-              @for (option of yesNoOptions; track option) {
-                <option>{{ option }}</option>
-              }
-            </select>
-          </label>
-          @if (selected.familyHistory === 'Sim') {
-            <label class="field">
-              <span>Qual condição?</span>
-              <select required (change)="setSelection('familyCondition', $event)">
-                <option value="" disabled selected>Selecione</option>
-                @for (option of familyConditionOptions; track option) {
-                  <option>{{ option }}</option>
-                }
-              </select>
-            </label>
-            @if (selected.familyCondition === 'Outra') {
-              <label class="field field--full">
-                <span>Informe a condição</span>
-                <input type="text" placeholder="Digite a condição familiar" maxlength="120" required />
-              </label>
-            }
-          }
-        </div>
-      </section>
-
-      <section class="form-section" aria-labelledby="atividade">
-        <h2 id="atividade">Atividade Física</h2>
-        <label class="field field--full">
-          <span>Pratica atividade física regularmente?</span>
-          <select required (change)="setSelection('physicalActivity', $event)">
-            <option value="" disabled selected>Selecione</option>
-            @for (option of yesNoOptions; track option) {
-              <option>{{ option }}</option>
-            }
-          </select>
-        </label>
-        @if (selected.physicalActivity === 'Sim') {
-          <fieldset class="checkbox-group" data-checkbox-group>
-            <legend>{{ physicalActivities.label }}</legend>
-            @for (option of physicalActivities.options; track option) {
-              <label>
-                <input #activityOption type="checkbox" name="tipoAtividade" (change)="clearCheckboxGroupValidity($event)" />
-                {{ option }}
-              </label>
-              @if (option === 'Outro' && activityOption.checked) {
-                <label class="field field--full field--nested">
-                  <span>Qual atividade?</span>
-                  <input type="text" placeholder="Informe a atividade" maxlength="120" required />
-                </label>
+                <app-ui-button
+                  [label]="data.rascunho !== null ? 'Continuar rascunho' : data.finalizadaEm ? 'Editar anamnese' : 'Nova Anamnese'"
+                  [icon]="data.rascunho === null && !data.finalizadaEm ? 'plus' : ''"
+                  [fullWidth]="false"
+                  (click)="startEditing()"
+                  [disabled]="saving"
+                />
+              </div>
+            </section>
+            @if (!data.finalizadaEm) {
+              <p class="anamnese-empty">{{ data.rascunho !== null ? 'Anamnese em preenchimento.' : 'Nenhuma anamnese cadastrada.' }}</p>
+            } @else {
+              <p class="anamnese-status">Finalizada em {{ data.finalizadaEm | date:'dd/MM/yyyy HH:mm' }}</p>
+              @for (section of sections; track section) {
+                <section class="form-section anamnese-summary">
+                  <h2>{{ section }}</h2>
+                  <dl>
+                    @for (field of fieldsFor(section); track field.key) {
+                      @if (visible(field, data.respostas)) {
+                        <div><dt>{{ field.label }}</dt><dd>{{ display(data.respostas[field.key]) }}</dd></div>
+                      }
+                    }
+                  </dl>
+                </section>
               }
             }
-          </fieldset>
-          <div class="field-row">
-            <label class="field">
-              <span>Frequência semanal</span>
-              <select required>
-                <option value="" disabled selected>Selecione</option>
-                @for (option of weeklyFrequencyOptions; track option) {
-                  <option>{{ option }}</option>
-                }
-              </select>
-            </label>
-            <label class="field">
-              <span>Intensidade</span>
-              <select required>
-                <option value="" disabled selected>Selecione</option>
-                @for (option of intensityOptions; track option) {
-                  <option>{{ option }}</option>
-                }
-              </select>
-            </label>
-          </div>
+          } @else {
+            <form #formElement class="anamnese-form" (ngSubmit)="save(false, formElement)" novalidate>
+              <section class="form-section form-section--readonly" aria-labelledby="identificacao">
+                <h2 id="identificacao">Identificação</h2>
+                <label class="field"><span>Nome completo</span><input [value]="data.paciente.nome" disabled /></label>
+                <label class="field"><span>E-mail</span><input [value]="data.paciente.email" disabled /></label>
+                <div class="field-row">
+                  <label class="field"><span>Data de nascimento</span><input [value]="(data.paciente.dataNascimento | date:'dd/MM/yyyy') || 'Não informado'" disabled /></label>
+                  <label class="field"><span>Sexo</span><input [value]="data.paciente.sexo || 'Não informado'" disabled /></label>
+                </div>
+              </section>
+              @for (section of sections; track section; let sectionIndex = $index) {
+                <section class="form-section" [attr.aria-labelledby]="'section-' + sectionIndex">
+                  <h2 [id]="'section-' + sectionIndex">{{ section }}</h2>
+                  <div class="anamnese-grid">
+                    @for (field of fieldsFor(section); track field.key) {
+                      @if (visible(field)) {
+                        <div class="anamnese-control" [class.anamnese-control--full]="field.type === 'textarea' || field.type === 'checkbox' || !!field.image"
+                          [class.anamnese-control--range]="field.type === 'range'">
+                          @if (field.image) {
+                            <div class="bristol-reference"><img [src]="field.image" [alt]="field.imageAlt || ''" /></div>
+                          }
+                          @if (field.type === 'checkbox') {
+                            <fieldset class="checkbox-group" [id]="field.key" tabindex="-1" [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null">
+                              <legend>{{ field.label }} <span aria-hidden="true">*</span></legend>
+                              @for (option of field.options; track option) {
+                                <app-ui-checkbox
+                                  [checkboxId]="field.key + '-' + $index"
+                                  [label]="option"
+                                  [ngModel]="checked(field.key, option)"
+                                  [ngModelOptions]="{ standalone: true }"
+                                  (ngModelChange)="toggleValue(field, option, $event)"
+                                  [disabled]="saving"
+                                />
+                              }
+                            </fieldset>
+                          } @else if (field.type === 'range') {
+                            <label class="scale-field" [for]="field.key">
+                              <span>{{ field.label }} <span aria-hidden="true">*</span></span>
+                              <output class="range-value" [attr.for]="field.key" [style.left]="rangePosition(field)">{{ answers[field.key] ?? '–' }}</output>
+                              <input type="range" [id]="field.key" [min]="field.min!" [max]="field.max!" [step]="field.step!"
+                                [value]="answers[field.key] ?? 5" (input)="rangeInput(field, $event)" (change)="rangeInput(field, $event)"
+                                (pointerup)="rangeInput(field, $event)" aria-required="true"
+                                [disabled]="saving" [attr.aria-invalid]="!!errors[field.key]"
+                                [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null" />
+                            </label>
+                          } @else {
+                            <label class="field" [for]="field.key">
+                              <span>{{ field.label }} <span aria-hidden="true">*</span></span>
+                              @switch (field.type) {
+                                @case ('select') {
+                                  <select [id]="field.key" [name]="field.key" [ngModel]="answers[field.key] ?? ''"
+                                    (ngModelChange)="change(field, $event)" [required]="field.required" [disabled]="saving"
+                                    [attr.aria-invalid]="!!errors[field.key]" [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null">
+                                    <option value="" disabled>Selecione</option>
+                                    @for (option of field.options; track option) { <option [value]="option">{{ option }}</option> }
+                                  </select>
+                                }
+                                @case ('textarea') {
+                                  <textarea [id]="field.key" [name]="field.key" [ngModel]="answers[field.key] ?? ''"
+                                    (ngModelChange)="change(field, $event)" [maxlength]="field.maxLength!" [required]="field.required"
+                                    [disabled]="saving" [attr.aria-invalid]="!!errors[field.key]"
+                                    [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null"></textarea>
+                                }
+                                @case ('number') {
+                                  <input type="number" [id]="field.key" [name]="field.key" [ngModel]="answers[field.key]"
+                                    (ngModelChange)="change(field, $event)" [min]="field.min!" [max]="field.max!" [step]="field.step!"
+                                    [required]="field.required" [disabled]="saving" [attr.aria-invalid]="!!errors[field.key]"
+                                    [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null" />
+                                }
+                                @case ('tel') {
+                                  <input type="tel" [id]="field.key" [value]="answers[field.key] ?? ''" (input)="phoneInput(field, $event)"
+                                    [attr.maxlength]="field.maxLength" [pattern]="field.pattern!" placeholder="(00) 00000-0000"
+                                    [required]="field.required" [disabled]="saving" autocomplete="tel" [attr.aria-invalid]="!!errors[field.key]"
+                                    [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null" />
+                                }
+                                @default {
+                                  <input type="text" [id]="field.key" [name]="field.key" [ngModel]="answers[field.key] ?? ''"
+                                    (ngModelChange)="change(field, $event)" [maxlength]="field.maxLength!" [required]="field.required"
+                                    [disabled]="saving" [attr.aria-invalid]="!!errors[field.key]"
+                                    [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null" />
+                                }
+                              }
+                            </label>
+                          }
+                          @if (errors[field.key]) { <p class="field-error" [id]="field.key + '-error'">{{ errors[field.key] }}</p> }
+                        </div>
+                      }
+                    }
+                  </div>
+                </section>
+              }
+              <div class="form-actions">
+                <app-ui-button label="Cancelar" variant="secondary" [fullWidth]="false" (click)="cancel()" [disabled]="saving" />
+                <app-ui-button label="Salvar rascunho" variant="secondary" [fullWidth]="false" (click)="save(true, formElement)" [disabled]="saving || conflict" />
+                <app-ui-button
+                  [label]="saving ? 'Salvando...' : 'Finalizar anamnese'"
+                  type="submit"
+                  [fullWidth]="false"
+                  [loading]="saving"
+                  [disabled]="conflict"
+                />
+              </div>
+            </form>
+          }
         }
-      </section>
-
-      <section class="form-section" aria-labelledby="sono">
-        <h2 id="sono">Sono e Estresse</h2>
-        <div class="field-row">
-          <label class="field">
-            <span>Quantas horas de sono costuma ter por noite?</span>
-            <select required>
-              <option value="" disabled selected>Selecione</option>
-              @for (option of sleepHoursOptions; track option) {
-                <option>{{ option }}</option>
-              }
-            </select>
-          </label>
-          <label class="field">
-            <span>Sente-se descansado(a) ao acordar?</span>
-            <select required>
-              <option value="" disabled selected>Selecione</option>
-              @for (option of yesNoOptions; track option) {
-                <option>{{ option }}</option>
-              }
-            </select>
-          </label>
-        </div>
-        <label class="field field--full">
-          <span>Sente-se frequentemente estressado(a)?</span>
-          <select required>
-            <option value="" disabled selected>Selecione</option>
-            @for (option of yesNoOptions; track option) {
-              <option>{{ option }}</option>
-            }
-          </select>
-        </label>
-      </section>
-
-      <section class="form-section" aria-labelledby="objetivos">
-        <h2 id="objetivos">Objetivos e Expectativas</h2>
-        <fieldset class="checkbox-group" data-checkbox-group>
-          <legend>{{ objectives.label }}</legend>
-          @for (option of objectives.options; track option) {
-            <label>
-              <input #objectiveOption type="checkbox" name="objetivos" (change)="clearCheckboxGroupValidity($event)" />
-              {{ option }}
-            </label>
-            @if (option === 'Outro' && objectiveOption.checked) {
-              <label class="field field--full field--nested">
-                <span>Qual objetivo?</span>
-                <input type="text" placeholder="Informe o objetivo" maxlength="160" required />
-              </label>
-            }
-          }
-        </fieldset>
-        <label class="field field--full">
-          <span>Já tentou alcançar esses objetivos antes? Como foi?</span>
-          <textarea placeholder="Descreva com detalhes..." maxlength="500" required></textarea>
-        </label>
-        <div class="field-row field-row--mixed">
-          <label class="field">
-            <span>Possui prazo para atingir seus objetivos?</span>
-            <select required (change)="setSelection('deadline', $event)">
-              <option value="" disabled selected>Selecione</option>
-              @for (option of deadlineOptions; track option) {
-                <option>{{ option }}</option>
-              }
-            </select>
-          </label>
-          @if (selected.deadline && selected.deadline !== 'Não tenho prazo') {
-            <label class="field">
-              <span>Por que esse prazo é importante?</span>
-              <textarea placeholder="Descreva com detalhes..." maxlength="500" required></textarea>
-            </label>
-          }
-        </div>
-      </section>
-
-      <section class="form-section" aria-labelledby="consideracoes">
-        <h2 id="consideracoes">Considerações finais</h2>
-        <label class="field field--full">
-          <span>Existe algo mais que gostaria de compartilhar sobre hábitos ou saúde? Sinta-se confortável, seremos seu lugar seguro!</span>
-          <textarea placeholder="Descreva com detalhes..." maxlength="500" required></textarea>
-        </label>
-      </section>
-
-      <div class="form-actions">
-        <button class="secondary-button" type="button">Salvar rascunho</button>
-        <button class="primary-button" type="submit">Finalizar anamnese</button>
-      </div>
-    </form>
+      }
+    </div>
   </section>
 </main>

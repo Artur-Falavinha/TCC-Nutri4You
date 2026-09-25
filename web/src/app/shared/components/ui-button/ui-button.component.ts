@@ -12,6 +12,7 @@ export class UiButtonComponent {
   @Input() loading = false;
   @Input() disabled = false;
   @Input() type: 'button' | 'submit' = 'button';
+  @Input() variant: 'primary' | 'secondary' = 'primary';
   @Input() fullWidth = true;
 
   get isDisabled(): boolean {
