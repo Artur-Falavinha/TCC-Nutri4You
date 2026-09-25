@@ -1,0 +1,64 @@
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  min-height: var(--input-min-height);
+  padding: var(--space-12) var(--space-24);
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: var(--color-brand-primary);
+  color: var(--color-text-on-brand);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.ui-button--full {
+  width: 100%;
+}
+
+.ui-button:hover:not(:disabled) {
+  background-color: var(--color-brand-primary-hover);
+}
+
+.ui-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.ui-button__icon-slot {
+  position: relative;
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  flex-shrink: 0;
+}
+
+.ui-button__icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--icon-size-md);
+  opacity: 0;
+  transform: scale(0.85) rotate(-15deg);
+  transition:
+    opacity var(--transition-icon),
+    transform var(--transition-icon);
+}
+
+.ui-button__icon--visible {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+.ui-button__icon--loading.ui-button__icon--visible {
+  transform: scale(1) rotate(0deg);
+}
+
+.ui-button__label {
+  white-space: nowrap;
+}

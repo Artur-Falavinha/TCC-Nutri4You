@@ -13,10 +13,19 @@ import { ApiErrorResponse } from '../models/api-response.model';
 export const apiErrorInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
+      const body = error.error;
       const normalized: ApiErrorResponse = {
         status: error.status,
-        error: error.error?.error ?? error.statusText ?? 'ERRO_DESCONHECIDO',
-        message: error.error?.message ?? 'Não foi possível completar a requisição.',
+        error:
+          typeof body === 'object' && body !== null && 'error' in body
+            ? String((body as ApiErrorResponse).error)
+            : error.status === 0
+              ? 'ERRO_REDE'
+              : error.statusText || 'ERRO_DESCONHECIDO',
+        message:
+          typeof body === 'object' && body !== null && 'message' in body
+            ? String((body as ApiErrorResponse).message)
+            : 'Não foi possível completar a requisição.',
         path: req.url,
         timestamp: new Date().toISOString()
       };

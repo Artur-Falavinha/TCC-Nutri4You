@@ -85,13 +85,27 @@ Implementa `UserDetails` com authority `ROLE_PACIENTE`.
 
 Implementa `UserDetails` com authority `ROLE_NUTRICIONISTA`.
 
+### Token_Email (Sprint 2 — Q27)
+
+| Coluna | Tipo | Constraints |
+| --- | --- | --- |
+| `id_token` | SERIAL | PK |
+| `token` | UUID | NOT NULL, UNIQUE |
+| `tipo` | VARCHAR(30) | NOT NULL (`CONFIRMACAO_EMAIL` \| `RECUPERACAO_SENHA`) |
+| `id_paciente` | INT | FK nullable |
+| `id_nutricionista` | INT | FK nullable |
+| `expira_em` | TIMESTAMP | NOT NULL |
+| `usado_em` | TIMESTAMP | — |
+
+Constraint `chk_token_titular`: exatamente um titular (XOR paciente **ou** nutricionista). Confirmação de e-mail permanece só para paciente.
+
 ## Dados seed (mock)
 
 O `init.sql` inclui dados iniciais para desenvolvimento:
 
 | Recurso | Quantidade | Detalhe |
 | --- | --- | --- |
-| Nutricionistas | 1 | `nutri@nutri4you.com` |
+| Nutricionistas | 1 | `nutri@nutri4you.com` / senha texto `password` |
 | Pacientes | 2 | `arthur@email.com`, `artur@email.com` |
 | Consultas demo | 2 | Pacientes seed ↔ nutricionista seed |
 | Alimentos (TACO) | 5 | Arroz, feijão, frango, ovo, banana |

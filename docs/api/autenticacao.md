@@ -100,8 +100,9 @@ Configuradas em `SecurityConfig`:
 | `/api/v1/auth/redefinir-senha` | POST | Público |
 | `/api/v1/dev/email-preview/{token}` | GET | Público *(perfil dev)* |
 | `/api/v1/pacientes/autocadastro` | POST | Público |
+| `/api/v1/nutricionistas/autocadastro` | POST | Público *(Q29)* |
 | `/api/v1/health` | GET | Público |
-| `/api/v1/nutricionistas/cadastro` | POST | `ROLE_NUTRICIONISTA` |
+| `/api/v1/nutricionistas/cadastro` | POST | `ROLE_NUTRICIONISTA` *(cadastro assistido — HU019)* |
 | `/api/v1/gestao-pacientes/**` | * | `ROLE_NUTRICIONISTA` |
 | `/error` | * | Público |
 | Demais rotas | * | Autenticado |
@@ -123,7 +124,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 | Cliente | Envio de JWT | Observação |
 | --- | --- | --- |
-| Web (Angular) | Pendente S2-W1 | CORS habilitado no backend |
+| Web (Angular) | `authInterceptor` + `TokenStorageService` | Rotas públicas: login, autocadastro, recuperação |
 | Mobile (Expo) | Pendente S2-M1 | Sem restrição CORS nativa |
 
 ## E-mail (S2-B3)
@@ -135,6 +136,19 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 Adapter: `EmailSender` → `ConsoleEmailSender` ou `SmtpEmailSender`.
 
+## Recuperação de senha (Q26–Q28)
+
+- `POST /auth/recuperar-senha` aceita e-mail de **paciente ou nutricionista** (lookup nutri → paciente).
+- Resposta sempre genérica 200, mesmo se o e-mail não existir (RNF02).
+- Falha no envio SMTP/console **não** propaga 500 — token persiste e e-mail é enviado de forma assíncrona.
+- Tokens de recuperação anteriores do mesmo titular são invalidados ao solicitar novo link.
+- Consumo atômico do token — segunda tentativa retorna `Token inválido ou expirado.`
+
+## Autocadastro nutricionista (Q29)
+
+- Wizard web: dados → senha → `POST /nutricionistas/autocadastro` → login.
+- Nutricionista **não** exige `email_confirmado` na S2 — login imediato após autocadastro.
+
 ## Próximos passos (Sprint 2)
 
-- Interceptor HTTP Angular / mobile para JWT (S2-W1 / S2-M1).
+- Interceptor HTTP mobile para JWT (S2-M1).

@@ -1,0 +1,28 @@
+.ui-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-brand-primary);
+  text-decoration: none;
+  transition: opacity var(--transition-fast);
+}
+
+.ui-link--secondary {
+  color: var(--color-text-secondary);
+}
+
+.ui-link--centered {
+  justify-content: center;
+  width: 100%;
+}
+
+.ui-link:hover {
+  opacity: 0.85;
+}
+
+.ui-link__icon {
+  font-size: var(--icon-size-md);
+}

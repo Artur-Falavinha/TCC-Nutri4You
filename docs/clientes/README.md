@@ -9,7 +9,7 @@ Documentação das aplicações cliente que consomem a API Nutri4You.
 | Web | Angular 19 | `web/` | `http://localhost:8080/api/v1` |
 | Mobile | Expo 57 / React Native 0.86 | `mobile/` | `http://<IP-local>:8080/api/v1` |
 
-Ambos possuem camada HTTP base e tela de health check na Sprint 1. Autenticação JWT nos clientes está prevista para a Sprint 2.
+Web (Sprint 2): auth JWT + telas de login/cadastro/recuperação. Mobile: camada HTTP base; interceptor JWT previsto em S2-M1.
 
 ---
 
@@ -19,30 +19,39 @@ Ambos possuem camada HTTP base e tela de health check na Sprint 1. Autenticaçã
 
 ```text
 web/src/app/
-├── app.routes.ts              # Rotas
-├── app.config.ts              # Providers (HttpClient, interceptors)
+├── app.routes.ts
+├── app.config.ts
 ├── core/
+│   ├── guards/                # authGuard, guestGuard
 │   ├── services/
-│   │   ├── api.service.ts     # Cliente HTTP genérico
-│   │   └── health.service.ts  # GET /health
+│   │   ├── api.service.ts
+│   │   ├── auth.service.ts
+│   │   ├── token-storage.service.ts
+│   │   └── health.service.ts
 │   ├── interceptors/
+│   │   ├── auth.interceptor.ts
 │   │   └── api-error.interceptor.ts
 │   └── models/
-│       └── api-response.model.ts
 ├── features/
+│   ├── auth/                  # login, cadastro, senha, recuperação
+│   ├── dashboard/             # shell provisório pós-login
 │   ├── home/
 │   ├── health/
 │   └── not-found/
+├── shared/                    # UI auth (inputs, layout, alerts)
 └── environments/
-    ├── environment.ts              # production
-    └── environment.development.ts  # development
 ```
 
 ### Rotas
 
 | Path | Componente | Descrição |
 | --- | --- | --- |
-| `/` | `HomeComponent` | Página inicial |
+| `/login` | `LoginComponent` | Login nutricionista |
+| `/cadastro` | `RegisterComponent` | Dados (nome, CRN, e-mail) |
+| `/cadastro/senha` | `RegisterPasswordComponent` | Senha → `POST /nutricionistas/autocadastro` |
+| `/esqueci-senha` | `ForgotPasswordComponent` | Solicitar link |
+| `/redefinir-senha` | `ResetPasswordComponent` | Nova senha via token |
+| `/dashboard` | `DashboardComponent` | Área autenticada (shell) |
 | `/health` | `HealthComponent` | Status da API |
 | `/**` | `NotFoundComponent` | 404 |
 

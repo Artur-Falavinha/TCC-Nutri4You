@@ -91,7 +91,7 @@ public class AuthController {
         if (request == null || request.token() == null || request.token().isBlank()) {
             throw new IllegalArgumentException("Token é obrigatório.");
         }
-        authEmailService.redefinirSenha(UUID.fromString(request.token()), request.senha());
+        authEmailService.redefinirSenha(parseTokenUuid(request.token()), request.senha());
         return ResponseEntity.ok(ApiResponse.ok(
                 new MensagemResponse("Senha redefinida com sucesso."),
                 "Senha redefinida com sucesso."));
@@ -99,5 +99,13 @@ public class AuthController {
 
     private static String normalizarEmail(String email) {
         return email == null ? "" : email.trim().toLowerCase();
+    }
+
+    private static UUID parseTokenUuid(String token) {
+        try {
+            return UUID.fromString(token.trim());
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Token inválido ou expirado.");
+        }
     }
 }

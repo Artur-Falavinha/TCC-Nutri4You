@@ -44,7 +44,7 @@ public class DevEmailPreviewController {
         EmailPreviewDTO preview = new EmailPreviewDTO(
                 tokenEmail.getToken(),
                 tokenEmail.getTipo(),
-                tokenEmail.getPaciente().getEmail(),
+                tokenEmail.getEmailDestinatario(),
                 tokenEmail.getExpiraEm(),
                 tokenEmail.getUsadoEm(),
                 linkConfirmacao,

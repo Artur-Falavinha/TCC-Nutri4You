@@ -1,26 +1,28 @@
+import { clearToken, getToken } from '../auth/token-storage';
 import { env } from '../config/env';
 import { ApiError, ApiErrorResponse, ApiResponse } from './api-response.types';
 
+type UnauthorizedHandler = () => void;
+
 /**
- * Cliente de API genérico usado por todos os serviços de feature no mobile.
- * Equivalente ao ApiService do Angular: centraliza a URL base e normaliza
- * erros no formato ApiErrorResponse, para que as telas só precisem tratar
- * um formato único de erro.
- *
- * Sprint 1: cobre apenas o necessário para consumir o endpoint de health
- * check. Sprint 2 em diante, o header de Authorization (JWT) entra aqui.
+ * Cliente HTTP unico do mobile: URL base, JWT e unwrap do envelope ApiResponse.
  */
 class ApiClient {
   private readonly baseUrl = env.apiBaseUrl;
+  private onUnauthorized: UnauthorizedHandler | null = null;
+
+  setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
+    this.onUnauthorized = handler;
+  }
 
   async get<T>(path: string): Promise<T> {
     return this.request<T>(path, { method: 'GET' });
   }
 
-  async post<T>(path: string, body: unknown): Promise<T> {
+  async post<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>(path, {
       method: 'POST',
-      body: JSON.stringify(body)
+      body: body === undefined ? undefined : JSON.stringify(body)
     });
   }
 
@@ -37,6 +39,7 @@ class ApiClient {
 
   private async request<T>(path: string, init: RequestInit): Promise<T> {
     const url = this.buildUrl(path);
+    const token = await getToken();
 
     let response: Response;
     try {
@@ -44,6 +47,7 @@ class ApiClient {
         ...init,
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...init.headers
         }
       });
@@ -51,10 +55,16 @@ class ApiClient {
       throw new ApiError({
         status: 0,
         error: 'ERRO_DE_REDE',
-        message: 'Não foi possível conectar à API. Verifique sua conexão ou se o backend está no ar.',
+        message:
+          'Nao foi possivel conectar a API. Verifique sua conexao ou se o backend esta no ar.',
         path: url,
         timestamp: new Date().toISOString()
       });
+    }
+
+    if (response.status === 401) {
+      await clearToken();
+      this.onUnauthorized?.();
     }
 
     if (!response.ok) {
@@ -62,7 +72,7 @@ class ApiClient {
       throw new ApiError({
         status: response.status,
         error: body?.error ?? response.statusText ?? 'ERRO_DESCONHECIDO',
-        message: body?.message ?? 'Não foi possível completar a requisição.',
+        message: body?.message ?? 'Nao foi possivel completar a requisicao.',
         path: url,
         timestamp: new Date().toISOString()
       });

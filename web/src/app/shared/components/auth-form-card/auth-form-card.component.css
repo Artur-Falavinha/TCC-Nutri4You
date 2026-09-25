@@ -1,0 +1,25 @@
+.auth-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  width: var(--auth-card-width);
+  padding: var(--space-24);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface-card);
+  box-shadow: var(--shadow-card);
+}
+
+.auth-card__title {
+  font-family: var(--font-heading);
+  font-size: var(--text-md);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+  color: var(--color-text-primary);
+}
+
+.auth-card__description {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+}

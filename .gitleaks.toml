@@ -1,0 +1,24 @@
+# Extende a config padrao do gitleaks e ignora falsos positivos conhecidos.
+title = "Nutri4You"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Chaves de localStorage/sessionStorage do app web (nao sao credenciais)"
+regexTarget = "line"
+regexes = [
+  '''PROFILE_KEY\s*=''',
+  '''TOKEN_KEY\s*=''',
+  '''JWT_LS_ITEM\s*=''',
+  '''PERFIL_LS_ITEM\s*=''',
+  '''STORAGE_KEY\s*=''',
+  '''nutri4you\.(jwt|perfil|register-draft)''',
+]
+
+[[allowlists]]
+description = "Arquivos de storage web"
+paths = [
+  '''(^|/)token-storage\.service\.ts$''',
+  '''(^|/)register-flow\.service\.ts$''',
+]

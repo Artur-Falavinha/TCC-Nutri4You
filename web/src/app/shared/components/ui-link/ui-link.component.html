@@ -1,0 +1,11 @@
+<a
+  class="ui-link"
+  [class.ui-link--secondary]="variant === 'secondary'"
+  [class.ui-link--centered]="centered"
+  [routerLink]="route"
+>
+  @if (icon) {
+    <i class="ph ui-link__icon" [class]="'ph-' + icon" aria-hidden="true"></i>
+  }
+  <span>{{ label }}</span>
+</a>

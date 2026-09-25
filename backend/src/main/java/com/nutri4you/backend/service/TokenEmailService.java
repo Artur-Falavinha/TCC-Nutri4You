@@ -1,6 +1,7 @@
 package com.nutri4you.backend.service;
 
 import com.nutri4you.backend.config.EmailProperties;
+import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.TipoTokenEmail;
 import com.nutri4you.backend.model.TokenEmail;
@@ -14,6 +15,8 @@ import java.util.UUID;
 @Service
 public class TokenEmailService {
 
+    public static final String MENSAGEM_TOKEN_INVALIDO = "Token inválido ou expirado.";
+
     private final TokenEmailRepository tokenEmailRepository;
     private final EmailProperties emailProperties;
 
@@ -24,40 +27,67 @@ public class TokenEmailService {
 
     @Transactional
     public TokenEmail criarTokenConfirmacao(Paciente paciente) {
-        return salvarToken(paciente, TipoTokenEmail.CONFIRMACAO_EMAIL, emailProperties.getConfirmacaoTtlHoras());
+        return salvarTokenPaciente(paciente, TipoTokenEmail.CONFIRMACAO_EMAIL, emailProperties.getConfirmacaoTtlHoras());
     }
 
     @Transactional
     public TokenEmail criarTokenRecuperacao(Paciente paciente) {
-        return salvarToken(paciente, TipoTokenEmail.RECUPERACAO_SENHA, emailProperties.getRecuperacaoTtlHoras());
+        invalidarRecuperacaoPendente(paciente.getId(), null);
+        return salvarTokenPaciente(paciente, TipoTokenEmail.RECUPERACAO_SENHA, emailProperties.getRecuperacaoTtlHoras());
+    }
+
+    @Transactional
+    public TokenEmail criarTokenRecuperacao(Nutricionista nutricionista) {
+        invalidarRecuperacaoPendente(null, nutricionista.getId());
+        return salvarTokenNutricionista(
+                nutricionista, TipoTokenEmail.RECUPERACAO_SENHA, emailProperties.getRecuperacaoTtlHoras());
+    }
+
+    @Transactional
+    public TokenEmail consumirToken(UUID token, TipoTokenEmail tipoEsperado) {
+        TokenEmail tokenEmail = tokenEmailRepository.findByTokenForUpdate(token)
+                .orElseThrow(() -> new IllegalArgumentException(MENSAGEM_TOKEN_INVALIDO));
+
+        validarEstado(tokenEmail, tipoEsperado);
+        tokenEmail.marcarComoUsado();
+        return tokenEmailRepository.save(tokenEmail);
     }
 
     @Transactional(readOnly = true)
     public TokenEmail validarToken(UUID token, TipoTokenEmail tipoEsperado) {
         TokenEmail tokenEmail = tokenEmailRepository.findByToken(token)
-                .orElseThrow(() -> new IllegalArgumentException("Token inválido ou expirado."));
-
-        if (tokenEmail.getTipo() != tipoEsperado) {
-            throw new IllegalArgumentException("Token inválido ou expirado.");
-        }
-        if (tokenEmail.isUsado()) {
-            throw new IllegalArgumentException("Token já utilizado.");
-        }
-        if (tokenEmail.isExpirado()) {
-            throw new IllegalArgumentException("Token expirado.");
-        }
+                .orElseThrow(() -> new IllegalArgumentException(MENSAGEM_TOKEN_INVALIDO));
+        validarEstado(tokenEmail, tipoEsperado);
         return tokenEmail;
     }
 
-    @Transactional
-    public void marcarComoUsado(TokenEmail tokenEmail) {
-        tokenEmail.marcarComoUsado();
-        tokenEmailRepository.save(tokenEmail);
+    private void validarEstado(TokenEmail tokenEmail, TipoTokenEmail tipoEsperado) {
+        if (tokenEmail.getTipo() != tipoEsperado || tokenEmail.isUsado() || tokenEmail.isExpirado()) {
+            throw new IllegalArgumentException(MENSAGEM_TOKEN_INVALIDO);
+        }
     }
 
-    private TokenEmail salvarToken(Paciente paciente, TipoTokenEmail tipo, long ttlHoras) {
+    private void invalidarRecuperacaoPendente(Integer pacienteId, Integer nutricionistaId) {
+        LocalDateTime agora = LocalDateTime.now();
+        if (pacienteId != null) {
+            tokenEmailRepository.invalidarTokensPendentesPaciente(
+                    pacienteId, TipoTokenEmail.RECUPERACAO_SENHA, agora);
+        }
+        if (nutricionistaId != null) {
+            tokenEmailRepository.invalidarTokensPendentesNutricionista(
+                    nutricionistaId, TipoTokenEmail.RECUPERACAO_SENHA, agora);
+        }
+    }
+
+    private TokenEmail salvarTokenPaciente(Paciente paciente, TipoTokenEmail tipo, long ttlHoras) {
         LocalDateTime expiraEm = LocalDateTime.now().plusHours(ttlHoras);
-        TokenEmail tokenEmail = TokenEmail.criar(paciente, tipo, expiraEm);
+        TokenEmail tokenEmail = TokenEmail.criarParaPaciente(paciente, tipo, expiraEm);
+        return tokenEmailRepository.save(tokenEmail);
+    }
+
+    private TokenEmail salvarTokenNutricionista(Nutricionista nutricionista, TipoTokenEmail tipo, long ttlHoras) {
+        LocalDateTime expiraEm = LocalDateTime.now().plusHours(ttlHoras);
+        TokenEmail tokenEmail = TokenEmail.criarParaNutricionista(nutricionista, tipo, expiraEm);
         return tokenEmailRepository.save(tokenEmail);
     }
 }
