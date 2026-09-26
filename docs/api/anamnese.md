@@ -72,9 +72,12 @@ O backend aplica migrações Flyway na inicialização, conforme o [suporte ofic
 - V1: modelo inicial para banco vazio.
 - V1.1: compatibilidade com bancos anteriores à autenticação. Cria tabelas ausentes e copia vínculos antigos sem excluir a tabela original.
 - V2: estrutura da anamnese e catálogo de perguntas.
-- V3: horários da anamnese com fuso horário.
+- V3: converte horários UTC sem fuso para `TIMESTAMPTZ`; preserva colunas que já têm fuso, inclusive as criadas por `database/init.sql`.
+- V4: permite tokens de paciente ou nutricionista, com chaves estrangeiras e exatamente um titular. Atualiza também bancos que já executaram V1/V1.1.
 
 Em bancos existentes sem histórico Flyway, a configuração faz baseline em V1 e aplica as migrações seguintes. Não usar `docker compose down -v`: não é necessário recriar o volume.
+
+A V3 foi corrigida durante a revisão da PR. Bancos de desenvolvimento que já executaram a versão anterior terão divergência de checksum no Flyway. Antes de atualizar esses ambientes, fazer backup, verificar os horários existentes e executar `repair` com a mesma conexão e localização de migrations da aplicação, após revisar que a única divergência é a V3. Não desabilitar a validação nem recriar o volume. O `repair` atualiza o histórico; não corrige horários que tenham sido deslocados anteriormente. Uma eventual correção desses dados exige identificar o fuso utilizado na execução original. V1 e V1.1 permanecem inalteradas.
 
 Se um banco legado tiver respostas duplicadas para paciente/pergunta, o índice único interromperá a migração. Revisar essas duplicidades antes de tentar novamente; não há exclusão automática de dados clínicos.
 
@@ -88,7 +91,7 @@ cd web
 npm start -- --port 4200
 ```
 
-A API usa http://localhost:8080/api/v1 e o frontend http://localhost:4200/anamnese.
+A API usa <http://localhost:8080/api/v1> e o frontend <http://localhost:4200/anamnese>.
 
 Em outro terminal, na raiz, executar opcionalmente:
 
@@ -125,3 +128,11 @@ npm test -- --watch=false --browsers=ChromeHeadless
 ```
 
 Os testes cobrem permissões, finalização, campos condicionais, valores inválidos, unicidade, conflitos, descarte de rascunho, cancelamento local e preservação dos dados após erro de rede. Os testes Java usam H2; também foi verificado o fluxo integrado no PostgreSQL local.
+
+Para testar o SQL das migrations em um PostgreSQL 16 descartável no Docker:
+
+```powershell
+./scripts/test-migrations.ps1
+```
+
+O script cria um container isolado, sem portas publicadas nem volumes da aplicação, e o remove ao terminar. Usa schemas temporários em transações revertidas. Cobre banco novo, legado sem tabela de tokens, banco criado pelo `init.sql` e colunas com tipos mistos, nos fusos UTC e America/Sao_Paulo. Verifica preservação dos instantes e valores nulos, repetição de V3/V4, tokens dos dois tipos de titular e rejeição de titulares inválidos. Esse teste de SQL complementa os testes H2; não executa o mecanismo de baseline/validação do Flyway.

@@ -68,13 +68,6 @@
   background: var(--color-brand-primary);
 }
 
-.sidebar__icon {
-  display: grid;
-  width: var(--icon-size-md);
-  height: var(--icon-size-md);
-  place-items: center;
-}
-
 .profile {
   display: flex;
   align-items: center;
@@ -126,7 +119,7 @@
   border-bottom: 2px solid transparent;
   color: var(--color-text-muted);
   font-size: var(--text-xs);
-  letter-spacing: 0.075rem;
+  letter-spacing: 0;
   text-decoration: none;
   text-transform: uppercase;
 }
@@ -135,15 +128,6 @@
   border-color: var(--color-brand-primary);
   color: var(--color-text-primary);
   font-weight: 700;
-}
-
-.notification-button {
-  width: 40px;
-  height: 40px;
-  border: 0;
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
 }
 
 .form-canvas {
@@ -171,7 +155,8 @@
 .form-section--readonly {
   padding: var(--space-24);
   border: var(--border-width-hairline) solid #d8dee8;
-  border-radius: var(--radius-md);
+  border-radius: 0;
+  border-inline: 0;
   background: #f3f6f9;
 }
 
@@ -181,15 +166,10 @@
   line-height: var(--leading-normal);
 }
 
-.field-row,
-.scale-row {
+.field-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-24);
-}
-
-.scale-row {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .field {
@@ -197,11 +177,6 @@
   flex-direction: column;
   gap: var(--space-6);
   min-width: 0;
-}
-
-.field--nested {
-  margin-top: 4px;
-  padding-left: 26px;
 }
 
 .field span,
@@ -236,8 +211,7 @@ select:disabled {
 }
 
 input::placeholder,
-textarea::placeholder,
-select {
+textarea::placeholder {
   color: var(--color-text-muted);
 }
 
@@ -259,18 +233,20 @@ textarea {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-12);
-  padding-top: 28px;
+  gap: 0;
+  padding-top: 0;
 }
 
 .scale-field input {
   padding: 0;
   accent-color: var(--color-brand-primary);
+  min-height: 24px;
+  margin-top: 34px;
 }
 
 .range-value {
   position: absolute;
-  top: 18px;
+  bottom: 28px;
   display: grid;
   min-width: 28px;
   height: 22px;
@@ -293,43 +269,12 @@ textarea {
   transform: rotate(45deg);
 }
 
-.urine-reference {
-  display: grid;
-  gap: var(--space-12);
-  justify-items: center;
-  align-self: center;
-  width: min(360px, 100%);
-  padding: 18px;
-  border: 4px solid #111;
-  background: #050505;
-  color: var(--color-text-on-brand);
-  font-size: var(--text-xs);
-  font-weight: 700;
-  text-align: center;
-}
-
-.urine-reference__bar {
-  width: 100%;
-  height: 92px;
-  background: linear-gradient(90deg, #f8f6a3 0 14%, #f2de61 14% 28%, #f3c748 28% 42%, #ec9c25 42% 56%, #e36d14 56% 70%, #bf4512 70% 84%, #6f2c11 84% 100%);
-}
-
-.bristol-placeholder {
-  display: grid;
-  min-height: 160px;
-  place-items: center;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-page);
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  text-align: center;
-}
-
 .form-actions {
   position: sticky;
   bottom: 0;
   gap: var(--space-12);
-  padding: var(--space-24) 0 0;
+  padding: var(--space-24) 0 var(--space-16);
+  flex-wrap: wrap;
   border-top: var(--border-width-hairline) solid #ebeef0;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), #fff 36%);
 }
@@ -372,8 +317,7 @@ textarea {
     font-size: 1.75rem;
   }
 
-  .field-row,
-  .scale-row {
+  .field-row {
     grid-template-columns: 1fr;
   }
 
@@ -383,7 +327,6 @@ textarea {
   }
 }
 
-.urine-reference img,
 .bristol-reference img {
   display: block;
   width: 100%;
@@ -425,25 +368,9 @@ textarea {
   grid-column: span 2;
 }
 
-.anamnese-control .scale-field {
-  gap: 0;
-  padding-top: 0;
-}
-
 .anamnese-control .scale-field > span:first-child {
   position: static;
   min-height: var(--space-32);
-}
-
-.anamnese-control .scale-field input {
-  min-height: 24px;
-  margin-top: 34px;
-}
-
-.anamnese-control .range-value {
-  top: auto;
-  bottom: 28px;
-  color: #fff;
 }
 
 .anamnese-overview {
@@ -530,10 +457,6 @@ textarea {
   border-color: var(--color-error);
 }
 
-select {
-  color: var(--color-text-primary);
-}
-
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
@@ -545,20 +468,6 @@ textarea:focus-visible {
   width: 100%;
   max-width: 420px;
   margin-inline: auto;
-}
-
-.form-section--readonly {
-  border-radius: 0;
-  border-inline: 0;
-}
-
-.patient-tabs__item {
-  letter-spacing: 0;
-}
-
-.form-actions {
-  flex-wrap: wrap;
-  padding-bottom: var(--space-16);
 }
 
 @media (max-width: 720px) {
