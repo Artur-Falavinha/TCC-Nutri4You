@@ -1,6 +1,7 @@
 <button
   class="ui-button"
   [class.ui-button--full]="fullWidth"
+  [class.ui-button--secondary]="variant === 'secondary'"
   [type]="type"
   [disabled]="isDisabled"
   [attr.aria-busy]="loading"

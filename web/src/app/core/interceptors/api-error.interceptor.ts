@@ -16,6 +16,10 @@ export const apiErrorInterceptor: HttpInterceptorFn = (req, next) => {
       const body = error.error;
       const normalized: ApiErrorResponse = {
         status: error.status,
+        fields:
+          typeof body === 'object' && body !== null && 'fields' in body
+            ? (body as ApiErrorResponse).fields
+            : undefined,
         error:
           typeof body === 'object' && body !== null && 'error' in body
             ? String((body as ApiErrorResponse).error)

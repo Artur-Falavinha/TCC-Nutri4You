@@ -1,0 +1,210 @@
+<main class="anamnese-shell">
+  <aside class="sidebar" aria-label="Navegação principal">
+    <div class="sidebar__top">
+      <img class="sidebar__logo" src="/logo-principal.png" alt="Nutri4You" />
+      <nav class="sidebar__nav">
+        <a class="sidebar__link" routerLink="/">Home</a>
+        <a class="sidebar__link sidebar__link--active" routerLink="/anamnese">Pacientes</a>
+      </nav>
+    </div>
+    @if (auth.authenticated) {
+      <div class="sidebar__footer">
+        <div class="profile"><span class="profile__avatar" aria-hidden="true"></span><span>{{ nutritionist }}</span></div>
+        <app-ui-button label="Sair" variant="secondary" [fullWidth]="false" (click)="logout()" [disabled]="saving" />
+      </div>
+    }
+  </aside>
+
+  <section class="workspace">
+    <header class="patient-header">
+      <div>
+        <h1>{{ data?.paciente?.nome || 'Pacientes' }}</h1>
+        <nav class="patient-tabs" aria-label="Seções do paciente">
+          <span class="patient-tabs__item patient-tabs__item--active" aria-current="page">Anamnese</span>
+        </nav>
+      </div>
+    </header>
+    <div class="form-canvas">
+      @if (error) {
+        <div id="anamnese-error" tabindex="-1" class="anamnese-alert anamnese-alert--error" role="alert">
+          {{ error }}
+          @if (conflict) {
+            <app-ui-button label="Recarregar dados" variant="secondary" [fullWidth]="false" (click)="reload()" />
+          }
+          @else if (auth.authenticated && !editing) {
+            <app-ui-button label="Tentar novamente" variant="secondary" [fullWidth]="false" (click)="patientId ? reload() : initialize()" />
+          }
+        </div>
+      }
+      @if (message) { <p class="anamnese-alert" role="status">{{ message }}</p> }
+      @if (!auth.authenticated) {
+        <form class="anamnese-login form-section" (ngSubmit)="login()">
+          <h2>Acesso do nutricionista</h2>
+          <label class="field"><span>E-mail</span><input type="email" name="email" [(ngModel)]="email" required maxlength="100" autocomplete="username" /></label>
+          <label class="field"><span>Senha</span><input type="password" name="password" [(ngModel)]="password" required maxlength="255" autocomplete="current-password" /></label>
+          <app-ui-button
+            [label]="loading ? 'Entrando...' : 'Entrar'"
+            type="submit"
+            [loading]="loading"
+            [disabled]="!email || !password"
+          />
+        </form>
+      } @else {
+        <label class="field">
+          <span>Paciente</span>
+          <select aria-label="Paciente" [ngModel]="patientId" (ngModelChange)="selectPatient($event)" [disabled]="loading || saving || editing">
+            <option [ngValue]="null" disabled>Selecione o paciente</option>
+            @for (patient of patients; track patient.id) { <option [ngValue]="patient.id">{{ patient.nome }}</option> }
+          </select>
+        </label>
+        @if (loading) { <p role="status">Carregando...</p> }
+        @else if (!patients.length && !error) { <p>Nenhum paciente vinculado.</p> }
+
+        @if (data && !loading) {
+          @if (!editing) {
+            <section class="anamnese-overview">
+              <div>
+                <h2>Anamnese</h2>
+                <p class="anamnese-status">{{ data.status === 'NAO_INICIADA' ? 'Não iniciada' : data.status === 'RASCUNHO' ? 'Rascunho salvo' : 'Finalizada' }}</p>
+                @if (data.atualizadaEm) { <p>Última atualização: {{ data.atualizadaEm | date:'dd/MM/yyyy HH:mm' }}</p> }
+              </div>
+              <div class="actions">
+                @if (data.rascunho !== null) {
+                  <app-ui-button label="Descartar rascunho" variant="secondary" [fullWidth]="false" (click)="discardDraft()" [disabled]="saving" />
+                }
+                <app-ui-button
+                  [label]="data.rascunho !== null ? 'Continuar rascunho' : data.finalizadaEm ? 'Editar anamnese' : 'Nova Anamnese'"
+                  [icon]="data.rascunho === null && !data.finalizadaEm ? 'plus' : ''"
+                  [fullWidth]="false"
+                  (click)="startEditing()"
+                  [disabled]="saving"
+                />
+              </div>
+            </section>
+            @if (!data.finalizadaEm) {
+              <p class="anamnese-empty">{{ data.rascunho !== null ? 'Anamnese em preenchimento.' : 'Nenhuma anamnese cadastrada.' }}</p>
+            } @else {
+              <p class="anamnese-status">Finalizada em {{ data.finalizadaEm | date:'dd/MM/yyyy HH:mm' }}</p>
+              @for (section of sections; track section) {
+                <section class="form-section anamnese-summary">
+                  <h2>{{ section }}</h2>
+                  <dl>
+                    @for (field of fieldsFor(section); track field.key) {
+                      @if (visible(field, data.respostas)) {
+                        <div><dt>{{ field.label }}</dt><dd>{{ display(data.respostas[field.key]) }}</dd></div>
+                      }
+                    }
+                  </dl>
+                </section>
+              }
+            }
+          } @else {
+            <form #formElement class="anamnese-form" (ngSubmit)="save(false, formElement)" novalidate>
+              <section class="form-section form-section--readonly" aria-labelledby="identificacao">
+                <h2 id="identificacao">Identificação</h2>
+                <label class="field"><span>Nome completo</span><input [value]="data.paciente.nome" disabled /></label>
+                <label class="field"><span>E-mail</span><input [value]="data.paciente.email" disabled /></label>
+                <div class="field-row">
+                  <label class="field"><span>Data de nascimento</span><input [value]="(data.paciente.dataNascimento | date:'dd/MM/yyyy') || 'Não informado'" disabled /></label>
+                  <label class="field"><span>Sexo</span><input [value]="data.paciente.sexo || 'Não informado'" disabled /></label>
+                </div>
+              </section>
+              @for (section of sections; track section; let sectionIndex = $index) {
+                <section class="form-section" [attr.aria-labelledby]="'section-' + sectionIndex">
+                  <h2 [id]="'section-' + sectionIndex">{{ section }}</h2>
+                  <div class="anamnese-grid">
+                    @for (field of fieldsFor(section); track field.key) {
+                      @if (visible(field)) {
+                        <div class="anamnese-control" [class.anamnese-control--full]="field.type === 'textarea' || field.type === 'checkbox' || !!field.image"
+                          [class.anamnese-control--range]="field.type === 'range'">
+                          @if (field.image) {
+                            <div class="bristol-reference"><img [src]="field.image" [alt]="field.imageAlt || ''" /></div>
+                          }
+                          @if (field.type === 'checkbox') {
+                            <fieldset class="checkbox-group" [id]="field.key" tabindex="-1" [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null">
+                              <legend>{{ field.label }} <span aria-hidden="true">*</span></legend>
+                              @for (option of field.options; track option) {
+                                <app-ui-checkbox
+                                  [checkboxId]="field.key + '-' + $index"
+                                  [label]="option"
+                                  [ngModel]="checked(field.key, option)"
+                                  [ngModelOptions]="{ standalone: true }"
+                                  (ngModelChange)="toggleValue(field, option, $event)"
+                                  [disabled]="saving"
+                                />
+                              }
+                            </fieldset>
+                          } @else if (field.type === 'range') {
+                            <label class="scale-field" [for]="field.key">
+                              <span>{{ field.label }} <span aria-hidden="true">*</span></span>
+                              <output class="range-value" [attr.for]="field.key" [style.left]="rangePosition(field)">{{ answers[field.key] ?? '–' }}</output>
+                              <input type="range" [id]="field.key" [min]="field.min!" [max]="field.max!" [step]="field.step!"
+                                [value]="answers[field.key] ?? 5" (input)="rangeInput(field, $event)" (change)="rangeInput(field, $event)"
+                                (pointerup)="rangeInput(field, $event)" aria-required="true"
+                                [disabled]="saving" [attr.aria-invalid]="!!errors[field.key]"
+                                [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null" />
+                            </label>
+                          } @else {
+                            <label class="field" [for]="field.key">
+                              <span>{{ field.label }} <span aria-hidden="true">*</span></span>
+                              @switch (field.type) {
+                                @case ('select') {
+                                  <select [id]="field.key" [name]="field.key" [ngModel]="answers[field.key] ?? ''"
+                                    (ngModelChange)="change(field, $event)" [required]="field.required" [disabled]="saving"
+                                    [attr.aria-invalid]="!!errors[field.key]" [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null">
+                                    <option value="" disabled>Selecione</option>
+                                    @for (option of field.options; track option) { <option [value]="option">{{ option }}</option> }
+                                  </select>
+                                }
+                                @case ('textarea') {
+                                  <textarea [id]="field.key" [name]="field.key" [ngModel]="answers[field.key] ?? ''"
+                                    (ngModelChange)="change(field, $event)" [maxlength]="field.maxLength!" [required]="field.required"
+                                    [disabled]="saving" [attr.aria-invalid]="!!errors[field.key]"
+                                    [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null"></textarea>
+                                }
+                                @case ('number') {
+                                  <input type="number" [id]="field.key" [name]="field.key" [ngModel]="answers[field.key]"
+                                    (ngModelChange)="change(field, $event)" [min]="field.min!" [max]="field.max!" [step]="field.step!"
+                                    [required]="field.required" [disabled]="saving" [attr.aria-invalid]="!!errors[field.key]"
+                                    [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null" />
+                                }
+                                @case ('tel') {
+                                  <input type="tel" [id]="field.key" [value]="answers[field.key] ?? ''" (input)="phoneInput(field, $event)"
+                                    [attr.maxlength]="field.maxLength" [pattern]="field.pattern!" placeholder="(00) 00000-0000"
+                                    [required]="field.required" [disabled]="saving" autocomplete="tel" [attr.aria-invalid]="!!errors[field.key]"
+                                    [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null" />
+                                }
+                                @default {
+                                  <input type="text" [id]="field.key" [name]="field.key" [ngModel]="answers[field.key] ?? ''"
+                                    (ngModelChange)="change(field, $event)" [maxlength]="field.maxLength!" [required]="field.required"
+                                    [disabled]="saving" [attr.aria-invalid]="!!errors[field.key]"
+                                    [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null" />
+                                }
+                              }
+                            </label>
+                          }
+                          @if (errors[field.key]) { <p class="field-error" [id]="field.key + '-error'">{{ errors[field.key] }}</p> }
+                        </div>
+                      }
+                    }
+                  </div>
+                </section>
+              }
+              <div class="form-actions">
+                <app-ui-button label="Cancelar" variant="secondary" [fullWidth]="false" (click)="cancel()" [disabled]="saving" />
+                <app-ui-button label="Salvar rascunho" variant="secondary" [fullWidth]="false" (click)="save(true, formElement)" [disabled]="saving || conflict" />
+                <app-ui-button
+                  [label]="saving ? 'Salvando...' : 'Finalizar anamnese'"
+                  type="submit"
+                  [fullWidth]="false"
+                  [loading]="saving"
+                  [disabled]="conflict"
+                />
+              </div>
+            </form>
+          }
+        }
+      }
+    </div>
+  </section>
+</main>

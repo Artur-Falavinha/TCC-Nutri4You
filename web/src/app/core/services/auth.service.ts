@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable, map, of, switchMap, throwError } from 'rxjs';
 
 import {
@@ -12,7 +12,7 @@ import { ApiService } from './api.service';
 import { TokenStorageService } from './token-storage.service';
 
 @Injectable({ providedIn: 'root' })
-export class AuthService {
+export class AuthService {
   private readonly api = inject(ApiService);
   private readonly tokenStorage = inject(TokenStorageService);
 
@@ -44,9 +44,13 @@ export class AuthService {
     return this.api.get<UsuarioInfo>('/usuarios/me');
   }
 
-  logout(): void {
+  logout(): void {
     this.tokenStorage.clear();
-  }
+  }
+
+  get authenticated(): boolean {
+    return this.isAuthenticatedNutricionista();
+  }
 
   solicitarRecuperacaoSenha(email: string): Observable<string> {
     return this.api

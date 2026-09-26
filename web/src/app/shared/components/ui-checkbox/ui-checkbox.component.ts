@@ -21,7 +21,7 @@ export class UiCheckboxComponent implements ControlValueAccessor {
   @Input() required = false;
 
   checked = false;
-  disabled = false;
+  @Input() disabled = false;
 
   private onChange: (value: boolean) => void = () => undefined;
   private onTouched: () => void = () => undefined;

@@ -67,6 +67,10 @@ jobs:
       - name: Executar testes Maven
         run: ./mvnw -B test
 
+      - name: Validar migrations no PostgreSQL isolado
+        shell: pwsh
+        run: ../scripts/test-migrations.ps1
+
   web-quality:
     name: Web — lint e build
     runs-on: ubuntu-latest
