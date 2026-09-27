@@ -1,4 +1,4 @@
-<div class="modal__backdrop" (click)="onBackdropClick($event)">
+<div class="modal__backdrop" (click)="onBackdropClick($event)" tabindex="0" (keyup.enter)="onBackdropClick($event)">
   <div class="modal__panel" role="dialog" aria-labelledby="inativar-modal-title">
     
     <header class="modal__header">

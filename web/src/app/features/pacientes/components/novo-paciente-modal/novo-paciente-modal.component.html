@@ -1,5 +1,5 @@
 <!-- Backdrop com fechamento ao clicar fora -->
-<div class="modal__backdrop" (click)="onBackdropClick($event)" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+<div class="modal__backdrop" (click)="onBackdropClick($event)" (keyup.enter)="onBackdropClick($event)" tabindex="0" role="dialog" aria-modal="true" aria-labelledby="modal-title">
 
   <div class="modal__panel">
 
