@@ -44,6 +44,10 @@ public class PacienteService {
             throw new IllegalArgumentException("E-mail já está em uso no sistema.");
         }
 
+        if (dto.cpf() != null && !dto.cpf().isBlank() && pacienteRepository.existsByCpf(dto.cpf())) {
+            throw new IllegalArgumentException("CPF já está em uso no sistema.");
+        }
+
         String senhaCriptografada = passwordEncoder.encode(dto.senha());
         Paciente novoPaciente = new Paciente(
                 dto.nome().trim(),

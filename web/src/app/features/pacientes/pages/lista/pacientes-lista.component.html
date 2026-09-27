@@ -1,0 +1,180 @@
+<!-- ════════════════════════════════════════════════
+     Modais (renderizados sobre tudo)
+     ════════════════════════════════════════════════ -->
+@if (modalAberto) {
+  <app-novo-paciente-modal
+    (fechar)="fecharModal()"
+    (pacienteCriado)="onPacienteCriado($event)"
+  />
+}
+
+@if (modalInativarAberto && pacienteSelecionado) {
+  <app-inativar-paciente-modal
+    [paciente]="pacienteSelecionado"
+    (fechar)="fecharModalInativar()"
+    (inativado)="onPacienteAtualizado($event)"
+  />
+}
+
+@if (modalReativarAberto && pacienteSelecionado) {
+  <app-reativar-paciente-modal
+    [paciente]="pacienteSelecionado"
+    (fechar)="fecharModalReativar()"
+    (reativado)="onPacienteAtualizado($event)"
+  />
+}
+
+<!-- ════════════════════════════════════════════════
+     Cabeçalho (TopNavBar) — Figma node 468:167
+     ════════════════════════════════════════════════ -->
+<header class="pacientes-header">
+  <h1 class="pacientes-header__title">Gestão de Pacientes</h1>
+  <button class="pacientes-header__bell" type="button" aria-label="Notificações">
+    <i class="ph ph-bell" aria-hidden="true"></i>
+  </button>
+</header>
+
+<!-- ════════════════════════════════════════════════
+     Conteúdo Principal
+     ════════════════════════════════════════════════ -->
+<main class="pacientes-main">
+
+  <!-- Estado: Carregando -->
+  @if (state === 'loading') {
+    <div class="pacientes-main__state" role="status" aria-label="Carregando pacientes">
+      <i class="ph ph-circle-notch ph-spin pacientes-main__spinner" aria-hidden="true"></i>
+      <p class="pacientes-main__state-text">Carregando pacientes…</p>
+    </div>
+  }
+
+  <!-- Estado: Erro -->
+  @if (state === 'error') {
+    <div class="pacientes-main__state" role="alert">
+      <i class="ph ph-warning-circle pacientes-main__state-icon pacientes-main__state-icon--error" aria-hidden="true"></i>
+      <p class="pacientes-main__state-title">Erro ao carregar pacientes</p>
+      <p class="pacientes-main__state-text">{{ errorMessage }}</p>
+      <app-ui-button
+        label="Tentar novamente"
+        icon="arrow-clockwise"
+        type="button"
+        [fullWidth]="false"
+        (click)="carregarPacientes()"
+      />
+    </div>
+  }
+
+  <!-- Estado: Vazio (Figma node 429:1980 — Listagem de pacientes vazia) -->
+  @if (state === 'empty') {
+    <div class="pacientes-main__state">
+      <img
+        class="pacientes-main__illustration"
+        src="/listagem-pacientes/amico.png"
+        alt=""
+        aria-hidden="true"
+        onerror="this.style.display='none'"
+      />
+
+      <div class="pacientes-main__empty-text">
+        <p class="pacientes-main__empty-title">Nenhum paciente cadastrado</p>
+        <p class="pacientes-main__empty-desc">
+          Você ainda não possui pacientes na lista. Aguarde o primeiro paciente
+          se cadastrar ou cadastre um novo paciente para iniciar consultas e acompanhar a evolução clínica.
+        </p>
+      </div>
+
+      <app-ui-button
+        label="Novo Paciente"
+        icon="plus-circle"
+        type="button"
+        [fullWidth]="false"
+        (click)="abrirModal()"
+      />
+    </div>
+  }
+
+  <!-- Estado: Lista com pacientes -->
+  @if (state === 'loaded') {
+    <div class="pacientes-main__toolbar">
+      <div class="pacientes-main__filters" [formGroup]="filtros">
+        <app-ui-input formControlName="nome" label="Nome" placeholder="Filtrar por nome" class="filter-input" />
+        <app-ui-input formControlName="email" label="E-mail" placeholder="Filtrar por e-mail" class="filter-input" />
+        <app-ui-input formControlName="telefone" label="Telefone" placeholder="Filtrar por telefone" class="filter-input" />
+      </div>
+      <app-ui-button
+        label="Novo Paciente"
+        icon="plus-circle"
+        type="button"
+        [fullWidth]="false"
+        (click)="abrirModal()"
+      />
+    </div>
+
+    <div class="pacientes-table-container">
+      <div class="pacientes-table__header">
+        <div class="pacientes-table__col-nome">Nome</div>
+        <div class="pacientes-table__col-email">E-mail</div>
+        <div class="pacientes-table__col-telefone">Telefone</div>
+        <div class="pacientes-table__col-status">Status</div>
+        <div class="pacientes-table__col-acoes">Ações</div>
+      </div>
+      
+      <ul class="pacientes-table__body" role="list">
+        @for (paciente of pacientesFiltrados; track paciente.id) {
+          <li class="pacientes-table__row">
+            <div class="pacientes-table__col-nome font-semibold">{{ paciente.nome }}</div>
+            <div class="pacientes-table__col-email">{{ paciente.email }}</div>
+            <div class="pacientes-table__col-telefone">{{ paciente.telefone || '-' }}</div>
+            <div class="pacientes-table__col-status">
+              @if (paciente.ativo !== false) {
+                <span class="status-badge status-badge--ativo">Ativo</span>
+              } @else {
+                <span class="status-badge status-badge--inativo">Inativo</span>
+              }
+            </div>
+            <div class="pacientes-table__col-acoes">
+              <button
+                class="action-btn"
+                type="button"
+                [attr.aria-label]="'Ver perfil de ' + paciente.nome"
+                [disabled]="paciente.ativo === false"
+                (click)="verPerfil(paciente)"
+              >
+                <i class="ph ph-eye" aria-hidden="true"></i>
+              </button>
+
+              @if (paciente.ativo !== false) {
+                <button
+                  class="action-btn action-btn--danger"
+                  type="button"
+                  [attr.aria-label]="'Inativar ' + paciente.nome"
+                  (click)="abrirModalInativar(paciente)"
+                >
+                  <i class="ph ph-trash" aria-hidden="true"></i>
+                </button>
+              } @else {
+                <button
+                  class="action-btn action-btn--success"
+                  type="button"
+                  [attr.aria-label]="'Reativar ' + paciente.nome"
+                  (click)="abrirModalReativar(paciente)"
+                >
+                  <i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>
+                </button>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    </div>
+
+    <div class="pacientes-pagination">
+      <span class="pagination-info">1-{{ pacientes.length }} de {{ pacientes.length }}</span>
+      <div class="pagination-controls">
+        <button class="pagination-btn" type="button">Anterior</button>
+        <span class="pagination-page">1</span>
+        <button class="pagination-btn" type="button">Próximo</button>
+      </div>
+    </div>
+  }
+
+</main>

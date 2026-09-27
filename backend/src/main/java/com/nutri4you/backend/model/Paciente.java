@@ -47,6 +47,9 @@ public class Paciente implements UserDetails {
     @Column(name = "email_confirmado", nullable = false)
     private boolean emailConfirmado = false;
 
+    @Column(nullable = false)
+    private boolean ativo = true;
+
     protected Paciente() {
     }
 
@@ -129,6 +132,14 @@ public class Paciente implements UserDetails {
 
     public void setEmailConfirmado(boolean emailConfirmado) {
         this.emailConfirmado = emailConfirmado;
+    }
+
+    public boolean isAtivo() {
+        return ativo;
+    }
+
+    public void setAtivo(boolean ativo) {
+        this.ativo = ativo;
     }
 
     @Override

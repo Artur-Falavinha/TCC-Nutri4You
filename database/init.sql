@@ -20,7 +20,8 @@ CREATE TABLE Paciente (
     telefone VARCHAR(20),
     email VARCHAR(100) UNIQUE NOT NULL,
     senha VARCHAR(255) NOT NULL,
-    email_confirmado BOOLEAN NOT NULL DEFAULT FALSE
+    email_confirmado BOOLEAN NOT NULL DEFAULT FALSE,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 CREATE TABLE Token_Email (

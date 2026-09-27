@@ -32,31 +32,31 @@ export class ApiService {
         params: this.buildParams(options?.params),
         headers: options?.headers
       })
-      .pipe(map((response) => response.data));
+      .pipe(map((response) => response?.data as T));
   }
 
   post<T>(path: string, body: unknown): Observable<T> {
     return this.http
       .post<ApiResponse<T>>(this.buildUrl(path), body)
-      .pipe(map((response) => response.data));
+      .pipe(map((response) => response?.data as T));
   }
 
   put<T>(path: string, body: unknown): Observable<T> {
     return this.http
       .put<ApiResponse<T>>(this.buildUrl(path), body)
-      .pipe(map((response) => response.data));
+      .pipe(map((response) => response?.data as T));
   }
 
   patch<T>(path: string, body: unknown): Observable<T> {
     return this.http
       .patch<ApiResponse<T>>(this.buildUrl(path), body)
-      .pipe(map((response) => response.data));
+      .pipe(map((response) => response?.data as T));
   }
 
   delete<T>(path: string): Observable<T> {
     return this.http
       .delete<ApiResponse<T>>(this.buildUrl(path))
-      .pipe(map((response) => response.data));
+      .pipe(map((response) => response?.data as T));
   }
 
   private buildUrl(path: string): string {

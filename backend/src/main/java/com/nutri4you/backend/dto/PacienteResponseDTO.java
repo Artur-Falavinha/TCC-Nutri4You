@@ -9,5 +9,6 @@ public record PacienteResponseDTO(
         String email,
         String telefone,
         String sexo,
-        LocalDate dataNascimento) {
+        LocalDate dataNascimento,
+        boolean ativo) {
 }

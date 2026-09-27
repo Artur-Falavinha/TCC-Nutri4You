@@ -1,0 +1,109 @@
+<!-- Backdrop com fechamento ao clicar fora -->
+<div class="modal__backdrop" (click)="onBackdropClick($event)" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+
+  <div class="modal__panel">
+
+    <!-- Cabeçalho -->
+    <header class="modal__header">
+      <h2 class="modal__title" id="modal-title">Novo paciente</h2>
+    </header>
+
+    <!-- Descrição informativa (fiel ao Figma) -->
+    <p class="modal__description">
+      Ao cadastrar o paciente pela conta do nutricionista, ele recebe no e-mail
+      informado uma senha provisória aleatória de 6 dígitos para o primeiro
+      acesso — alternativa ao fluxo em que o próprio paciente cria a conta
+      (Crie sua conta). Depois do login, poderá alterar a senha no app.
+    </p>
+
+    <!-- Alerta de erro da API -->
+    <app-form-alert [message]="errorMessage" />
+
+    <!-- Formulário -->
+    <form
+      class="modal__form"
+      [formGroup]="form"
+      (ngSubmit)="onSubmit()"
+      novalidate
+    >
+      <app-ui-input
+        label="NOME COMPLETO"
+        placeholder="Nome completo"
+        type="text"
+        autocomplete="name"
+        [required]="true"
+        formControlName="nome"
+        [errorMessage]="fieldError('nome')"
+      />
+
+      <app-ui-input
+        label="E-MAIL"
+        placeholder="nome@exemplo.com"
+        type="email"
+        autocomplete="email"
+        [required]="true"
+        formControlName="email"
+        [errorMessage]="fieldError('email')"
+      />
+
+      <app-ui-input
+        label="TELEFONE"
+        placeholder="(00) 00000-0000"
+        type="tel"
+        autocomplete="tel"
+        mask="telefone"
+        formControlName="telefone"
+        [errorMessage]="fieldError('telefone')"
+      />
+
+      <app-ui-input
+        label="CPF"
+        placeholder="000.000.000-00"
+        type="text"
+        mask="cpf"
+        formControlName="cpf"
+        [errorMessage]="fieldError('cpf')"
+      />
+
+      <app-ui-input
+        label="DATA DE NASCIMENTO"
+        placeholder="DD/MM/AAAA"
+        type="text"
+        autocomplete="bday"
+        mask="data"
+        formControlName="dataNascimento"
+        [errorMessage]="fieldError('dataNascimento')"
+      />
+
+      <app-ui-select
+        label="SEXO"
+        placeholder="Selecione"
+        [options]="sexoOptions"
+        formControlName="sexo"
+        [errorMessage]="fieldError('sexo')"
+      />
+
+      <!-- Rodapé com ações -->
+      <footer class="modal__footer">
+        <button
+          class="modal__btn-cancel"
+          type="button"
+          [disabled]="loading"
+          (click)="onCancelar()"
+        >
+          Cancelar
+        </button>
+
+        <app-ui-button
+          label="Criar paciente"
+          icon="plus-circle"
+          type="submit"
+          [fullWidth]="false"
+          [loading]="loading"
+        />
+      </footer>
+    </form>
+
+  </div>
+</div>
+

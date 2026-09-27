@@ -22,14 +22,32 @@ public class GestaoPacienteService {
     private final PacienteRepository pacienteRepository;
     private final RelacaoClinicaRepository relacaoClinicaRepository;
     private final ConsultaRepository consultaRepository;
+    private final PacienteService pacienteService;
 
     public GestaoPacienteService(
             PacienteRepository pacienteRepository,
             RelacaoClinicaRepository relacaoClinicaRepository,
-            ConsultaRepository consultaRepository) {
+            ConsultaRepository consultaRepository,
+            PacienteService pacienteService) {
         this.pacienteRepository = pacienteRepository;
         this.relacaoClinicaRepository = relacaoClinicaRepository;
         this.consultaRepository = consultaRepository;
+        this.pacienteService = pacienteService;
+    }
+
+    @Transactional
+    public PacienteResponseDTO criarPaciente(Nutricionista nutricionista, com.nutri4you.backend.dto.PacienteCadastroDTO dto) {
+        // Se a senha for nula, gera uma aleatória segura já que foi criado pelo nutricionista
+        String senha = dto.senha() != null ? dto.senha() : java.util.UUID.randomUUID().toString() + "!A1x";
+        com.nutri4you.backend.dto.PacienteCadastroDTO payloadFinal = new com.nutri4you.backend.dto.PacienteCadastroDTO(
+                dto.nome(), dto.cpf(), dto.dataNascimento(), dto.sexo(), dto.telefone(), dto.email(), senha
+        );
+        Paciente paciente = pacienteService.cadastrarPaciente(payloadFinal);
+        
+        RelacaoClinica relacao = RelacaoClinica.criar(paciente, nutricionista);
+        relacaoClinicaRepository.save(relacao);
+        
+        return paraResponse(paciente);
     }
 
     @Transactional(readOnly = true)
@@ -149,6 +167,26 @@ public class GestaoPacienteService {
         }
     }
 
+    @Transactional
+    public void inativar(Nutricionista nutricionista, Integer id) {
+        Paciente paciente = pacienteRepository.findById(id)
+                .orElseThrow(PacienteNaoEncontradoException::new);
+        validarAcessoNutricionista(nutricionista, paciente);
+        
+        paciente.setAtivo(false);
+        pacienteRepository.save(paciente);
+    }
+
+    @Transactional
+    public PacienteResponseDTO reativar(Nutricionista nutricionista, Integer id) {
+        Paciente paciente = pacienteRepository.findById(id)
+                .orElseThrow(PacienteNaoEncontradoException::new);
+        validarAcessoNutricionista(nutricionista, paciente);
+        
+        paciente.setAtivo(true);
+        return paraResponse(pacienteRepository.save(paciente));
+    }
+
     private PacienteResponseDTO paraResponse(Paciente paciente) {
         return new PacienteResponseDTO(
                 paciente.getId(),
@@ -157,7 +195,8 @@ public class GestaoPacienteService {
                 paciente.getEmail(),
                 paciente.getTelefone(),
                 paciente.getSexo(),
-                paciente.getDataNascimento());
+                paciente.getDataNascimento(),
+                paciente.isAtivo());
     }
 
     private PacienteResumoDTO paraResumo(Paciente paciente) {
