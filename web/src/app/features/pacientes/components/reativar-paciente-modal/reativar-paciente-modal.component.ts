@@ -44,7 +44,7 @@ export class ReativarPacienteModalComponent {
     this.fechar.emit();
   }
 
-  onBackdropClick(event: MouseEvent): void {
+  onBackdropClick(event: Event): void {
     if ((event.target as HTMLElement).classList.contains('modal__backdrop')) {
       this.fechar.emit();
     }
