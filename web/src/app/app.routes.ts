@@ -15,6 +15,15 @@ export const routes: Routes = [
     title: 'Dashboard — Nutri4You',
     canActivate: [authGuard]
   },
+  {
+    path: 'pacientes',
+    loadChildren: () =>
+      import('./features/pacientes/pacientes.routes').then(
+        (m) => m.PACIENTES_ROUTES
+      ),
+    canActivate: [authGuard],
+    title: 'Gestão de Pacientes — Nutri4You'
+  },
   { path: 'health', component: HealthComponent, title: 'Status da API' },
   { path: '**', component: NotFoundComponent, title: 'Página não encontrada' }
 ];

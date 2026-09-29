@@ -20,12 +20,14 @@ import { formatCrnDisplay } from '../../utils/crn-mask.util';
 export class UiInputComponent implements ControlValueAccessor {
   @Input({ required: true }) label = '';
   @Input() placeholder = '';
-  @Input() type: 'text' | 'email' | 'password' = 'text';
+  @Input() type: 'text' | 'email' | 'password' | 'date' | 'tel' = 'text';
   @Input() inputId = '';
   @Input() autocomplete = '';
   @Input() errorMessage = '';
   @Input() required = false;
-  @Input() mask?: 'crn' | 'cpf';
+  @Input() mask?: 'crn' | 'cpf' | 'telefone' | 'data';
+  /** Classe Phosphor (ex.: ph-magnifying-glass). Vazio = sem ícone. */
+  @Input() leadingIcon = '';
 
   value = '';
   disabled = false;
@@ -42,7 +44,11 @@ export class UiInputComponent implements ControlValueAccessor {
     return this.type === 'password';
   }
 
-  get resolvedInputType(): 'text' | 'email' | 'password' {
+  get showLeadingIcon(): boolean {
+    return this.leadingIcon.length > 0 && this.value.length === 0;
+  }
+
+  get resolvedInputType(): 'text' | 'email' | 'password' | 'date' | 'tel' {
     if (this.isPasswordField && this.passwordVisible) {
       return 'text';
     }
@@ -80,6 +86,23 @@ export class UiInputComponent implements ControlValueAccessor {
 
     if (this.mask === 'cpf') {
       return formatCpfDisplay(value);
+    }
+
+    if (this.mask === 'telefone') {
+      const d = value.replace(/\D/g, '').slice(0, 11);
+      if (d.length === 0) return '';
+      if (d.length <= 2) return `(${d}`;
+      if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+      if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+      return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+    }
+
+    if (this.mask === 'data') {
+      const d = value.replace(/\D/g, '').slice(0, 8);
+      if (d.length === 0) return '';
+      if (d.length <= 2) return d;
+      if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+      return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
     }
 
     return value;

@@ -1,0 +1,220 @@
+/* ===================================================
+   Sidebar — Organism
+   Segue o design system do Figma (node 429:1981)
+   =================================================== */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 80px;
+  min-height: 100vh;
+  padding: var(--space-24) var(--space-12);
+  background-color: var(--color-surface-page);
+  border-right: 1px solid #dbdbdb;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: width var(--transition-normal), padding var(--transition-normal);
+}
+
+.sidebar--expanded {
+  width: 256px;
+  padding: var(--space-24) var(--space-16);
+}
+
+/* ─── Topo ─────────────────────────────────────────── */
+.sidebar__top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-32);
+}
+
+.sidebar__brand {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-12);
+  height: 5rem;
+  padding: 0;
+  overflow: hidden;
+  transition: height var(--transition-normal), gap var(--transition-normal);
+}
+
+.sidebar:not(.sidebar--expanded) .sidebar__brand {
+  height: 2.5rem;
+  justify-content: center;
+  gap: 0;
+}
+
+.sidebar__toggle {
+  align-self: flex-start;
+  flex: 0 0 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-top: 1.25rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast), margin-top var(--transition-normal);
+}
+
+.sidebar:not(.sidebar--expanded) .sidebar__toggle {
+  align-self: center;
+  margin-top: 0;
+}
+
+.sidebar__toggle:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.sidebar__logo {
+  height: 5rem;
+  width: auto;
+  max-width: calc(100% - 2.5rem - var(--space-12));
+  flex: 1 1 auto;
+  min-width: 0;
+  object-fit: contain;
+  object-position: left center;
+  opacity: 1;
+  transition:
+    max-width var(--transition-normal),
+    opacity var(--transition-normal),
+    flex-basis var(--transition-normal);
+}
+
+.sidebar:not(.sidebar--expanded) .sidebar__logo {
+  max-width: 0;
+  flex: 0 0 0;
+  opacity: 0;
+}
+
+/* ─── Navegação ─────────────────────────────────────── */
+.sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.sidebar__nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding: 12px var(--space-16);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  overflow: hidden;
+  transition: background-color var(--transition-fast), color var(--transition-fast), padding var(--transition-normal);
+}
+
+.sidebar__label,
+.sidebar__user-name {
+  display: inline-block;
+  max-width: 12rem;
+  opacity: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: max-width var(--transition-normal), opacity var(--transition-normal);
+}
+
+.sidebar__nav-item:hover:not(.sidebar__nav-item--active) {
+  background-color: rgba(0, 111, 30, 0.06);
+  color: var(--color-brand-primary);
+}
+
+.sidebar__nav-item--active {
+  background-color: var(--color-brand-primary);
+  color: var(--color-text-on-brand);
+}
+
+.sidebar__nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 1.25rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ─── Rodapé ────────────────────────────────────────── */
+.sidebar__footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-top: 25px;
+  border-top: 1px solid #ebeef0;
+}
+
+.sidebar__user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px var(--space-16);
+}
+
+.sidebar__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  background-color: #e5e7eb;
+  flex-shrink: 0;
+}
+
+.sidebar__user-name {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.sidebar__nav-item--logout {
+  text-align: left;
+}
+
+.sidebar:not(.sidebar--expanded) .sidebar__top,
+.sidebar:not(.sidebar--expanded) .sidebar__nav,
+.sidebar:not(.sidebar--expanded) .sidebar__footer {
+  align-items: center;
+  width: 100%;
+}
+
+.sidebar:not(.sidebar--expanded) .sidebar__label,
+.sidebar:not(.sidebar--expanded) .sidebar__user-name {
+  max-width: 0;
+  opacity: 0;
+}
+
+.sidebar:not(.sidebar--expanded) .sidebar__nav-item {
+  justify-content: center;
+  gap: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+}
+
+.sidebar:not(.sidebar--expanded) .sidebar__user {
+  justify-content: center;
+  gap: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+}
+

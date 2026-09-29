@@ -37,7 +37,7 @@ public class GestaoPacienteService {
         return pacienteRepository
                 .findVisiveisParaNutricionista(nutricionista.getId(), StatusRelacaoClinica.ATIVA)
                 .stream()
-                .map(this::paraResponse)
+                .map(paciente -> paraResponse(paciente, nutricionista))
                 .toList();
     }
 
@@ -71,7 +71,7 @@ public class GestaoPacienteService {
         Paciente paciente = pacienteRepository.findById(id)
                 .orElseThrow(PacienteNaoEncontradoException::new);
         validarAcessoNutricionista(nutricionista, paciente);
-        return paraResponse(paciente);
+        return paraResponse(paciente, nutricionista);
     }
 
     @Transactional
@@ -93,7 +93,7 @@ public class GestaoPacienteService {
         paciente.setSexo(dto.sexo());
         paciente.setDataNascimento(dto.dataNascimento());
 
-        return paraResponse(pacienteRepository.save(paciente));
+        return paraResponse(pacienteRepository.save(paciente), nutricionista);
     }
 
     @Transactional
@@ -149,7 +149,7 @@ public class GestaoPacienteService {
         }
     }
 
-    private PacienteResponseDTO paraResponse(Paciente paciente) {
+    private PacienteResponseDTO paraResponse(Paciente paciente, Nutricionista nutricionista) {
         return new PacienteResponseDTO(
                 paciente.getId(),
                 paciente.getNome(),
@@ -157,7 +157,15 @@ public class GestaoPacienteService {
                 paciente.getEmail(),
                 paciente.getTelefone(),
                 paciente.getSexo(),
-                paciente.getDataNascimento());
+                paciente.getDataNascimento(),
+                relacaoAtiva(nutricionista, paciente));
+    }
+
+    private boolean relacaoAtiva(Nutricionista nutricionista, Paciente paciente) {
+        return relacaoClinicaRepository
+                .findByPaciente_IdAndNutricionista_IdAndStatus(
+                        paciente.getId(), nutricionista.getId(), StatusRelacaoClinica.ATIVA)
+                .isPresent();
     }
 
     private PacienteResumoDTO paraResumo(Paciente paciente) {

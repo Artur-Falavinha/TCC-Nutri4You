@@ -76,7 +76,8 @@ class GestaoPacienteControllerTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data", hasSize(1)))
-                .andExpect(jsonPath("$.data[0].email").value("paciente@teste.com"));
+                .andExpect(jsonPath("$.data[0].email").value("paciente@teste.com"))
+                .andExpect(jsonPath("$.data[0].relacaoAtiva").value(false));
     }
 
     @Test

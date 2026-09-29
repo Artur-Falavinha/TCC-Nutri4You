@@ -1,0 +1,16 @@
+.pacientes-layout {
+  display: flex;
+  height: 100vh;
+  min-height: 100vh;
+  background-color: var(--color-surface-page);
+}
+
+.pacientes-layout__content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
