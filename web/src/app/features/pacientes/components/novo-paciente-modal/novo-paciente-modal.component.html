@@ -1,109 +1,65 @@
-<!-- Backdrop com fechamento ao clicar fora -->
-<div class="modal__backdrop" (click)="onBackdropClick($event)" (keyup.enter)="onBackdropClick($event)" tabindex="0" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+<app-paciente-dialog
+  title="Buscar paciente"
+  description="Informe o e-mail ou o CPF de um paciente que já criou a conta. A busca usa apenas um dos dois critérios."
+  (fechar)="fechar.emit()"
+>
+  <app-form-alert [message]="errorMessage" />
 
-  <div class="modal__panel">
+  <form class="modal__form" [formGroup]="form" (ngSubmit)="onBuscar()" novalidate>
+    <app-ui-input
+      label="E-MAIL"
+      placeholder="nome@exemplo.com"
+      type="email"
+      autocomplete="email"
+      formControlName="email"
+      (input)="onCampoAlterado()"
+    />
 
-    <!-- Cabeçalho -->
-    <header class="modal__header">
-      <h2 class="modal__title" id="modal-title">Novo paciente</h2>
-    </header>
+    <app-ui-input
+      label="CPF"
+      placeholder="000.000.000-00"
+      type="text"
+      mask="cpf"
+      formControlName="cpf"
+      (input)="onCampoAlterado()"
+    />
+  </form>
 
-    <!-- Descrição informativa (fiel ao Figma) -->
-    <p class="modal__description">
-      Ao cadastrar o paciente pela conta do nutricionista, ele recebe no e-mail
-      informado uma senha provisória aleatória de 6 dígitos para o primeiro
-      acesso — alternativa ao fluxo em que o próprio paciente cria a conta
-      (Crie sua conta). Depois do login, poderá alterar a senha no app.
+  @if (encontrado) {
+    <p class="busca-resultado">
+      <span class="busca-resultado__nome">{{ encontrado.nome }}</span>
+      <span class="busca-resultado__email">{{ encontrado.email }}</span>
     </p>
+  }
 
-    <!-- Alerta de erro da API -->
-    <app-form-alert [message]="errorMessage" />
+  <app-ui-button
+    dialogActions
+    label="Cancelar"
+    variant="outline"
+    type="button"
+    [fullWidth]="false"
+    [disabled]="loading || vinculando"
+    (click)="fechar.emit()"
+  />
 
-    <!-- Formulário -->
-    <form
-      class="modal__form"
-      [formGroup]="form"
-      (ngSubmit)="onSubmit()"
-      novalidate
-    >
-      <app-ui-input
-        label="NOME COMPLETO"
-        placeholder="Nome completo"
-        type="text"
-        autocomplete="name"
-        [required]="true"
-        formControlName="nome"
-        [errorMessage]="fieldError('nome')"
-      />
-
-      <app-ui-input
-        label="E-MAIL"
-        placeholder="nome@exemplo.com"
-        type="email"
-        autocomplete="email"
-        [required]="true"
-        formControlName="email"
-        [errorMessage]="fieldError('email')"
-      />
-
-      <app-ui-input
-        label="TELEFONE"
-        placeholder="(00) 00000-0000"
-        type="tel"
-        autocomplete="tel"
-        mask="telefone"
-        formControlName="telefone"
-        [errorMessage]="fieldError('telefone')"
-      />
-
-      <app-ui-input
-        label="CPF"
-        placeholder="000.000.000-00"
-        type="text"
-        mask="cpf"
-        formControlName="cpf"
-        [errorMessage]="fieldError('cpf')"
-      />
-
-      <app-ui-input
-        label="DATA DE NASCIMENTO"
-        placeholder="DD/MM/AAAA"
-        type="text"
-        autocomplete="bday"
-        mask="data"
-        formControlName="dataNascimento"
-        [errorMessage]="fieldError('dataNascimento')"
-      />
-
-      <app-ui-select
-        label="SEXO"
-        placeholder="Selecione"
-        [options]="sexoOptions"
-        formControlName="sexo"
-        [errorMessage]="fieldError('sexo')"
-      />
-
-      <!-- Rodapé com ações -->
-      <footer class="modal__footer">
-        <button
-          class="modal__btn-cancel"
-          type="button"
-          [disabled]="loading"
-          (click)="onCancelar()"
-        >
-          Cancelar
-        </button>
-
-        <app-ui-button
-          label="Criar paciente"
-          icon="plus-circle"
-          type="submit"
-          [fullWidth]="false"
-          [loading]="loading"
-        />
-      </footer>
-    </form>
-
-  </div>
-</div>
-
+  @if (encontrado) {
+    <app-ui-button
+      dialogActions
+      label="Vincular"
+      type="button"
+      [fullWidth]="false"
+      [loading]="vinculando"
+      (click)="onVincular()"
+    />
+  } @else {
+    <app-ui-button
+      dialogActions
+      label="Buscar"
+      icon="magnifying-glass"
+      type="button"
+      [fullWidth]="false"
+      [loading]="loading"
+      (click)="onBuscar()"
+    />
+  }
+</app-paciente-dialog>

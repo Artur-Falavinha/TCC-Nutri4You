@@ -6,14 +6,12 @@ export interface Paciente {
   dataNascimento?: string;
   sexo?: string;
   telefone?: string;
-  ativo?: boolean;
+  relacaoAtiva?: boolean;
 }
 
-export interface PacientesPage {
-  content: Paciente[];
-  totalElements: number;
-  totalPages: number;
-  number: number;
-  size: number;
+export interface PacienteResumo {
+  id: number;
+  nome: string;
+  email: string;
+  cpf?: string;
 }
-

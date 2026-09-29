@@ -1,40 +1,39 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 import { ApiService } from './api.service';
-import { Paciente } from '../models/paciente.models';
-
-export interface CriarPacientePayload {
-  nome: string;
-  email: string;
-  telefone?: string;
-  cpf?: string;
-  dataNascimento?: string;
-  sexo?: string;
-}
+import { Paciente, PacienteResumo } from '../models/paciente.models';
 
 @Injectable({ providedIn: 'root' })
 export class PacientesService {
   private readonly api = inject(ApiService);
 
-  /** Retorna a lista de pacientes vinculados ao nutricionista autenticado. */
+  /** Pacientes visíveis ao nutricionista: relação ativa ou consulta. */
   listarPacientes(): Observable<Paciente[]> {
     return this.api.get<Paciente[]>('/gestao-pacientes');
   }
 
-  /** Cria um novo paciente. Retorna o paciente criado (201 Created). */
-  criarPaciente(payload: CriarPacientePayload): Observable<Paciente> {
-    return this.api.post<Paciente>('/pacientes', payload);
+  /** Busca um paciente já cadastrado por exatamente um critério. */
+  buscarPaciente(criterio: { email?: string; cpf?: string }): Observable<PacienteResumo> {
+    const params: Record<string, string> = {};
+    if (criterio.email) {
+      params['email'] = criterio.email;
+    }
+    if (criterio.cpf) {
+      params['cpf'] = criterio.cpf;
+    }
+    return this.api.get<PacienteResumo>('/gestao-pacientes/busca', { params });
   }
 
-  /** Inativa um paciente de forma lógica (HTTP 204). */
-  inativarPaciente(id: number): Observable<void> {
-    return this.api.patch<void>(`/pacientes/${id}/inativar`, {});
+  vincularPaciente(id: number): Observable<void> {
+    return this.api
+      .post<unknown>(`/gestao-pacientes/${id}/vincular`, {})
+      .pipe(map(() => undefined));
   }
 
-  /** Reativa um paciente inativado logicamente (HTTP 200). */
-  reativarPaciente(id: number): Observable<Paciente> {
-    return this.api.patch<Paciente>(`/pacientes/${id}/reativar`, {});
+  desvincularPaciente(id: number): Observable<void> {
+    return this.api
+      .delete<unknown>(`/gestao-pacientes/${id}/relacao`)
+      .pipe(map(() => undefined));
   }
 }
-

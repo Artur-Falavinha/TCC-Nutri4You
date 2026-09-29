@@ -5,13 +5,11 @@
       <button class="sidebar__toggle" type="button" (click)="toggleSidebar()" aria-label="Alternar menu">
         <i class="ph ph-list" aria-hidden="true"></i>
       </button>
-      @if (isExpanded) {
-        <img
-          class="sidebar__logo"
-          src="/auth/logo-nutri4u.webp"
-          alt="Nutri4U logo"
-        />
-      }
+      <img
+        class="sidebar__logo"
+        src="/auth/logo-nutri4u.webp"
+        alt="Nutri4U logo"
+      />
     </div>
 
     <!-- Navegação principal -->
@@ -22,7 +20,7 @@
         routerLinkActive="sidebar__nav-item--active"
       >
         <i class="ph ph-house sidebar__nav-icon" aria-hidden="true"></i>
-        <span>Home</span>
+        <span class="sidebar__label">Home</span>
       </a>
 
       <a
@@ -30,8 +28,8 @@
         routerLink="/pacientes"
         routerLinkActive="sidebar__nav-item--active"
       >
-        <i class="ph ph-users sidebar__nav-icon" aria-hidden="true"></i>
-        <span>Pacientes</span>
+        <i class="ph ph-user-focus sidebar__nav-icon" aria-hidden="true"></i>
+        <span class="sidebar__label">Pacientes</span>
       </a>
 
       <a
@@ -40,7 +38,7 @@
         routerLinkActive="sidebar__nav-item--active"
       >
         <i class="ph ph-calendar sidebar__nav-icon" aria-hidden="true"></i>
-        <span>Agenda</span>
+        <span class="sidebar__label">Agenda</span>
       </a>
 
       <a
@@ -49,7 +47,7 @@
         routerLinkActive="sidebar__nav-item--active"
       >
         <i class="ph ph-gear sidebar__nav-icon" aria-hidden="true"></i>
-        <span>Configurações</span>
+        <span class="sidebar__label">Configurações</span>
       </a>
     </nav>
   </div>
@@ -63,7 +61,7 @@
 
     <button class="sidebar__nav-item sidebar__nav-item--logout" type="button" (click)="logout()">
       <i class="ph ph-sign-out sidebar__nav-icon" aria-hidden="true"></i>
-      <span>Logout</span>
+      <span class="sidebar__label">Logout</span>
     </button>
   </div>
 </aside>

@@ -1,32 +1,19 @@
-<!-- ════════════════════════════════════════════════
-     Modais (renderizados sobre tudo)
-     ════════════════════════════════════════════════ -->
 @if (modalAberto) {
   <app-novo-paciente-modal
     (fechar)="fecharModal()"
-    (pacienteCriado)="onPacienteCriado($event)"
+    (vinculado)="onPacienteVinculado()"
   />
 }
 
-@if (modalInativarAberto && pacienteSelecionado) {
-  <app-inativar-paciente-modal
+@if (modalRelacaoAberto && pacienteSelecionado) {
+  <app-relacao-paciente-modal
     [paciente]="pacienteSelecionado"
-    (fechar)="fecharModalInativar()"
-    (inativado)="onPacienteAtualizado($event)"
+    [acao]="acaoRelacao"
+    (fechar)="fecharModalRelacao()"
+    (concluido)="onRelacaoAlterada()"
   />
 }
 
-@if (modalReativarAberto && pacienteSelecionado) {
-  <app-reativar-paciente-modal
-    [paciente]="pacienteSelecionado"
-    (fechar)="fecharModalReativar()"
-    (reativado)="onPacienteAtualizado($event)"
-  />
-}
-
-<!-- ════════════════════════════════════════════════
-     Cabeçalho (TopNavBar) — Figma node 468:167
-     ════════════════════════════════════════════════ -->
 <header class="pacientes-header">
   <h1 class="pacientes-header__title">Gestão de Pacientes</h1>
   <button class="pacientes-header__bell" type="button" aria-label="Notificações">
@@ -34,12 +21,8 @@
   </button>
 </header>
 
-<!-- ════════════════════════════════════════════════
-     Conteúdo Principal
-     ════════════════════════════════════════════════ -->
 <main class="pacientes-main">
 
-  <!-- Estado: Carregando -->
   @if (state === 'loading') {
     <div class="pacientes-main__state" role="status" aria-label="Carregando pacientes">
       <i class="ph ph-circle-notch ph-spin pacientes-main__spinner" aria-hidden="true"></i>
@@ -47,7 +30,6 @@
     </div>
   }
 
-  <!-- Estado: Erro -->
   @if (state === 'error') {
     <div class="pacientes-main__state" role="alert">
       <i class="ph ph-warning-circle pacientes-main__state-icon pacientes-main__state-icon--error" aria-hidden="true"></i>
@@ -63,7 +45,6 @@
     </div>
   }
 
-  <!-- Estado: Vazio (Figma node 429:1980 — Listagem de pacientes vazia) -->
   @if (state === 'empty') {
     <div class="pacientes-main__state">
       <img
@@ -78,7 +59,7 @@
         <p class="pacientes-main__empty-title">Nenhum paciente cadastrado</p>
         <p class="pacientes-main__empty-desc">
           Você ainda não possui pacientes na lista. Aguarde o primeiro paciente
-          se cadastrar ou cadastre um novo paciente para iniciar consultas e acompanhar a evolução clínica.
+          se cadastrar para iniciar consultas e acompanhar a evolução clínica.
         </p>
       </div>
 
@@ -92,7 +73,6 @@
     </div>
   }
 
-  <!-- Estado: Lista com pacientes -->
   @if (state === 'loaded') {
     <div class="pacientes-main__toolbar">
       <div class="pacientes-main__filters" [formGroup]="filtros">
@@ -117,18 +97,18 @@
         <div class="pacientes-table__col-status">Status</div>
         <div class="pacientes-table__col-acoes">Ações</div>
       </div>
-      
+
       <ul class="pacientes-table__body" role="list">
-        @for (paciente of pacientesFiltrados; track paciente.id) {
+        @for (paciente of pacientesPagina; track paciente.id) {
           <li class="pacientes-table__row">
             <div class="pacientes-table__col-nome font-semibold">{{ paciente.nome }}</div>
             <div class="pacientes-table__col-email">{{ paciente.email }}</div>
             <div class="pacientes-table__col-telefone">{{ paciente.telefone || '-' }}</div>
             <div class="pacientes-table__col-status">
-              @if (paciente.ativo !== false) {
-                <span class="status-badge status-badge--ativo">Ativo</span>
+              @if (paciente.relacaoAtiva) {
+                <span class="status-badge status-badge--ativo">Vinculado</span>
               } @else {
-                <span class="status-badge status-badge--inativo">Inativo</span>
+                <span class="status-badge status-badge--inativo">Sem vínculo</span>
               }
             </div>
             <div class="pacientes-table__col-acoes">
@@ -136,29 +116,28 @@
                 class="action-btn"
                 type="button"
                 [attr.aria-label]="'Ver perfil de ' + paciente.nome"
-                [disabled]="paciente.ativo === false"
                 (click)="verPerfil(paciente)"
               >
                 <i class="ph ph-eye" aria-hidden="true"></i>
               </button>
 
-              @if (paciente.ativo !== false) {
+              @if (paciente.relacaoAtiva) {
                 <button
-                  class="action-btn action-btn--danger"
+                  class="action-btn"
                   type="button"
-                  [attr.aria-label]="'Inativar ' + paciente.nome"
-                  (click)="abrirModalInativar(paciente)"
+                  [attr.aria-label]="'Encerrar relação com ' + paciente.nome"
+                  (click)="abrirModalRelacao(paciente, 'desvincular')"
                 >
-                  <i class="ph ph-trash" aria-hidden="true"></i>
+                  <i class="ph ph-link-break" aria-hidden="true"></i>
                 </button>
               } @else {
                 <button
                   class="action-btn action-btn--success"
                   type="button"
-                  [attr.aria-label]="'Reativar ' + paciente.nome"
-                  (click)="abrirModalReativar(paciente)"
+                  [attr.aria-label]="'Vincular ' + paciente.nome"
+                  (click)="abrirModalRelacao(paciente, 'vincular')"
                 >
-                  <i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>
+                  <i class="ph ph-link" aria-hidden="true"></i>
                 </button>
               }
             </div>
@@ -168,11 +147,20 @@
     </div>
 
     <div class="pacientes-pagination">
-      <span class="pagination-info">1-{{ pacientes.length }} de {{ pacientes.length }}</span>
+      <span class="pagination-info">{{ intervaloPaginacao }}</span>
       <div class="pagination-controls">
-        <button class="pagination-btn" type="button">Anterior</button>
-        <span class="pagination-page">1</span>
-        <button class="pagination-btn" type="button">Próximo</button>
+        <button class="pagination-btn" type="button" [disabled]="pageIndex === 0" (click)="paginaAnterior()">
+          Anterior
+        </button>
+        <span class="pagination-page">{{ pageIndex + 1 }}</span>
+        <button
+          class="pagination-btn"
+          type="button"
+          [disabled]="pageIndex >= totalPages - 1 || totalFiltrados === 0"
+          (click)="paginaProxima()"
+        >
+          Próximo
+        </button>
       </div>
     </div>
   }

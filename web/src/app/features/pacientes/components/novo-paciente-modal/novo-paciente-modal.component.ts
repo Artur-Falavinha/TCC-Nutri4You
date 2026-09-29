@@ -1,126 +1,117 @@
 import { Component, EventEmitter, Output, inject } from '@angular/core';
-import {
-  FormBuilder,
-  ReactiveFormsModule,
-  Validators
-} from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 
 import { UiInputComponent } from '../../../../shared/components/ui-input/ui-input.component';
-import { UiSelectComponent, UiSelectOption } from '../../../../shared/components/ui-select/ui-select.component';
 import { UiButtonComponent } from '../../../../shared/components/ui-button/ui-button.component';
 import { FormAlertComponent } from '../../../../shared/components/form-alert/form-alert.component';
 import { PacientesService } from '../../../../core/services/pacientes.service';
-import { Paciente } from '../../../../core/models/paciente.models';
+import { PacienteResumo } from '../../../../core/models/paciente.models';
 import { ApiErrorResponse } from '../../../../core/models/api-response.model';
-import { cpfValidator, extractCpfDigits } from '../../../../shared/utils/cpf-mask.util';
-import { resolveFieldError } from '../../../../shared/utils/form-field-error.util';
+import { extractCpfDigits } from '../../../../shared/utils/cpf-mask.util';
+import { PacienteDialogComponent } from '../paciente-dialog/paciente-dialog.component';
 
 @Component({
   selector: 'app-novo-paciente-modal',
   imports: [
     ReactiveFormsModule,
     UiInputComponent,
-    UiSelectComponent,
     UiButtonComponent,
-    FormAlertComponent
+    FormAlertComponent,
+    PacienteDialogComponent
   ],
   templateUrl: './novo-paciente-modal.component.html',
   styleUrl: './novo-paciente-modal.component.css'
 })
 export class NovoPacienteModalComponent {
   @Output() fechar = new EventEmitter<void>();
-  @Output() pacienteCriado = new EventEmitter<Paciente>();
+  @Output() vinculado = new EventEmitter<void>();
 
   private readonly fb = inject(FormBuilder);
   private readonly pacientesService = inject(PacientesService);
 
   loading = false;
-  submitted = false;
+  vinculando = false;
   errorMessage = '';
-
-  readonly sexoOptions: UiSelectOption[] = [
-    { label: 'Masculino', value: 'MASCULINO' },
-    { label: 'Feminino', value: 'FEMININO' },
-    { label: 'Outro', value: 'OUTRO' },
-    { label: 'Prefiro não informar', value: 'NAO_INFORMADO' }
-  ];
+  encontrado: PacienteResumo | null = null;
 
   form = this.fb.nonNullable.group({
-    nome: ['', [Validators.required, Validators.minLength(3)]],
-    email: ['', [Validators.required, Validators.email]],
-    telefone: [''],
-    cpf: ['', [cpfValidator()]],
-    dataNascimento: [''],
-    sexo: ['']
+    email: [''],
+    cpf: ['']
   });
 
-  get controls() {
-    return this.form.controls;
-  }
-
-  fieldError(field: keyof typeof this.form.controls): string {
-    return resolveFieldError(this.controls[field], this.submitted, {
-      email: 'Informe um e-mail válido.',
-      cpf: 'CPF incompleto. Use o formato 000.000.000-00.',
-      minlength: 'Nome deve ter no mínimo 3 caracteres.'
-    });
-  }
-
-  onSubmit(): void {
-    this.submitted = true;
-
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
+  onBuscar(): void {
+    const criterio = this.criterioBusca();
+    if (!criterio) {
       return;
     }
 
     this.loading = true;
     this.errorMessage = '';
-
-    const { nome, email, telefone, cpf, dataNascimento, sexo } =
-      this.form.getRawValue();
-
-    let dataFormatada = undefined;
-    if (dataNascimento) {
-      const parts = dataNascimento.split('/');
-      if (parts.length === 3) {
-        dataFormatada = `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD
-      }
-    }
-
-    const telefoneSoNumeros = telefone ? telefone.replace(/\D/g, '') : undefined;
-    const cpfDigits = cpf ? extractCpfDigits(cpf) : undefined;
+    this.encontrado = null;
 
     this.pacientesService
-      .criarPaciente({
-        nome,
-        email,
-        telefone: telefoneSoNumeros,
-        cpf: cpfDigits,
-        dataNascimento: dataFormatada,
-        sexo: sexo || undefined
-      })
+      .buscarPaciente(criterio)
       .pipe(finalize(() => (this.loading = false)))
       .subscribe({
-        next: (paciente: Paciente) => {
-          this.pacienteCriado.emit(paciente);
+        next: (paciente) => {
+          this.encontrado = paciente;
         },
         error: (error: ApiErrorResponse) => {
           this.errorMessage =
-            error.message ?? 'Não foi possível criar o paciente. Tente novamente.';
+            error.status === 404
+              ? 'Nenhum paciente encontrado com esse critério.'
+              : (error.message ?? 'Não foi possível buscar o paciente.');
         }
       });
   }
 
-  onCancelar(): void {
-    this.fechar.emit();
+  onVincular(): void {
+    if (!this.encontrado) {
+      return;
+    }
+
+    this.vinculando = true;
+    this.errorMessage = '';
+
+    this.pacientesService
+      .vincularPaciente(this.encontrado.id)
+      .pipe(finalize(() => (this.vinculando = false)))
+      .subscribe({
+        next: () => this.vinculado.emit(),
+        error: (error: ApiErrorResponse) => {
+          this.errorMessage = error.message ?? 'Não foi possível vincular o paciente.';
+        }
+      });
   }
 
-  onBackdropClick(event: Event): void {
-    if ((event.target as HTMLElement).classList.contains('modal__backdrop')) {
-      this.fechar.emit();
+  onCampoAlterado(): void {
+    this.encontrado = null;
+    this.errorMessage = '';
+  }
+
+  private criterioBusca(): { email?: string; cpf?: string } | null {
+    const email = this.form.controls.email.value.trim();
+    const cpf = extractCpfDigits(this.form.controls.cpf.value);
+    const temEmail = email.length > 0;
+    const temCpf = cpf.length > 0;
+
+    if (temEmail === temCpf) {
+      this.errorMessage = 'Informe somente o e-mail ou somente o CPF.';
+      return null;
     }
+
+    if (temEmail && !email.includes('@')) {
+      this.errorMessage = 'Informe um e-mail válido.';
+      return null;
+    }
+
+    if (temCpf && cpf.length !== 11) {
+      this.errorMessage = 'CPF incompleto. Use o formato 000.000.000-00.';
+      return null;
+    }
+
+    this.errorMessage = '';
+    return temEmail ? { email } : { cpf };
   }
 }
-

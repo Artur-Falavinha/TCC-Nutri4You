@@ -184,6 +184,16 @@
 }
 
 /* ─── Colunas da tabela ─────────────────────────────── */
+.pacientes-table__col-nome,
+.pacientes-table__col-email,
+.pacientes-table__col-telefone,
+.pacientes-table__col-status,
+.pacientes-table__col-acoes {
+  display: flex;
+  justify-content: center;
+  text-align: center;
+}
+
 .pacientes-table__col-nome {
   flex: 2;
   font-weight: 600;
@@ -200,14 +210,10 @@
 
 .pacientes-table__col-status {
   flex: 1;
-  display: flex;
-  justify-content: center;
 }
 
 .pacientes-table__col-acoes {
   flex: 1;
-  display: flex;
-  justify-content: flex-end;
   gap: var(--space-12);
 }
 
@@ -298,8 +304,13 @@
   cursor: pointer;
 }
 
-.pagination-btn:hover {
+.pagination-btn:hover:not(:disabled) {
   text-decoration: underline;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .pagination-page {

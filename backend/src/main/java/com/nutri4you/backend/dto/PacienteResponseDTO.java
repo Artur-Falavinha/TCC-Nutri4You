@@ -10,5 +10,5 @@ public record PacienteResponseDTO(
         String telefone,
         String sexo,
         LocalDate dataNascimento,
-        boolean ativo) {
+        boolean relacaoAtiva) {
 }

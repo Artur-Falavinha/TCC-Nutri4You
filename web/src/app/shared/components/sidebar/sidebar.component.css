@@ -13,7 +13,8 @@
   background-color: var(--color-surface-page);
   border-right: 1px solid #dbdbdb;
   flex-shrink: 0;
-  transition: width var(--transition-normal);
+  overflow: hidden;
+  transition: width var(--transition-normal), padding var(--transition-normal);
 }
 
 .sidebar--expanded {
@@ -35,7 +36,12 @@
   padding: 0 var(--space-8);
   overflow: hidden;
   gap: var(--space-12);
-  height: 48px;
+  height: 5rem;
+  transition: height var(--transition-normal);
+}
+
+.sidebar:not(.sidebar--expanded) .sidebar__brand {
+  height: 3rem;
 }
 
 .sidebar__toggle {
@@ -56,9 +62,32 @@
   background-color: rgba(0, 0, 0, 0.05);
 }
 
+.sidebar--expanded .sidebar__brand {
+  flex-direction: column;
+  align-items: stretch;
+  height: auto;
+  padding: 0;
+  gap: var(--space-8);
+}
+
 .sidebar__logo {
-  height: 32px;
+  height: auto;
+  width: 100%;
+  max-width: 14rem;
+  max-height: 5rem;
   object-fit: contain;
+  object-position: left center;
+  opacity: 1;
+  transition:
+    max-width var(--transition-normal),
+    max-height var(--transition-normal),
+    opacity var(--transition-normal);
+}
+
+.sidebar:not(.sidebar--expanded) .sidebar__logo {
+  max-width: 0;
+  max-height: 0;
+  opacity: 0;
 }
 
 /* ─── Navegação ─────────────────────────────────────── */
@@ -84,7 +113,18 @@
   border: none;
   cursor: pointer;
   width: 100%;
-  transition: background-color var(--transition-fast), color var(--transition-fast);
+  overflow: hidden;
+  transition: background-color var(--transition-fast), color var(--transition-fast), padding var(--transition-normal);
+}
+
+.sidebar__label,
+.sidebar__user-name {
+  display: inline-block;
+  max-width: 12rem;
+  opacity: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: max-width var(--transition-normal), opacity var(--transition-normal);
 }
 
 .sidebar__nav-item:hover:not(.sidebar__nav-item--active) {
@@ -131,18 +171,16 @@
   font-size: var(--text-sm);
   font-weight: 500;
   color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .sidebar__nav-item--logout {
   text-align: left;
 }
 
-.sidebar:not(.sidebar--expanded) span,
+.sidebar:not(.sidebar--expanded) .sidebar__label,
 .sidebar:not(.sidebar--expanded) .sidebar__user-name {
-  display: none;
+  max-width: 0;
+  opacity: 0;
 }
 
 .sidebar:not(.sidebar--expanded) .sidebar__nav-item {

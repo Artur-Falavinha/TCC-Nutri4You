@@ -1,0 +1,23 @@
+<div
+  class="modal__backdrop"
+  role="presentation"
+  tabindex="-1"
+  (click)="onBackdropClick($event)"
+  (keyup.escape)="onEscape($event)"
+>
+  <div class="modal__panel" role="dialog" aria-modal="true" [attr.aria-labelledby]="titleId">
+    <header class="modal__header">
+      <h2 class="modal__title" [id]="titleId">{{ title }}</h2>
+    </header>
+
+    @if (description) {
+      <p class="modal__description">{{ description }}</p>
+    }
+
+    <ng-content />
+
+    <footer class="modal__footer">
+      <ng-content select="[dialogActions]" />
+    </footer>
+  </div>
+</div>

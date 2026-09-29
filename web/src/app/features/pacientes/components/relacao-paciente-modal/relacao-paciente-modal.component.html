@@ -1,0 +1,22 @@
+<app-paciente-dialog [title]="title" [description]="description" (fechar)="fechar.emit()">
+  <app-form-alert [message]="errorMessage" />
+
+  <app-ui-button
+    dialogActions
+    label="Cancelar"
+    variant="outline"
+    type="button"
+    [fullWidth]="false"
+    [disabled]="loading"
+    (click)="fechar.emit()"
+  />
+
+  <app-ui-button
+    dialogActions
+    [label]="confirmLabel"
+    type="button"
+    [fullWidth]="false"
+    [loading]="loading"
+    (click)="onConfirmar()"
+  />
+</app-paciente-dialog>
