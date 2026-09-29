@@ -28,6 +28,21 @@
   padding-right: calc(var(--space-12) + var(--icon-size-md) + var(--space-8));
 }
 
+.ui-input__control--leading .ui-input__field {
+  padding-left: calc(var(--space-12) + var(--icon-size-md) + var(--space-8));
+}
+
+.ui-input__leading {
+  position: absolute;
+  top: 50%;
+  left: var(--space-12);
+  transform: translateY(-50%);
+  font-size: var(--icon-size-md);
+  line-height: 1;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
 .ui-input__field {
   width: 100%;
   min-height: var(--input-min-height);

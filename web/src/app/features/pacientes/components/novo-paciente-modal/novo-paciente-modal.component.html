@@ -1,0 +1,66 @@
+<app-paciente-dialog
+  title="Buscar paciente"
+  description="Informe o e-mail ou o CPF de um paciente que já criou a conta. A busca usa apenas um dos dois critérios."
+  (fechar)="fechar.emit()"
+>
+  <app-form-alert [message]="errorMessage" />
+
+  <form class="modal__form" [formGroup]="form" (ngSubmit)="onBuscar()" novalidate>
+    <app-ui-input
+      label="E-MAIL"
+      placeholder="nome@exemplo.com"
+      type="email"
+      autocomplete="email"
+      formControlName="email"
+      (input)="onCampoAlterado()"
+    />
+
+    <app-ui-input
+      label="CPF"
+      placeholder="000.000.000-00"
+      type="text"
+      mask="cpf"
+      formControlName="cpf"
+      (input)="onCampoAlterado()"
+    />
+  </form>
+
+  @if (encontrado) {
+    <p class="busca-resultado">
+      <span class="busca-resultado__nome">{{ encontrado.nome }}</span>
+      <span class="busca-resultado__email">{{ encontrado.email }}</span>
+    </p>
+  }
+
+  <app-ui-button
+    dialogActions
+    label="Cancelar"
+    variant="outline"
+    type="button"
+    [fullWidth]="false"
+    [disabled]="loading || vinculando"
+    (click)="fechar.emit()"
+  />
+
+  @if (encontrado) {
+    <app-ui-button
+      dialogActions
+      label="Vincular"
+      icon="link"
+      type="button"
+      [fullWidth]="false"
+      [loading]="vinculando"
+      (click)="onVincular()"
+    />
+  } @else {
+    <app-ui-button
+      dialogActions
+      label="Buscar"
+      icon="magnifying-glass"
+      type="button"
+      [fullWidth]="false"
+      [loading]="loading"
+      (click)="onBuscar()"
+    />
+  }
+</app-paciente-dialog>
