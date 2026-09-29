@@ -31,20 +31,29 @@
 
 .sidebar__brand {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  padding: 0 var(--space-8);
-  overflow: hidden;
   gap: var(--space-12);
   height: 5rem;
-  transition: height var(--transition-normal);
+  padding: 0;
+  overflow: hidden;
+  transition: height var(--transition-normal), gap var(--transition-normal);
 }
 
 .sidebar:not(.sidebar--expanded) .sidebar__brand {
-  height: 3rem;
+  height: 2.5rem;
+  justify-content: center;
+  gap: 0;
 }
 
 .sidebar__toggle {
+  align-self: flex-start;
+  flex: 0 0 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-top: 1.25rem;
+  padding: 0;
   background: transparent;
   border: none;
   color: var(--color-text-primary);
@@ -53,40 +62,37 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px;
   border-radius: var(--radius-sm);
-  transition: background-color var(--transition-fast);
+  transition: background-color var(--transition-fast), margin-top var(--transition-normal);
+}
+
+.sidebar:not(.sidebar--expanded) .sidebar__toggle {
+  align-self: center;
+  margin-top: 0;
 }
 
 .sidebar__toggle:hover {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-.sidebar--expanded .sidebar__brand {
-  flex-direction: column;
-  align-items: stretch;
-  height: auto;
-  padding: 0;
-  gap: var(--space-8);
-}
-
 .sidebar__logo {
-  height: auto;
-  width: 100%;
-  max-width: 14rem;
-  max-height: 5rem;
+  height: 5rem;
+  width: auto;
+  max-width: calc(100% - 2.5rem - var(--space-12));
+  flex: 1 1 auto;
+  min-width: 0;
   object-fit: contain;
   object-position: left center;
   opacity: 1;
   transition:
     max-width var(--transition-normal),
-    max-height var(--transition-normal),
-    opacity var(--transition-normal);
+    opacity var(--transition-normal),
+    flex-basis var(--transition-normal);
 }
 
 .sidebar:not(.sidebar--expanded) .sidebar__logo {
   max-width: 0;
-  max-height: 0;
+  flex: 0 0 0;
   opacity: 0;
 }
 
@@ -138,7 +144,13 @@
 }
 
 .sidebar__nav-icon {
-  font-size: var(--icon-size-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 1.25rem;
+  line-height: 1;
   flex-shrink: 0;
 }
 
@@ -177,6 +189,13 @@
   text-align: left;
 }
 
+.sidebar:not(.sidebar--expanded) .sidebar__top,
+.sidebar:not(.sidebar--expanded) .sidebar__nav,
+.sidebar:not(.sidebar--expanded) .sidebar__footer {
+  align-items: center;
+  width: 100%;
+}
+
 .sidebar:not(.sidebar--expanded) .sidebar__label,
 .sidebar:not(.sidebar--expanded) .sidebar__user-name {
   max-width: 0;
@@ -185,11 +204,17 @@
 
 .sidebar:not(.sidebar--expanded) .sidebar__nav-item {
   justify-content: center;
-  padding: 12px;
+  gap: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
 }
 
 .sidebar:not(.sidebar--expanded) .sidebar__user {
   justify-content: center;
-  padding: 12px;
+  gap: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
 }
 

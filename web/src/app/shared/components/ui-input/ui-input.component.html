@@ -5,7 +5,14 @@
       <span class="ui-input__required" aria-hidden="true">*</span>
     }
   </label>
-  <div class="ui-input__control" [class.ui-input__control--password]="isPasswordField">
+  <div
+    class="ui-input__control"
+    [class.ui-input__control--password]="isPasswordField"
+    [class.ui-input__control--leading]="showLeadingIcon"
+  >
+    @if (showLeadingIcon) {
+      <i [class]="'ph ui-input__leading ' + leadingIcon" aria-hidden="true"></i>
+    }
     <input
       class="ui-input__field"
       [id]="id"

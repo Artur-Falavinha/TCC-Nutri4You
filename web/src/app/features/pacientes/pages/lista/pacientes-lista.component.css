@@ -3,6 +3,14 @@
    Segue design system / tokens do projeto
    =================================================== */
 
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
 /* ─── Cabeçalho ─────────────────────────────────────── */
 .pacientes-header {
   display: flex;
@@ -47,6 +55,7 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   background-color: var(--color-surface-card);
 }
@@ -59,6 +68,7 @@
   justify-content: center;
   gap: var(--space-24);
   flex: 1;
+  min-height: 0;
   padding: var(--space-40) var(--space-24);
   text-align: center;
 }
@@ -93,6 +103,9 @@
 .pacientes-main__illustration {
   width: 400px;
   max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .pacientes-main__empty-text {

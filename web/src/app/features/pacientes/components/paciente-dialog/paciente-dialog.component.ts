@@ -13,12 +13,6 @@ export class PacienteDialogComponent {
 
   readonly titleId = 'paciente-dialog-title';
 
-  onBackdropClick(event: Event): void {
-    if ((event.target as HTMLElement).classList.contains('modal__backdrop')) {
-      this.fechar.emit();
-    }
-  }
-
   onEscape(event: Event): void {
     event.stopPropagation();
     this.fechar.emit();

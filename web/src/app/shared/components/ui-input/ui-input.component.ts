@@ -26,6 +26,8 @@ export class UiInputComponent implements ControlValueAccessor {
   @Input() errorMessage = '';
   @Input() required = false;
   @Input() mask?: 'crn' | 'cpf' | 'telefone' | 'data';
+  /** Classe Phosphor (ex.: ph-magnifying-glass). Vazio = sem ícone. */
+  @Input() leadingIcon = '';
 
   value = '';
   disabled = false;
@@ -40,6 +42,10 @@ export class UiInputComponent implements ControlValueAccessor {
 
   get isPasswordField(): boolean {
     return this.type === 'password';
+  }
+
+  get showLeadingIcon(): boolean {
+    return this.leadingIcon.length > 0 && this.value.length === 0;
   }
 
   get resolvedInputType(): 'text' | 'email' | 'password' | 'date' | 'tel' {

@@ -56,16 +56,16 @@
       />
 
       <div class="pacientes-main__empty-text">
-        <p class="pacientes-main__empty-title">Nenhum paciente cadastrado</p>
+        <p class="pacientes-main__empty-title">Nenhum paciente na lista</p>
         <p class="pacientes-main__empty-desc">
-          Você ainda não possui pacientes na lista. Aguarde o primeiro paciente
-          se cadastrar para iniciar consultas e acompanhar a evolução clínica.
+          Você ainda não possui pacientes vinculados. Busque pelo e-mail ou CPF
+          alguém que já criou a conta para iniciar consultas e acompanhar a evolução clínica.
         </p>
       </div>
 
       <app-ui-button
-        label="Novo Paciente"
-        icon="plus-circle"
+        label="Vincular paciente"
+        icon="link"
         type="button"
         [fullWidth]="false"
         (click)="abrirModal()"
@@ -76,13 +76,13 @@
   @if (state === 'loaded') {
     <div class="pacientes-main__toolbar">
       <div class="pacientes-main__filters" [formGroup]="filtros">
-        <app-ui-input formControlName="nome" label="Nome" placeholder="Filtrar por nome" class="filter-input" />
-        <app-ui-input formControlName="email" label="E-mail" placeholder="Filtrar por e-mail" class="filter-input" />
-        <app-ui-input formControlName="telefone" label="Telefone" placeholder="Filtrar por telefone" class="filter-input" />
+        <app-ui-input formControlName="nome" label="Nome" placeholder="Filtrar por nome" leadingIcon="ph-magnifying-glass" class="filter-input" />
+        <app-ui-input formControlName="email" label="E-mail" placeholder="Filtrar por e-mail" leadingIcon="ph-magnifying-glass" class="filter-input" />
+        <app-ui-input formControlName="telefone" label="Telefone" placeholder="Filtrar por telefone" leadingIcon="ph-magnifying-glass" class="filter-input" />
       </div>
       <app-ui-button
-        label="Novo Paciente"
-        icon="plus-circle"
+        label="Vincular paciente"
+        icon="link"
         type="button"
         [fullWidth]="false"
         (click)="abrirModal()"
