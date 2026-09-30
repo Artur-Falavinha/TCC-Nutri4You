@@ -52,4 +52,8 @@ public class Consulta {
     public Nutricionista getNutricionista() {
         return nutricionista;
     }
+
+    public LocalDateTime getDataHora() {
+        return dataHora;
+    }
 }
