@@ -29,7 +29,7 @@
             label="Paciente"
             selectId="paciente"
             [options]="patientOptions"
-            [ngModel]="patientId == null ? '' : '' + patientId"
+            [ngModel]="patientId === null ? '' : '' + patientId"
             (ngModelChange)="selectPatient(+$event)"
             [disabled]="loading || saving || editing"
           />
