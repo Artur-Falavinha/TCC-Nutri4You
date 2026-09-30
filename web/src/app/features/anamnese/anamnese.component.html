@@ -1,19 +1,5 @@
 <main class="anamnese-shell">
-  <aside class="sidebar" aria-label="Navegação principal">
-    <div class="sidebar__top">
-      <img class="sidebar__logo" src="/logo-principal.png" alt="Nutri4You" />
-      <nav class="sidebar__nav">
-        <a class="sidebar__link" routerLink="/">Home</a>
-        <a class="sidebar__link sidebar__link--active" routerLink="/anamnese">Pacientes</a>
-      </nav>
-    </div>
-    @if (auth.authenticated) {
-      <div class="sidebar__footer">
-        <div class="profile"><span class="profile__avatar" aria-hidden="true"></span><span>{{ nutritionist }}</span></div>
-        <app-ui-button label="Sair" variant="secondary" [fullWidth]="false" (click)="logout()" [disabled]="saving" />
-      </div>
-    }
-  </aside>
+  <app-sidebar />
 
   <section class="workspace">
     <header class="patient-header">
@@ -37,19 +23,7 @@
         </div>
       }
       @if (message) { <p class="anamnese-alert" role="status">{{ message }}</p> }
-      @if (!auth.authenticated) {
-        <form class="anamnese-login form-section" (ngSubmit)="login()">
-          <h2>Acesso do nutricionista</h2>
-          <label class="field"><span>E-mail</span><input type="email" name="email" [(ngModel)]="email" required maxlength="100" autocomplete="username" /></label>
-          <label class="field"><span>Senha</span><input type="password" name="password" [(ngModel)]="password" required maxlength="255" autocomplete="current-password" /></label>
-          <app-ui-button
-            [label]="loading ? 'Entrando...' : 'Entrar'"
-            type="submit"
-            [loading]="loading"
-            [disabled]="!email || !password"
-          />
-        </form>
-      } @else {
+      @if (auth.authenticated) {
         <label class="field">
           <span>Paciente</span>
           <select aria-label="Paciente" [ngModel]="patientId" (ngModelChange)="selectPatient($event)" [disabled]="loading || saving || editing">
@@ -135,12 +109,17 @@
                               }
                             </fieldset>
                           } @else if (field.type === 'range') {
-                            <label class="scale-field" [for]="field.key">
+                            <label class="scale-field" [class.scale-field--empty]="answers[field.key] == null" [for]="field.key">
                               <span>{{ field.label }} <span aria-hidden="true">*</span></span>
-                              <output class="range-value" [attr.for]="field.key" [style.left]="rangePosition(field)">{{ answers[field.key] ?? '–' }}</output>
+                              @if (answers[field.key] != null) {
+                                <output class="range-value" [attr.for]="field.key" [style.left]="rangePosition(field)">{{ answers[field.key] }}</output>
+                              } @else {
+                                <span class="range-placeholder">Não selecionado</span>
+                              }
                               <input type="range" [id]="field.key" [min]="field.min!" [max]="field.max!" [step]="field.step!"
-                                [value]="answers[field.key] ?? 5" (input)="rangeInput(field, $event)" (change)="rangeInput(field, $event)"
+                                [value]="answers[field.key] ?? field.min" (input)="rangeInput(field, $event)" (change)="rangeInput(field, $event)"
                                 (pointerup)="rangeInput(field, $event)" aria-required="true"
+                                [attr.aria-valuetext]="answers[field.key] == null ? 'Não selecionado' : null"
                                 [disabled]="saving" [attr.aria-invalid]="!!errors[field.key]"
                                 [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null" />
                             </label>

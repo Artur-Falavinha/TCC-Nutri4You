@@ -2,10 +2,11 @@ import { Component, DestroyRef, HostListener, OnInit, inject } from '@angular/co
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom, forkJoin } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
+import { SidebarComponent } from '../../shared/components/sidebar/sidebar.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
 import { UiCheckboxComponent } from '../../shared/components/ui-checkbox/ui-checkbox.component';
 import { AnamneseService } from './anamnese.service';
@@ -14,7 +15,7 @@ import { Anamnese, AnamneseField, Answers, Answer, Patient } from './anamnese.mo
 @Component({
   selector: 'app-anamnese',
   standalone: true,
-  imports: [FormsModule, DatePipe, RouterLink, UiButtonComponent, UiCheckboxComponent],
+  imports: [FormsModule, DatePipe, SidebarComponent, UiButtonComponent, UiCheckboxComponent],
   templateUrl: './anamnese.component.html',
   styleUrl: './anamnese.component.css'
 })
@@ -31,9 +32,6 @@ export class AnamneseComponent implements OnInit {
   answers: Answers = {};
   errors: Record<string, string> = {};
   patientId: number | null = null;
-  nutritionist = '';
-  email = '';
-  password = '';
   loading = false;
   saving = false;
   editing = false;
@@ -52,28 +50,16 @@ export class AnamneseComponent implements OnInit {
     });
   }
 
-  async login(): Promise<void> {
-    this.loading = true;
-    this.error = '';
-    try {
-      await firstValueFrom(this.auth.login(this.email, this.password));
-      this.password = '';
-      if (!this.editing) await this.initialize();
-    } catch (error) { this.handleError(error); }
-    finally { this.loading = false; }
-  }
-
   async initialize(): Promise<void> {
     this.loading = true;
     this.error = '';
     try {
       const result = await firstValueFrom(forkJoin({
-        fields: this.api.fields(), patients: this.api.patients(), user: this.api.user()
+        fields: this.api.fields(), patients: this.api.patients()
       }));
       this.fields = result.fields;
       this.sections = [...new Set(this.fields.map(f => f.section))];
       this.patients = result.patients;
-      this.nutritionist = result.user.nome;
       const routeId = this.route.snapshot.paramMap.get('id') ?? this.route.snapshot.queryParamMap.get('pacienteId');
       if (routeId) {
         const id = Number(routeId);
@@ -132,17 +118,6 @@ export class AnamneseComponent implements OnInit {
   @HostListener('window:beforeunload', ['$event'])
   beforeUnload(event: BeforeUnloadEvent): void {
     if (this.dirty || this.saving) { event.preventDefault(); event.returnValue = ''; }
-  }
-
-  logout(): void {
-    if (!this.canLeave()) return;
-    this.auth.logout();
-    this.data = null;
-    this.patients = [];
-    this.answers = {};
-    this.editing = false;
-    this.message = '';
-    this.error = '';
   }
 
   fieldsFor(section: string): AnamneseField[] { return this.fields.filter(f => f.section === section); }
@@ -208,7 +183,11 @@ export class AnamneseComponent implements OnInit {
   }
 
   rangePosition(field: AnamneseField): string {
-    const percent = (Number(this.answers[field.key] ?? 5) - 1) / 9;
+    const current = Number(this.answers[field.key]);
+    const min = Number(field.min ?? 1);
+    const max = Number(field.max ?? 10);
+    const span = Math.max(max - min, 1);
+    const percent = (current - min) / span;
     return `calc(${percent * 100}% + ${(0.5 - percent) * 24}px)`;
   }
 

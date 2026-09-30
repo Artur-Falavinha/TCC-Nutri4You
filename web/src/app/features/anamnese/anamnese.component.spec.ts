@@ -10,7 +10,11 @@ describe('AnamneseComponent', () => {
   let fixture: ComponentFixture<AnamneseComponent>;
   let component: AnamneseComponent;
   let api: jasmine.SpyObj<AnamneseService>;
-  const auth = { authenticated: false, logout: jasmine.createSpy('logout') };
+  const auth = {
+    authenticated: false,
+    logout: jasmine.createSpy('logout'),
+    fetchMe: () => of({ nome: 'Nutri Teste', perfil: 'NUTRICIONISTA' })
+  };
   const patient = { id: 10, nome: 'Paciente Teste', email: 'test@example.test', sexo: 'Feminino', dataNascimento: '1995-03-12', telefone: null };
   const empty: Anamnese = { paciente: patient, versao: null, status: 'NAO_INICIADA', respostas: {}, rascunho: null, finalizadaEm: null, atualizadaEm: null };
   const field = (key: string, extra: Partial<AnamneseField> = {}): AnamneseField => ({
@@ -123,9 +127,23 @@ describe('AnamneseComponent', () => {
   it('does not silently answer a scale before the user selects its value', async () => {
     component.fields = [field('emotionalHunger', { type: 'range', min: 1, max: 10, step: 1 })];
     component.startEditing();
+    expect(component.answers['emotionalHunger']).toBeUndefined();
     await component.save(false, form());
     expect(component.errors['emotionalHunger']).toBe('Campo obrigatório.');
     expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it('records a scale only after the user moves it', async () => {
+    const scale = field('emotionalHunger', { type: 'range', min: 1, max: 10, step: 1 });
+    component.fields = [scale];
+    component.startEditing();
+    const input = document.createElement('input');
+    input.value = '7';
+    component.rangeInput(scale, { target: input } as unknown as Event);
+    expect(component.answers['emotionalHunger']).toBe(7);
+    await component.save(false, form());
+    expect(component.errors['emotionalHunger']).toBeUndefined();
+    expect(api.save).toHaveBeenCalled();
   });
 
   it('makes the none diagnosis option exclusive', () => {

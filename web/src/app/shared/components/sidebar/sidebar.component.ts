@@ -31,9 +31,9 @@ export class SidebarComponent {
     this.isExpanded = !this.isExpanded;
   }
 
-  logout(): void {
-    this.authService.logout();
-    void this.router.navigate(['/login']);
+  async logout(): Promise<void> {
+    const left = await this.router.navigate(['/login']);
+    if (left) this.authService.logout();
   }
 }
 
