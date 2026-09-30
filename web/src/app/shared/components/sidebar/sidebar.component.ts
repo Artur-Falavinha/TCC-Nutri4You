@@ -14,7 +14,7 @@ export class SidebarComponent {
   private readonly router = inject(Router);
 
   nomeNutricionista = 'Nutricionista';
-  isExpanded = false;
+  isExpanded = window.matchMedia('(min-width: 721px)').matches;
 
   constructor() {
     this.authService.fetchMe().subscribe({
@@ -32,8 +32,10 @@ export class SidebarComponent {
   }
 
   async logout(): Promise<void> {
-    const left = await this.router.navigate(['/login']);
-    if (left) this.authService.logout();
+    const left = await this.router.navigate(['/dashboard']);
+    if (!left) return;
+    this.authService.logout();
+    await this.router.navigate(['/login']);
   }
 }
 
