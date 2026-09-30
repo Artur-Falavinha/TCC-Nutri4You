@@ -271,6 +271,81 @@ Retorna dados do usuário autenticado.
 
 ---
 
+## GET /usuarios/me/perfil
+
+Dados pessoais do paciente autenticado. O e-mail é somente leitura.
+
+**Autenticação:** JWT de paciente
+
+### Perfil — resposta 200
+
+```json
+{
+  "data": {
+    "id": 2,
+    "nome": "Arthur Henrique Deretti",
+    "email": "arthur@email.com",
+    "telefone": "41999999999",
+    "sexo": "Masculino",
+    "dataNascimento": "2000-01-01"
+  },
+  "message": "Perfil carregado."
+}
+```
+
+### Perfil — erros
+
+| Código | Motivo |
+| --- | --- |
+| `403` | Token de nutricionista ou ausente |
+
+---
+
+## PUT /usuarios/me
+
+Paciente atualiza nome, telefone, sexo e data de nascimento. O e-mail não muda.
+
+**Autenticação:** JWT de paciente
+
+### Atualização do próprio perfil — corpo
+
+```json
+{
+  "nome": "Nome Atualizado",
+  "telefone": "41988887777",
+  "sexo": "Masculino",
+  "dataNascimento": "1990-05-20"
+}
+```
+
+### Atualização do próprio perfil — erros
+
+| Código | Motivo |
+| --- | --- |
+| `400` | Nome ausente |
+| `403` | Token de nutricionista ou ausente |
+
+---
+
+## GET /usuarios/me/nutricionistas
+
+Lista nutricionistas com relação clínica recorrente **ATIVA** do paciente autenticado.
+
+**Autenticação:** JWT de paciente
+
+### Nutricionistas vinculados — resposta 200
+
+```json
+{
+  "data": [
+    { "id": 1, "nome": "Gabriel de Paula Brasil", "email": "nutri@nutri4you.com" }
+  ],
+  "message": "Nutricionistas vinculados."
+}
+```
+
+---
+
 ## DELETE /usuarios/me/nutricionistas/{idNutricionista}/relacao
 
 Paciente encerra relação clínica recorrente com um nutricionista (Q17).
@@ -365,7 +440,7 @@ Busca global de paciente cadastrado por e-mail **ou** CPF (exatamente um parâme
 
 ## GET /gestao-pacientes/{id}
 
-Busca paciente por ID. Exige relação clínica ativa ou consulta com o nutricionista logado.
+Busca paciente por ID. Exige relação clínica ativa ou consulta com o nutricionista logado. Nome, telefone, sexo e data de nascimento são somente leitura: quem altera esses campos é o paciente em `PUT /usuarios/me`.
 
 **Autenticação:** `ROLE_NUTRICIONISTA`
 
@@ -375,25 +450,6 @@ Busca paciente por ID. Exige relação clínica ativa ou consulta com o nutricio
 | --- | --- |
 | `403` | Paciente existe, mas nutricionista sem acesso |
 | `404` | ID inexistente |
-
----
-
-## PUT /gestao-pacientes/{id}
-
-Atualiza nome, telefone, sexo e data de nascimento.
-
-**Autenticação:** `ROLE_NUTRICIONISTA`
-
-### Atualização — corpo
-
-```json
-{
-  "nome": "Nome Atualizado",
-  "telefone": "41988887777",
-  "sexo": "Masculino",
-  "dataNascimento": "1990-05-20"
-}
-```
 
 ---
 
@@ -448,6 +504,105 @@ Nutricionista encerra relação clínica recorrente com o paciente (Q17).
 | Rota | Motivo |
 | --- | --- |
 | `DELETE /gestao-pacientes/{id}` | Soft delete removido (Q17). Desvincular recorrente → S2-B4 (`DELETE .../relacao`). |
+| `PUT /gestao-pacientes/{id}` | Dados pessoais são do paciente (`PUT /usuarios/me`). O nutricionista apenas visualiza. |
+
+---
+
+## GET /gestao-pacientes/{id}/historico
+
+Consultas do nutricionista com o paciente e avaliações antropométricas, mais recentes primeiro. Lista vazia quando não há registros.
+
+**Autenticação:** `ROLE_NUTRICIONISTA` com relação clínica ou consulta
+
+### Histórico — resposta 200
+
+```json
+{
+  "data": {
+    "consultas": [
+      { "id": 1, "pacienteNome": "Arthur Henrique Deretti", "dataHora": "2026-09-30T10:00:00" }
+    ],
+    "avaliacoes": [
+      {
+        "id": 1,
+        "dataAvaliacao": "2026-09-30",
+        "peso": 80.00,
+        "altura": 1.80,
+        "imc": 24.69,
+        "razaoCinturaQuadril": 0.80
+      }
+    ]
+  },
+  "message": "Histórico carregado."
+}
+```
+
+### Histórico — erros
+
+| Código | Motivo |
+| --- | --- |
+| `403` | Nutricionista sem acesso ao paciente |
+| `404` | Paciente inexistente |
+
+---
+
+## GET /gestao-pacientes/{id}/avaliacoes
+
+Lista avaliações antropométricas do paciente, mais recentes primeiro.
+
+**Autenticação:** `ROLE_NUTRICIONISTA` com relação clínica ou consulta
+
+---
+
+## POST /gestao-pacientes/{id}/avaliacoes
+
+Registra medidas. `id_consulta` não é obrigatório. IMC = peso / altura². Razão cintura/quadril só quando as duas medidas existem. Percentual de gordura e massa muscular, quando enviados, são valores medidos.
+
+**Autenticação:** `ROLE_NUTRICIONISTA` com relação clínica ou consulta
+
+### Avaliação — corpo
+
+```json
+{
+  "peso": 80,
+  "altura": 1.80,
+  "circunferenciaCintura": 80,
+  "circunferenciaQuadril": 100
+}
+```
+
+| Campo | Regra |
+| --- | --- |
+| `peso` | Obrigatório, 1 a 500 kg |
+| `altura` | Obrigatório, 0,30 a 2,70 m |
+
+### Avaliação — erros
+
+| Código | Motivo |
+| --- | --- |
+| `400` | Peso ou altura fora da faixa |
+| `403` | Nutricionista sem acesso |
+| `404` | Paciente inexistente |
+
+---
+
+## GET /dashboard/consultas
+
+Consultas já persistidas do nutricionista: as de hoje e as dos próximos 7 dias. Não cria consulta.
+
+**Autenticação:** `ROLE_NUTRICIONISTA`
+
+### Agenda — resposta 200
+
+```json
+{
+  "data": {
+    "hoje": [],
+    "proximosSeteDias": []
+  },
+  "message": "Agenda carregada."
+}
+```
 
 ---
 
