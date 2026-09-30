@@ -143,9 +143,14 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
+  min-inline-size: 0;
   margin: 0;
   padding: 0;
   border: 0;
+}
+
+.checkbox-group legend {
+  padding: 0;
 }
 
 .scale-field {
