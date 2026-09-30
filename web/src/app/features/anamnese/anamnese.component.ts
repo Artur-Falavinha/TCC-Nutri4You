@@ -32,6 +32,7 @@ export class AnamneseComponent implements OnInit {
   answers: Answers = {};
   errors: Record<string, string> = {};
   patientId: number | null = null;
+  hasRoutePatient = false;
   loading = false;
   saving = false;
   editing = false;
@@ -44,6 +45,7 @@ export class AnamneseComponent implements OnInit {
     if (this.auth.authenticated) void this.initialize();
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       const id = Number(params.get('id'));
+      this.hasRoutePatient = Number.isSafeInteger(id) && id > 0;
       if (this.fields.length && this.auth.authenticated && id > 0 && id !== this.patientId) {
         void this.loadPatient(id);
       }
@@ -178,17 +180,17 @@ export class AnamneseComponent implements OnInit {
     this.change(field, formatted);
   }
 
-  rangeInput(field: AnamneseField, event: Event): void {
-    this.change(field, Number((event.target as HTMLInputElement).value));
-  }
-
-  rangePosition(field: AnamneseField): string {
-    const current = Number(this.answers[field.key]);
+  scaleSteps(field: AnamneseField): number[] {
     const min = Number(field.min ?? 1);
     const max = Number(field.max ?? 10);
-    const span = Math.max(max - min, 1);
-    const percent = (current - min) / span;
-    return `calc(${percent * 100}% + ${(0.5 - percent) * 24}px)`;
+    const step = Number(field.step ?? 1) || 1;
+    const values: number[] = [];
+    for (let value = min; value <= max; value += step) values.push(value);
+    return values;
+  }
+
+  selectScale(field: AnamneseField, value: number): void {
+    this.change(field, value);
   }
 
   display(value: Answer | undefined): string {

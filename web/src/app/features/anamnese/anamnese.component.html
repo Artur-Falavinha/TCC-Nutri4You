@@ -24,13 +24,15 @@
       }
       @if (message) { <p class="anamnese-alert" role="status">{{ message }}</p> }
       @if (auth.authenticated) {
-        <label class="field">
-          <span>Paciente</span>
-          <select aria-label="Paciente" [ngModel]="patientId" (ngModelChange)="selectPatient($event)" [disabled]="loading || saving || editing">
-            <option [ngValue]="null" disabled>Selecione o paciente</option>
-            @for (patient of patients; track patient.id) { <option [ngValue]="patient.id">{{ patient.nome }}</option> }
-          </select>
-        </label>
+        @if (!hasRoutePatient) {
+          <label class="field">
+            <span>Paciente</span>
+            <select aria-label="Paciente" [ngModel]="patientId" (ngModelChange)="selectPatient($event)" [disabled]="loading || saving || editing">
+              <option [ngValue]="null" disabled>Selecione o paciente</option>
+              @for (patient of patients; track patient.id) { <option [ngValue]="patient.id">{{ patient.nome }}</option> }
+            </select>
+          </label>
+        }
         @if (loading) { <p role="status">Carregando...</p> }
         @else if (!patients.length && !error) { <p>Nenhum paciente vinculado.</p> }
 
@@ -74,13 +76,13 @@
             }
           } @else {
             <form #formElement class="anamnese-form" (ngSubmit)="save(false, formElement)" novalidate>
-              <section class="form-section form-section--readonly" aria-labelledby="identificacao">
+              <section class="form-section" aria-labelledby="identificacao">
                 <h2 id="identificacao">Identificação</h2>
-                <label class="field"><span>Nome completo</span><input [value]="data.paciente.nome" disabled /></label>
-                <label class="field"><span>E-mail</span><input [value]="data.paciente.email" disabled /></label>
+                <label class="field"><span>Nome completo</span><input [value]="data.paciente.nome" readonly /></label>
+                <label class="field"><span>E-mail principal</span><input [value]="data.paciente.email" readonly /></label>
                 <div class="field-row">
-                  <label class="field"><span>Data de nascimento</span><input [value]="(data.paciente.dataNascimento | date:'dd/MM/yyyy') || 'Não informado'" disabled /></label>
-                  <label class="field"><span>Sexo</span><input [value]="data.paciente.sexo || 'Não informado'" disabled /></label>
+                  <label class="field"><span>Data de nascimento</span><input [value]="(data.paciente.dataNascimento | date:'dd/MM/yyyy') || 'Não informado'" readonly /></label>
+                  <label class="field"><span>Sexo</span><input [value]="data.paciente.sexo || 'Não informado'" readonly /></label>
                 </div>
               </section>
               @for (section of sections; track section; let sectionIndex = $index) {
@@ -109,20 +111,22 @@
                               }
                             </fieldset>
                           } @else if (field.type === 'range') {
-                            <label class="scale-field" [class.scale-field--empty]="answers[field.key] == null" [for]="field.key">
-                              <span>{{ field.label }} <span aria-hidden="true">*</span></span>
-                              @if (answers[field.key] != null) {
-                                <output class="range-value" [attr.for]="field.key" [style.left]="rangePosition(field)">{{ answers[field.key] }}</output>
-                              } @else {
-                                <span class="range-placeholder">Não selecionado</span>
-                              }
-                              <input type="range" [id]="field.key" [min]="field.min!" [max]="field.max!" [step]="field.step!"
-                                [value]="answers[field.key] ?? field.min" (input)="rangeInput(field, $event)" (change)="rangeInput(field, $event)"
-                                (pointerup)="rangeInput(field, $event)" aria-required="true"
-                                [attr.aria-valuetext]="answers[field.key] == null ? 'Não selecionado' : null"
-                                [disabled]="saving" [attr.aria-invalid]="!!errors[field.key]"
-                                [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null" />
-                            </label>
+                            <div class="scale-field" [id]="field.key" tabindex="-1" role="radiogroup"
+                              [attr.aria-labelledby]="field.key + '-label'" aria-required="true"
+                              [attr.aria-invalid]="!!errors[field.key]"
+                              [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null">
+                              <span [id]="field.key + '-label'">{{ field.label }} <span aria-hidden="true">*</span></span>
+                              <div class="scale-options">
+                                @for (step of scaleSteps(field); track step) {
+                                  <button type="button" class="scale-option" [class.scale-option--selected]="answers[field.key] === step"
+                                    [attr.aria-pressed]="answers[field.key] === step" [disabled]="saving"
+                                    (click)="selectScale(field, step)">
+                                    <span class="scale-option__mark" aria-hidden="true"></span>
+                                    <span class="scale-option__value">{{ step }}</span>
+                                  </button>
+                                }
+                              </div>
+                            </div>
                           } @else {
                             <label class="field" [for]="field.key">
                               <span>{{ field.label }} <span aria-hidden="true">*</span></span>

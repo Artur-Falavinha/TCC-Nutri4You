@@ -50,7 +50,7 @@ describe('AnamneseComponent', () => {
   it('keeps clinical fields hidden until creation starts and identification disabled', () => {
     expect(fixture.nativeElement.querySelector('.anamnese-form')).toBeNull();
     component.startEditing();
-    expect(form().querySelector('input:disabled')).not.toBeNull();
+    expect(form().querySelector('input[readonly]')).not.toBeNull();
     expect(form().querySelector('#profession')).not.toBeNull();
   });
 
@@ -137,9 +137,7 @@ describe('AnamneseComponent', () => {
     const scale = field('emotionalHunger', { type: 'range', min: 1, max: 10, step: 1 });
     component.fields = [scale];
     component.startEditing();
-    const input = document.createElement('input');
-    input.value = '7';
-    component.rangeInput(scale, { target: input } as unknown as Event);
+    component.selectScale(scale, 7);
     expect(component.answers['emotionalHunger']).toBe(7);
     await component.save(false, form());
     expect(component.errors['emotionalHunger']).toBeUndefined();
