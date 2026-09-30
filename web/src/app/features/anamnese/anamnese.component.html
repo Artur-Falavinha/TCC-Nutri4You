@@ -25,13 +25,14 @@
       @if (message) { <p class="anamnese-alert" role="status">{{ message }}</p> }
       @if (auth.authenticated) {
         @if (!hasRoutePatient) {
-          <label class="field">
-            <span>Paciente</span>
-            <select aria-label="Paciente" [ngModel]="patientId" (ngModelChange)="selectPatient($event)" [disabled]="loading || saving || editing">
-              <option [ngValue]="null" disabled>Selecione o paciente</option>
-              @for (patient of patients; track patient.id) { <option [ngValue]="patient.id">{{ patient.nome }}</option> }
-            </select>
-          </label>
+          <app-ui-select
+            label="Paciente"
+            selectId="paciente"
+            [options]="patientOptions"
+            [ngModel]="patientId == null ? '' : '' + patientId"
+            (ngModelChange)="selectPatient(+$event)"
+            [disabled]="loading || saving || editing"
+          />
         }
         @if (loading) { <p role="status">Carregando...</p> }
         @else if (!patients.length && !error) { <p>Nenhum paciente vinculado.</p> }
@@ -127,18 +128,22 @@
                                 }
                               </div>
                             </div>
+                          } @else if (field.type === 'select') {
+                            <app-ui-select
+                              [label]="field.label"
+                              [selectId]="field.key"
+                              [required]="field.required"
+                              [options]="selectOptions(field)"
+                              [ngModel]="'' + (answers[field.key] ?? '')"
+                              [ngModelOptions]="{ standalone: true }"
+                              (ngModelChange)="change(field, $event)"
+                              [disabled]="saving"
+                              [errorMessage]="errors[field.key] || ''"
+                            />
                           } @else {
                             <label class="field" [for]="field.key">
                               <span>{{ field.label }} <span aria-hidden="true">*</span></span>
                               @switch (field.type) {
-                                @case ('select') {
-                                  <select [id]="field.key" [name]="field.key" [ngModel]="answers[field.key] ?? ''"
-                                    (ngModelChange)="change(field, $event)" [required]="field.required" [disabled]="saving"
-                                    [attr.aria-invalid]="!!errors[field.key]" [attr.aria-describedby]="errors[field.key] ? field.key + '-error' : null">
-                                    <option value="" disabled>Selecione</option>
-                                    @for (option of field.options; track option) { <option [value]="option">{{ option }}</option> }
-                                  </select>
-                                }
                                 @case ('textarea') {
                                   <textarea [id]="field.key" [name]="field.key" [ngModel]="answers[field.key] ?? ''"
                                     (ngModelChange)="change(field, $event)" [maxlength]="field.maxLength!" [required]="field.required"
@@ -166,7 +171,7 @@
                               }
                             </label>
                           }
-                          @if (errors[field.key]) { <p class="field-error" [id]="field.key + '-error'">{{ errors[field.key] }}</p> }
+                          @if (errors[field.key] && field.type !== 'select') { <p class="field-error" [id]="field.key + '-error'">{{ errors[field.key] }}</p> }
                         </div>
                       }
                     }

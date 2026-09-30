@@ -9,13 +9,14 @@ import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { SidebarComponent } from '../../shared/components/sidebar/sidebar.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
 import { UiCheckboxComponent } from '../../shared/components/ui-checkbox/ui-checkbox.component';
+import { UiSelectComponent, UiSelectOption } from '../../shared/components/ui-select/ui-select.component';
 import { AnamneseService } from './anamnese.service';
 import { Anamnese, AnamneseField, Answers, Answer, Patient } from './anamnese.models';
 
 @Component({
   selector: 'app-anamnese',
   standalone: true,
-  imports: [FormsModule, DatePipe, SidebarComponent, UiButtonComponent, UiCheckboxComponent],
+  imports: [FormsModule, DatePipe, SidebarComponent, UiButtonComponent, UiCheckboxComponent, UiSelectComponent],
   templateUrl: './anamnese.component.html',
   styleUrl: './anamnese.component.css'
 })
@@ -123,6 +124,14 @@ export class AnamneseComponent implements OnInit {
   }
 
   fieldsFor(section: string): AnamneseField[] { return this.fields.filter(f => f.section === section); }
+
+  selectOptions(field: AnamneseField): UiSelectOption[] {
+    return (field.options ?? []).map(option => ({ label: option, value: option }));
+  }
+
+  get patientOptions(): UiSelectOption[] {
+    return this.patients.map(patient => ({ label: patient.nome, value: String(patient.id) }));
+  }
 
   visible(field: AnamneseField, answers: Answers = this.answers): boolean {
     if (!field.when) return true;

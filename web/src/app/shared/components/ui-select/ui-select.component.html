@@ -8,9 +8,13 @@
   <div class="ui-select__wrapper">
     <select
       class="ui-select__field"
+      [class.ui-select__field--empty]="!value"
       [id]="id"
       [disabled]="disabled"
+      [required]="required"
       [value]="value"
+      [attr.aria-invalid]="errorMessage ? true : null"
+      [attr.aria-describedby]="errorMessage ? id + '-error' : null"
       (change)="onSelect($event)"
       (blur)="onBlur()"
     >
@@ -19,9 +23,11 @@
         <option [value]="option.value">{{ option.label }}</option>
       }
     </select>
-    <i class="ph ph-caret-down ui-select__icon" aria-hidden="true"></i>
+    <span class="ui-select__icon" aria-hidden="true">
+      <img src="/icons/select-arrow.svg" alt="" width="20" height="20" />
+    </span>
   </div>
   @if (errorMessage) {
-    <p class="ui-select__error" role="alert">{{ errorMessage }}</p>
+    <p class="ui-select__error" [id]="id + '-error'" role="alert">{{ errorMessage }}</p>
   }
 </div>
