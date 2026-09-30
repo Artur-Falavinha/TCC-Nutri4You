@@ -1,0 +1,718 @@
+[
+  {
+    "key": "height",
+    "section": "Medidas corporais",
+    "label": "Altura (m)",
+    "type": "number",
+    "required": true,
+    "min": 0.3,
+    "max": 2.7,
+    "step": 0.01
+  },
+  {
+    "key": "weight",
+    "section": "Medidas corporais",
+    "label": "Peso atual (kg)",
+    "type": "number",
+    "required": true,
+    "min": 1,
+    "max": 500,
+    "step": 0.1
+  },
+  {
+    "key": "profession",
+    "section": "Trabalho e contato",
+    "label": "Profissão",
+    "type": "text",
+    "required": true,
+    "maxLength": 80
+  },
+  {
+    "key": "phone",
+    "section": "Trabalho e contato",
+    "label": "Número/WhatsApp",
+    "type": "tel",
+    "required": true,
+    "maxLength": 15,
+    "pattern": "\\(\\d{2}\\) \\d{4,5}-\\d{4}"
+  },
+  {
+    "key": "origin",
+    "section": "Origem",
+    "label": "Como chegou até nós?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Indicação de paciente",
+      "Instagram",
+      "Google",
+      "Convênio",
+      "Evento ou palestra",
+      "Outro"
+    ]
+  },
+  {
+    "key": "originOther",
+    "section": "Origem",
+    "label": "Informe como chegou até nós",
+    "type": "text",
+    "required": true,
+    "maxLength": 120,
+    "when": {
+      "key": "origin",
+      "values": [
+        "Outro"
+      ]
+    }
+  },
+  {
+    "key": "bodyHealth",
+    "section": "Relacionamento com Comida e Hábitos",
+    "label": "Como você se sente em relação ao seu corpo e saúde no dia a dia?",
+    "type": "textarea",
+    "required": true,
+    "maxLength": 500
+  },
+  {
+    "key": "eatingRoutine",
+    "section": "Relacionamento com Comida e Hábitos",
+    "label": "Como está sua rotina alimentar?",
+    "type": "textarea",
+    "required": true,
+    "maxLength": 500
+  },
+  {
+    "key": "foodPreferences",
+    "section": "Relacionamento com Comida e Hábitos",
+    "label": "Quais alimentos ou preparações você gosta, evita ou sente dificuldade em incluir?",
+    "type": "textarea",
+    "required": true,
+    "maxLength": 500
+  },
+  {
+    "key": "hungerMoments",
+    "section": "Relacionamento com Comida e Hábitos",
+    "label": "Em quais momentos você percebe mais fome ou vontade de comer?",
+    "type": "textarea",
+    "required": true,
+    "maxLength": 500
+  },
+  {
+    "key": "emotions",
+    "section": "Relacionamento com Comida e Hábitos",
+    "label": "Como costuma lidar com emoções, ansiedade ou cansaço na alimentação?",
+    "type": "textarea",
+    "required": true,
+    "maxLength": 500
+  },
+  {
+    "key": "foodRules",
+    "section": "Relacionamento com Comida e Hábitos",
+    "label": "Existe algum medo ou regra alimentar que você sente que pesa na sua rotina?",
+    "type": "textarea",
+    "required": true,
+    "maxLength": 500
+  },
+  {
+    "key": "emotionalHunger",
+    "section": "Relacionamento com Comida e Hábitos",
+    "label": "Fome emocional",
+    "type": "range",
+    "required": true,
+    "min": 1,
+    "max": 10,
+    "step": 1
+  },
+  {
+    "key": "bodySatisfaction",
+    "section": "Relacionamento com Comida e Hábitos",
+    "label": "Satisfação corporal",
+    "type": "range",
+    "required": true,
+    "min": 1,
+    "max": 10,
+    "step": 1
+  },
+  {
+    "key": "mealPleasure",
+    "section": "Relacionamento com Comida e Hábitos",
+    "label": "Prazer ao se alimentar",
+    "type": "range",
+    "required": true,
+    "min": 1,
+    "max": 10,
+    "step": 1
+  },
+  {
+    "key": "typicalDay",
+    "section": "Rotina Alimentar",
+    "label": "Conte como costuma ser um dia alimentar típico",
+    "type": "textarea",
+    "required": true,
+    "maxLength": 500
+  },
+  {
+    "key": "mealsPerDay",
+    "section": "Rotina Alimentar",
+    "label": "Quantas refeições faz por dia?",
+    "type": "number",
+    "required": true,
+    "min": 1,
+    "max": 20,
+    "step": 1
+  },
+  {
+    "key": "eatsOut",
+    "section": "Rotina Alimentar",
+    "label": "Costuma fazer refeições fora de casa?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Sim",
+      "Não"
+    ]
+  },
+  {
+    "key": "diet",
+    "section": "Rotina Alimentar",
+    "label": "Tem alguma dieta específica?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Não sigo dieta específica",
+      "Vegetariana",
+      "Vegana",
+      "Low carb",
+      "Sem glúten",
+      "Sem lactose",
+      "Outra"
+    ]
+  },
+  {
+    "key": "dietOther",
+    "section": "Rotina Alimentar",
+    "label": "Qual dieta específica?",
+    "type": "text",
+    "required": true,
+    "maxLength": 120,
+    "when": {
+      "key": "diet",
+      "values": [
+        "Outra"
+      ]
+    }
+  },
+  {
+    "key": "supplement",
+    "section": "Rotina Alimentar",
+    "label": "Você faz uso de suplementos?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Sim",
+      "Não"
+    ]
+  },
+  {
+    "key": "supplementDetails",
+    "section": "Rotina Alimentar",
+    "label": "Quais suplementos utiliza?",
+    "type": "text",
+    "required": true,
+    "maxLength": 160,
+    "when": {
+      "key": "supplement",
+      "values": [
+        "Sim"
+      ]
+    }
+  },
+  {
+    "key": "improvements",
+    "section": "Rotina Alimentar",
+    "label": "Há algo na sua rotina alimentar que gostaria de melhorar?",
+    "type": "textarea",
+    "required": true,
+    "maxLength": 500
+  },
+  {
+    "key": "diagnoses",
+    "section": "Histórico de Saúde",
+    "label": "Diagnóstico atual",
+    "type": "checkbox",
+    "required": true,
+    "options": [
+      "Nenhum diagnóstico",
+      "Diabetes",
+      "Hipertensão",
+      "Doenças cardíacas",
+      "Problemas gastrointestinais",
+      "Dislipidemia",
+      "Outro"
+    ],
+    "exclusive": "Nenhum diagnóstico"
+  },
+  {
+    "key": "diagnosisOther",
+    "section": "Histórico de Saúde",
+    "label": "Qual diagnóstico?",
+    "type": "text",
+    "required": true,
+    "maxLength": 120,
+    "when": {
+      "key": "diagnoses",
+      "values": [
+        "Outro"
+      ]
+    }
+  },
+  {
+    "key": "medication",
+    "section": "Histórico de Saúde",
+    "label": "Usa medicação atualmente?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Sim",
+      "Não"
+    ]
+  },
+  {
+    "key": "medicationDetails",
+    "section": "Histórico de Saúde",
+    "label": "Quais medicações utiliza?",
+    "type": "textarea",
+    "required": true,
+    "maxLength": 500,
+    "when": {
+      "key": "medication",
+      "values": [
+        "Sim"
+      ]
+    }
+  },
+  {
+    "key": "allergy",
+    "section": "Histórico de Saúde",
+    "label": "Tem alergias?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Sim",
+      "Não"
+    ]
+  },
+  {
+    "key": "allergyDetails",
+    "section": "Histórico de Saúde",
+    "label": "Quais alergias?",
+    "type": "textarea",
+    "required": true,
+    "maxLength": 500,
+    "when": {
+      "key": "allergy",
+      "values": [
+        "Sim"
+      ]
+    }
+  },
+  {
+    "key": "recentExams",
+    "section": "Histórico de Saúde",
+    "label": "Possui exames recentes?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Sim",
+      "Não"
+    ]
+  },
+  {
+    "key": "exam",
+    "section": "Histórico de Saúde",
+    "label": "Qual exame?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Hemograma",
+      "Glicemia",
+      "Colesterol e frações",
+      "Triglicerídeos",
+      "Ferritina",
+      "Vitamina D",
+      "TSH/T4 livre",
+      "Outro"
+    ],
+    "when": {
+      "key": "recentExams",
+      "values": [
+        "Sim"
+      ]
+    }
+  },
+  {
+    "key": "examOther",
+    "section": "Histórico de Saúde",
+    "label": "Informe o exame",
+    "type": "text",
+    "required": true,
+    "maxLength": 120,
+    "when": {
+      "key": "exam",
+      "values": [
+        "Outro"
+      ]
+    }
+  },
+  {
+    "key": "familyHistory",
+    "section": "Histórico de Saúde",
+    "label": "Histórico familiar relevante?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Sim",
+      "Não"
+    ]
+  },
+  {
+    "key": "familyCondition",
+    "section": "Histórico de Saúde",
+    "label": "Qual condição?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Diabetes",
+      "Hipertensão",
+      "Obesidade",
+      "Doença cardiovascular",
+      "Dislipidemia",
+      "Câncer",
+      "Outra"
+    ],
+    "when": {
+      "key": "familyHistory",
+      "values": [
+        "Sim"
+      ]
+    }
+  },
+  {
+    "key": "familyConditionOther",
+    "section": "Histórico de Saúde",
+    "label": "Informe a condição",
+    "type": "text",
+    "required": true,
+    "maxLength": 120,
+    "when": {
+      "key": "familyCondition",
+      "values": [
+        "Outra"
+      ]
+    }
+  },
+  {
+    "key": "digestiveHealth",
+    "section": "Histórico de Saúde",
+    "label": "Observações sobre saúde digestiva",
+    "type": "textarea",
+    "required": true,
+    "maxLength": 500
+  },
+  {
+    "key": "urineColor",
+    "section": "Histórico de Saúde",
+    "label": "Cor da urina habitual",
+    "type": "select",
+    "required": true,
+    "options": [
+      "1 - Hidratado",
+      "2 - Bem Hidratado",
+      "3 - Levemente Hidratado",
+      "4 - Desidratado",
+      "5 - Muito Desidratado",
+      "6 - Severamente Desidratado"
+    ],
+    "image": "/tabela_urina_anamnese.png",
+    "imageAlt": "Tabela de cores da urina"
+  },
+  {
+    "key": "laxative",
+    "section": "Histórico de Saúde",
+    "label": "Faz uso de laxantes?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Sim",
+      "Não"
+    ]
+  },
+  {
+    "key": "laxativeDetails",
+    "section": "Histórico de Saúde",
+    "label": "Qual laxante e frequência de uso?",
+    "type": "text",
+    "required": true,
+    "maxLength": 160,
+    "when": {
+      "key": "laxative",
+      "values": [
+        "Sim"
+      ]
+    }
+  },
+  {
+    "key": "bristol",
+    "section": "Histórico de Saúde",
+    "label": "Fezes (Escala de Bristol)",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Tipo 1 - Caroços duros separados (muito dura)",
+      "Tipo 2 - Em forma de salsicha, mas encaroçada (dura e encostada)",
+      "Tipo 3 - Em forma de salsicha, com fissuras na superfície",
+      "Tipo 4 - Em forma de salsicha ou cobra, suave e macia (ideal)",
+      "Tipo 5 - Pedaços suaves com bordas bem definidas",
+      "Tipo 6 - Pedaços esfarrapados, consistência pastosa (paposa)",
+      "Tipo 7 - Aquosa, sem pedaços sólidos (totalmente líquida)"
+    ],
+    "image": "/escala_de_bristol.jpeg",
+    "imageAlt": "Escala de consistência das fezes de Bristol"
+  },
+  {
+    "key": "stoolColor",
+    "section": "Histórico de Saúde",
+    "label": "Cor das fezes",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Castanho habitual",
+      "Amarelada",
+      "Esverdeada",
+      "Avermelhada / Presença de sangue",
+      "Escurecida / Preta",
+      "Esbranquiçada / Clara"
+    ]
+  },
+  {
+    "key": "stoolOdor",
+    "section": "Histórico de Saúde",
+    "label": "Odor das fezes",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Normal / Característico",
+      "Muito fétido / Pútrido",
+      "Ácido",
+      "Sem odor perceptível"
+    ]
+  },
+  {
+    "key": "evacuationFrequency",
+    "section": "Histórico de Saúde",
+    "label": "Regularidade de evacuação",
+    "type": "select",
+    "required": true,
+    "options": [
+      "1 a 2 vezes ao dia",
+      "3 ou mais vezes ao dia",
+      "1 vez a cada 2 dias",
+      "Menos de 3 vezes por semana"
+    ]
+  },
+  {
+    "key": "physicalActivity",
+    "section": "Atividade Física",
+    "label": "Pratica atividade física regularmente?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Sim",
+      "Não"
+    ]
+  },
+  {
+    "key": "activities",
+    "section": "Atividade Física",
+    "label": "Tipo de atividade",
+    "type": "checkbox",
+    "required": true,
+    "options": [
+      "Caminhada",
+      "Corrida",
+      "Musculação",
+      "Yoga/Pilates",
+      "Outro"
+    ],
+    "when": {
+      "key": "physicalActivity",
+      "values": [
+        "Sim"
+      ]
+    }
+  },
+  {
+    "key": "activityOther",
+    "section": "Atividade Física",
+    "label": "Qual atividade?",
+    "type": "text",
+    "required": true,
+    "maxLength": 120,
+    "when": {
+      "key": "activities",
+      "values": [
+        "Outro"
+      ]
+    }
+  },
+  {
+    "key": "weeklyFrequency",
+    "section": "Atividade Física",
+    "label": "Frequência semanal",
+    "type": "select",
+    "required": true,
+    "options": [
+      "1 vez por semana",
+      "2 vezes por semana",
+      "3 vezes por semana",
+      "4 a 5 vezes por semana",
+      "Diariamente"
+    ],
+    "when": {
+      "key": "physicalActivity",
+      "values": [
+        "Sim"
+      ]
+    }
+  },
+  {
+    "key": "intensity",
+    "section": "Atividade Física",
+    "label": "Intensidade",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Leve",
+      "Moderada",
+      "Intensa",
+      "Muito intensa"
+    ],
+    "when": {
+      "key": "physicalActivity",
+      "values": [
+        "Sim"
+      ]
+    }
+  },
+  {
+    "key": "sleepHours",
+    "section": "Sono e Estresse",
+    "label": "Quantas horas de sono costuma ter por noite?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Menos de 5 horas",
+      "5 a 6 horas",
+      "7 a 8 horas",
+      "Mais de 8 horas"
+    ]
+  },
+  {
+    "key": "rested",
+    "section": "Sono e Estresse",
+    "label": "Sente-se descansado(a) ao acordar?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Sim",
+      "Não"
+    ]
+  },
+  {
+    "key": "stressed",
+    "section": "Sono e Estresse",
+    "label": "Sente-se frequentemente estressado(a)?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Sim",
+      "Não"
+    ]
+  },
+  {
+    "key": "objectives",
+    "section": "Objetivos e Expectativas",
+    "label": "Quais seus principais objetivos?",
+    "type": "checkbox",
+    "required": true,
+    "options": [
+      "Perder peso",
+      "Ganhar massa muscular",
+      "Melhorar saúde geral / disposição e hábitos alimentares",
+      "Outro"
+    ]
+  },
+  {
+    "key": "objectiveOther",
+    "section": "Objetivos e Expectativas",
+    "label": "Qual objetivo?",
+    "type": "text",
+    "required": true,
+    "maxLength": 160,
+    "when": {
+      "key": "objectives",
+      "values": [
+        "Outro"
+      ]
+    }
+  },
+  {
+    "key": "previousAttempts",
+    "section": "Objetivos e Expectativas",
+    "label": "Já tentou alcançar esses objetivos antes? Como foi?",
+    "type": "textarea",
+    "required": true,
+    "maxLength": 500
+  },
+  {
+    "key": "deadline",
+    "section": "Objetivos e Expectativas",
+    "label": "Possui prazo para atingir seus objetivos?",
+    "type": "select",
+    "required": true,
+    "options": [
+      "Não tenho prazo",
+      "Até 1 mês",
+      "1 a 3 meses",
+      "3 a 6 meses",
+      "6 a 12 meses",
+      "Mais de 1 ano"
+    ]
+  },
+  {
+    "key": "deadlineReason",
+    "section": "Objetivos e Expectativas",
+    "label": "Por que esse prazo é importante?",
+    "type": "textarea",
+    "required": true,
+    "maxLength": 500,
+    "when": {
+      "key": "deadline",
+      "values": [
+        "Até 1 mês",
+        "1 a 3 meses",
+        "3 a 6 meses",
+        "6 a 12 meses",
+        "Mais de 1 ano"
+      ]
+    }
+  },
+  {
+    "key": "finalNotes",
+    "section": "Considerações finais",
+    "label": "Existe algo mais que gostaria de compartilhar sobre hábitos ou saúde?",
+    "type": "textarea",
+    "required": true,
+    "maxLength": 500
+  }
+]

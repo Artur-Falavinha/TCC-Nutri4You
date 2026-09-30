@@ -24,18 +24,28 @@
   background-color: var(--color-brand-primary-hover);
 }
 
+.ui-button--secondary {
+  border: var(--border-width-hairline) solid var(--color-border-default);
+  background-color: var(--color-surface-card);
+  color: var(--color-text-secondary);
+}
+
+.ui-button--secondary:hover:not(:disabled) {
+  background-color: var(--color-surface-page);
+}
+
 .ui-button--danger {
-  background-color: var(--color-error); /* red */
+  background-color: var(--color-error);
 }
 
 .ui-button--danger:hover:not(:disabled) {
-  background-color: #b91c1c; /* red hover */
+  background-color: #b91c1c;
 }
 
 .ui-button--outline {
   background-color: transparent;
   color: var(--color-text-secondary);
-  border: 1px solid var(--color-border-default);
+  border: var(--border-width-hairline) solid var(--color-border-default);
 }
 
 .ui-button--outline:hover:not(:disabled) {
