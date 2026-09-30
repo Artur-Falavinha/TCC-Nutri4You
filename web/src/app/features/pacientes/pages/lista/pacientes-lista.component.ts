@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 
 import { UiButtonComponent } from '../../../../shared/components/ui-button/ui-button.component';
@@ -29,6 +30,7 @@ type ListaState = 'loading' | 'empty' | 'loaded' | 'error';
 })
 export class PacientesListaComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
   private readonly pacientesService = inject(PacientesService);
 
   readonly pageSize = 10;
@@ -92,7 +94,7 @@ export class PacientesListaComponent implements OnInit {
   }
 
   verPerfil(paciente: Paciente): void {
-    alert(`O prontuário/perfil do paciente ${paciente.nome} será implementado na próxima Sprint! (S2-P1)`);
+    void this.router.navigate(['/pacientes', paciente.id, 'anamnese']);
   }
 
   carregarPacientes(): void {
