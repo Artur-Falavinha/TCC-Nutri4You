@@ -25,6 +25,10 @@ export class PacientesService {
     return this.api.get<PacienteResumo>('/gestao-pacientes/busca', { params });
   }
 
+  buscarPorId(id: number): Observable<Paciente> {
+    return this.api.get<Paciente>(`/gestao-pacientes/${id}`);
+  }
+
   vincularPaciente(id: number): Observable<void> {
     return this.api
       .post<unknown>(`/gestao-pacientes/${id}/vincular`, {})

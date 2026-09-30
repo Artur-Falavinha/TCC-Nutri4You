@@ -1,0 +1,22 @@
+<section class="workspace">
+    <header class="page-header">
+      <h1>{{ nome || 'Paciente' }}</h1>
+      @if (patientId) { <app-patient-tabs [patientId]="patientId" /> }
+    </header>
+    <div class="canvas">
+      @if (mensagem) { <p role="status">{{ mensagem }}</p> }
+      @if (erro) { <p class="alert" role="alert">{{ erro }}</p> }
+      <form class="card" (submit)="salvar($event)">
+        <h2>Medidas antropométricas</h2>
+        <div class="field-row">
+          <label>Peso (kg) <input name="peso" type="number" step="0.1" min="1" max="500" required [(ngModel)]="peso" /></label>
+          <label>Altura (m) <input name="altura" type="number" step="0.01" min="0.3" max="2.7" required [(ngModel)]="altura" /></label>
+          <label>Cintura (cm) <input name="cintura" type="number" step="0.1" [(ngModel)]="cintura" /></label>
+          <label>Quadril (cm) <input name="quadril" type="number" step="0.1" [(ngModel)]="quadril" /></label>
+          <label>Braço (cm) <input name="braco" type="number" step="0.1" [(ngModel)]="braco" /></label>
+          <label>Prega tricipital (mm) <input name="tricipital" type="number" step="0.1" [(ngModel)]="tricipital" /></label>
+        </div>
+        <app-ui-button label="Registrar medida" type="submit" [fullWidth]="false" [disabled]="salvando" />
+      </form>
+    </div>
+</section>

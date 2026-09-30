@@ -10,13 +10,14 @@ import { SidebarComponent } from '../../shared/components/sidebar/sidebar.compon
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
 import { UiCheckboxComponent } from '../../shared/components/ui-checkbox/ui-checkbox.component';
 import { UiSelectComponent, UiSelectOption } from '../../shared/components/ui-select/ui-select.component';
+import { PatientTabsComponent } from '../../shared/components/patient-tabs/patient-tabs.component';
 import { AnamneseService } from './anamnese.service';
 import { Anamnese, AnamneseField, Answers, Answer, Patient } from './anamnese.models';
 
 @Component({
   selector: 'app-anamnese',
   standalone: true,
-  imports: [FormsModule, DatePipe, SidebarComponent, UiButtonComponent, UiCheckboxComponent, UiSelectComponent],
+  imports: [FormsModule, DatePipe, SidebarComponent, UiButtonComponent, UiCheckboxComponent, UiSelectComponent, PatientTabsComponent],
   templateUrl: './anamnese.component.html',
   styleUrl: './anamnese.component.css'
 })

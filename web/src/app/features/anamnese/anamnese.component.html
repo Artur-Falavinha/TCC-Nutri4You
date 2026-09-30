@@ -5,9 +5,9 @@
     <header class="patient-header">
       <div>
         <h1>{{ data?.paciente?.nome || 'Pacientes' }}</h1>
-        <nav class="patient-tabs" aria-label="Seções do paciente">
-          <span class="patient-tabs__item patient-tabs__item--active" aria-current="page">Anamnese</span>
-        </nav>
+        @if (hasRoutePatient && patientId) {
+          <app-patient-tabs [patientId]="patientId" />
+        }
       </div>
     </header>
     <div class="form-canvas">

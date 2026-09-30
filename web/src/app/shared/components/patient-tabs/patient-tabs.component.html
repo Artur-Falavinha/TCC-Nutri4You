@@ -1,0 +1,9 @@
+<nav class="patient-tabs" aria-label="Seções do paciente">
+  @for (tab of tabs; track tab.path) {
+    <a
+      class="patient-tabs__item"
+      [routerLink]="['/pacientes', patientId, tab.path]"
+      routerLinkActive="patient-tabs__item--active"
+    >{{ tab.label }}</a>
+  }
+</nav>
