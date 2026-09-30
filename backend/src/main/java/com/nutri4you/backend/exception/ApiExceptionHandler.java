@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -45,6 +46,17 @@ public class ApiExceptionHandler {
                 HttpStatus.FORBIDDEN.value(),
                 "ACESSO_NEGADO",
                 exception.getMessage(),
+                request.getRequestURI()));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiErrorResponse> handleMetodoNaoPermitido(
+            HttpRequestMethodNotSupportedException exception,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(ApiErrorResponse.of(
+                HttpStatus.METHOD_NOT_ALLOWED.value(),
+                "METODO_NAO_PERMITIDO",
+                "Operação não disponível.",
                 request.getRequestURI()));
     }
 

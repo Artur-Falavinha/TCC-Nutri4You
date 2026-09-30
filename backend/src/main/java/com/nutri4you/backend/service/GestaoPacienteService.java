@@ -2,7 +2,6 @@ package com.nutri4you.backend.service;
 
 import com.nutri4you.backend.dto.PacienteResumoDTO;
 import com.nutri4you.backend.dto.PacienteResponseDTO;
-import com.nutri4you.backend.dto.PacienteUpdateDTO;
 import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
@@ -74,26 +73,12 @@ public class GestaoPacienteService {
         return paraResponse(paciente, nutricionista);
     }
 
-    @Transactional
-    public PacienteResponseDTO atualizar(Nutricionista nutricionista, Integer id, PacienteUpdateDTO dto) {
-        if (dto == null) {
-            throw new IllegalArgumentException("Dados de atualização são obrigatórios.");
-        }
-
+    @Transactional(readOnly = true)
+    public Paciente exigirAcesso(Nutricionista nutricionista, Integer id) {
         Paciente paciente = pacienteRepository.findById(id)
                 .orElseThrow(PacienteNaoEncontradoException::new);
         validarAcessoNutricionista(nutricionista, paciente);
-
-        if (dto.nome() == null || dto.nome().isBlank()) {
-            throw new IllegalArgumentException("Nome é obrigatório.");
-        }
-
-        paciente.setNome(dto.nome().trim());
-        paciente.setTelefone(dto.telefone());
-        paciente.setSexo(dto.sexo());
-        paciente.setDataNascimento(dto.dataNascimento());
-
-        return paraResponse(pacienteRepository.save(paciente), nutricionista);
+        return paciente;
     }
 
     @Transactional
