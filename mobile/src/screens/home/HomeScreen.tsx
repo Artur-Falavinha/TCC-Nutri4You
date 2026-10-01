@@ -1,6 +1,6 @@
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -59,27 +59,23 @@ export function HomeScreen({ navigation }: Props) {
   const [vinculos, setVinculos] = useState<NutricionistaVinculo[]>([]);
   const [pendente, setPendente] = useState<NutricionistaVinculo | null>(null);
 
-  const carregar = useCallback(async () => {
-    setCarregando(true);
-    setErro('');
-    try {
-      const [perfil, nutricionistas] = await Promise.all([carregarPerfil(), listarNutricionistas()]);
-      setNome(perfil.nome ?? '');
-      setEmail(perfil.email ?? '');
-      setTelefone(formatPhoneDisplay(perfil.telefone ?? ''));
-      setSexo(perfil.sexo ?? '');
-      setDataNascimento(isoParaExibicao(perfil.dataNascimento));
-      setVinculos(nutricionistas ?? []);
-    } catch (falha) {
-      setErro(mensagemErro(falha, 'Não foi possível carregar seus dados.'));
-    } finally {
-      setCarregando(false);
-    }
-  }, []);
-
   useEffect(() => {
-    void carregar();
-  }, [carregar]);
+    void Promise.all([carregarPerfil(), listarNutricionistas()])
+      .then(([perfil, nutricionistas]) => {
+        setNome(perfil.nome ?? '');
+        setEmail(perfil.email ?? '');
+        setTelefone(formatPhoneDisplay(perfil.telefone ?? ''));
+        setSexo(perfil.sexo ?? '');
+        setDataNascimento(isoParaExibicao(perfil.dataNascimento));
+        setVinculos(nutricionistas ?? []);
+      })
+      .catch((falha: unknown) => {
+        setErro(mensagemErro(falha, 'Não foi possível carregar seus dados.'));
+      })
+      .finally(() => {
+        setCarregando(false);
+      });
+  }, []);
 
   const salvar = async () => {
     const nomeLimpo = nome.trim();
