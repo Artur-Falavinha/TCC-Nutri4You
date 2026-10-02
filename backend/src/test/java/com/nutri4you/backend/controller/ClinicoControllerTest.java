@@ -18,6 +18,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -86,14 +89,24 @@ class ClinicoControllerTest {
     }
 
     @Test
-    void agendaIncluiConsultaDeHoje() throws Exception {
+    void agendaIncluiConsultaDeHojeSemanaSexoIdadeEDozeMeses() throws Exception {
+        paciente.setDataNascimento(LocalDate.now().minusYears(25));
+        pacienteRepository.save(paciente);
         String token = login();
 
         mockMvc.perform(get("/api/v1/dashboard/consultas")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.hoje", hasSize(1)))
-                .andExpect(jsonPath("$.data.hoje[0].pacienteNome").value("Paciente Teste"));
+                .andExpect(jsonPath("$.data.hoje[0].pacienteNome").value("Paciente Teste"))
+                .andExpect(jsonPath("$.data.semana", hasSize(7)))
+                .andExpect(jsonPath("$.data.semana[0].rotulo").value("Seg"))
+                .andExpect(jsonPath("$.data.semana[6].rotulo").value("Dom"))
+                .andExpect(jsonPath("$.data.totalSemana").value(1))
+                .andExpect(jsonPath("$.data.sexo[?(@.rotulo == 'Masculino')].quantidade", hasItem(1)))
+                .andExpect(jsonPath("$.data.faixaEtaria[?(@.rotulo == '20–29')].quantidade", hasItem(1)))
+                .andExpect(jsonPath("$.data.ultimos12Meses", hasSize(12)))
+                .andExpect(jsonPath("$.data.totalConsultas12Meses").value(1));
     }
 
     private String login() throws Exception {
