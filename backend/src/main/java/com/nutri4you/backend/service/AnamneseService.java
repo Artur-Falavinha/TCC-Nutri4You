@@ -121,12 +121,16 @@ public class AnamneseService {
 
     private AnamneseResponse response(PacienteResponseDTO patient, Anamnese record) {
         Map<String, Object> published = new LinkedHashMap<>();
+        Set<String> currentFields = catalog.fields().stream()
+            .map(AnamneseCatalog.Field::key)
+            .collect(Collectors.toSet());
         for (var answer : answers.findByPacienteId(patient.id())) {
-            if (answer.pergunta.codigo != null)
+            if (answer.pergunta.codigo != null && currentFields.contains(answer.pergunta.codigo))
                 published.put(answer.pergunta.codigo, mapper.readValue(answer.texto, Object.class));
         }
         Map<String, Object> draft = record == null || record.rascunho == null ? null :
             mapper.readValue(record.rascunho, new TypeReference<Map<String, Object>>() {});
+        if (draft != null) draft.keySet().removeIf(key -> !currentFields.contains(key));
         String status = draft != null ? "RASCUNHO" :
             record != null && record.finalizadaEm != null ? "FINALIZADA" : "NAO_INICIADA";
         return new AnamneseResponse(patient, record == null ? null : record.versao, status,

@@ -100,16 +100,15 @@ class AnamneseControllerTest {
     @Test void finalizationRequiresApplicableFieldsAndWhitespaceIsEmpty() throws Exception {
         save(null, Map.of("profession", "   "), false).andExpect(status().isUnprocessableContent())
             .andExpect(jsonPath("$.fields.profession").exists())
-            .andExpect(jsonPath("$.fields.height").exists())
+            .andExpect(jsonPath("$.fields.height").doesNotExist())
             .andExpect(jsonPath("$.fields.allergyDetails").doesNotExist());
         assertEquals(0, records.count());
     }
 
     @Test void validatesTypesOptionsPrecisionAndLimitsEvenInDraft() throws Exception {
-        save(null, Map.of("height", 4, "weight", 72.55, "allergy", "Talvez", "profession", List.of("x"),
+        save(null, Map.of("allergy", "Talvez", "profession", List.of("x"),
                 "mealsPerDay", 2.5, "phone", "123"), true)
             .andExpect(status().isUnprocessableContent())
-            .andExpect(jsonPath("$.fields.height").exists()).andExpect(jsonPath("$.fields.weight").exists())
             .andExpect(jsonPath("$.fields.allergy").exists()).andExpect(jsonPath("$.fields.profession").exists())
             .andExpect(jsonPath("$.fields.mealsPerDay").exists()).andExpect(jsonPath("$.fields.phone").exists());
         save(null, Map.of("profession", "x".repeat(81)), true).andExpect(status().isUnprocessableContent());

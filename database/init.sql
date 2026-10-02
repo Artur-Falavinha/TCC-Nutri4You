@@ -248,8 +248,6 @@ CREATE TABLE IF NOT EXISTS Anamnese (
 );
 
 INSERT INTO Pergunta_Anamnese (codigo, categoria, texto_pergunta, tipo_resposta, ativo) VALUES
-('height', 'Medidas corporais', 'Altura (m)', 'number', TRUE),
-('weight', 'Medidas corporais', 'Peso atual (kg)', 'number', TRUE),
 ('profession', 'Trabalho e contato', 'Profissão', 'text', TRUE),
 ('phone', 'Trabalho e contato', 'Número/WhatsApp', 'tel', TRUE),
 ('origin', 'Origem', 'Como chegou até nós?', 'select', TRUE),
