@@ -71,6 +71,7 @@ public class ClinicoService {
         List<ConsultaResumoDTO> consultas = consultaRepository
                 .findByPaciente_IdAndNutricionista_IdOrderByDataHoraDesc(paciente.getId(), nutricionista.getId())
                 .stream()
+                .filter(this::naoCancelada)
                 .map(this::paraConsulta)
                 .toList();
         return new HistoricoResponse(consultas, listarAvaliacoes(nutricionista, pacienteId));
@@ -85,10 +86,16 @@ public class ClinicoService {
         LocalDateTime fim12 = mesAtual.plusMonths(1).atDay(1).atStartOfDay();
         List<Consulta> ano = consultaRepository
                 .findByNutricionista_IdAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
-                        nutricionista.getId(), inicio12, fim12);
+                        nutricionista.getId(), inicio12, fim12)
+                .stream()
+                .filter(this::naoCancelada)
+                .toList();
         List<Consulta> daSemana = consultaRepository
                 .findByNutricionista_IdAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
-                        nutricionista.getId(), segunda.atStartOfDay(), segunda.plusDays(7).atStartOfDay());
+                        nutricionista.getId(), segunda.atStartOfDay(), segunda.plusDays(7).atStartOfDay())
+                .stream()
+                .filter(this::naoCancelada)
+                .toList();
         List<ContagemDTO> semana = contarSemana(daSemana);
         List<ContagemDTO> meses = contarMeses(mesAtual, ano);
         List<PacienteResponseDTO> pacientes = gestaoPacienteService.listarParaNutricionista(nutricionista);
@@ -185,8 +192,13 @@ public class ClinicoService {
                 .findByNutricionista_IdAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
                         nutricionistaId, inicio, fim)
                 .stream()
+                .filter(this::naoCancelada)
                 .map(this::paraConsulta)
                 .toList();
+    }
+
+    private boolean naoCancelada(Consulta consulta) {
+        return !"CANCELADA".equalsIgnoreCase(consulta.getStatus());
     }
 
     private void validarMedidas(AvaliacaoRequest request) {
@@ -199,6 +211,30 @@ public class ClinicoService {
         if (request.altura().compareTo(new BigDecimal("0.30")) < 0
                 || request.altura().compareTo(new BigDecimal("2.70")) > 0) {
             throw new IllegalArgumentException("Altura deve ficar entre 0,30 e 2,70 m.");
+        }
+        validarOpcional(request.percentualGordura(), BigDecimal.ZERO, new BigDecimal("100"),
+                "Percentual de gordura deve ficar entre 0 e 100%.");
+        validarOpcional(request.massaMuscularKg(), BigDecimal.ZERO, new BigDecimal("300"),
+                "Massa muscular deve ficar entre 0 e 300 kg.");
+        validarOpcional(request.pregaBicipital(), new BigDecimal("0.1"), new BigDecimal("100"),
+                "Prega bicipital deve ficar entre 0,1 e 100 mm.");
+        validarOpcional(request.pregaTricipital(), new BigDecimal("0.1"), new BigDecimal("100"),
+                "Prega tricipital deve ficar entre 0,1 e 100 mm.");
+        validarOpcional(request.pregaSubescapular(), new BigDecimal("0.1"), new BigDecimal("100"),
+                "Prega subescapular deve ficar entre 0,1 e 100 mm.");
+        validarOpcional(request.pregaSuprailiaca(), new BigDecimal("0.1"), new BigDecimal("100"),
+                "Prega supra-ilíaca deve ficar entre 0,1 e 100 mm.");
+        validarOpcional(request.circunferenciaCintura(), new BigDecimal("0.1"), new BigDecimal("300"),
+                "Circunferência da cintura deve ficar entre 0,1 e 300 cm.");
+        validarOpcional(request.circunferenciaQuadril(), new BigDecimal("0.1"), new BigDecimal("300"),
+                "Circunferência do quadril deve ficar entre 0,1 e 300 cm.");
+        validarOpcional(request.circunferenciaBraco(), new BigDecimal("0.1"), new BigDecimal("150"),
+                "Circunferência do braço deve ficar entre 0,1 e 150 cm.");
+    }
+
+    private void validarOpcional(BigDecimal valor, BigDecimal minimo, BigDecimal maximo, String mensagem) {
+        if (valor != null && (valor.compareTo(minimo) < 0 || valor.compareTo(maximo) > 0)) {
+            throw new IllegalArgumentException(mensagem);
         }
     }
 
