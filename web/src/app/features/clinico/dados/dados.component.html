@@ -1,0 +1,30 @@
+<section class="workspace">
+    <header class="page-header">
+      <h1>{{ paciente?.nome || 'Paciente' }}</h1>
+      @if (paciente) { <app-patient-tabs [patientId]="paciente.id" /> }
+    </header>
+    <div class="canvas">
+      @if (erro) { <p class="alert" role="alert">{{ erro }}</p> }
+      @else if (!paciente) { <p role="status">Carregando...</p> }
+      @else {
+        <article class="card">
+          <h2>Dados cadastrais</h2>
+          <p>E-mail {{ paciente.email }} · Tel. {{ paciente.telefone || 'não informado' }}</p>
+          <p>Nascimento {{ paciente.dataNascimento ? (paciente.dataNascimento | date:'dd/MM/yyyy':'UTC') : 'não informado' }} · Sexo {{ paciente.sexo || 'não informado' }}</p>
+        </article>
+        <article class="card">
+          <h2>Objetivo e saúde</h2>
+          <p>{{ texto(objetivo) }}</p>
+          <p>{{ texto(restricoes) }}</p>
+        </article>
+        <article class="card">
+          <h2>Histórico clínico</h2>
+          <p>{{ texto(clinico) }}</p>
+        </article>
+        <article class="card">
+          <h2>Estilo de vida</h2>
+          <p>{{ texto(estilo) }}</p>
+        </article>
+      }
+    </div>
+</section>

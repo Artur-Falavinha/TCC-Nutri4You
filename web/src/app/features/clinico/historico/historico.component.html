@@ -1,0 +1,58 @@
+<section class="workspace">
+    <header class="page-header">
+      <h1>{{ nome || 'Paciente' }}</h1>
+      @if (patientId) { <app-patient-tabs [patientId]="patientId" /> }
+    </header>
+    <div class="canvas">
+      @if (erro) { <p class="alert" role="alert">{{ erro }}</p> }
+      @else if (!historico) { <p role="status">Carregando...</p> }
+      @else if (!historico.consultas.length && !historico.avaliacoes.length) {
+        <p class="empty">Nenhuma consulta ou medida registrada para este paciente.</p>
+      } @else {
+        @if (historico.avaliacoes.length) {
+          <article class="card">
+            <h2>Peso e IMC</h2>
+            <svg class="chart" viewBox="0 0 640 160" role="img" aria-label="Evolução de peso e IMC">
+              <polyline [attr.points]="pontos('peso')" fill="none" stroke="#006f1e" stroke-width="2" />
+              <polyline [attr.points]="pontos('imc')" fill="none" stroke="#64748b" stroke-width="2" />
+              @for (ponto of coordenadas('peso'); track $index) {
+                <circle [attr.cx]="ponto.x" [attr.cy]="ponto.y" r="6" fill="#006f1e" />
+                <text [attr.x]="ponto.x + 12" [attr.y]="ponto.y + 4" fill="#006f1e" font-size="14">{{ ponto.rotulo }}</text>
+              }
+              @for (ponto of coordenadas('imc'); track $index) {
+                <circle [attr.cx]="ponto.x" [attr.cy]="ponto.y" r="6" fill="#64748b" />
+                <text [attr.x]="ponto.x + 12" [attr.y]="ponto.y + 4" fill="#64748b" font-size="14">{{ ponto.rotulo }}</text>
+              }
+            </svg>
+          </article>
+        }
+        <article class="card">
+          <h2>Consultas</h2>
+          @if (!historico.consultas.length) {
+            <p>Nenhuma consulta.</p>
+          } @else {
+            <ul class="timeline">
+              @for (item of historico.consultas; track item.id) {
+                <li><span>{{ item.dataHora | date:'dd/MM/yyyy HH:mm' }}</span><span>{{ item.pacienteNome }}</span></li>
+              }
+            </ul>
+          }
+        </article>
+        <article class="card">
+          <h2>Medidas</h2>
+          @if (!historico.avaliacoes.length) {
+            <p>Nenhuma medida.</p>
+          } @else {
+            <ul class="timeline">
+              @for (item of historico.avaliacoes; track item.id) {
+                <li>
+                  <span>{{ item.dataAvaliacao | date:'dd/MM/yyyy':'UTC' }}</span>
+                  <span>{{ item.peso }} kg · IMC {{ item.imc }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </article>
+      }
+    </div>
+</section>

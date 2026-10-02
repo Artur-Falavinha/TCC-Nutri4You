@@ -94,7 +94,7 @@ export class PacientesListaComponent implements OnInit {
   }
 
   verPerfil(paciente: Paciente): void {
-    void this.router.navigate(['/pacientes', paciente.id, 'anamnese']);
+    void this.router.navigate(['/pacientes', paciente.id, 'dados']);
   }
 
   carregarPacientes(): void {

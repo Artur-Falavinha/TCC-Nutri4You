@@ -1,5 +1,39 @@
-<main class="dashboard">
-  <h1>Dashboard Nutricionista</h1>
-  <p>Shell provisório — listagem de pacientes será entregue em S2-P1 (Deretti).</p>
-  <app-ui-button label="Sair" icon="sign-out" type="button" [fullWidth]="false" (click)="logout()" />
+<main class="shell">
+  <app-sidebar />
+  <section class="workspace">
+    <header class="page-header">
+      <h1>Início</h1>
+      <p>Consultas já registradas. A agenda de novos horários fica para a Sprint 6.</p>
+    </header>
+    @if (erro) { <p class="alert" role="alert">{{ erro }}</p> }
+    @else if (carregando) { <p role="status">Carregando...</p> }
+    @else {
+      <div class="agenda">
+        <article>
+          <h2>Consultas de hoje</h2>
+          @if (!agenda?.hoje?.length) {
+            <p>Nenhuma consulta hoje.</p>
+          } @else {
+            <ul>
+              @for (item of agenda?.hoje; track item.id) {
+                <li><time>{{ item.dataHora | date:'HH:mm' }}</time> {{ item.pacienteNome }}</li>
+              }
+            </ul>
+          }
+        </article>
+        <article>
+          <h2>Próximos 7 dias</h2>
+          @if (!agenda?.proximosSeteDias?.length) {
+            <p>Nenhuma consulta nos próximos 7 dias.</p>
+          } @else {
+            <ul>
+              @for (item of agenda?.proximosSeteDias; track item.id) {
+                <li><time>{{ item.dataHora | date:'dd/MM HH:mm' }}</time> {{ item.pacienteNome }}</li>
+              }
+            </ul>
+          }
+        </article>
+      </div>
+    }
+  </section>
 </main>
