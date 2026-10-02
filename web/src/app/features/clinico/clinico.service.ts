@@ -21,9 +21,19 @@ export interface Historico {
   avaliacoes: Avaliacao[];
 }
 
+export interface Contagem {
+  rotulo: string;
+  quantidade: number;
+}
+
 export interface Agenda {
   hoje: ConsultaResumo[];
-  proximosSeteDias: ConsultaResumo[];
+  semana: Contagem[];
+  totalSemana: number;
+  sexo: Contagem[];
+  faixaEtaria: Contagem[];
+  ultimos12Meses: Contagem[];
+  totalConsultas12Meses: number;
 }
 
 @Injectable({ providedIn: 'root' })
