@@ -22,6 +22,7 @@ http://localhost:8080/api/v1
 | --- | --- |
 | [Endpoints](endpoints.md) | Referência de rotas, payloads e respostas |
 | [Autenticação](autenticacao.md) | Fluxo JWT, roles, CORS e rotas públicas/protegidas |
+| [Plano alimentar](plano-alimentar.md) | Ciclo de rascunho, publicação, vigência e dieta ativa |
 
 ## Convenções
 
@@ -85,6 +86,7 @@ Apps mobile nativos (Expo Go) não passam por CORS de browser.
 | `401` | Credenciais inválidas no login |
 | `403` | Token ausente/inválido ou role insuficiente |
 | `404` | Recurso não encontrado |
+| `409` | Conflito de estado ou versão |
 
 ### Variáveis de ambiente (backend)
 
@@ -99,7 +101,7 @@ Apps mobile nativos (Expo Go) não passam por CORS de browser.
 | `SPRING_DATASOURCE_URL` | — | JDBC URL do PostgreSQL |
 | `SPRING_DATASOURCE_USERNAME` | — | Usuário do banco |
 | `SPRING_DATASOURCE_PASSWORD` | — | Senha do banco |
-| `SPRING_JPA_HIBERNATE_DDL_AUTO` | `none` | Schema via `database/init.sql` |
+| `SPRING_JPA_HIBERNATE_DDL_AUTO` | `none` | Schema versionado por migrações Flyway |
 
 ## Endpoints disponíveis (Sprint 2 — parcial)
 

@@ -49,6 +49,7 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/v1/gestao-pacientes/**").hasRole("NUTRICIONISTA")
                         .requestMatchers("/api/v1/dashboard/**").hasRole("NUTRICIONISTA")
+                        .requestMatchers("/api/v1/usuarios/me/dieta-ativa").hasRole("PACIENTE")
                         .anyRequest().authenticated())
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -15,6 +16,27 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
+    @ExceptionHandler(PlanoNaoEncontradoException.class)
+    public ResponseEntity<ApiErrorResponse> handlePlanoNaoEncontrado(
+            PlanoNaoEncontradoException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiErrorResponse.of(
+                404, "NAO_ENCONTRADO", exception.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(PlanoConflitoException.class)
+    public ResponseEntity<ApiErrorResponse> handlePlanoConflito(
+            PlanoConflitoException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(
+                409, "CONFLITO", exception.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiErrorResponse> handleEdicaoConcorrente(
+            ObjectOptimisticLockingFailureException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(
+                409, "CONFLITO", "O rascunho foi alterado. Recarregue antes de continuar.", request.getRequestURI()));
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalArgument(
