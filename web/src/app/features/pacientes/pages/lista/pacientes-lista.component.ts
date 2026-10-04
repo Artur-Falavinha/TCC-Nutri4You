@@ -159,7 +159,7 @@ export class PacientesListaComponent implements OnInit {
     this.pacienteSelecionado = null;
   }
 
-  onPacienteEditado(pacienteEditado: Paciente): void {
+  onPacienteEditado(): void {
     this.fecharModalEdicao();
     this.carregarPacientes();
   }

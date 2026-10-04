@@ -135,7 +135,7 @@ class GestaoPacienteControllerTest {
     }
 
     @Test
-    void nutricionistaNaoAlteraDadosPessoaisDoPaciente() throws Exception {
+    void nutricionistaAlteraDadosPessoaisDoPaciente() throws Exception {
         String token = loginComoNutricionista();
 
         mockMvc.perform(put("/api/v1/gestao-pacientes/{id}", pacienteVisivel.getId())
@@ -144,7 +144,9 @@ class GestaoPacienteControllerTest {
                         .content("""
                                 {"nome":"Paciente Atualizado","telefone":"41977776666"}
                                 """))
-                .andExpect(status().isMethodNotAllowed());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.nome").value("Paciente Atualizado"))
+                .andExpect(jsonPath("$.data.telefone").value("41977776666"));
     }
 
     @Test
