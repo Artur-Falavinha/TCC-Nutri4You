@@ -71,6 +71,23 @@ public class GestaoPacienteController {
         }
     }
 
+    @org.springframework.web.bind.annotation.PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<PacienteResponseDTO>> atualizar(
+            Authentication authentication,
+            @PathVariable Integer id,
+            @org.springframework.web.bind.annotation.RequestBody com.nutri4you.backend.dto.PacienteUpdateDTO dto) {
+        Nutricionista nutricionista = extrairNutricionista(authentication);
+        try {
+            return ResponseEntity.ok(ApiResponse.ok(
+                    gestaoPacienteService.atualizarPaciente(nutricionista, id, dto),
+                    "Paciente atualizado com sucesso."));
+        } catch (PacienteNaoEncontradoException exception) {
+            return ResponseEntity.notFound().build();
+        } catch (AcessoNegadoException exception) {
+            return ResponseEntity.status(403).build();
+        }
+    }
+
     @PostMapping("/{id}/vincular")
     public ResponseEntity<ApiResponse<MensagemResponse>> vincular(
             Authentication authentication,

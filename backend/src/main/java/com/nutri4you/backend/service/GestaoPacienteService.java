@@ -98,6 +98,28 @@ public class GestaoPacienteService {
     }
 
     @Transactional
+    public PacienteResponseDTO atualizarPaciente(Nutricionista nutricionista, Integer id, com.nutri4you.backend.dto.PacienteUpdateDTO dto) {
+        Paciente paciente = exigirAcesso(nutricionista, id);
+        
+        if (dto.nome() != null && !dto.nome().isBlank()) {
+            paciente.setNome(dto.nome().trim());
+        }
+        if (dto.telefone() != null) {
+            String tel = dto.telefone().replaceAll("\\D", "");
+            paciente.setTelefone(tel.isEmpty() ? null : tel);
+        }
+        if (dto.sexo() != null) {
+            paciente.setSexo(dto.sexo().trim());
+        }
+        if (dto.dataNascimento() != null) {
+            paciente.setDataNascimento(dto.dataNascimento());
+        }
+        
+        pacienteRepository.save(paciente);
+        return paraResponse(paciente, nutricionista);
+    }
+
+    @Transactional
     public void desvincularNutricionista(Nutricionista nutricionista, Integer idPaciente) {
         RelacaoClinica relacao = relacaoClinicaRepository
                 .findByPaciente_IdAndNutricionista_IdAndStatus(
