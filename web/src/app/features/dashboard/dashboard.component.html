@@ -1,39 +1,117 @@
 <main class="shell">
   <app-sidebar />
   <section class="workspace">
-    <header class="page-header">
-      <h1>Início</h1>
-      <p>Consultas já registradas. A agenda de novos horários fica para a Sprint 6.</p>
+    <header class="dash-header">
+      <h1>Home</h1>
+      <button class="dash-header__bell" type="button" aria-label="Notificações">
+        <i class="ph ph-bell" aria-hidden="true"></i>
+      </button>
     </header>
-    @if (erro) { <p class="alert" role="alert">{{ erro }}</p> }
-    @else if (carregando) { <p role="status">Carregando...</p> }
-    @else {
-      <div class="agenda">
-        <article>
-          <h2>Consultas de hoje</h2>
-          @if (!agenda?.hoje?.length) {
-            <p>Nenhuma consulta hoje.</p>
-          } @else {
-            <ul>
-              @for (item of agenda?.hoje; track item.id) {
-                <li><time>{{ item.dataHora | date:'HH:mm' }}</time> {{ item.pacienteNome }}</li>
+
+    <div class="dash-main">
+      @if (erro) { <p class="alert" role="alert">{{ erro }}</p> }
+      @else if (carregando) { <p role="status">Carregando...</p> }
+      @else if (agenda) {
+        <div class="grade">
+          <article class="card">
+            <h2><i class="ph ph-calendar-blank" aria-hidden="true"></i> Consultas de hoje</h2>
+            @if (!agenda.hoje.length) {
+              <p class="vazio">Nenhuma consulta hoje.</p>
+            } @else {
+              <ul class="hoje">
+                @for (item of agenda.hoje; track item.id) {
+                  <li>
+                    <time>{{ item.dataHora | date:'HH:mm' }}</time>
+                    <span>{{ item.pacienteNome }}</span>
+                  </li>
+                }
+              </ul>
+            }
+          </article>
+
+          <article class="card">
+            <h2><i class="ph ph-calendar-blank" aria-hidden="true"></i> Semana atual</h2>
+            <p class="subtitulo">Consultas de segunda a domingo</p>
+            <ol class="semana">
+              @for (dia of agenda.semana; track dia.rotulo) {
+                <li [class.semana__dia--zero]="dia.quantidade === 0">
+                  <span>{{ dia.rotulo }}</span>
+                  <strong>{{ dia.quantidade }}</strong>
+                </li>
               }
-            </ul>
-          }
-        </article>
-        <article>
-          <h2>Próximos 7 dias</h2>
-          @if (!agenda?.proximosSeteDias?.length) {
-            <p>Nenhuma consulta nos próximos 7 dias.</p>
-          } @else {
-            <ul>
-              @for (item of agenda?.proximosSeteDias; track item.id) {
-                <li><time>{{ item.dataHora | date:'dd/MM HH:mm' }}</time> {{ item.pacienteNome }}</li>
-              }
-            </ul>
-          }
-        </article>
-      </div>
-    }
+            </ol>
+            <p class="rodape">Total: {{ agenda.totalSemana }} {{ agenda.totalSemana === 1 ? 'consulta' : 'consultas' }} na semana</p>
+          </article>
+
+          <article class="card">
+            <h2><i class="ph ph-users" aria-hidden="true"></i> Total de pacientes</h2>
+            @if (!totalPacientes()) {
+              <p class="vazio">Nenhum paciente visível.</p>
+            } @else {
+              <div class="donut">
+                <svg viewBox="0 0 140 140" role="img" aria-label="Distribuição por sexo">
+                  <circle class="donut__trilha" cx="70" cy="70" [attr.r]="raio" />
+                  <circle class="donut__masculino" cx="70" cy="70" [attr.r]="raio"
+                    [attr.stroke-dasharray]="arco('Masculino')" />
+                  <circle class="donut__feminino" cx="70" cy="70" [attr.r]="raio"
+                    [attr.stroke-dasharray]="arco('Feminino')"
+                    [attr.stroke-dashoffset]="deslocamento('Feminino')" />
+                  <text x="70" y="66" text-anchor="middle" class="donut__total">{{ totalPacientes() }}</text>
+                  <text x="70" y="84" text-anchor="middle" class="donut__legenda-centro">Pacientes</text>
+                </svg>
+                <ul class="legenda">
+                  <li><span class="ponto ponto--masculino"></span> Masculino · {{ quantidade('Masculino') }} ({{ percentual('Masculino') }}%)</li>
+                  <li><span class="ponto ponto--feminino"></span> Feminino · {{ quantidade('Feminino') }} ({{ percentual('Feminino') }}%)</li>
+                </ul>
+              </div>
+            }
+          </article>
+
+          <article class="card">
+            <h2><i class="ph ph-chart-bar" aria-hidden="true"></i> Pacientes por faixa etária</h2>
+            @if (!temFaixa()) {
+              <p class="vazio">Nenhuma data de nascimento nas faixas de 10 anos ou mais.</p>
+            } @else {
+              <ul class="barras">
+                @for (faixa of agenda.faixaEtaria; track faixa.rotulo) {
+                  <li>
+                    <span class="barras__trilho">
+                      <span class="barras__valor" [style.height.%]="alturaBarra(faixa)"></span>
+                    </span>
+                    <span class="barras__rotulo">{{ faixa.rotulo }}</span>
+                  </li>
+                }
+              </ul>
+            }
+          </article>
+
+          <article class="card card--largo">
+            <div class="card__topo">
+              <h2><i class="ph ph-chart-line" aria-hidden="true"></i> Consultas nos últimos 12 meses</h2>
+              <p class="kpi">
+                <i class="ph ph-trend-up" aria-hidden="true"></i>
+                <strong>{{ agenda.totalConsultas12Meses }}</strong>
+                <span>Total de consultas</span>
+              </p>
+            </div>
+            <p class="kpi__nota">Soma dos 12 meses no gráfico abaixo. Cada ponto = 1 mês.</p>
+            @if (!agenda.totalConsultas12Meses) {
+              <p class="vazio">Nenhuma consulta nos últimos 12 meses.</p>
+            } @else {
+              <svg class="linha" viewBox="0 0 640 180" role="img" aria-label="Consultas nos últimos 12 meses">
+                <polygon class="linha__area" [attr.points]="pontosArea()" />
+                <polyline class="linha__traco" [attr.points]="pontosLinha()" />
+                @for (ponto of coordenadas(); track $index) {
+                  <circle [attr.cx]="ponto.x" [attr.cy]="ponto.y" r="3.5" />
+                }
+                @for (mes of agenda.ultimos12Meses; track mes.rotulo; let indice = $index) {
+                  <text [attr.x]="xDoMes(indice)" y="172" text-anchor="middle">{{ mes.rotulo }}</text>
+                }
+              </svg>
+            }
+          </article>
+        </div>
+      }
+    </div>
   </section>
 </main>

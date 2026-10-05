@@ -6,15 +6,39 @@
     <div class="canvas">
       @if (mensagem) { <p role="status">{{ mensagem }}</p> }
       @if (erro) { <p class="alert" role="alert">{{ erro }}</p> }
-      <form class="card" (submit)="salvar($event)">
+      <form class="card" (submit)="salvar($event)" novalidate>
         <h2>Medidas antropométricas</h2>
         <div class="field-row">
-          <label>Peso (kg) <input name="peso" type="number" step="0.1" min="1" max="500" required [(ngModel)]="peso" /></label>
-          <label>Altura (m) <input name="altura" type="number" step="0.01" min="0.3" max="2.7" required [(ngModel)]="altura" /></label>
-          <label>Cintura (cm) <input name="cintura" type="number" step="0.1" [(ngModel)]="cintura" /></label>
-          <label>Quadril (cm) <input name="quadril" type="number" step="0.1" [(ngModel)]="quadril" /></label>
-          <label>Braço (cm) <input name="braco" type="number" step="0.1" [(ngModel)]="braco" /></label>
-          <label>Prega tricipital (mm) <input name="tricipital" type="number" step="0.1" [(ngModel)]="tricipital" /></label>
+          <label [class.field--invalid]="errors['peso']">Peso (kg)
+            <input name="peso" type="number" step="0.1" min="1" max="500" required [(ngModel)]="peso"
+              [attr.aria-invalid]="errors['peso'] ? 'true' : null" [attr.aria-describedby]="errors['peso'] ? 'peso-error' : null" />
+            @if (errors['peso']) { <span id="peso-error" class="field-error" role="alert">{{ errors['peso'] }}</span> }
+          </label>
+          <label [class.field--invalid]="errors['altura']">Altura (m)
+            <input name="altura" type="number" step="0.01" min="0.3" max="2.7" required [(ngModel)]="altura"
+              [attr.aria-invalid]="errors['altura'] ? 'true' : null" [attr.aria-describedby]="errors['altura'] ? 'altura-error' : null" />
+            @if (errors['altura']) { <span id="altura-error" class="field-error" role="alert">{{ errors['altura'] }}</span> }
+          </label>
+          <label [class.field--invalid]="errors['cintura']">Cintura (cm)
+            <input name="cintura" type="number" step="0.1" min="0.1" max="300" [(ngModel)]="cintura"
+              [attr.aria-invalid]="errors['cintura'] ? 'true' : null" [attr.aria-describedby]="errors['cintura'] ? 'cintura-error' : null" />
+            @if (errors['cintura']) { <span id="cintura-error" class="field-error" role="alert">{{ errors['cintura'] }}</span> }
+          </label>
+          <label [class.field--invalid]="errors['quadril']">Quadril (cm)
+            <input name="quadril" type="number" step="0.1" min="0.1" max="300" [(ngModel)]="quadril"
+              [attr.aria-invalid]="errors['quadril'] ? 'true' : null" [attr.aria-describedby]="errors['quadril'] ? 'quadril-error' : null" />
+            @if (errors['quadril']) { <span id="quadril-error" class="field-error" role="alert">{{ errors['quadril'] }}</span> }
+          </label>
+          <label [class.field--invalid]="errors['braco']">Braço (cm)
+            <input name="braco" type="number" step="0.1" min="0.1" max="150" [(ngModel)]="braco"
+              [attr.aria-invalid]="errors['braco'] ? 'true' : null" [attr.aria-describedby]="errors['braco'] ? 'braco-error' : null" />
+            @if (errors['braco']) { <span id="braco-error" class="field-error" role="alert">{{ errors['braco'] }}</span> }
+          </label>
+          <label [class.field--invalid]="errors['tricipital']">Prega tricipital (mm)
+            <input name="tricipital" type="number" step="0.1" min="0.1" max="100" [(ngModel)]="tricipital"
+              [attr.aria-invalid]="errors['tricipital'] ? 'true' : null" [attr.aria-describedby]="errors['tricipital'] ? 'tricipital-error' : null" />
+            @if (errors['tricipital']) { <span id="tricipital-error" class="field-error" role="alert">{{ errors['tricipital'] }}</span> }
+          </label>
         </div>
         <app-ui-button label="Registrar medida" type="submit" [fullWidth]="false" [disabled]="salvando" />
       </form>

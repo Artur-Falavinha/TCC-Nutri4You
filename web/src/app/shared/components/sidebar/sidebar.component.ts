@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, HostListener, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
@@ -14,7 +14,8 @@ export class SidebarComponent {
   private readonly router = inject(Router);
 
   nomeNutricionista = 'Nutricionista';
-  isExpanded = window.matchMedia('(min-width: 721px)').matches;
+  private isNarrow = window.matchMedia('(max-width: 720px)').matches;
+  isExpanded = !this.isNarrow;
 
   constructor() {
     this.authService.fetchMe().subscribe({
@@ -29,6 +30,15 @@ export class SidebarComponent {
 
   toggleSidebar(): void {
     this.isExpanded = !this.isExpanded;
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    const isNarrow = window.matchMedia('(max-width: 720px)').matches;
+    if (isNarrow !== this.isNarrow) {
+      this.isNarrow = isNarrow;
+      this.isExpanded = !isNarrow;
+    }
   }
 
   async logout(): Promise<void> {

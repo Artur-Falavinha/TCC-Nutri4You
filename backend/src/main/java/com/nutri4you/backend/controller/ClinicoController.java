@@ -77,8 +77,6 @@ public class ClinicoController {
             return ResponseEntity.notFound().build();
         } catch (AcessoNegadoException exception) {
             return ResponseEntity.status(403).build();
-        } catch (IllegalArgumentException exception) {
-            return ResponseEntity.badRequest().build();
         }
     }
 

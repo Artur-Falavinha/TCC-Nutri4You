@@ -588,7 +588,13 @@ Registra medidas. `id_consulta` não é obrigatório. IMC = peso / altura². Raz
 
 ## GET /dashboard/consultas
 
-Consultas já persistidas do nutricionista: as de hoje e as dos próximos 7 dias. Não cria consulta.
+Consultas já persistidas do nutricionista. Não cria consulta.
+
+- `hoje`: consultas do dia, com hora e nome.
+- `semana`: segunda a domingo da semana corrente, com a quantidade de cada dia. `totalSemana` é a soma.
+- `sexo`: pacientes visíveis (relação ativa ou consulta), fatias Masculino e Feminino. "Não informado" só entra se houver outro valor.
+- `faixaEtaria`: as mesmas pessoas nas faixas `10–19` até `80+`. Sem data de nascimento, a pessoa fica de fora.
+- `ultimos12Meses`: um ponto por mês, do mais antigo ao atual. `totalConsultas12Meses` é a soma.
 
 **Autenticação:** `ROLE_NUTRICIONISTA`
 
@@ -597,8 +603,24 @@ Consultas já persistidas do nutricionista: as de hoje e as dos próximos 7 dias
 ```json
 {
   "data": {
-    "hoje": [],
-    "proximosSeteDias": []
+    "hoje": [
+      { "id": 1, "pacienteNome": "Ana Paula Souza", "dataHora": "2026-09-30T08:00:00" }
+    ],
+    "semana": [
+      { "rotulo": "Seg", "quantidade": 2 }
+    ],
+    "totalSemana": 11,
+    "sexo": [
+      { "rotulo": "Masculino", "quantidade": 4 },
+      { "rotulo": "Feminino", "quantidade": 6 }
+    ],
+    "faixaEtaria": [
+      { "rotulo": "20–29", "quantidade": 3 }
+    ],
+    "ultimos12Meses": [
+      { "rotulo": "out", "quantidade": 1 }
+    ],
+    "totalConsultas12Meses": 18
   },
   "message": "Agenda carregada."
 }

@@ -32,6 +32,9 @@ public class Consulta {
     @Column(name = "data_hora", nullable = false)
     private LocalDateTime dataHora;
 
+    @Column(name = "status", length = 30)
+    private String status;
+
     protected Consulta() {
     }
 
@@ -39,6 +42,7 @@ public class Consulta {
         this.paciente = paciente;
         this.nutricionista = nutricionista;
         this.dataHora = dataHora;
+        this.status = "AGUARDANDO_CONFIRMACAO";
     }
 
     public Integer getId() {
@@ -55,5 +59,13 @@ public class Consulta {
 
     public LocalDateTime getDataHora() {
         return dataHora;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void cancelar() {
+        this.status = "CANCELADA";
     }
 }
