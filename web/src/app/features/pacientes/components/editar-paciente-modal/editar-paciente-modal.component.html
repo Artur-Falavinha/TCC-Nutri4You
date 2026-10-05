@@ -1,0 +1,72 @@
+<app-paciente-dialog
+  title="Editar paciente"
+  description="Atualize os dados cadastrais do paciente. O E-mail e o CPF são preenchidos no cadastro e não podem ser alterados pelo nutricionista."
+  (fechar)="onCancelar()"
+>
+  <app-form-alert [message]="errorMessage" />
+
+  <form
+    class="modal__form"
+    [formGroup]="form"
+    (ngSubmit)="onSubmit()"
+    novalidate
+  >
+    <app-ui-input
+      label="NOME COMPLETO"
+      placeholder="Nome completo"
+      type="text"
+      autocomplete="name"
+      [required]="true"
+      formControlName="nome"
+      [errorMessage]="fieldError('nome')"
+    />
+
+    <app-ui-input
+      label="TELEFONE"
+      placeholder="(00) 00000-0000"
+      type="tel"
+      autocomplete="tel"
+      mask="telefone"
+      formControlName="telefone"
+      [errorMessage]="fieldError('telefone')"
+    />
+
+    <app-ui-input
+      label="DATA DE NASCIMENTO"
+      placeholder="DD/MM/AAAA"
+      type="text"
+      autocomplete="bday"
+      mask="data"
+      formControlName="dataNascimento"
+      [errorMessage]="fieldError('dataNascimento')"
+    />
+
+    <app-ui-select
+      label="SEXO"
+      placeholder="Selecione"
+      [options]="sexoOptions"
+      formControlName="sexo"
+      [errorMessage]="fieldError('sexo')"
+    />
+  </form>
+
+  <app-ui-button
+    dialogActions
+    label="Cancelar"
+    variant="outline"
+    type="button"
+    [disabled]="loading"
+    [fullWidth]="false"
+    (click)="onCancelar()"
+  />
+
+  <app-ui-button
+    dialogActions
+    label="Salvar alterações"
+    icon="check-circle"
+    type="button"
+    [fullWidth]="false"
+    [loading]="loading"
+    (click)="onSubmit()"
+  />
+</app-paciente-dialog>

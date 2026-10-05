@@ -5,6 +5,14 @@
   />
 }
 
+@if (modalEdicaoAberto && pacienteSelecionado) {
+  <app-editar-paciente-modal
+    [paciente]="pacienteSelecionado"
+    (fechar)="fecharModalEdicao()"
+    (salvo)="onPacienteEditado()"
+  />
+}
+
 @if (modalRelacaoAberto && pacienteSelecionado) {
   <app-relacao-paciente-modal
     [paciente]="pacienteSelecionado"
@@ -122,6 +130,15 @@
               </button>
 
               @if (paciente.relacaoAtiva) {
+                <button
+                  class="action-btn"
+                  type="button"
+                  [attr.aria-label]="'Editar paciente ' + paciente.nome"
+                  (click)="abrirModalEdicao(paciente)"
+                >
+                  <i class="ph ph-pencil-simple" aria-hidden="true"></i>
+                </button>
+
                 <button
                   class="action-btn"
                   type="button"

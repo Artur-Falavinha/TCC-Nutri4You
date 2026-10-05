@@ -10,6 +10,7 @@ import {
   AcaoRelacao,
   RelacaoPacienteModalComponent
 } from '../../components/relacao-paciente-modal/relacao-paciente-modal.component';
+import { EditarPacienteModalComponent } from '../../components/editar-paciente-modal/editar-paciente-modal.component';
 import { PacientesService } from '../../../../core/services/pacientes.service';
 import { Paciente } from '../../../../core/models/paciente.models';
 import { ApiErrorResponse } from '../../../../core/models/api-response.model';
@@ -23,7 +24,8 @@ type ListaState = 'loading' | 'empty' | 'loaded' | 'error';
     UiButtonComponent,
     UiInputComponent,
     NovoPacienteModalComponent,
-    RelacaoPacienteModalComponent
+    RelacaoPacienteModalComponent,
+    EditarPacienteModalComponent
   ],
   templateUrl: './pacientes-lista.component.html',
   styleUrl: './pacientes-lista.component.css'
@@ -44,6 +46,7 @@ export class PacientesListaComponent implements OnInit {
   pacienteSelecionado: Paciente | null = null;
   acaoRelacao: AcaoRelacao = 'vincular';
   modalRelacaoAberto = false;
+  modalEdicaoAberto = false;
 
   filtros = this.fb.group({
     nome: [''],
@@ -143,6 +146,21 @@ export class PacientesListaComponent implements OnInit {
 
   onRelacaoAlterada(): void {
     this.fecharModalRelacao();
+    this.carregarPacientes();
+  }
+
+  abrirModalEdicao(paciente: Paciente): void {
+    this.pacienteSelecionado = paciente;
+    this.modalEdicaoAberto = true;
+  }
+
+  fecharModalEdicao(): void {
+    this.modalEdicaoAberto = false;
+    this.pacienteSelecionado = null;
+  }
+
+  onPacienteEditado(): void {
+    this.fecharModalEdicao();
     this.carregarPacientes();
   }
 

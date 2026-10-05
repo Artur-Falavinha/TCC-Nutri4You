@@ -1,0 +1,28 @@
+.modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.busca-resultado {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin: 0;
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-page);
+}
+
+.busca-resultado__nome {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.busca-resultado__email {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
