@@ -146,7 +146,7 @@ export class LoginComponent implements OnInit {
 
       .subscribe({
 
-        next: () => void this.router.navigate(['/pacientes']),
+        next: () => void this.router.navigate(['/dashboard']),
 
         error: (error: ApiErrorResponse) => {
 
