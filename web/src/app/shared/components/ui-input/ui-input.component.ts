@@ -20,11 +20,16 @@ import { formatCrnDisplay } from '../../utils/crn-mask.util';
 export class UiInputComponent implements ControlValueAccessor {
   @Input({ required: true }) label = '';
   @Input() placeholder = '';
-  @Input() type: 'text' | 'email' | 'password' | 'date' | 'tel' = 'text';
+  @Input() type: 'text' | 'email' | 'password' | 'date' | 'tel' | 'datetime-local' = 'text';
   @Input() inputId = '';
   @Input() autocomplete = '';
   @Input() errorMessage = '';
   @Input() required = false;
+  @Input() readonly = false;
+  @Input() inputmode: 'text' | 'decimal' | 'numeric' = 'text';
+  @Input() maxlength: number | null = null;
+  @Input() min: string | null = null;
+  @Input() max: string | null = null;
   @Input() mask?: 'crn' | 'cpf' | 'telefone' | 'data';
   /** Classe Phosphor (ex.: ph-magnifying-glass). Vazio = sem ícone. */
   @Input() leadingIcon = '';
@@ -48,7 +53,7 @@ export class UiInputComponent implements ControlValueAccessor {
     return this.leadingIcon.length > 0 && this.value.length === 0;
   }
 
-  get resolvedInputType(): 'text' | 'email' | 'password' | 'date' | 'tel' {
+  get resolvedInputType(): UiInputComponent['type'] {
     if (this.isPasswordField && this.passwordVisible) {
       return 'text';
     }

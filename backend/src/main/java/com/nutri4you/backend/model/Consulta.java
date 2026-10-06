@@ -9,7 +9,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
@@ -34,6 +36,16 @@ public class Consulta {
 
     @Column(name = "status", length = 30)
     private String status;
+
+    @Column(name = "observacao", columnDefinition = "text")
+    private String observacao;
+
+    @Version
+    @Column(name = "versao", nullable = false)
+    private long versao;
+
+    @Column(name = "atualizado_em", nullable = false)
+    private Instant atualizadoEm = Instant.now();
 
     protected Consulta() {
     }
@@ -67,5 +79,17 @@ public class Consulta {
 
     public void cancelar() {
         this.status = "CANCELADA";
+    }
+
+    public String getObservacao() { return observacao; }
+
+    public long getVersao() { return versao; }
+
+    public void atualizar(LocalDateTime dataHora, String status, String observacao) {
+        this.dataHora = dataHora;
+        this.status = status;
+        this.observacao = observacao;
+        // Medidas pertencem ao mesmo registro: sua edicao tambem invalida a versao anterior.
+        this.atualizadoEm = Instant.now();
     }
 }

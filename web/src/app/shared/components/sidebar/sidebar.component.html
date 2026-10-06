@@ -1,18 +1,13 @@
-<aside class="sidebar" [class.sidebar--expanded]="isExpanded">
+<aside class="sidebar">
   <div class="sidebar__top">
-    <!-- Branding e Toggle -->
     <div class="sidebar__brand">
-      <button class="sidebar__toggle" type="button" (click)="toggleSidebar()" aria-label="Alternar menu">
-        <i class="ph ph-list" aria-hidden="true"></i>
-      </button>
       <img
         class="sidebar__logo"
-        src="/auth/logo-nutri4u.webp"
-        alt="Nutri4U logo"
+        src="/auth/logo-nutri4u-sidebar.png"
+        alt="Nutri4U"
       />
     </div>
 
-    <!-- Navegação principal -->
     <nav class="sidebar__nav" aria-label="Navegação principal">
       <a
         class="sidebar__nav-item"
@@ -52,7 +47,6 @@
     </nav>
   </div>
 
-  <!-- Rodapé da sidebar -->
   <div class="sidebar__footer">
     <div class="sidebar__user">
       <div class="sidebar__avatar" aria-hidden="true"></div>
@@ -65,4 +59,3 @@
     </button>
   </div>
 </aside>
-

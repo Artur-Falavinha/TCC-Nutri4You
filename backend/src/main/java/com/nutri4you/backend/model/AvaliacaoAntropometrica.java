@@ -17,6 +17,13 @@ import java.time.LocalDateTime;
 @Table(name = "Avaliacao_Antropometrica")
 public class AvaliacaoAntropometrica {
 
+    public Consulta getConsulta() { return consulta; }
+
+    public void vincularConsulta(Consulta consulta) {
+        this.consulta = consulta;
+        this.dataAvaliacao = consulta.getDataHora();
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_avaliacao")
@@ -27,7 +34,7 @@ public class AvaliacaoAntropometrica {
     private Paciente paciente;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_consulta")
+    @JoinColumn(name = "id_consulta", unique = true)
     private Consulta consulta;
 
     @Column(name = "data_avaliacao", nullable = false)
@@ -39,7 +46,7 @@ public class AvaliacaoAntropometrica {
     @Column(precision = 3, scale = 2)
     private BigDecimal altura;
 
-    @Column(precision = 5, scale = 2)
+    @Column(precision = 7, scale = 2)
     private BigDecimal imc;
 
     @Column(name = "percentual_gordura", precision = 5, scale = 2)

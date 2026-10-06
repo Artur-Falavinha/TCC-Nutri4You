@@ -1,8 +1,6 @@
-<main class="shell">
-  <app-sidebar />
-  <section class="workspace">
+<section class="workspace">
     <header class="dash-header">
-      <h1>Home</h1>
+      <h1>Dashboard</h1>
       <button class="dash-header__bell" type="button" aria-label="Notificações">
         <i class="ph ph-bell" aria-hidden="true"></i>
       </button>
@@ -16,7 +14,7 @@
           <article class="card">
             <h2><i class="ph ph-calendar-blank" aria-hidden="true"></i> Consultas de hoje</h2>
             @if (!agenda.hoje.length) {
-              <p class="vazio">Nenhuma consulta hoje.</p>
+              <p class="vazio vazio--centro">Nenhuma consulta hoje.</p>
             } @else {
               <ul class="hoje">
                 @for (item of agenda.hoje; track item.id) {
@@ -30,44 +28,57 @@
           </article>
 
           <article class="card">
-            <h2><i class="ph ph-calendar-blank" aria-hidden="true"></i> Semana atual</h2>
-            <p class="subtitulo">Consultas de segunda a domingo</p>
+            <h2 class="card__cabecalho">
+              <i class="ph ph-calendar-blank" aria-hidden="true"></i>
+              <span>
+                Próximos 7 dias
+                <span class="subtitulo">Consultas marcadas por dia da semana</span>
+              </span>
+            </h2>
             <ol class="semana">
               @for (dia of agenda.semana; track dia.rotulo) {
-                <li [class.semana__dia--zero]="dia.quantidade === 0">
+                <li>
                   <span>{{ dia.rotulo }}</span>
                   <strong>{{ dia.quantidade }}</strong>
                 </li>
               }
             </ol>
-            <p class="rodape">Total: {{ agenda.totalSemana }} {{ agenda.totalSemana === 1 ? 'consulta' : 'consultas' }} na semana</p>
+            <p class="rodape">Total: {{ agenda.totalSemana }} {{ agenda.totalSemana === 1 ? 'consulta' : 'consultas' }} nos próximos 7 dias</p>
           </article>
 
-          <article class="card">
+          <article class="card card--grafico">
             <h2><i class="ph ph-users" aria-hidden="true"></i> Total de pacientes</h2>
             @if (!totalPacientes()) {
               <p class="vazio">Nenhum paciente visível.</p>
             } @else {
               <div class="donut">
-                <svg viewBox="0 0 140 140" role="img" aria-label="Distribuição por sexo">
-                  <circle class="donut__trilha" cx="70" cy="70" [attr.r]="raio" />
-                  <circle class="donut__masculino" cx="70" cy="70" [attr.r]="raio"
+                <svg viewBox="0 0 200 200" role="img" aria-label="Distribuição por sexo">
+                  <circle class="donut__trilha" cx="100" cy="100" [attr.r]="raio" />
+                  <circle class="donut__masculino" cx="100" cy="100" [attr.r]="raio"
                     [attr.stroke-dasharray]="arco('Masculino')" />
-                  <circle class="donut__feminino" cx="70" cy="70" [attr.r]="raio"
+                  <circle class="donut__feminino" cx="100" cy="100" [attr.r]="raio"
                     [attr.stroke-dasharray]="arco('Feminino')"
                     [attr.stroke-dashoffset]="deslocamento('Feminino')" />
-                  <text x="70" y="66" text-anchor="middle" class="donut__total">{{ totalPacientes() }}</text>
-                  <text x="70" y="84" text-anchor="middle" class="donut__legenda-centro">Pacientes</text>
+                  <text x="100" y="96" text-anchor="middle" class="donut__total">{{ totalPacientes() }}</text>
+                  <text x="100" y="118" text-anchor="middle" class="donut__legenda-centro">Pacientes</text>
                 </svg>
                 <ul class="legenda">
-                  <li><span class="ponto ponto--masculino"></span> Masculino · {{ quantidade('Masculino') }} ({{ percentual('Masculino') }}%)</li>
-                  <li><span class="ponto ponto--feminino"></span> Feminino · {{ quantidade('Feminino') }} ({{ percentual('Feminino') }}%)</li>
+                  <li>
+                    <span class="ponto ponto--masculino"></span>
+                    <i class="ph ph-gender-male" aria-hidden="true"></i>
+                    Masculino · {{ quantidade('Masculino') }} ({{ percentual('Masculino') }}%)
+                  </li>
+                  <li>
+                    <span class="ponto ponto--feminino"></span>
+                    <i class="ph ph-gender-female" aria-hidden="true"></i>
+                    Feminino · {{ quantidade('Feminino') }} ({{ percentual('Feminino') }}%)
+                  </li>
                 </ul>
               </div>
             }
           </article>
 
-          <article class="card">
+          <article class="card card--grafico">
             <h2><i class="ph ph-chart-bar" aria-hidden="true"></i> Pacientes por faixa etária</h2>
             @if (!temFaixa()) {
               <p class="vazio">Nenhuma data de nascimento nas faixas de 10 anos ou mais.</p>
@@ -75,6 +86,11 @@
               <ul class="barras">
                 @for (faixa of agenda.faixaEtaria; track faixa.rotulo) {
                   <li>
+                    <span class="grafico-badge barras__badge">
+                      <span class="grafico-badge__rotulo">{{ faixa.rotulo }}</span>
+                      <strong>{{ faixa.quantidade }}</strong>
+                      <span>{{ faixa.quantidade === 1 ? 'paciente' : 'pacientes' }}</span>
+                    </span>
                     <span class="barras__trilho">
                       <span class="barras__valor" [style.height.%]="alturaBarra(faixa)"></span>
                     </span>
@@ -85,33 +101,57 @@
             }
           </article>
 
-          <article class="card card--largo">
+          <article class="card card--grafico card--largo">
             <div class="card__topo">
               <h2><i class="ph ph-chart-line" aria-hidden="true"></i> Consultas nos últimos 12 meses</h2>
-              <p class="kpi">
-                <i class="ph ph-trend-up" aria-hidden="true"></i>
-                <strong>{{ agenda.totalConsultas12Meses }}</strong>
-                <span>Total de consultas</span>
-              </p>
+              <div class="kpi-bloco">
+                <p class="kpi">
+                  <i class="ph ph-trend-up" aria-hidden="true"></i>
+                  <strong>{{ agenda.totalConsultas12Meses }}</strong>
+                  <span>Total de consultas</span>
+                </p>
+                <p class="kpi__nota">Soma dos 12 meses no gráfico abaixo.</p>
+              </div>
             </div>
-            <p class="kpi__nota">Soma dos 12 meses no gráfico abaixo. Cada ponto = 1 mês.</p>
             @if (!agenda.totalConsultas12Meses) {
               <p class="vazio">Nenhuma consulta nos últimos 12 meses.</p>
             } @else {
-              <svg class="linha" viewBox="0 0 640 180" role="img" aria-label="Consultas nos últimos 12 meses">
-                <polygon class="linha__area" [attr.points]="pontosArea()" />
-                <polyline class="linha__traco" [attr.points]="pontosLinha()" />
-                @for (ponto of coordenadas(); track $index) {
-                  <circle [attr.cx]="ponto.x" [attr.cy]="ponto.y" r="3.5" />
+              <div class="linha-wrap">
+                <svg class="linha" viewBox="0 0 1104 236" role="img" aria-label="Consultas nos últimos 12 meses">
+                  @for (linha of linhasGrade; track linha) {
+                    <line class="linha__grade" x1="40" [attr.y1]="linha" x2="1064" [attr.y2]="linha" />
+                  }
+                  <polygon class="linha__area" [attr.points]="pontosArea()" />
+                  <polyline class="linha__traco" [attr.points]="pontosLinha()" />
+                  @for (ponto of coordenadas(); track ponto.rotulo) {
+                    <circle [attr.cx]="ponto.x" [attr.cy]="ponto.y" r="4" />
+                  }
+                  @for (mes of agenda.ultimos12Meses; track mes.rotulo; let indice = $index) {
+                    <text [attr.x]="xDoMes(indice)" y="228" text-anchor="middle">{{ mes.rotulo }}</text>
+                  }
+                </svg>
+                @for (ponto of coordenadas(); track ponto.rotulo; let primeiro = $first; let ultimo = $last) {
+                  <button
+                    type="button"
+                    class="linha__hit"
+                    [class.linha__hit--abaixo]="!ponto.acima"
+                    [class.linha__hit--inicio]="primeiro"
+                    [class.linha__hit--fim]="ultimo"
+                    [style.left.%]="ponto.esquerda"
+                    [style.top.%]="ponto.topo"
+                    [attr.aria-label]="ponto.rotulo + ': ' + ponto.quantidade"
+                  >
+                    <span class="grafico-badge">
+                      <span class="grafico-badge__rotulo">{{ ponto.rotulo }}</span>
+                      <strong>{{ ponto.quantidade }}</strong>
+                      <span>{{ ponto.quantidade === 1 ? 'consulta' : 'consultas' }}</span>
+                    </span>
+                  </button>
                 }
-                @for (mes of agenda.ultimos12Meses; track mes.rotulo; let indice = $index) {
-                  <text [attr.x]="xDoMes(indice)" y="172" text-anchor="middle">{{ mes.rotulo }}</text>
-                }
-              </svg>
+              </div>
             }
           </article>
         </div>
       }
     </div>
-  </section>
-</main>
+</section>

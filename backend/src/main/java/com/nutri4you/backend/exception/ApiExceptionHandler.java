@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -15,6 +16,34 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
+    @ExceptionHandler({ConsultaNaoEncontradaException.class,
+            com.nutri4you.backend.service.PacienteNaoEncontradoException.class})
+    public ResponseEntity<ApiErrorResponse> handlePlanoNaoEncontrado(
+            RuntimeException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiErrorResponse.of(
+                404, "NAO_ENCONTRADO", exception.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(ConsultaConflitoException.class)
+    public ResponseEntity<ApiErrorResponse> handlePlanoConflito(
+            RuntimeException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(
+                409, "CONFLITO", exception.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiErrorResponse> handleEdicaoConcorrente(
+            ObjectOptimisticLockingFailureException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(
+                409, "CONFLITO", "O registro foi alterado. Recarregue antes de continuar.", request.getRequestURI()));
+    }
+
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleCorpoInvalido(HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of(
+                400, "REQUISICAO_INVALIDA", "Confira os formatos de datas e valores informados.", request.getRequestURI()));
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalArgument(

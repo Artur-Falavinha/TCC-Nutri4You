@@ -1,0 +1,106 @@
+<header class="page-header">
+  <h1>{{ nome || 'Paciente' }}</h1>
+  <app-patient-tabs [patientId]="patientId" />
+</header>
+<main class="canvas" [attr.aria-busy]="carregando || salvando">
+  <app-form-alert [message]="erro" type="error" />
+  <app-form-alert [message]="mensagem" type="success" />
+  @if (carregando) {
+    <p class="state" role="status">Carregando consultas...</p>
+  } @else if (!carregado) {
+    <app-ui-button label="Tentar novamente" icon="arrow-clockwise" [fullWidth]="false" (click)="carregar()" />
+  } @else if (!editor) {
+    <div class="toolbar">
+      <div><h2>Consultas do paciente</h2><p class="subtitle">{{ lista?.total || 0 }} atendimento(s) registrado(s)</p></div>
+      <a class="action primary" [routerLink]="['/pacientes', patientId, 'consultas', 'nova']">
+        <i class="ph ph-plus-circle" aria-hidden="true"></i>Nova Consulta
+      </a>
+    </div>
+    @if (!lista?.itens?.length) {
+      <div class="empty state">
+        <i class="ph ph-clipboard-text" aria-hidden="true"></i>
+        <h3>Nenhuma consulta registrada</h3>
+      </div>
+    }
+    <div class="consultas-list">
+      @for (consulta of lista?.itens; track consulta.id) {
+        <article class="consulta-row">
+          <div class="consulta-info">
+            <i class="ph ph-clipboard-text" aria-hidden="true"></i>
+            <div>
+              <h3>{{ consulta.dataHora | date:'dd/MM/yyyy' }} · {{ consulta.dataHora | date:'HH:mm' }}</h3>
+              <p class="status" [class.concluida]="consulta.status === 'REALIZADA'"
+                [class.cancelada]="consulta.status === 'CANCELADA'">{{ statusLabel(consulta.status) }}</p>
+            </div>
+          </div>
+          <dl class="metrics">
+            <div><dt>Peso</dt><dd>{{ decimal(consulta.avaliacao?.peso) || '—' }}<small> kg</small></dd></div>
+            <div><dt>Altura</dt><dd>{{ consulta.avaliacao?.altura ? decimal(consulta.avaliacao!.altura! * 100) : '—' }}<small> cm</small></dd></div>
+            <div><dt>IMC</dt><dd>{{ decimal(consulta.avaliacao?.imc) || '—' }}</dd></div>
+          </dl>
+          <a class="action secondary" [routerLink]="['/pacientes', patientId, 'consultas', consulta.id]"
+            [attr.aria-label]="'Abrir consulta de ' + (consulta.dataHora | date:'dd/MM/yyyy HH:mm')">Abrir consulta</a>
+        </article>
+      }
+    </div>
+    @if (lista && lista.totalPaginas > 1) {
+      <nav class="pagination" aria-label="Paginação das consultas">
+        <button type="button" class="icon-button" title="Página anterior" aria-label="Página anterior"
+          [disabled]="lista.pagina === 0" (click)="carregar(lista.pagina - 1)"><i class="ph ph-caret-left" aria-hidden="true"></i></button>
+        <span>Página {{ lista.pagina + 1 }} de {{ lista.totalPaginas }}</span>
+        <button type="button" class="icon-button" title="Próxima página" aria-label="Próxima página"
+          [disabled]="lista.pagina + 1 >= lista.totalPaginas" (click)="carregar(lista.pagina + 1)"><i class="ph ph-caret-right" aria-hidden="true"></i></button>
+      </nav>
+    }
+  } @else {
+    <form (ngSubmit)="salvar()" novalidate>
+      <div class="toolbar">
+        <h2>{{ consultaId ? 'Consulta' : 'Nova consulta' }}@if (consultaId && form.dataHora) { · {{ form.dataHora | date:'dd/MM/yyyy HH:mm' }} }</h2>
+        <div class="actions">
+          <app-ui-button label="Salvar consulta" icon="check-circle" type="submit" [loading]="salvando" />
+          <a class="action secondary" [routerLink]="['/pacientes', patientId, 'consultas']"
+            [attr.aria-disabled]="salvando"><i class="ph ph-arrow-left" aria-hidden="true"></i>{{ alterado ? 'Cancelar' : 'Voltar' }}</a>
+        </div>
+      </div>
+      <fieldset [disabled]="salvando">
+        <section class="form-section" aria-labelledby="dados-title">
+          <h3 id="dados-title">Dados da consulta</h3>
+          <div class="fields">
+            <app-ui-input label="Data e hora" type="datetime-local" inputId="dataHora" name="dataHora"
+              [(ngModel)]="form.dataHora" [required]="true" min="1900-01-01T00:00" max="2100-12-31T23:59"
+              [errorMessage]="errors['dataHora'] || ''" />
+            <app-ui-select label="Status" selectId="status" name="status" [(ngModel)]="form.status"
+              [options]="statusOptions" [required]="true" [errorMessage]="errors['status'] || ''" />
+          </div>
+        </section>
+        @for (grupo of grupos; track grupo.titulo; let grupoIndex = $index) {
+          <section class="form-section" [attr.aria-labelledby]="'grupo-' + grupoIndex">
+            <h3 [id]="'grupo-' + grupoIndex">{{ grupo.titulo }}</h3>
+            <div class="fields">
+              @for (campo of grupo.campos; track campo.key) {
+                @if (campo.key === 'percentualGordura') {
+                  <app-ui-input label="IMC" inputId="imc" [ngModel]="form.imc" [ngModelOptions]="{ standalone: true }"
+                    [readonly]="true" placeholder="—" />
+                }
+                <app-ui-input [label]="campo.label" [inputId]="campo.key" [name]="campo.key"
+                  [(ngModel)]="form.medidas[campo.key]" [maxlength]="6" [inputmode]="campo.inteiro ? 'numeric' : 'decimal'"
+                  [class.full-row]="campo.key === 'massaMuscularKg' || campo.key === 'circunferenciaBraco'"
+                  [required]="form.exigeMedidas && (campo.key === 'peso' || campo.key === 'altura')"
+                  [errorMessage]="errors[campo.key] || ''" />
+              }
+            </div>
+          </section>
+        }
+        <section class="form-section" aria-labelledby="observacoes-title">
+          <h3 id="observacoes-title">Observações</h3>
+          <label class="sr-only" for="observacao">Observações clínicas</label>
+          <textarea id="observacao" name="observacao" [(ngModel)]="form.observacao" maxlength="5000"
+            placeholder="Observações clínicas da consulta" [attr.aria-invalid]="!!errors['observacao']"
+            aria-describedby="observacao-count"></textarea>
+          <span id="observacao-count" class="counter">{{ form.observacao.length }}/5.000</span>
+          @if (errors['observacao']) { <p class="field-error" role="alert">{{ errors['observacao'] }}</p> }
+        </section>
+      </fieldset>
+    </form>
+  }
+</main>

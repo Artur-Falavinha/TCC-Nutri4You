@@ -6,7 +6,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom, forkJoin } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
-import { SidebarComponent } from '../../shared/components/sidebar/sidebar.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
 import { UiCheckboxComponent } from '../../shared/components/ui-checkbox/ui-checkbox.component';
 import { UiSelectComponent, UiSelectOption } from '../../shared/components/ui-select/ui-select.component';
@@ -17,7 +16,7 @@ import { Anamnese, AnamneseField, Answers, Answer, Patient } from './anamnese.mo
 @Component({
   selector: 'app-anamnese',
   standalone: true,
-  imports: [FormsModule, DatePipe, SidebarComponent, UiButtonComponent, UiCheckboxComponent, UiSelectComponent, PatientTabsComponent],
+  imports: [FormsModule, DatePipe, UiButtonComponent, UiCheckboxComponent, UiSelectComponent, PatientTabsComponent],
   templateUrl: './anamnese.component.html',
   styleUrl: './anamnese.component.css'
 })
