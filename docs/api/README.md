@@ -111,11 +111,11 @@ Apps mobile nativos (Expo Go) não passam por CORS de browser.
 | `POST` | `/nutricionistas/autocadastro` | Pública | Autocadastro de nutricionista (Q29) |
 | `POST` | `/nutricionistas/cadastro` | `NUTRICIONISTA` | Cadastro assistido de nutricionista |
 | `GET` | `/usuarios/me` | Autenticado | Dados do usuário logado (envelope) |
+| `PUT` | `/usuarios/me` | `PACIENTE` | Paciente atualiza os próprios dados cadastrais |
 | `DELETE` | `/usuarios/me/nutricionistas/{id}/relacao` | `PACIENTE` | Desvincular nutricionista |
 | `GET` | `/gestao-pacientes` | `NUTRICIONISTA` | Listagem Q16 |
 | `GET` | `/gestao-pacientes/busca` | `NUTRICIONISTA` | Busca por e-mail ou CPF |
 | `GET` | `/gestao-pacientes/{id}` | `NUTRICIONISTA` | Detalhe do paciente |
-| `PUT` | `/gestao-pacientes/{id}` | `NUTRICIONISTA` | Atualizar paciente |
 | `POST` | `/gestao-pacientes/{id}/vincular` | `NUTRICIONISTA` | Vincular relação recorrente |
 | `DELETE` | `/gestao-pacientes/{id}/relacao` | `NUTRICIONISTA` | Desvincular relação recorrente |
 | `GET` | `/auth/confirmar-email` | Pública | Confirmar e-mail |

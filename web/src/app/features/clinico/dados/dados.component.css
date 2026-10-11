@@ -3,19 +3,21 @@
   flex-direction: column;
   flex: 1;
   min-width: 0;
-  min-height: 0;
+  min-height: 100%;
 }
 
 .workspace {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
-  min-height: 0;
-  overflow: auto;
-  background: var(--color-surface-card);
+  min-height: 100%;
+  background: transparent;
 }
 
 .page-header {
   padding: var(--space-24) var(--space-40);
+  background: var(--color-surface-card);
   border-bottom: var(--border-width-hairline) solid var(--color-border-default);
 }
 
@@ -23,15 +25,17 @@
   margin: 0 0 var(--space-8);
   font-family: var(--font-heading);
   font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 .canvas {
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
-  width: min(69rem, 100%);
-  margin-inline: auto;
-  padding: var(--space-24) var(--space-40) var(--space-40);
+  flex: 1;
+  width: 100%;
+  padding: var(--space-24) var(--space-32) var(--space-40);
 }
 
 .card {
@@ -50,6 +54,68 @@
 .empty {
   margin: 0;
   color: var(--color-text-secondary);
+}
+
+.workspace--ficha {
+  background: transparent;
+}
+
+.workspace--ficha .page-header {
+  background: var(--color-surface-card);
+}
+
+.ficha {
+  padding: 4px 28px 8px;
+  background: var(--color-surface-card);
+  border-radius: 12px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+}
+
+.ficha__perfil,
+.ficha__bloco {
+  padding: 20px 0;
+  border-bottom: var(--border-width-hairline) solid var(--color-border-default);
+}
+
+.ficha__bloco:last-child {
+  border-bottom: 0;
+}
+
+.ficha__perfil {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.ficha__avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e2e8f0;
+}
+
+.ficha__nome {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.ficha__bloco h2 {
+  margin: 0 0 var(--space-8);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: var(--leading-normal);
+}
+
+.ficha__bloco p {
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.ficha__bloco p + p {
+  margin-top: 2px;
 }
 
 .alert { color: var(--color-error); }
