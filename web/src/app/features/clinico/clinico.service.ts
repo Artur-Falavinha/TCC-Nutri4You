@@ -8,6 +8,15 @@ export interface Avaliacao {
   altura: number;
   imc: number;
   razaoCinturaQuadril: number | null;
+  percentualGordura: number | null;
+  massaMuscularKg: number | null;
+  pregaBicipital: number | null;
+  pregaTricipital: number | null;
+  pregaSubescapular: number | null;
+  pregaSuprailiaca: number | null;
+  circunferenciaCintura: number | null;
+  circunferenciaQuadril: number | null;
+  circunferenciaBraco: number | null;
 }
 
 export interface ConsultaResumo {

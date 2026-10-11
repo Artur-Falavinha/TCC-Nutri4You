@@ -3,22 +3,22 @@
   flex-direction: column;
   flex: 1;
   min-width: 0;
-  min-height: 0;
+  min-height: 100%;
 }
 
 .workspace {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
-  min-height: 0;
-  overflow: auto;
-  background: var(--color-surface-card);
+  min-height: 100%;
+  background: transparent;
 }
 
 .patient-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 147px;
   padding: var(--space-24) var(--space-40);
   border-bottom: var(--border-width-hairline) solid var(--color-border-default);
   background: var(--color-surface-card);
@@ -28,7 +28,8 @@
   margin: 0 0 var(--space-8);
   font-family: var(--font-heading);
   font-size: 2.25rem;
-  line-height: 1.2;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 .patient-tabs {
@@ -56,11 +57,10 @@
 .form-canvas {
   display: flex;
   flex-direction: column;
-  gap: var(--space-24);
-  width: min(1104px, 100%);
-  max-width: 1104px;
-  margin-inline: auto;
-  padding: var(--space-24) var(--space-40) var(--space-40);
+  gap: var(--space-16);
+  flex: 1;
+  width: 100%;
+  padding: var(--space-24) var(--space-32) var(--space-40);
 }
 
 .actions,
@@ -73,9 +73,14 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-24);
+  padding: 20px 24px;
+  background: var(--color-surface-card);
+  border-radius: 12px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
 }
 
 .form-section h2 {
+  margin: 0;
   font-family: var(--font-heading);
   font-size: 1.125rem;
   line-height: var(--leading-normal);
@@ -211,22 +216,16 @@ textarea {
   gap: var(--space-12);
   padding: var(--space-24) 0 var(--space-16);
   flex-wrap: wrap;
-  border-top: var(--border-width-hairline) solid #ebeef0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), #fff 36%);
-}
-
-@media (max-width: 980px) {
-  .patient-header,
-  .form-canvas {
-    padding-inline: var(--space-24);
-  }
-
-  .form-canvas {
-    width: 100%;
-  }
+  border-top: 0;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0), var(--color-surface-page) 40%);
 }
 
 @media (max-width: 720px) {
+  .patient-header,
+  .form-canvas {
+    padding-inline: var(--space-16);
+  }
+
   .patient-header {
     align-items: flex-start;
     flex-direction: column;
@@ -266,7 +265,7 @@ textarea {
 .anamnese-form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-32);
+  gap: var(--space-16);
 }
 
 .anamnese-grid {
@@ -298,8 +297,10 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding-bottom: var(--space-24);
-  border-bottom: var(--border-width-hairline) solid var(--color-border-default);
+  padding: 20px 24px;
+  background: var(--color-surface-card);
+  border-radius: 12px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
 }
 
 .anamnese-overview h2 {
@@ -319,8 +320,7 @@ textarea {
 }
 
 .anamnese-summary {
-  padding-bottom: var(--space-24);
-  border-bottom: var(--border-width-hairline) solid #ebeef0;
+  border-bottom: 0;
 }
 
 .anamnese-summary dl {
@@ -344,8 +344,12 @@ textarea {
 }
 
 .anamnese-empty {
-  padding-block: var(--space-24);
+  margin: 0;
+  padding: 20px 24px;
   color: var(--color-text-secondary);
+  background: var(--color-surface-card);
+  border-radius: 12px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
 }
 
 .anamnese-alert {

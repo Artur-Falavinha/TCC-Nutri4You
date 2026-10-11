@@ -5,14 +5,6 @@
   />
 }
 
-@if (modalEdicaoAberto && pacienteSelecionado) {
-  <app-editar-paciente-modal
-    [paciente]="pacienteSelecionado"
-    (fechar)="fecharModalEdicao()"
-    (salvo)="onPacienteEditado()"
-  />
-}
-
 @if (modalRelacaoAberto && pacienteSelecionado) {
   <app-relacao-paciente-modal
     [paciente]="pacienteSelecionado"
@@ -111,7 +103,7 @@
           <li class="pacientes-table__row">
             <div class="pacientes-table__col-nome font-semibold">{{ paciente.nome }}</div>
             <div class="pacientes-table__col-email">{{ paciente.email }}</div>
-            <div class="pacientes-table__col-telefone">{{ paciente.telefone || '-' }}</div>
+            <div class="pacientes-table__col-telefone">{{ telefoneMascarado(paciente.telefone) }}</div>
             <div class="pacientes-table__col-status">
               @if (paciente.relacaoAtiva) {
                 <span class="status-badge status-badge--ativo">Vinculado</span>
@@ -130,15 +122,6 @@
               </button>
 
               @if (paciente.relacaoAtiva) {
-                <button
-                  class="action-btn"
-                  type="button"
-                  [attr.aria-label]="'Editar paciente ' + paciente.nome"
-                  (click)="abrirModalEdicao(paciente)"
-                >
-                  <i class="ph ph-pencil-simple" aria-hidden="true"></i>
-                </button>
-
                 <button
                   class="action-btn"
                   type="button"
