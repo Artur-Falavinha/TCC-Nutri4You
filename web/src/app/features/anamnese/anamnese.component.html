@@ -40,6 +40,7 @@
               <div>
                 <h2>Anamnese</h2>
                 <p class="anamnese-status">{{ data.status === 'NAO_INICIADA' ? 'Não iniciada' : data.status === 'RASCUNHO' ? 'Rascunho salvo' : 'Finalizada' }}</p>
+                @if (data.finalizadaEm) { <p>Finalizada em {{ data.finalizadaEm | date:'dd/MM/yyyy HH:mm' }}</p> }
                 @if (data.atualizadaEm) { <p>Última atualização: {{ data.atualizadaEm | date:'dd/MM/yyyy HH:mm' }}</p> }
               </div>
               <div class="actions">
@@ -58,7 +59,6 @@
             @if (!data.finalizadaEm) {
               <p class="anamnese-empty">{{ data.rascunho !== null ? 'Anamnese em preenchimento.' : 'Nenhuma anamnese cadastrada.' }}</p>
             } @else {
-              <p class="anamnese-status">Finalizada em {{ data.finalizadaEm | date:'dd/MM/yyyy HH:mm' }}</p>
               @for (section of sections; track section) {
                 <section class="form-section anamnese-summary">
                   <h2>{{ section }}</h2>

@@ -1,30 +1,51 @@
-<section class="workspace">
-    <header class="page-header">
-      <h1>{{ paciente?.nome || 'Paciente' }}</h1>
-      @if (paciente) { <app-patient-tabs [patientId]="paciente.id" /> }
-    </header>
-    <div class="canvas">
-      @if (erro) { <p class="alert" role="alert">{{ erro }}</p> }
-      @else if (!paciente) { <p role="status">Carregando...</p> }
-      @else {
-        <article class="card">
+<section class="workspace workspace--ficha">
+  <header class="page-header">
+    <h1>{{ paciente?.nome || 'Paciente' }}</h1>
+    @if (paciente) { <app-patient-tabs [patientId]="paciente.id" /> }
+  </header>
+  <div class="canvas">
+    @if (erro) { <p class="alert" role="alert">{{ erro }}</p> }
+    @else if (!paciente) { <p role="status">Carregando...</p> }
+    @else {
+      <article class="ficha">
+        <header class="ficha__perfil">
+          <span class="ficha__avatar" aria-hidden="true"></span>
+          <p class="ficha__nome">{{ paciente.nome }}</p>
+        </header>
+        <section class="ficha__bloco">
+          <h2>Última consulta</h2>
+          @if (consultaIndisponivel) {
+            <p>Não foi possível carregar a última consulta.</p>
+          } @else if (ultimaConsulta) {
+            <p>Realizada em {{ ultimaConsulta.data }}.</p>
+            @if (ultimaConsulta.profissional) {
+              <p>Atendimento com {{ ultimaConsulta.profissional }}.</p>
+            }
+          } @else {
+            <p>Nenhuma consulta realizada.</p>
+          }
+        </section>
+        <section class="ficha__bloco">
           <h2>Dados cadastrais</h2>
-          <p>E-mail {{ paciente.email }} · Tel. {{ paciente.telefone || 'não informado' }}</p>
-          <p>Nascimento {{ paciente.dataNascimento ? (paciente.dataNascimento | date:'dd/MM/yyyy':'UTC') : 'não informado' }} · Sexo {{ paciente.sexo || 'não informado' }}</p>
-        </article>
-        <article class="card">
+          <p>E-mail {{ paciente.email }} · Tel. {{ telefone }}</p>
+          <p>Nascimento {{ nascimento }} · Sexo {{ paciente.sexo || 'não informado' }}</p>
+        </section>
+        <section class="ficha__bloco">
           <h2>Objetivo e saúde</h2>
-          <p>{{ texto(objetivo) }}</p>
-          <p>{{ texto(restricoes) }}</p>
-        </article>
-        <article class="card">
+          <p>Meta principal: {{ valor(metaPrincipal) }}</p>
+          <p>Restrições alimentares: {{ valor(restricoes) }}</p>
+        </section>
+        <section class="ficha__bloco">
           <h2>Histórico clínico</h2>
-          <p>{{ texto(clinico) }}</p>
-        </article>
-        <article class="card">
+          <p>Doenças preexistentes: {{ valor(doencas) }}</p>
+          <p>Medicamentos em uso: {{ valor(medicamentos) }}</p>
+        </section>
+        <section class="ficha__bloco">
           <h2>Estilo de vida</h2>
-          <p>{{ texto(estilo) }}</p>
-        </article>
-      }
-    </div>
+          <p>Exercícios: {{ valor(exercicios) }}</p>
+          <p>{{ linhaSonoTrabalho }}</p>
+        </section>
+      </article>
+    }
+  </div>
 </section>
