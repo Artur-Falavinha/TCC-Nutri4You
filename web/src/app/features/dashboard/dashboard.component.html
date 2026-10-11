@@ -49,7 +49,7 @@
           <article class="card card--grafico">
             <h2><i class="ph ph-users" aria-hidden="true"></i> Total de pacientes</h2>
             @if (!totalPacientes()) {
-              <p class="vazio">Nenhum paciente visível.</p>
+              <p class="vazio vazio--centro">Nenhum paciente visível.</p>
             } @else {
               <div class="donut">
                 <svg viewBox="0 0 200 200" role="img" aria-label="Distribuição por sexo">
@@ -81,7 +81,7 @@
           <article class="card card--grafico">
             <h2><i class="ph ph-chart-bar" aria-hidden="true"></i> Pacientes por faixa etária</h2>
             @if (!temFaixa()) {
-              <p class="vazio">Nenhuma data de nascimento nas faixas de 10 anos ou mais.</p>
+              <p class="vazio vazio--centro">Nenhuma data de nascimento nas faixas de 10 anos ou mais.</p>
             } @else {
               <ul class="barras">
                 @for (faixa of agenda.faixaEtaria; track faixa.rotulo) {
@@ -114,7 +114,7 @@
               </div>
             </div>
             @if (!agenda.totalConsultas12Meses) {
-              <p class="vazio">Nenhuma consulta nos últimos 12 meses.</p>
+              <p class="vazio vazio--centro">Nenhuma consulta nos últimos 12 meses.</p>
             } @else {
               <div class="linha-wrap">
                 <svg class="linha" viewBox="0 0 1104 236" role="img" aria-label="Consultas nos últimos 12 meses">

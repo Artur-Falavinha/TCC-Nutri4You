@@ -134,6 +134,10 @@
   text-align: center;
 }
 
+.card--grafico .vazio--centro {
+  min-height: 200px;
+}
+
 .hoje {
   display: flex;
   flex-direction: column;
