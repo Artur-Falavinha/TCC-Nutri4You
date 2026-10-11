@@ -29,10 +29,6 @@ export class PacientesService {
     return this.api.get<Paciente>(`/gestao-pacientes/${id}`);
   }
 
-  atualizarPaciente(id: number, payload: Partial<Paciente>): Observable<Paciente> {
-    return this.api.put<Paciente>(`/gestao-pacientes/${id}`, payload);
-  }
-
   vincularPaciente(id: number): Observable<void> {
     return this.api
       .post<unknown>(`/gestao-pacientes/${id}/vincular`, {})
