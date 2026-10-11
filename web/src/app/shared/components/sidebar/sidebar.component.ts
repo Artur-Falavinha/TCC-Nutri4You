@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
@@ -14,8 +14,6 @@ export class SidebarComponent {
   private readonly router = inject(Router);
 
   nomeNutricionista = 'Nutricionista';
-  private isNarrow = window.matchMedia('(max-width: 720px)').matches;
-  isExpanded = !this.isNarrow;
 
   constructor() {
     this.authService.fetchMe().subscribe({
@@ -28,24 +26,13 @@ export class SidebarComponent {
     });
   }
 
-  toggleSidebar(): void {
-    this.isExpanded = !this.isExpanded;
-  }
-
-  @HostListener('window:resize')
-  onResize(): void {
-    const isNarrow = window.matchMedia('(max-width: 720px)').matches;
-    if (isNarrow !== this.isNarrow) {
-      this.isNarrow = isNarrow;
-      this.isExpanded = !isNarrow;
-    }
-  }
-
   async logout(): Promise<void> {
-    const left = await this.router.navigate(['/dashboard']);
-    if (!left) return;
+    const naHome = this.router.url.split(/[?#]/)[0] === '/dashboard';
+    if (!naHome) {
+      const saiu = await this.router.navigate(['/dashboard']);
+      if (!saiu) return;
+    }
     this.authService.logout();
     await this.router.navigate(['/login']);
   }
 }
-

@@ -20,6 +20,14 @@
       [placeholder]="placeholder"
       [value]="value"
       [disabled]="disabled"
+      [readOnly]="readonly"
+      [required]="required"
+      [attr.inputmode]="inputmode"
+      [attr.maxlength]="maxlength"
+      [attr.min]="min"
+      [attr.max]="max"
+      [attr.aria-invalid]="errorMessage ? 'true' : null"
+      [attr.aria-describedby]="errorMessage ? id + '-error' : null"
       [autocomplete]="autocomplete"
       (input)="onInput($event)"
       (blur)="onBlur()"
@@ -43,6 +51,6 @@
     }
   </div>
   @if (errorMessage) {
-    <p class="ui-input__error" role="alert">{{ errorMessage }}</p>
+    <p class="ui-input__error" [id]="id + '-error'" role="alert">{{ errorMessage }}</p>
   }
 </div>

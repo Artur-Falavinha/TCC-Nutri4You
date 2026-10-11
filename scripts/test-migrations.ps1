@@ -10,6 +10,8 @@ $compatibility = Get-Content (Join-Path $migrations 'V1_1__compatibilidade_auten
 $v2 = Get-Content (Join-Path $migrations 'V2__anamnese_unica.sql') -Raw
 $v3 = Get-Content (Join-Path $migrations 'V3__anamnese_fuso_horario.sql') -Raw
 $v4 = Get-Content (Join-Path $migrations 'V4__token_email_titular.sql') -Raw
+$v5 = Get-Content (Join-Path $migrations 'V5__remover_medidas_da_anamnese.sql') -Raw
+$v7 = Get-Content (Join-Path $migrations 'V7__registro_consultas.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
 
 # Every scenario uses a new schema inside a transaction, rolled back even on
@@ -104,6 +106,30 @@ $v3
 $v4
 $v4
 $assertions
+$v5
+UPDATE Consulta SET observacao = 'Registro legado' WHERE id_consulta = 1;
+$v7
+DO `$`$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM Consulta WHERE id_consulta = 1
+                   AND observacao = 'Registro legado' AND versao = 0 AND atualizado_em IS NOT NULL) THEN
+        RAISE EXCEPTION 'V7 must preserve existing consultations and initialize versions';
+    END IF;
+END;
+`$`$;
+UPDATE Consulta SET observacao = repeat('x', 5000) WHERE id_consulta = 1;
+INSERT INTO Avaliacao_Antropometrica (id_paciente, id_consulta, data_avaliacao, peso, altura, imc)
+VALUES (1, 1, '2025-01-15 14:30', 500, 0.30, 5555.56);
+DO `$`$
+BEGIN
+    BEGIN
+        INSERT INTO Avaliacao_Antropometrica (id_paciente, id_consulta, data_avaliacao)
+        VALUES (1, 1, CURRENT_TIMESTAMP);
+        RAISE EXCEPTION 'Duplicate assessment accepted for consultation';
+    EXCEPTION WHEN unique_violation THEN NULL;
+    END;
+END;
+`$`$;
 ROLLBACK;
 "@
             $sql | docker exec -i $container psql -X -q -v ON_ERROR_STOP=1 -U postgres -d postgres
