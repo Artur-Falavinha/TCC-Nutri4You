@@ -221,21 +221,23 @@ INSERT INTO Relacao_Clinica (id_paciente, id_nutricionista, status) VALUES
 
 -- 4. CONSULTAS (relaciona paciente e nutricionista por evento)
 INSERT INTO Consulta (id_paciente, id_nutricionista, data_hora, status) VALUES
+(1, 1, '2026-06-01 10:00:00', 'REALIZADA'),
 (1, 1, '2026-07-01 10:00:00', 'REALIZADA'),
 (1, 1, '2026-08-15 10:00:00', 'REALIZADA'),
 (1, 1, '2026-10-01 10:00:00', 'REALIZADA'),
 (2, 1, '2026-09-01 11:00:00', 'REALIZADA');
 
 -- 5. AVALIAÇÕES ANTROPOMÉTRICAS (Evolução do paciente Arthur - id 1)
+-- Nota: id_consulta = 1 e mantido sem avaliacao inicial para compatibilidade com scripts de migracao (test-migrations)
 INSERT INTO Avaliacao_Antropometrica (
     id_paciente, id_consulta, data_avaliacao,
     peso, altura, imc, percentual_gordura, massa_muscular_kg,
     prega_bicipital, prega_tricipital, prega_subescapular, prega_suprailiaca,
     circunferencia_cintura, circunferencia_quadril, circunferencia_braco
 ) VALUES
-(1, 1, '2026-07-01 10:00:00', 76.70, 1.75, 25.04, 19.50, 31.00, 7.00, 11.00, 13.00, 15.50, 86.00, 103.00, 34.00),
-(1, 2, '2026-08-15 10:00:00', 74.50, 1.75, 24.33, 19.00, 31.50, 6.50, 10.50, 12.50, 14.80, 85.00, 102.50, 34.00),
-(1, 3, '2026-10-01 10:00:00', 72.50, 1.75, 23.67, 18.50, 32.00, 6.00, 10.00, 12.00, 14.00, 84.00, 102.00, 34.00);
+(1, 2, '2026-07-01 10:00:00', 76.70, 1.75, 25.04, 19.50, 31.00, 7.00, 11.00, 13.00, 15.50, 86.00, 103.00, 34.00),
+(1, 3, '2026-08-15 10:00:00', 74.50, 1.75, 24.33, 19.00, 31.50, 6.50, 10.50, 12.50, 14.80, 85.00, 102.50, 34.00),
+(1, 4, '2026-10-01 10:00:00', 72.50, 1.75, 23.67, 18.50, 32.00, 6.00, 10.00, 12.00, 14.00, 84.00, 102.00, 34.00);
 
 -- 6. CONSUMO DIÁRIO MOCK (id_paciente: 1)
 INSERT INTO Consumo_Diario (id_paciente, data_registro, kcal_consumidas, agua_ml_consumida) VALUES
