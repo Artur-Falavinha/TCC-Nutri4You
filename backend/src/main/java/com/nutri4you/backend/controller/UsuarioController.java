@@ -1,6 +1,9 @@
 package com.nutri4you.backend.controller;
 
 import com.nutri4you.backend.dto.ApiResponse;
+import com.nutri4you.backend.dto.AvaliacaoResponse;
+import com.nutri4you.backend.dto.ConsumoProgressoDTO;
+import com.nutri4you.backend.dto.HistoricoResponse;
 import com.nutri4you.backend.dto.MensagemResponse;
 import com.nutri4you.backend.dto.NutricionistaVinculoDTO;
 import com.nutri4you.backend.dto.PacientePerfilDTO;
@@ -9,6 +12,7 @@ import com.nutri4you.backend.dto.UsuarioInfoDTO;
 import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
+import com.nutri4you.backend.service.ClinicoService;
 import com.nutri4you.backend.service.GestaoPacienteService;
 import com.nutri4you.backend.service.PerfilPacienteService;
 import org.springframework.http.ResponseEntity;
@@ -29,12 +33,15 @@ public class UsuarioController {
 
     private final GestaoPacienteService gestaoPacienteService;
     private final PerfilPacienteService perfilPacienteService;
+    private final ClinicoService clinicoService;
 
     public UsuarioController(
             GestaoPacienteService gestaoPacienteService,
-            PerfilPacienteService perfilPacienteService) {
+            PerfilPacienteService perfilPacienteService,
+            ClinicoService clinicoService) {
         this.gestaoPacienteService = gestaoPacienteService;
         this.perfilPacienteService = perfilPacienteService;
+        this.clinicoService = clinicoService;
     }
 
     @GetMapping("/me")
@@ -107,6 +114,38 @@ public class UsuarioController {
         } catch (IllegalArgumentException exception) {
             return ResponseEntity.badRequest().build();
         }
+    }
+
+    @GetMapping("/me/historico")
+    public ResponseEntity<ApiResponse<HistoricoResponse>> historicoMe(Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                clinicoService.historico(paciente(authentication)),
+                "Histórico carregado."));
+    }
+
+    @GetMapping("/me/medidas")
+    public ResponseEntity<ApiResponse<List<AvaliacaoResponse>>> medidasMe(Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                clinicoService.listarAvaliacoes(paciente(authentication).getId()),
+                "Avaliações carregadas."));
+    }
+
+    @GetMapping("/me/consumo-diario/progresso")
+    public ResponseEntity<ApiResponse<ConsumoProgressoDTO>> consumoDiarioProgresso(Authentication authentication) {
+        paciente(authentication);
+        return ResponseEntity.ok(ApiResponse.ok(
+                new ConsumoProgressoDTO(
+                        "Hoje",
+                        1850.0,
+                        2000.0,
+                        140.0,
+                        160.0,
+                        210.0,
+                        250.0,
+                        55.0,
+                        65.0
+                ),
+                "Consumo diário carregado."));
     }
 
     private Paciente paciente(Authentication authentication) {
