@@ -22,6 +22,7 @@ http://localhost:8080/api/v1
 | --- | --- |
 | [Endpoints](endpoints.md) | Referência de rotas, payloads e respostas |
 | [Autenticação](autenticacao.md) | Fluxo JWT, roles, CORS e rotas públicas/protegidas |
+| [Agenda do paciente](agenda-paciente.md) | Consulta de agenda, disponibilidade, solicitação, reagendamento e cancelamento |
 
 ## Convenções
 
@@ -85,6 +86,7 @@ Apps mobile nativos (Expo Go) não passam por CORS de browser.
 | `401` | Credenciais inválidas no login |
 | `403` | Token ausente/inválido ou role insuficiente |
 | `404` | Recurso não encontrado |
+| `409` | Conflito de horário ou versão desatualizada |
 
 ### Variáveis de ambiente (backend)
 
@@ -122,6 +124,11 @@ Apps mobile nativos (Expo Go) não passam por CORS de browser.
 | `POST` | `/auth/recuperar-senha` | Pública | Solicitar reset de senha |
 | `POST` | `/auth/redefinir-senha` | Pública | Aplicar nova senha |
 | `GET` | `/dev/email-preview/{token}` | Pública *(dev)* | Preview de e-mail |
+| `GET` | `/agenda/consultas` | `PACIENTE` | Próximas consultas não canceladas |
+| `GET` | `/agenda/disponibilidade` | `PACIENTE` | Horários livres de nutricionista vinculado |
+| `POST` | `/agenda/consultas` | `PACIENTE` | Solicitar consulta |
+| `PUT` | `/agenda/consultas/{id}/reagendamento` | `PACIENTE` | Solicitar novo horário para consulta confirmada |
+| `POST` | `/agenda/consultas/{id}/cancelamento` | `PACIENTE` | Cancelar consulta confirmada |
 
 Referência completa em [endpoints.md](endpoints.md).
 

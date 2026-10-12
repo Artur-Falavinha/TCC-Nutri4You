@@ -9,5 +9,12 @@ export type RootStackParamList = {
   NovaSenha: { token: string };
   CriarConta: undefined;
   Home: undefined;
+  Agenda: undefined;
+  HorariosDisponiveis: {
+    nutricionistaId: number;
+    data: string;
+    consultaId?: number;
+    versao?: number;
+  };
   Health: undefined;
 };

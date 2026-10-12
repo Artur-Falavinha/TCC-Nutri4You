@@ -17,6 +17,8 @@ import TrocarSenhaScreen from '../screens/TrocarSenhaScreen';
 import NovaSenhaScreen from '../screens/NovaSenhaScreen';
 import { HealthScreen } from '../screens/health/HealthScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
+import { AppointmentsScreen } from '../screens/appointments/AppointmentsScreen';
+import { AvailableSlotsScreen } from '../screens/appointments/AvailableSlotsScreen';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -35,6 +37,8 @@ const linking = {
       TrocarSenha: 'esqueci-senha',
       CriarConta: 'cadastro',
       Home: 'home',
+      Agenda: 'agenda',
+      HorariosDisponiveis: 'agenda/horarios',
       Health: 'health'
     }
   }
@@ -116,7 +120,17 @@ export function RootNavigator() {
           component={CriarContaScreen}
           options={{ headerShown: false }}
         />
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Nutri4You' }} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+        <Stack.Screen
+          name="Agenda"
+          component={AppointmentsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="HorariosDisponiveis"
+          component={AvailableSlotsScreen}
+          options={{ headerShown: false }}
+        />
         <Stack.Screen name="Health" component={HealthScreen} options={{ title: 'Status da API' }} />
       </Stack.Navigator>
     </NavigationContainer>

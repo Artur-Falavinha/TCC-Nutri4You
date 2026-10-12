@@ -24,4 +24,12 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Integer> {
 
     List<Consulta> findByNutricionista_IdAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
             Integer nutricionistaId, LocalDateTime inicio, LocalDateTime fim);
+
+    List<Consulta> findByPaciente_IdAndStatusNotAndDataHoraGreaterThanEqualOrderByDataHoraAsc(
+            Integer pacienteId, String status, LocalDateTime inicio);
+
+    Optional<Consulta> findByIdAndPaciente_Id(Integer id, Integer pacienteId);
+
+    List<Consulta> findByNutricionista_IdAndStatusNotAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
+            Integer nutricionistaId, String status, LocalDateTime inicio, LocalDateTime fim);
 }
