@@ -1,0 +1,143 @@
+import {
+  calcularVariacao,
+  formatarDataDiaMes,
+  formatarDataMes,
+  carregarEvolucao,
+  carregarMedidas,
+  carregarConsumoProgresso
+} from '../evolucao.service';
+import { apiClient } from '../../api/api-client';
+
+jest.mock('../../api/api-client', () => ({
+  apiClient: {
+    get: jest.fn()
+  }
+}));
+
+describe('evolucao.service', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('calcularVariacao', () => {
+    it('calcula queda de peso com valor negativo e direcao queda', () => {
+      const resultado = calcularVariacao(72.5, 76.7, 'kg');
+      expect(resultado).not.toBeNull();
+      expect(resultado?.valor).toBe(-4.2);
+      expect(resultado?.percentual).toBe(-5.5);
+      expect(resultado?.texto).toBe('-4.2 kg');
+      expect(resultado?.direcao).toBe('queda');
+    });
+
+    it('calcula ganho com valor positivo e direcao alta', () => {
+      const resultado = calcularVariacao(75.0, 73.0, 'kg');
+      expect(resultado).not.toBeNull();
+      expect(resultado?.valor).toBe(2);
+      expect(resultado?.percentual).toBe(2.7);
+      expect(resultado?.texto).toBe('+2.0 kg');
+      expect(resultado?.direcao).toBe('alta');
+    });
+
+    it('retorna estavel quando a diferenca for menor que 0.01', () => {
+      const resultado = calcularVariacao(70.0, 70.005, 'kg');
+      expect(resultado).not.toBeNull();
+      expect(resultado?.valor).toBe(0);
+      expect(resultado?.percentual).toBe(0);
+      expect(resultado?.texto).toBe('0 kg');
+      expect(resultado?.direcao).toBe('estavel');
+    });
+
+    it('retorna null quando um dos valores for nulo ou invalido', () => {
+      expect(calcularVariacao(null, 70)).toBeNull();
+      expect(calcularVariacao(70, null)).toBeNull();
+      expect(calcularVariacao(undefined, undefined)).toBeNull();
+      expect(calcularVariacao(NaN, 70)).toBeNull();
+    });
+  });
+
+  describe('formatarDataMes e formatarDataDiaMes', () => {
+    it('formata o mes corretamente em abreviacao', () => {
+      expect(formatarDataMes('2026-01-15T10:00:00')).toBe('Jan');
+      expect(formatarDataMes('2026-03-20T10:00:00')).toBe('Mar');
+      expect(formatarDataMes('2026-10-05T10:00:00')).toBe('Out');
+    });
+
+    it('retorna string vazia para datas invalidas', () => {
+      expect(formatarDataMes('')).toBe('');
+      expect(formatarDataMes('data-invalida')).toBe('');
+    });
+
+    it('formata dia e mes no formato DD/MM', () => {
+      expect(formatarDataDiaMes('2026-05-09T10:00:00')).toBe('09/05');
+      expect(formatarDataDiaMes('2026-12-25T10:00:00')).toBe('25/12');
+    });
+  });
+
+  describe('chamadas de API', () => {
+    it('carregarEvolucao chama endpoint /usuarios/me/historico', async () => {
+      const fakeHistorico = {
+        consultas: [{ id: 1, pacienteNome: 'Ana', dataHora: '2026-10-01T10:00:00' }],
+        avaliacoes: [
+          {
+            id: 10,
+            dataAvaliacao: '2026-10-01T10:00:00',
+            peso: 72.5,
+            altura: 1.75,
+            imc: 23.67,
+            razaoCinturaQuadril: 0.82,
+            percentualGordura: 18.5,
+            massaMuscularKg: 32.0,
+            pregaBicipital: 6.0,
+            pregaTricipital: 10.0,
+            pregaSubescapular: 12.0,
+            pregaSuprailiaca: 14.0,
+            circunferenciaCintura: 84.0,
+            circunferenciaQuadril: 102.0,
+            circunferenciaBraco: 34.0
+          }
+        ]
+      };
+      (apiClient.get as jest.Mock).mockResolvedValueOnce(fakeHistorico);
+
+      const dados = await carregarEvolucao();
+      expect(apiClient.get).toHaveBeenCalledWith('/usuarios/me/historico');
+      expect(dados).toEqual(fakeHistorico);
+    });
+
+    it('carregarMedidas chama endpoint /usuarios/me/medidas', async () => {
+      const fakeMedidas = [{ id: 1, peso: 70, altura: 1.7, imc: 24.2, dataAvaliacao: '2026-10-01' }];
+      (apiClient.get as jest.Mock).mockResolvedValueOnce(fakeMedidas);
+
+      const dados = await carregarMedidas();
+      expect(apiClient.get).toHaveBeenCalledWith('/usuarios/me/medidas');
+      expect(dados).toEqual(fakeMedidas);
+    });
+
+    it('carregarConsumoProgresso retorna null quando ocorre erro', async () => {
+      (apiClient.get as jest.Mock).mockRejectedValueOnce(new Error('Falha de rede'));
+
+      const resultado = await carregarConsumoProgresso();
+      expect(resultado).toBeNull();
+    });
+
+    it('carregarConsumoProgresso retorna dados quando disponivel', async () => {
+      const fakeConsumo = {
+        data: '2026-10-11',
+        caloriasConsumidas: 1800,
+        metaCalorias: 2200,
+        proteinas: 120,
+        metaProteinas: 140,
+        carboidratos: 200,
+        metaCarboidratos: 250,
+        gorduras: 50,
+        metaGorduras: 60
+      };
+      (apiClient.get as jest.Mock).mockResolvedValueOnce(fakeConsumo);
+
+      const resultado = await carregarConsumoProgresso();
+      expect(apiClient.get).toHaveBeenCalledWith('/usuarios/me/consumo-diario/progresso');
+      expect(resultado).toEqual(fakeConsumo);
+    });
+  });
+});
+

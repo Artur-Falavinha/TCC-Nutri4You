@@ -76,6 +76,17 @@ class UsuarioControllerTest {
                 .andExpect(jsonPath("$.data.mensagem").value("Relação recorrente encerrada com sucesso."));
     }
 
+    @Test
+    void consumoDiarioProgressoRetornaDados() throws Exception {
+        String token = loginComoPaciente();
+
+        mockMvc.perform(get("/api/v1/usuarios/me/consumo-diario/progresso")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.caloriasConsumidas").value(1850.0))
+                .andExpect(jsonPath("$.data.metaCalorias").value(2000.0));
+    }
+
     private String loginComoPaciente() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

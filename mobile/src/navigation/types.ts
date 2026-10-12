@@ -8,6 +8,9 @@ export type RootStackParamList = {
   TrocarSenha: undefined;
   NovaSenha: { token: string };
   CriarConta: undefined;
-  Home: undefined;
+  App: undefined;
+  Dashboard: undefined;
+  DadosPessoais: undefined;
+  Evolucao: undefined;
   Health: undefined;
 };

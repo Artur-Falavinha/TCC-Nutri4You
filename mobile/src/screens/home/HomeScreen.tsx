@@ -27,7 +27,7 @@ import { formatDateDisplay, toIsoDate } from '../../core/utils/date-mask.util';
 import { formatPhoneDisplay, normalizePhone } from '../../core/utils/phone-mask.util';
 import { RootStackParamList } from '../../navigation/types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'DadosPessoais'>;
 
 const SEXO_OPTIONS = ['Masculino', 'Feminino', 'Prefiro não informar'] as const;
 

@@ -7,6 +7,7 @@ import com.nutri4you.backend.dto.AvaliacaoResponse;
 import com.nutri4you.backend.dto.HistoricoResponse;
 import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.model.Nutricionista;
+import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.service.ClinicoService;
 import com.nutri4you.backend.service.PacienteNaoEncontradoException;
 import org.springframework.http.ResponseEntity;
@@ -36,10 +37,18 @@ public class ClinicoController {
                 "Agenda carregada."));
     }
 
-    @GetMapping("/api/v1/gestao-pacientes/{id}/historico")
+    @GetMapping({"/api/v1/gestao-pacientes/{id}/historico", "/api/v1/pacientes/{id}/historico"})
     public ResponseEntity<ApiResponse<HistoricoResponse>> historico(
             Authentication authentication, @PathVariable Integer id) {
         try {
+            if (authentication != null && authentication.getPrincipal() instanceof Paciente paciente) {
+                if (!paciente.getId().equals(id)) {
+                    return ResponseEntity.status(403).build();
+                }
+                return ResponseEntity.ok(ApiResponse.ok(
+                        clinicoService.historico(paciente),
+                        "Histórico carregado."));
+            }
             return ResponseEntity.ok(ApiResponse.ok(
                     clinicoService.historico(nutricionista(authentication), id),
                     "Histórico carregado."));
@@ -50,10 +59,18 @@ public class ClinicoController {
         }
     }
 
-    @GetMapping("/api/v1/gestao-pacientes/{id}/avaliacoes")
+    @GetMapping({"/api/v1/gestao-pacientes/{id}/avaliacoes", "/api/v1/pacientes/{id}/medidas"})
     public ResponseEntity<ApiResponse<List<AvaliacaoResponse>>> listarAvaliacoes(
             Authentication authentication, @PathVariable Integer id) {
         try {
+            if (authentication != null && authentication.getPrincipal() instanceof Paciente paciente) {
+                if (!paciente.getId().equals(id)) {
+                    return ResponseEntity.status(403).build();
+                }
+                return ResponseEntity.ok(ApiResponse.ok(
+                        clinicoService.listarAvaliacoes(paciente.getId()),
+                        "Avaliações carregadas."));
+            }
             return ResponseEntity.ok(ApiResponse.ok(
                     clinicoService.listarAvaliacoes(nutricionista(authentication), id),
                     "Avaliações carregadas."));
