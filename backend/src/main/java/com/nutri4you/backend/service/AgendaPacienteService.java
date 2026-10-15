@@ -99,6 +99,7 @@ public class AgendaPacienteService {
             throw new IllegalArgumentException("Informe o nutricionista.");
         }
         Nutricionista nutricionista = exigirNutricionistaVinculado(paciente, request.nutricionistaId());
+        bloquearNutricionista(nutricionista.getId());
         validarHorario(request.dataHora());
         exigirHorarioLivre(nutricionista.getId(), request.dataHora(), null);
         Consulta consulta = consultas.save(new Consulta(paciente, nutricionista, request.dataHora()));
@@ -116,6 +117,7 @@ public class AgendaPacienteService {
             throw new IllegalArgumentException("Somente consultas confirmadas podem ser reagendadas.");
         }
         validarVersao(request == null ? null : request.versao(), consulta);
+        bloquearNutricionista(consulta.getNutricionista().getId());
         validarHorario(request.dataHora());
         exigirHorarioLivre(consulta.getNutricionista().getId(), request.dataHora(), consulta.getId());
         consulta.reagendar(request.dataHora());
@@ -150,6 +152,11 @@ public class AgendaPacienteService {
     private Consulta exigirConsulta(Paciente paciente, Integer consultaId) {
         return consultas.findByIdAndPaciente_Id(consultaId, paciente.getId())
                 .orElseThrow(ConsultaNaoEncontradaException::new);
+    }
+
+    private void bloquearNutricionista(Integer nutricionistaId) {
+        nutricionistas.findByIdForUpdate(nutricionistaId)
+                .orElseThrow(() -> new IllegalArgumentException("Nutricionista não encontrado."));
     }
 
     private void validarHorario(LocalDateTime dataHora) {
@@ -191,7 +198,7 @@ public class AgendaPacienteService {
         if (versao == null) {
             throw new IllegalArgumentException("Versão da consulta obrigatória.");
         }
-        if (versao != consulta.getVersao()) {
+        if (!versao.equals(consulta.getVersao())) {
             throw new ConsultaConflitoException();
         }
     }

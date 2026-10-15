@@ -8,6 +8,7 @@ import { Appointment } from '../appointments.models';
 
 interface AppointmentCardProps {
   appointment: Appointment;
+  onAddToCalendar: (appointment: Appointment) => void;
   onReschedule: (appointment: Appointment) => void;
   onCancel: (appointment: Appointment) => void;
 }
@@ -21,6 +22,7 @@ const statusLabels: Record<Appointment['status'], string> = {
 
 export function AppointmentCard({
   appointment,
+  onAddToCalendar,
   onReschedule,
   onCancel
 }: AppointmentCardProps) {
@@ -52,22 +54,32 @@ export function AppointmentCard({
       </View>
 
       {confirmed ? (
-        <View style={styles.actions}>
+        <>
           <Pressable
-            style={({ pressed }) => [styles.rescheduleButton, pressed && styles.pressed]}
-            onPress={() => onReschedule(appointment)}
+            style={({ pressed }) => [styles.calendarButton, pressed && styles.pressed]}
+            onPress={() => onAddToCalendar(appointment)}
             accessibilityRole="button"
+            accessibilityLabel="Adicionar consulta ao Google Agenda"
           >
-            <Text style={styles.rescheduleText}>Reagendar</Text>
+            <Text style={styles.calendarButtonText}>Adicionar ao Google Agenda</Text>
           </Pressable>
-          <Pressable
-            style={({ pressed }) => [styles.cancelButton, pressed && styles.pressed]}
-            onPress={() => onCancel(appointment)}
-            accessibilityRole="button"
-          >
-            <Text style={styles.cancelText}>Cancelar</Text>
-          </Pressable>
-        </View>
+          <View style={styles.actions}>
+            <Pressable
+              style={({ pressed }) => [styles.rescheduleButton, pressed && styles.pressed]}
+              onPress={() => onReschedule(appointment)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.rescheduleText}>Reagendar</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.cancelButton, pressed && styles.pressed]}
+              onPress={() => onCancel(appointment)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.cancelText}>Cancelar</Text>
+            </Pressable>
+          </View>
+        </>
       ) : null}
     </View>
   );
@@ -130,6 +142,20 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xxs,
     flexDirection: 'row',
     gap: spacing.sm
+  },
+  calendarButton: {
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.brand,
+    borderRadius: radius.md,
+    ...shadows.button
+  },
+  calendarButtonText: {
+    color: colors.white,
+    fontFamily: fontFamily.bold,
+    fontSize: 14,
+    lineHeight: 20
   },
   rescheduleButton: {
     flex: 1,

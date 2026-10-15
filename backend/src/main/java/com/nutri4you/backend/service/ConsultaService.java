@@ -73,7 +73,7 @@ public class ConsultaService {
         Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
         validar(request);
         if (request.versao() == null) throw new IllegalArgumentException("Versao da consulta obrigatoria.");
-        if (request.versao() != consulta.getVersao()) throw new ConsultaConflitoException();
+        if (!request.versao().equals(consulta.getVersao())) throw new ConsultaConflitoException();
         AvaliacaoAntropometrica existente = avaliacoes.findByConsulta_Id(id).orElse(null);
         if (existente != null && request.avaliacao() == null) {
             throw new IllegalArgumentException("Mantenha peso e altura da avaliacao ja registrada.");

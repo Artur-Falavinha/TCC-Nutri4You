@@ -62,8 +62,17 @@ se sobrepõem a consultas não canceladas não são retornados.
 - Reagendamento requer nova confirmação do nutricionista.
 - `versao` é obrigatória nas alterações e protege contra edição concorrente.
 - Horário ocupado ou versão desatualizada retorna `409 CONFLITO`.
+- A criação usa bloqueio pessimista do nutricionista para impedir dupla reserva concorrente.
 - Dados inválidos, horário passado ou vínculo inativo retornam `400`.
 - Consulta inexistente ou pertencente a outro paciente retorna `404`.
 
-O Google Calendar não participa deste fluxo interno nesta etapa. A integração
-externa será adicionada separadamente, sem substituir a persistência da agenda.
+## Google Agenda
+
+Não existe integração OAuth no backend. Para consultas confirmadas, o aplicativo
+mobile monta localmente um link de criação de evento e abre o Google Agenda com
+título, data, horário, duração e nome do profissional preenchidos. O paciente
+confirma o salvamento na própria conta.
+
+Esse fluxo não usa Google Cloud, credenciais, tokens ou faturamento. Como o
+Nutri4You não recebe acesso ao calendário, eventos já salvos precisam ser
+atualizados ou removidos manualmente após reagendamento ou cancelamento.

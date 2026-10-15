@@ -3,6 +3,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -20,15 +22,13 @@ import {
   listarNutricionistas,
   NutricionistaVinculo
 } from '../../core/perfil/perfil.service';
-import {
-  cancelAppointment,
-  listAppointments
-} from '../../features/appointments/appointments.service';
+import { cancelAppointment, listAppointments } from '../../features/appointments/appointments.service';
 import { dateKeyFromLocalDateTime, toDateKey } from '../../features/appointments/appointments-date.util';
 import { Appointment } from '../../features/appointments/appointments.models';
 import { AppointmentCard } from '../../features/appointments/components/AppointmentCard';
 import { CalendarCard } from '../../features/appointments/components/CalendarCard';
 import { CancelAppointmentModal } from '../../features/appointments/components/CancelAppointmentModal';
+import { buildGoogleCalendarUrl } from '../../features/appointments/google-calendar-link';
 import { RootStackParamList } from '../../navigation/types';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 
@@ -112,10 +112,23 @@ export function AppointmentsScreen({ navigation }: Props) {
       await cancelAppointment(pendingCancellation.id, pendingCancellation.versao);
       setPendingCancellation(null);
       await load(true);
+      Alert.alert(
+        'Consulta cancelada',
+        'Se você adicionou essa consulta ao Google Agenda, remova o evento manualmente.'
+      );
     } catch (failure) {
       setError(errorMessage(failure, 'Não foi possível cancelar a consulta.'));
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const addToGoogleCalendar = async (appointment: Appointment) => {
+    setError('');
+    try {
+      await Linking.openURL(buildGoogleCalendarUrl(appointment));
+    } catch (failure) {
+      setError(errorMessage(failure, 'Não foi possível abrir o Google Agenda.'));
     }
   };
 
@@ -185,6 +198,7 @@ export function AppointmentsScreen({ navigation }: Props) {
               <AppointmentCard
                 key={appointment.id}
                 appointment={appointment}
+                onAddToCalendar={(item) => void addToGoogleCalendar(item)}
                 onReschedule={(item) =>
                   openAvailability(
                     dateKeyFromLocalDateTime(item.dataHora),

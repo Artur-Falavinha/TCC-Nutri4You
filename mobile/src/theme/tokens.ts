@@ -7,6 +7,7 @@ export const colors = {
   text: '#2d3335',
   textSecondary: '#64748b',
   textSubtle: '#94a3b8',
+  menuIcon: '#64748b',
   page: '#f9f9f9',
   pageAlt: '#f5f5f5',
   card: '#ffffff',

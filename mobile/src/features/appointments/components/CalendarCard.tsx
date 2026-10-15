@@ -1,3 +1,5 @@
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import CalendarMonthIcon from '../../../assets/appointments/calendar-month.svg';
@@ -6,7 +8,8 @@ import {
   buildCalendarDays,
   fromDateKey,
   isPastDate,
-  monthTitle
+  monthTitle,
+  toDateKey
 } from '../appointments-date.util';
 
 const WEEKDAYS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
@@ -22,6 +25,7 @@ export function CalendarCard({
   appointmentDates,
   onSelectDate
 }: CalendarCardProps) {
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
   const selected = fromDateKey(selectedDate);
   const days = buildCalendarDays(selected);
 
@@ -29,11 +33,29 @@ export function CalendarCard({
     <View style={styles.section}>
       <View style={styles.titleRow}>
         <Text style={styles.title}>Agendamento</Text>
-        <View style={styles.monthRow}>
+        <Pressable
+          style={({ pressed }) => [styles.monthRow, pressed && styles.pressed]}
+          onPress={() => setDatePickerVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Escolher outra data"
+        >
           <Text style={styles.month}>{monthTitle(selected)}</Text>
           <CalendarMonthIcon />
-        </View>
+        </Pressable>
       </View>
+
+      {datePickerVisible ? (
+        <DateTimePicker
+          value={selected}
+          mode="date"
+          display="default"
+          minimumDate={fromDateKey(toDateKey(new Date()))}
+          onChange={(_, date) => {
+            setDatePickerVisible(false);
+            if (date) onSelectDate(toDateKey(date));
+          }}
+        />
+      ) : null}
 
       <View style={styles.calendar}>
         <View style={styles.weekRow}>
@@ -113,6 +135,9 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bold,
     fontSize: 14,
     lineHeight: 20
+  },
+  pressed: {
+    opacity: 0.7
   },
   calendar: {
     backgroundColor: colors.card,

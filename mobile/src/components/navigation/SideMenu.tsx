@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ComponentType } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -34,7 +34,7 @@ interface SideMenuProps {
 
 interface MenuItemProps {
   label: string;
-  icon: ReactNode;
+  icon: ComponentType<{ color?: string }>;
   active?: boolean;
   onPress: () => void;
 }
@@ -42,16 +42,16 @@ interface MenuItemProps {
 const menuItems: {
   destination: MenuDestination;
   label: string;
-  icon: ReactNode;
+  icon: ComponentType<{ color?: string }>;
 }[] = [
-  { destination: 'profile', label: 'Dados pessoais', icon: <ProfileIcon /> },
-  { destination: 'home', label: 'Home', icon: <HomeIcon /> },
-  { destination: 'diet', label: 'Dieta', icon: <DietIcon /> },
-  { destination: 'appointments', label: 'Agenda', icon: <CalendarIcon /> },
-  { destination: 'exams', label: 'Exames', icon: <ExamsIcon /> },
-  { destination: 'shopping', label: 'Compras', icon: <ShoppingIcon /> },
-  { destination: 'results', label: 'Resultados', icon: <ResultsIcon /> },
-  { destination: 'password', label: 'Trocar Senha', icon: <LockIcon /> }
+  { destination: 'profile', label: 'Dados pessoais', icon: ProfileIcon },
+  { destination: 'home', label: 'Home', icon: HomeIcon },
+  { destination: 'diet', label: 'Dieta', icon: DietIcon },
+  { destination: 'appointments', label: 'Agenda', icon: CalendarIcon },
+  { destination: 'exams', label: 'Exames', icon: ExamsIcon },
+  { destination: 'shopping', label: 'Compras', icon: ShoppingIcon },
+  { destination: 'results', label: 'Resultados', icon: ResultsIcon },
+  { destination: 'password', label: 'Trocar Senha', icon: LockIcon }
 ];
 
 export function SideMenu({
@@ -98,7 +98,7 @@ export function SideMenu({
           <View style={styles.footer}>
             <MenuItem
               label="Sair"
-              icon={<LogoutIcon />}
+              icon={LogoutIcon}
               onPress={() => onNavigate('logout')}
             />
           </View>
@@ -109,6 +109,7 @@ export function SideMenu({
 }
 
 function MenuItem({ label, icon, active = false, onPress }: MenuItemProps) {
+  const Icon = icon;
   return (
     <Pressable
       style={({ pressed }) => [styles.item, active && styles.activeItem, pressed && styles.pressed]}
@@ -116,7 +117,9 @@ function MenuItem({ label, icon, active = false, onPress }: MenuItemProps) {
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
     >
-      <View style={styles.icon}>{icon}</View>
+      <View style={styles.icon}>
+        <Icon color={active ? colors.brandDeep : colors.menuIcon} />
+      </View>
       <Text style={[styles.itemLabel, active && styles.activeLabel]}>{label}</Text>
     </Pressable>
   );

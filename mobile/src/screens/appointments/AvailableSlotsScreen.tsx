@@ -89,7 +89,10 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
     try {
       if (consultaId !== undefined && versao !== undefined) {
         await rescheduleAppointment(consultaId, { dataHora: selectedSlot, versao });
-        Alert.alert('Reagendamento solicitado', 'O novo horário aguarda confirmação do profissional.');
+        Alert.alert(
+          'Reagendamento solicitado',
+          'O novo horário aguarda confirmação. Se a consulta estava no Google Agenda, atualize o evento manualmente.'
+        );
       } else {
         await scheduleAppointment({ nutricionistaId, dataHora: selectedSlot });
         Alert.alert('Horário solicitado', 'Sua consulta está aguardando confirmação.');
