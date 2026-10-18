@@ -4,15 +4,21 @@ import com.nutri4you.backend.dto.AgendaResponse;
 import com.nutri4you.backend.dto.AvaliacaoRequest;
 import com.nutri4you.backend.dto.AvaliacaoResponse;
 import com.nutri4you.backend.dto.ConsultaResumoDTO;
+import com.nutri4you.backend.dto.ConsumoProgressoDTO;
 import com.nutri4you.backend.dto.ContagemDTO;
+import com.nutri4you.backend.dto.DashboardPacienteDTO;
 import com.nutri4you.backend.dto.HistoricoResponse;
 import com.nutri4you.backend.dto.PacienteResponseDTO;
 import com.nutri4you.backend.model.AvaliacaoAntropometrica;
 import com.nutri4you.backend.model.Consulta;
+import com.nutri4you.backend.model.ConsumoDiario;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.repository.AvaliacaoAntropometricaRepository;
 import com.nutri4you.backend.repository.ConsultaRepository;
+import com.nutri4you.backend.repository.ConsumoDiarioRepository;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +29,9 @@ import java.time.LocalDateTime;
 import java.time.Period;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ClinicoService {
@@ -37,14 +45,20 @@ public class ClinicoService {
     };
 
     private final ConsultaRepository consultaRepository;
+    private final ConsumoDiarioRepository consumoDiarioRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     public ClinicoService(
             GestaoPacienteService gestaoPacienteService,
             AvaliacaoAntropometricaRepository avaliacaoRepository,
-            ConsultaRepository consultaRepository) {
+            ConsultaRepository consultaRepository,
+            ConsumoDiarioRepository consumoDiarioRepository,
+            JdbcTemplate jdbcTemplate) {
         this.gestaoPacienteService = gestaoPacienteService;
         this.avaliacaoRepository = avaliacaoRepository;
         this.consultaRepository = consultaRepository;
+        this.consumoDiarioRepository = consumoDiarioRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Transactional
@@ -91,6 +105,105 @@ public class ClinicoService {
                 .map(this::paraConsulta)
                 .toList();
         return new HistoricoResponse(consultas, listarAvaliacoes(paciente.getId()));
+    }
+
+    @Transactional(readOnly = true)
+    public ConsumoProgressoDTO consumoDiarioProgresso(Paciente paciente) {
+        Optional<ConsumoDiario> consumoOpt = consumoDiarioRepository
+                .findByPaciente_IdAndDataRegistro(paciente.getId(), LocalDate.now())
+                .or(() -> consumoDiarioRepository.findFirstByPaciente_IdOrderByDataRegistroDesc(paciente.getId()));
+
+        Optional<DashboardPacienteDTO.DietaResumoDTO> dietaOpt = buscarDietaAtiva(paciente.getId());
+
+        if (consumoOpt.isEmpty() && dietaOpt.isEmpty()) {
+            return null;
+        }
+
+        double metaKcal = dietaOpt.map(d -> d.metaKcal() != null && d.metaKcal() > 0 ? d.metaKcal() : 2100.0).orElse(2100.0);
+        double metaProt = dietaOpt.map(d -> d.metaProteina() != null && d.metaProteina() > 0 ? d.metaProteina() : 180.0).orElse(180.0);
+        double metaCarb = dietaOpt.map(d -> d.metaCarboidratos() != null && d.metaCarboidratos() > 0 ? d.metaCarboidratos() : 245.0).orElse(245.0);
+        double metaGord = dietaOpt.map(d -> d.metaGordura() != null && d.metaGordura() > 0 ? d.metaGordura() : 65.0).orElse(65.0);
+
+        double kcalConsumidas = consumoOpt
+                .map(c -> c.getKcalConsumidas() != null ? c.getKcalConsumidas().doubleValue() : 0.0)
+                .orElse(0.0);
+
+        double ratio = metaKcal > 0 ? Math.min(kcalConsumidas / metaKcal, 2.0) : 0.0;
+        double protConsumidas = Math.round(metaProt * ratio * 10.0) / 10.0;
+        double carbConsumidos = Math.round(metaCarb * ratio * 10.0) / 10.0;
+        double gordConsumidas = Math.round(metaGord * ratio * 10.0) / 10.0;
+
+        String dataLabel = consumoOpt
+                .map(c -> c.getDataRegistro().equals(LocalDate.now()) ? "Hoje" : c.getDataRegistro().toString())
+                .orElse("Hoje");
+
+        return new ConsumoProgressoDTO(
+                dataLabel,
+                kcalConsumidas,
+                metaKcal,
+                protConsumidas,
+                metaProt,
+                carbConsumidos,
+                metaCarb,
+                gordConsumidas,
+                metaGord
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public DashboardPacienteDTO dashboardPaciente(Paciente paciente) {
+        ConsumoProgressoDTO consumo = consumoDiarioProgresso(paciente);
+        DashboardPacienteDTO.DietaResumoDTO dietaAtiva = buscarDietaAtiva(paciente.getId()).orElse(null);
+
+        LocalDateTime limiteRecente = LocalDateTime.now().minusHours(2);
+        DashboardPacienteDTO.ProximaConsultaDTO proximaConsulta = consultaRepository
+                .findByPaciente_IdOrderByDataHoraDesc(paciente.getId())
+                .stream()
+                .filter(this::naoCancelada)
+                .filter(c -> !c.getDataHora().isBefore(limiteRecente))
+                .min(Comparator.comparing(Consulta::getDataHora))
+                .map(c -> new DashboardPacienteDTO.ProximaConsultaDTO(
+                        c.getId(),
+                        c.getNutricionista().getNome(),
+                        c.getDataHora(),
+                        c.getStatus()
+                ))
+                .orElse(null);
+
+        return new DashboardPacienteDTO(
+                paciente.getNome(),
+                consumo,
+                proximaConsulta,
+                dietaAtiva
+        );
+    }
+
+    private Optional<DashboardPacienteDTO.DietaResumoDTO> buscarDietaAtiva(Integer pacienteId) {
+        try {
+            List<DashboardPacienteDTO.DietaResumoDTO> planos = jdbcTemplate.query(
+                    """
+                    SELECT p.id_plano, p.vet_meta_kcal, p.meta_proteina, p.meta_carboidratos, p.meta_gordura, n.nome AS nutricionista_nome
+                    FROM Plano_Alimentar p
+                    JOIN Consulta c ON p.id_consulta = c.id_consulta
+                    JOIN Nutricionista n ON c.id_nutricionista = n.id_nutricionista
+                    WHERE c.id_paciente = ?
+                    ORDER BY c.data_hora DESC, p.id_plano DESC
+                    LIMIT 1
+                    """,
+                    (rs, rowNum) -> new DashboardPacienteDTO.DietaResumoDTO(
+                            rs.getInt("id_plano"),
+                            rs.getObject("vet_meta_kcal") != null ? rs.getDouble("vet_meta_kcal") : null,
+                            rs.getObject("meta_proteina") != null ? rs.getDouble("meta_proteina") : null,
+                            rs.getObject("meta_carboidratos") != null ? rs.getDouble("meta_carboidratos") : null,
+                            rs.getObject("meta_gordura") != null ? rs.getDouble("meta_gordura") : null,
+                            rs.getString("nutricionista_nome")
+                    ),
+                    pacienteId
+            );
+            return planos.stream().findFirst();
+        } catch (DataAccessException exception) {
+            return Optional.empty();
+        }
     }
 
     @Transactional(readOnly = true)

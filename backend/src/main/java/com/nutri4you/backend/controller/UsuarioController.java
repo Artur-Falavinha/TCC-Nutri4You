@@ -3,6 +3,7 @@ package com.nutri4you.backend.controller;
 import com.nutri4you.backend.dto.ApiResponse;
 import com.nutri4you.backend.dto.AvaliacaoResponse;
 import com.nutri4you.backend.dto.ConsumoProgressoDTO;
+import com.nutri4you.backend.dto.DashboardPacienteDTO;
 import com.nutri4you.backend.dto.HistoricoResponse;
 import com.nutri4you.backend.dto.MensagemResponse;
 import com.nutri4you.backend.dto.NutricionistaVinculoDTO;
@@ -132,20 +133,16 @@ public class UsuarioController {
 
     @GetMapping("/me/consumo-diario/progresso")
     public ResponseEntity<ApiResponse<ConsumoProgressoDTO>> consumoDiarioProgresso(Authentication authentication) {
-        paciente(authentication);
         return ResponseEntity.ok(ApiResponse.ok(
-                new ConsumoProgressoDTO(
-                        "Hoje",
-                        1850.0,
-                        2000.0,
-                        140.0,
-                        160.0,
-                        210.0,
-                        250.0,
-                        55.0,
-                        65.0
-                ),
+                clinicoService.consumoDiarioProgresso(paciente(authentication)),
                 "Consumo diário carregado."));
+    }
+
+    @GetMapping("/me/dashboard")
+    public ResponseEntity<ApiResponse<DashboardPacienteDTO>> dashboardMe(Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                clinicoService.dashboardPaciente(paciente(authentication)),
+                "Dashboard carregado."));
     }
 
     private Paciente paciente(Authentication authentication) {

@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
-  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -11,9 +10,14 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DrawerScreenProps } from '@react-navigation/drawer';
+import { CommonActions } from '@react-navigation/native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
+import { AppHeader } from '../../components/layout/AppHeader';
+import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
+import { logout } from '../../core/auth/auth.service';
+import { carregarPerfil } from '../../core/perfil/perfil.service';
 import {
   AvaliacaoHistorico,
   carregarConsumoProgresso,
@@ -27,12 +31,15 @@ import { ChartDataPoint, EvolucaoLineChart } from './components/EvolucaoLineChar
 import { MedidasGridCarousel } from './components/MedidasGridCarousel';
 import { ConsumoProgressoCard } from './components/ConsumoProgressoCard';
 
-type Props = DrawerScreenProps<RootStackParamList, 'Evolucao'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'Evolucao'>;
 
 export function EvolucaoScreen({ navigation }: Props) {
   const [carregando, setCarregando] = useState(true);
   const [recarregando, setRecarregando] = useState(false);
   const [erro, setErro] = useState('');
+  const [aviso, setAviso] = useState('');
+  const [nomePaciente, setNomePaciente] = useState('Paciente');
+  const [menuVisible, setMenuVisible] = useState(false);
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoHistorico[]>([]);
   const [consumo, setConsumo] = useState<ConsumoProgresso | null>(null);
   const [graficoAba, setGraficoAba] = useState<0 | 1>(0); // 0: Peso, 1: Gordura Corporal
@@ -40,13 +47,15 @@ export function EvolucaoScreen({ navigation }: Props) {
   const chartScrollRef = useRef<ScrollView>(null);
 
   const buscarDados = useCallback(async () => {
-    const [historicoResp, consumoResp] = await Promise.all([
+    const [historicoResp, consumoResp, perfilResp] = await Promise.all([
       carregarEvolucao(),
-      carregarConsumoProgresso()
+      carregarConsumoProgresso(),
+      carregarPerfil().catch(() => null)
     ]);
     return {
       avaliacoes: historicoResp?.avaliacoes ?? [],
-      consumo: consumoResp
+      consumo: consumoResp,
+      nome: perfilResp?.nome || 'Paciente'
     };
   }, []);
 
@@ -58,6 +67,7 @@ export function EvolucaoScreen({ navigation }: Props) {
         if (!cancelado) {
           setAvaliacoes(dados.avaliacoes);
           setConsumo(dados.consumo);
+          setNomePaciente(dados.nome);
         }
       })
       .catch(() => {
@@ -166,44 +176,42 @@ export function EvolucaoScreen({ navigation }: Props) {
     return 'Acompanhe seu progresso e mantenha sua rotina em dia!';
   };
 
+  const sair = async () => {
+    await logout();
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Login' }]
+      })
+    );
+  };
+
+  const navegarPeloMenu = async (destino: MenuDestination) => {
+    setMenuVisible(false);
+    if (destino === 'home') {
+      navigation.navigate('Dashboard');
+      return;
+    }
+    if (destino === 'profile') {
+      navigation.navigate('DadosPessoais');
+      return;
+    }
+    if (destino === 'password') {
+      navigation.navigate('TrocarSenha');
+      return;
+    }
+    if (destino === 'logout') {
+      await sair();
+      return;
+    }
+    if (destino !== 'results') {
+      setAviso('Este módulo ainda não está disponível nesta etapa.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Top Header */}
-      <View style={styles.topBar}>
-        <Pressable
-          onPress={() => {
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-            } else {
-              navigation.navigate('Dashboard');
-            }
-          }}
-          style={styles.iconButton}
-          accessibilityRole="button"
-          accessibilityLabel="Voltar"
-        >
-          <Ionicons name="arrow-back" size={24} color="#0f172a" />
-        </Pressable>
-
-        <View style={styles.logoContainer}>
-          <Image
-            source={require('../../../assets/logo.png')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-          <Text style={styles.logoText}>Nutri4You</Text>
-        </View>
-
-        <View style={styles.topRightActions}>
-          <Pressable
-            style={styles.iconButton}
-            accessibilityRole="button"
-            accessibilityLabel="Notificações"
-          >
-            <Ionicons name="notifications-outline" size={22} color="#0f172a" />
-          </Pressable>
-        </View>
-      </View>
+      <AppHeader onOpenMenu={() => setMenuVisible(true)} />
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -211,6 +219,11 @@ export function EvolucaoScreen({ navigation }: Props) {
           <RefreshControl refreshing={recarregando} onRefresh={onRefresh} colors={['#006f1e']} />
         }
       >
+        {aviso ? (
+          <View style={styles.avisoBox}>
+            <Text style={styles.avisoText}>{aviso}</Text>
+          </View>
+        ) : null}
         {carregando ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color="#006f1e" />
@@ -394,6 +407,13 @@ export function EvolucaoScreen({ navigation }: Props) {
           </>
         )}
       </ScrollView>
+      <SideMenu
+        visible={menuVisible}
+        activeItem="results"
+        userName={nomePaciente}
+        onClose={() => setMenuVisible(false)}
+        onNavigate={(destino) => void navegarPeloMenu(destino)}
+      />
     </SafeAreaView>
   );
 }
@@ -402,6 +422,17 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#f8faf8'
+  },
+  avisoBox: {
+    backgroundColor: '#e8f5e9',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12
+  },
+  avisoText: {
+    color: '#006f1e',
+    fontSize: 13,
+    fontWeight: '600'
   },
   topBar: {
     flexDirection: 'row',

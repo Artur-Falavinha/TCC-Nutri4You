@@ -41,6 +41,29 @@ export interface ConsumoProgresso {
   metaGorduras?: number;
 }
 
+export interface ProximaConsultaResumo {
+  id: number;
+  nutricionistaNome: string;
+  dataHora: string;
+  status: string;
+}
+
+export interface DietaAtivaResumo {
+  idPlano: number;
+  metaKcal: number | null;
+  metaProteina: number | null;
+  metaCarboidratos: number | null;
+  metaGordura: number | null;
+  nutricionistaNome: string;
+}
+
+export interface DashboardPacienteDados {
+  nomePaciente: string;
+  consumo: ConsumoProgresso | null;
+  proximaConsulta: ProximaConsultaResumo | null;
+  dietaAtiva: DietaAtivaResumo | null;
+}
+
 export interface VariacaoCalculada {
   valor: number;
   percentual: number;
@@ -49,6 +72,20 @@ export interface VariacaoCalculada {
 }
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const MESES_EXTENSO = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro'
+];
 
 export function formatarDataMes(dataIso: string): string {
   if (!dataIso) return '';
@@ -64,6 +101,55 @@ export function formatarDataDiaMes(dataIso: string): string {
   const dia = String(d.getDate()).padStart(2, '0');
   const mes = String(d.getMonth() + 1).padStart(2, '0');
   return `${dia}/${mes}`;
+}
+
+export function extrairPrimeiroNome(nomeCompleto?: string | null): string {
+  const limpo = (nomeCompleto ?? '').trim();
+  if (!limpo) {
+    return 'Paciente';
+  }
+  return limpo.split(/\s+/)[0] || 'Paciente';
+}
+
+export function formatarNumeroMilhar(valor?: number | null): string {
+  if (valor == null || isNaN(valor)) {
+    return '0';
+  }
+  const arredondado = Math.round(valor);
+  return arredondado.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+export function calcularPercentualMeta(consumido?: number | null, meta?: number | null): number {
+  if (consumido == null || meta == null || isNaN(consumido) || isNaN(meta) || meta <= 0) {
+    return 0;
+  }
+  return Math.max(0, Math.round((consumido / meta) * 100));
+}
+
+export function formatarDataHoraConsulta(dataIso?: string | null): string {
+  if (!dataIso) {
+    return '';
+  }
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(dataIso);
+  if (match) {
+    const dia = Number(match[3]);
+    const mesIdx = Number(match[2]) - 1;
+    const mesNome = MESES_EXTENSO[mesIdx] ?? '';
+    const hora = match[4];
+    const minuto = match[5];
+    if (mesNome) {
+      return `${dia} de ${mesNome}, às ${hora}:${minuto}`;
+    }
+  }
+  const d = new Date(dataIso);
+  if (isNaN(d.getTime())) {
+    return '';
+  }
+  const dia = d.getDate();
+  const mesNome = MESES_EXTENSO[d.getMonth()] || '';
+  const hora = String(d.getHours()).padStart(2, '0');
+  const minuto = String(d.getMinutes()).padStart(2, '0');
+  return `${dia} de ${mesNome}, às ${hora}:${minuto}`;
 }
 
 export function calcularVariacao(atual?: number | null, anterior?: number | null, unidade = ''): VariacaoCalculada | null {
@@ -107,5 +193,9 @@ export async function carregarConsumoProgresso(): Promise<ConsumoProgresso | nul
   } catch {
     return null;
   }
+}
+
+export async function carregarDashboardPaciente(): Promise<DashboardPacienteDados> {
+  return apiClient.get<DashboardPacienteDados>('/usuarios/me/dashboard');
 }
 

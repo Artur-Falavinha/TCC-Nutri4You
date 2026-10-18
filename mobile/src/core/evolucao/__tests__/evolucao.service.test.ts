@@ -1,10 +1,15 @@
 import {
+  calcularPercentualMeta,
   calcularVariacao,
-  formatarDataDiaMes,
-  formatarDataMes,
+  carregarConsumoProgresso,
+  carregarDashboardPaciente,
   carregarEvolucao,
   carregarMedidas,
-  carregarConsumoProgresso
+  extrairPrimeiroNome,
+  formatarDataDiaMes,
+  formatarDataHoraConsulta,
+  formatarDataMes,
+  formatarNumeroMilhar
 } from '../evolucao.service';
 import { apiClient } from '../../api/api-client';
 
@@ -73,6 +78,37 @@ describe('evolucao.service', () => {
     });
   });
 
+  describe('helpers do dashboard do paciente', () => {
+    it('extrai o primeiro nome corretamente', () => {
+      expect(extrairPrimeiroNome('Arthur Falavinha')).toBe('Arthur');
+      expect(extrairPrimeiroNome('  Mariana   Silva ')).toBe('Mariana');
+      expect(extrairPrimeiroNome('')).toBe('Paciente');
+      expect(extrairPrimeiroNome(null)).toBe('Paciente');
+    });
+
+    it('formata numeros com separador de milhar brasileiro', () => {
+      expect(formatarNumeroMilhar(2100)).toBe('2.100');
+      expect(formatarNumeroMilhar(1580)).toBe('1.580');
+      expect(formatarNumeroMilhar(850)).toBe('850');
+      expect(formatarNumeroMilhar(null)).toBe('0');
+    });
+
+    it('calcula percentual de meta arredondado', () => {
+      expect(calcularPercentualMeta(2100, 2100)).toBe(100);
+      expect(calcularPercentualMeta(1575, 2100)).toBe(75);
+      expect(calcularPercentualMeta(100, 0)).toBe(0);
+      expect(calcularPercentualMeta(null, 2000)).toBe(0);
+    });
+
+    it('formata data e hora da proxima consulta por extenso', () => {
+      expect(formatarDataHoraConsulta('2026-10-25T14:30:00')).toBe(
+        '25 de Outubro, às 14:30'
+      );
+      expect(formatarDataHoraConsulta('')).toBe('');
+      expect(formatarDataHoraConsulta(null)).toBe('');
+    });
+  });
+
   describe('chamadas de API', () => {
     it('carregarEvolucao chama endpoint /usuarios/me/historico', async () => {
       const fakeHistorico = {
@@ -123,14 +159,14 @@ describe('evolucao.service', () => {
     it('carregarConsumoProgresso retorna dados quando disponivel', async () => {
       const fakeConsumo = {
         data: '2026-10-11',
-        caloriasConsumidas: 1800,
-        metaCalorias: 2200,
-        proteinas: 120,
-        metaProteinas: 140,
-        carboidratos: 200,
-        metaCarboidratos: 250,
-        gorduras: 50,
-        metaGorduras: 60
+        caloriasConsumidas: 2100,
+        metaCalorias: 2100,
+        proteinas: 180,
+        metaProteinas: 180,
+        carboidratos: 245,
+        metaCarboidratos: 245,
+        gorduras: 65,
+        metaGorduras: 65
       };
       (apiClient.get as jest.Mock).mockResolvedValueOnce(fakeConsumo);
 
@@ -138,6 +174,43 @@ describe('evolucao.service', () => {
       expect(apiClient.get).toHaveBeenCalledWith('/usuarios/me/consumo-diario/progresso');
       expect(resultado).toEqual(fakeConsumo);
     });
+
+    it('carregarDashboardPaciente chama endpoint /usuarios/me/dashboard', async () => {
+      const fakeDashboard = {
+        nomePaciente: 'Arthur Falavinha',
+        consumo: {
+          data: '2026-10-18',
+          caloriasConsumidas: 2100,
+          metaCalorias: 2100,
+          proteinas: 180,
+          metaProteinas: 180,
+          carboidratos: 245,
+          metaCarboidratos: 245,
+          gorduras: 65,
+          metaGorduras: 65
+        },
+        proximaConsulta: {
+          id: 9,
+          nutricionistaNome: 'Dra. Camila Ribeiro',
+          dataHora: '2026-10-25T14:30:00',
+          status: 'CONFIRMADA'
+        },
+        dietaAtiva: {
+          idPlano: 1,
+          metaKcal: 2100,
+          metaProteina: 180,
+          metaCarboidratos: 245,
+          metaGordura: 65,
+          nutricionistaNome: 'Dra. Camila Ribeiro'
+        }
+      };
+      (apiClient.get as jest.Mock).mockResolvedValueOnce(fakeDashboard);
+
+      const resultado = await carregarDashboardPaciente();
+      expect(apiClient.get).toHaveBeenCalledWith('/usuarios/me/dashboard');
+      expect(resultado).toEqual(fakeDashboard);
+    });
   });
 });
+
 

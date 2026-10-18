@@ -16,7 +16,8 @@ import CriarContaScreen from '../screens/CriarContaScreen';
 import TrocarSenhaScreen from '../screens/TrocarSenhaScreen';
 import NovaSenhaScreen from '../screens/NovaSenhaScreen';
 import { HealthScreen } from '../screens/health/HealthScreen';
-import { AppDrawer } from './AppDrawer';
+import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
+import { EvolucaoScreen } from '../screens/evolucao/EvolucaoScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { RootStackParamList } from './types';
 
@@ -35,12 +36,8 @@ const linking = {
       Login: 'login',
       TrocarSenha: 'esqueci-senha',
       CriarConta: 'cadastro',
-      App: {
-        screens: {
-          Dashboard: 'dashboard',
-          Evolucao: 'evolucao'
-        }
-      },
+      Dashboard: 'dashboard',
+      Evolucao: 'evolucao',
       DadosPessoais: 'dados-pessoais',
       Health: 'health'
     }
@@ -82,7 +79,7 @@ export function RootNavigator() {
         try {
           await apiClient.get('/usuarios/me');
           if (!cancelled) {
-            setInitialRoute('App');
+            setInitialRoute('Dashboard');
             setBootstrapped(true);
           }
         } catch {
@@ -142,14 +139,19 @@ export function RootNavigator() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
-          name="App"
-          component={AppDrawer}
+          name="Dashboard"
+          component={DashboardScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Evolucao"
+          component={EvolucaoScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen
           name="DadosPessoais"
           component={HomeScreen}
-          options={{ title: 'Dados pessoais' }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen name="Health" component={HealthScreen} options={{ title: 'Status da API' }} />
       </Stack.Navigator>
