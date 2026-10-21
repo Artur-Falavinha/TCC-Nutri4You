@@ -1,5 +1,4 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import CalendarMonthIcon from '../../../assets/appointments/calendar-month.svg';
@@ -7,8 +6,9 @@ import { colors, fontFamily, radius, shadows, spacing } from '../../../theme/tok
 import {
   buildCalendarDays,
   fromDateKey,
-  isPastDate,
+  isAppointmentDateSelectable,
   monthTitle,
+  shiftMonthKey,
   toDateKey
 } from '../appointments-date.util';
 
@@ -25,40 +25,62 @@ export function CalendarCard({
   appointmentDates,
   onSelectDate
 }: CalendarCardProps) {
-  const [datePickerVisible, setDatePickerVisible] = useState(false);
-  const selected = fromDateKey(selectedDate);
-  const days = buildCalendarDays(selected);
+  const currentMonthKey = toDateKey(new Date()).slice(0, 7);
+  const [visibleMonthKey, setVisibleMonthKey] = useState(currentMonthKey);
+  const visibleMonth = useMemo(
+    () => fromDateKey(`${visibleMonthKey}-01`),
+    [visibleMonthKey]
+  );
+  const days = useMemo(() => buildCalendarDays(visibleMonth), [visibleMonth]);
+  const weeks = useMemo(
+    () => Array.from({ length: days.length / 7 }, (_, index) => days.slice(index * 7, index * 7 + 7)),
+    [days]
+  );
+  const canGoToPreviousMonth = visibleMonthKey > currentMonthKey;
+
+  const changeMonth = (amount: number) => {
+    const nextMonthKey = shiftMonthKey(visibleMonthKey, amount);
+    if (nextMonthKey >= currentMonthKey) {
+      setVisibleMonthKey(nextMonthKey);
+    }
+  };
 
   return (
     <View style={styles.section}>
       <View style={styles.titleRow}>
         <Text style={styles.title}>Agendamento</Text>
-        <Pressable
-          style={({ pressed }) => [styles.monthRow, pressed && styles.pressed]}
-          onPress={() => setDatePickerVisible(true)}
-          accessibilityRole="button"
-          accessibilityLabel="Escolher outra data"
-        >
-          <Text style={styles.month}>{monthTitle(selected)}</Text>
-          <CalendarMonthIcon />
-        </Pressable>
+        <View style={styles.monthControls}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.monthNavigationButton,
+              !canGoToPreviousMonth && styles.monthNavigationButtonDisabled,
+              pressed && canGoToPreviousMonth && styles.pressed
+            ]}
+            onPress={() => changeMonth(-1)}
+            disabled={!canGoToPreviousMonth}
+            accessibilityRole="button"
+            accessibilityLabel="Mês anterior"
+            accessibilityState={{ disabled: !canGoToPreviousMonth }}
+          >
+            <Text style={styles.monthNavigationText}>‹</Text>
+          </Pressable>
+          <View style={styles.monthRow}>
+            <Text style={styles.month}>{monthTitle(visibleMonth)}</Text>
+            <CalendarMonthIcon />
+          </View>
+          <Pressable
+            style={({ pressed }) => [styles.monthNavigationButton, pressed && styles.pressed]}
+            onPress={() => changeMonth(1)}
+            accessibilityRole="button"
+            accessibilityLabel="Próximo mês"
+          >
+            <Text style={styles.monthNavigationText}>›</Text>
+          </Pressable>
+        </View>
       </View>
 
-      {datePickerVisible ? (
-        <DateTimePicker
-          value={selected}
-          mode="date"
-          display="default"
-          minimumDate={fromDateKey(toDateKey(new Date()))}
-          onChange={(_, date) => {
-            setDatePickerVisible(false);
-            if (date) onSelectDate(toDateKey(date));
-          }}
-        />
-      ) : null}
-
       <View style={styles.calendar}>
-        <View style={styles.weekRow}>
+        <View style={styles.weekHeaderRow}>
           {WEEKDAYS.map((weekday) => (
             <Text key={weekday} style={styles.weekday}>
               {weekday}
@@ -67,38 +89,48 @@ export function CalendarCard({
         </View>
 
         <View style={styles.grid}>
-          {days.map((item) => {
-            if (!item.dateKey) {
-              return <View key={item.key} style={styles.dayCell} />;
-            }
-            const isSelected = item.dateKey === selectedDate;
-            const hasAppointment = appointmentDates.has(item.dateKey);
-            const disabled = isPastDate(item.dateKey);
-            const highlighted = isSelected || hasAppointment;
-            return (
-              <Pressable
-                key={item.key}
-                style={styles.dayCell}
-                onPress={() => onSelectDate(item.dateKey as string)}
-                disabled={disabled}
-                accessibilityRole="button"
-                accessibilityLabel={`Dia ${item.day}`}
-                accessibilityState={{ selected: isSelected, disabled }}
-              >
-                <View style={[styles.dayBadge, highlighted && styles.highlightedDay]}>
-                  <Text
-                    style={[
-                      styles.dayText,
-                      highlighted && styles.highlightedDayText,
-                      disabled && styles.disabledDayText
-                    ]}
+          {weeks.map((week, weekIndex) => (
+            <View key={`week-${weekIndex}`} style={styles.calendarWeek}>
+              {week.map((item) => {
+                if (!item.dateKey) {
+                  return <View key={item.key} style={styles.dayCell} />;
+                }
+                const isSelected = item.dateKey === selectedDate;
+                const hasAppointment = appointmentDates.has(item.dateKey);
+                const disabled = !isAppointmentDateSelectable(item.dateKey);
+                return (
+                  <Pressable
+                    key={item.key}
+                    style={styles.dayCell}
+                    onPress={() => onSelectDate(item.dateKey as string)}
+                    disabled={disabled}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Dia ${item.day}`}
+                    accessibilityState={{ selected: isSelected, disabled }}
                   >
-                    {item.day}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })}
+                    <View
+                      style={[
+                        styles.dayBadge,
+                        hasAppointment && styles.appointmentDay,
+                        isSelected && styles.selectedDay
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.dayText,
+                          hasAppointment && styles.appointmentDayText,
+                          isSelected && styles.selectedDayText,
+                          disabled && styles.disabledDayText
+                        ]}
+                      >
+                        {item.day}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))}
         </View>
       </View>
     </View>
@@ -125,10 +157,31 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     letterSpacing: -0.45
   },
+  monthControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxs
+  },
   monthRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs
+  },
+  monthNavigationButton: {
+    width: 28,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.sm
+  },
+  monthNavigationButtonDisabled: {
+    opacity: 0.28
+  },
+  monthNavigationText: {
+    color: colors.brandDark,
+    fontFamily: fontFamily.bold,
+    fontSize: 24,
+    lineHeight: 28
   },
   month: {
     color: colors.brandDark,
@@ -145,12 +198,12 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     ...shadows.card
   },
-  weekRow: {
+  weekHeaderRow: {
     flexDirection: 'row',
     marginBottom: spacing.sm
   },
   weekday: {
-    width: `${100 / 7}%`,
+    flex: 1,
     color: colors.textSubtle,
     fontFamily: fontFamily.bold,
     fontSize: 10,
@@ -159,11 +212,14 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap'
+    width: '100%'
+  },
+  calendarWeek: {
+    width: '100%',
+    flexDirection: 'row'
   },
   dayCell: {
-    width: `${100 / 7}%`,
+    flex: 1,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center'
@@ -176,7 +232,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.sm
   },
-  highlightedDay: {
+  appointmentDay: {
+    backgroundColor: colors.brandSoft,
+    borderWidth: 1,
+    borderColor: colors.brand
+  },
+  selectedDay: {
     backgroundColor: colors.brandDark,
     shadowColor: colors.brand,
     shadowOffset: { width: 0, height: 8 },
@@ -191,7 +252,11 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: 'center'
   },
-  highlightedDayText: {
+  appointmentDayText: {
+    color: colors.brandDark,
+    fontFamily: fontFamily.bold
+  },
+  selectedDayText: {
     color: colors.white,
     fontFamily: fontFamily.bold
   },

@@ -59,6 +59,11 @@ export function monthTitle(date: Date): string {
   return `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+export function shiftMonthKey(monthKey: string, amount: number): string {
+  const month = fromDateKey(`${monthKey}-01`);
+  return toDateKey(new Date(month.getFullYear(), month.getMonth() + amount, 1)).slice(0, 7);
+}
+
 export function appointmentDateLabel(value: string): string {
   const date = fromLocalDateTime(value);
   return `${date.getDate()} ${SHORT_MONTHS[date.getMonth()]}, ${date.getFullYear()}`;
@@ -116,6 +121,11 @@ export function isPastDate(dateKey: string, today = new Date()): boolean {
     today.getMonth(),
     today.getDate()
   ).getTime();
+}
+
+export function isAppointmentDateSelectable(dateKey: string, today = new Date()): boolean {
+  const date = fromDateKey(dateKey);
+  return !isPastDate(dateKey, today) && date.getDay() !== 0;
 }
 
 export function dateKeyFromLocalDateTime(value: string): string {
