@@ -69,9 +69,10 @@ export default function LoginScreen() {
       <View style={styles.content}>
         <View style={styles.logoContainer}>
           <Image
-            source={require('../../assets/logo.png')}
+            source={require('../../assets/logo-nutri4u.webp')}
             style={styles.logo}
             resizeMode="contain"
+            accessibilityLabel="Nutri4U — Nutri4You"
           />
         </View>
 

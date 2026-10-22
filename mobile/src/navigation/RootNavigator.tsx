@@ -124,7 +124,11 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer linking={linking} ref={navigationRef}>
+    <NavigationContainer
+      linking={linking}
+      ref={navigationRef}
+      documentTitle={{ formatter: () => 'Nutri4You' }}
+    >
       <Stack.Navigator initialRouteName={initialRoute}>
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
         <Stack.Screen
