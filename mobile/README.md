@@ -38,6 +38,11 @@ Seed local: `arthur@email.com` / `password`.
 
 Deep link: scheme `nutri4you` — ex. `nutri4you://redefinir-senha?token=<uuid>`.
 
+Consultas confirmadas exibem a ação **Adicionar ao Google Agenda**. O aplicativo
+abre um evento preenchido para o paciente salvar, sem Google Cloud, OAuth,
+credenciais ou acesso do Nutri4You à conta Google. Reagendamentos e cancelamentos
+precisam ser refletidos manualmente no evento externo.
+
 JWT fica no SecureStore (`nutri4you.jwt`). Cold start com token válido abre `Home`.
 
 ## Rodando localmente

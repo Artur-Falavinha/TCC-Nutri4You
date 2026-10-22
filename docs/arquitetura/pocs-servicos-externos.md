@@ -18,10 +18,10 @@ Registro de viabilidade e riscos para integrações previstas nas sprints futura
 | Item | Decisão |
 | --- | --- |
 | **Uso** | Sincronizar consultas agendadas (data/hora, título genérico) — **sem dados clínicos** |
-| **PoC** | OAuth 2.0 via Google Cloud Console; escopos mínimos (`calendar.events`) |
+| **Implementação** | Link de criação de evento preenchido no cliente mobile, sem OAuth ou acesso à conta |
 | **Sprint alvo** | Sprint 6 |
-| **Riscos** | Expiração de token, fuso horário, falha externa, credenciais em dev |
-| **Mitigação** | Consulta persiste no PostgreSQL primeiro; sync é best-effort com flag de pendência |
+| **Riscos** | Evento externo não acompanha reagendamento ou cancelamento automaticamente |
+| **Mitigação** | Aplicativo lembra o paciente de atualizar ou remover manualmente o evento |
 
 ## Armazenamento de arquivos (exames)
 
@@ -51,5 +51,5 @@ Registro de viabilidade e riscos para integrações previstas nas sprints futura
 | --- | --- |
 | 2 | Serviço de e-mail (validação de conta) |
 | 4 | Script de importação TACO |
-| 6 | OAuth Google Calendar + upload de exames |
+| 6 | Upload de exames; avaliar OAuth Google Calendar apenas se sincronização automática for necessária |
 | 7 | Deploy de demonstração + rollback documentado |

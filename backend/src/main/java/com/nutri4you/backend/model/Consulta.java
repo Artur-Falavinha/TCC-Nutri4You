@@ -79,6 +79,13 @@ public class Consulta {
 
     public void cancelar() {
         this.status = "CANCELADA";
+        this.atualizadoEm = Instant.now();
+    }
+
+    public void reagendar(LocalDateTime dataHora) {
+        this.dataHora = dataHora;
+        this.status = "AGUARDANDO_CONFIRMACAO";
+        this.atualizadoEm = Instant.now();
     }
 
     public String getObservacao() { return observacao; }

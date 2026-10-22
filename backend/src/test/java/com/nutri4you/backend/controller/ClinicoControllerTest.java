@@ -153,12 +153,59 @@ class ClinicoControllerTest {
                 .andExpect(jsonPath("$.data.totalConsultas12Meses").value(0));
     }
 
+    @Test
+    void pacienteConsultaProprioHistoricoEMedidas() throws Exception {
+        String tokenPaciente = loginPaciente("paciente@teste.com");
+
+        mockMvc.perform(get("/api/v1/pacientes/{id}/historico", paciente.getId())
+                        .header("Authorization", "Bearer " + tokenPaciente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.consultas", hasSize(1)));
+
+        mockMvc.perform(get("/api/v1/pacientes/{id}/medidas", paciente.getId())
+                        .header("Authorization", "Bearer " + tokenPaciente))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/usuarios/me/historico")
+                        .header("Authorization", "Bearer " + tokenPaciente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.consultas", hasSize(1)));
+    }
+
+    @Test
+    void pacienteNaoPodeConsultarHistoricoDeOutroPaciente() throws Exception {
+        String tokenPaciente = loginPaciente("paciente@teste.com");
+
+        mockMvc.perform(get("/api/v1/pacientes/{id}/historico", oculto.getId())
+                        .header("Authorization", "Bearer " + tokenPaciente))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/v1/pacientes/{id}/medidas", oculto.getId())
+                        .header("Authorization", "Bearer " + tokenPaciente))
+                .andExpect(status().isForbidden());
+    }
+
     private String login() throws Exception {
+        return loginNutri("nutri@teste.com");
+    }
+
+    private String loginNutri(String email) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email":"nutri@teste.com","senha":"senha123"}
-                                """))
+                        .content(String.format("""
+                                {"email":"%s","senha":"senha123"}
+                                """, email)))
+                .andExpect(status().isOk())
+                .andReturn();
+        return JsonPath.read(result.getResponse().getContentAsString(), "$.data.token");
+    }
+
+    private String loginPaciente(String email) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(String.format("""
+                                {"email":"%s","senha":"senha123"}
+                                """, email)))
                 .andExpect(status().isOk())
                 .andReturn();
         return JsonPath.read(result.getResponse().getContentAsString(), "$.data.token");

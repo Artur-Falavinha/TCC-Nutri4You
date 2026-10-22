@@ -26,8 +26,10 @@ import {
 import { formatDateDisplay, toIsoDate } from '../../core/utils/date-mask.util';
 import { formatPhoneDisplay, normalizePhone } from '../../core/utils/phone-mask.util';
 import { RootStackParamList } from '../../navigation/types';
+import { AppHeader } from '../../components/layout/AppHeader';
+import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'DadosPessoais'>;
 
 const SEXO_OPTIONS = ['Masculino', 'Feminino', 'Prefiro não informar'] as const;
 
@@ -58,6 +60,7 @@ export function HomeScreen({ navigation }: Props) {
   const [dataNascimento, setDataNascimento] = useState('');
   const [vinculos, setVinculos] = useState<NutricionistaVinculo[]>([]);
   const [pendente, setPendente] = useState<NutricionistaVinculo | null>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
 
   useEffect(() => {
     void Promise.all([carregarPerfil(), listarNutricionistas()])
@@ -130,8 +133,36 @@ export function HomeScreen({ navigation }: Props) {
     );
   };
 
+  const navegarPeloMenu = async (destino: MenuDestination) => {
+    setMenuVisible(false);
+    if (destino === 'home') {
+      navigation.navigate('Dashboard');
+      return;
+    }
+    if (destino === 'results') {
+      navigation.navigate('Evolucao');
+      return;
+    }
+    if (destino === 'appointments') {
+      navigation.navigate('Agenda');
+      return;
+    }
+    if (destino === 'password') {
+      navigation.navigate('TrocarSenha');
+      return;
+    }
+    if (destino === 'logout') {
+      await sair();
+      return;
+    }
+    if (destino !== 'profile') {
+      setAviso('Este módulo ainda não está disponível nesta etapa.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
+      <AppHeader onOpenMenu={() => setMenuVisible(true)} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -267,6 +298,13 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         ) : null}
       </KeyboardAvoidingView>
+      <SideMenu
+        visible={menuVisible}
+        activeItem="profile"
+        userName={nome || 'Paciente'}
+        onClose={() => setMenuVisible(false)}
+        onNavigate={(destino) => void navegarPeloMenu(destino)}
+      />
     </SafeAreaView>
   );
 }

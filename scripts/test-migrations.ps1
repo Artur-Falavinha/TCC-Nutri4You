@@ -11,7 +11,9 @@ $v2 = Get-Content (Join-Path $migrations 'V2__anamnese_unica.sql') -Raw
 $v3 = Get-Content (Join-Path $migrations 'V3__anamnese_fuso_horario.sql') -Raw
 $v4 = Get-Content (Join-Path $migrations 'V4__token_email_titular.sql') -Raw
 $v5 = Get-Content (Join-Path $migrations 'V5__remover_medidas_da_anamnese.sql') -Raw
+$v6 = Get-Content (Join-Path $migrations 'V6__ciclo_plano_alimentar.sql') -Raw
 $v7 = Get-Content (Join-Path $migrations 'V7__registro_consultas.sql') -Raw
+$v8 = Get-Content (Join-Path $migrations 'V8__macronutrientes_consumo_diario.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
 
 # Every scenario uses a new schema inside a transaction, rolled back even on
@@ -109,6 +111,26 @@ $assertions
 $v5
 UPDATE Consulta SET observacao = 'Registro legado' WHERE id_consulta = 1;
 $v7
+$v6
+$v8
+DO `$`$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM Plano_Alimentar p
+        JOIN Consulta c ON c.id_consulta = p.id_consulta
+        WHERE p.id_paciente IS DISTINCT FROM c.id_paciente
+           OR p.id_nutricionista IS DISTINCT FROM c.id_nutricionista
+           OR p.status <> 'RASCUNHO'
+    ) THEN
+        RAISE EXCEPTION 'V6 must preserve plan ownership when applied after V7';
+    END IF;
+    IF (SELECT count(*) FROM information_schema.columns
+        WHERE table_schema = current_schema() AND table_name = 'consumo_diario'
+          AND column_name IN ('proteinas_consumidas', 'carboidratos_consumidos', 'gorduras_consumidas')) <> 3 THEN
+        RAISE EXCEPTION 'V8 must add all daily macronutrients';
+    END IF;
+END;
+`$`$;
 DO `$`$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM Consulta WHERE id_consulta = 1

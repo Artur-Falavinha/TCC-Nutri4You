@@ -4,15 +4,21 @@ import com.nutri4you.backend.dto.AgendaResponse;
 import com.nutri4you.backend.dto.AvaliacaoRequest;
 import com.nutri4you.backend.dto.AvaliacaoResponse;
 import com.nutri4you.backend.dto.ConsultaResumoDTO;
+import com.nutri4you.backend.dto.ConsumoProgressoDTO;
 import com.nutri4you.backend.dto.ContagemDTO;
+import com.nutri4you.backend.dto.DashboardPacienteDTO;
 import com.nutri4you.backend.dto.HistoricoResponse;
 import com.nutri4you.backend.dto.PacienteResponseDTO;
 import com.nutri4you.backend.model.AvaliacaoAntropometrica;
 import com.nutri4you.backend.model.Consulta;
+import com.nutri4you.backend.model.ConsumoDiario;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
+import com.nutri4you.backend.model.PlanoAlimentar;
 import com.nutri4you.backend.repository.AvaliacaoAntropometricaRepository;
 import com.nutri4you.backend.repository.ConsultaRepository;
+import com.nutri4you.backend.repository.ConsumoDiarioRepository;
+import com.nutri4you.backend.repository.PlanoAlimentarRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,12 +28,16 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ClinicoService {
 
+    private static final ZoneId FUSO_HORARIO = ZoneId.of("America/Sao_Paulo");
     private final GestaoPacienteService gestaoPacienteService;
     private final AvaliacaoAntropometricaRepository avaliacaoRepository;
     private static final String[] DIAS = {"Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"};
@@ -37,14 +47,20 @@ public class ClinicoService {
     };
 
     private final ConsultaRepository consultaRepository;
+    private final ConsumoDiarioRepository consumoDiarioRepository;
+    private final PlanoAlimentarRepository planoAlimentarRepository;
 
     public ClinicoService(
             GestaoPacienteService gestaoPacienteService,
             AvaliacaoAntropometricaRepository avaliacaoRepository,
-            ConsultaRepository consultaRepository) {
+            ConsultaRepository consultaRepository,
+            ConsumoDiarioRepository consumoDiarioRepository,
+            PlanoAlimentarRepository planoAlimentarRepository) {
         this.gestaoPacienteService = gestaoPacienteService;
         this.avaliacaoRepository = avaliacaoRepository;
         this.consultaRepository = consultaRepository;
+        this.consumoDiarioRepository = consumoDiarioRepository;
+        this.planoAlimentarRepository = planoAlimentarRepository;
     }
 
     @Transactional
@@ -59,6 +75,11 @@ public class ClinicoService {
     @Transactional(readOnly = true)
     public List<AvaliacaoResponse> listarAvaliacoes(Nutricionista nutricionista, Integer pacienteId) {
         gestaoPacienteService.exigirAcesso(nutricionista, pacienteId);
+        return listarAvaliacoes(pacienteId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AvaliacaoResponse> listarAvaliacoes(Integer pacienteId) {
         return avaliacaoRepository.findByPaciente_IdOrderByDataAvaliacaoDesc(pacienteId)
                 .stream()
                 .map(MedidasAntropometricas::paraResposta)
@@ -74,7 +95,116 @@ public class ClinicoService {
                 .filter(this::naoCancelada)
                 .map(this::paraConsulta)
                 .toList();
-        return new HistoricoResponse(consultas, listarAvaliacoes(nutricionista, pacienteId));
+        return new HistoricoResponse(consultas, listarAvaliacoes(pacienteId));
+    }
+
+    @Transactional(readOnly = true)
+    public HistoricoResponse historico(Paciente paciente) {
+        List<ConsultaResumoDTO> consultas = consultaRepository
+                .findByPaciente_IdOrderByDataHoraDesc(paciente.getId())
+                .stream()
+                .filter(this::naoCancelada)
+                .map(this::paraConsulta)
+                .toList();
+        return new HistoricoResponse(consultas, listarAvaliacoes(paciente.getId()));
+    }
+
+    @Transactional(readOnly = true)
+    public ConsumoProgressoDTO consumoDiarioProgresso(Paciente paciente) {
+        Optional<ConsumoDiario> consumo = consumoDiarioRepository
+                .findByPaciente_IdAndDataRegistro(paciente.getId(), LocalDate.now(FUSO_HORARIO));
+        MetasNutricionais metas = buscarMetasNutricionais(paciente.getId()).orElse(null);
+
+        if (consumo.isEmpty() && metas == null) {
+            return null;
+        }
+
+        ConsumoDiario registro = consumo.orElse(null);
+        return new ConsumoProgressoDTO(
+                "Hoje",
+                numero(registro == null ? null : registro.getKcalConsumidas()),
+                metas == null ? null : metas.calorias(),
+                numero(registro == null ? null : registro.getProteinasConsumidas()),
+                metas == null ? null : metas.proteinas(),
+                numero(registro == null ? null : registro.getCarboidratosConsumidos()),
+                metas == null ? null : metas.carboidratos(),
+                numero(registro == null ? null : registro.getGordurasConsumidas()),
+                metas == null ? null : metas.gorduras());
+    }
+
+    @Transactional(readOnly = true)
+    public DashboardPacienteDTO dashboardPaciente(Paciente paciente) {
+        ConsumoProgressoDTO consumo = consumoDiarioProgresso(paciente);
+        DashboardPacienteDTO.DietaResumoDTO dietaAtiva = buscarPlanoAtivo(paciente.getId())
+                .map(this::paraDietaResumo)
+                .orElse(null);
+
+        LocalDateTime agora = LocalDateTime.now(FUSO_HORARIO);
+        DashboardPacienteDTO.ProximaConsultaDTO proximaConsulta = consultaRepository
+                .findByPaciente_IdOrderByDataHoraDesc(paciente.getId())
+                .stream()
+                .filter(c -> !c.getDataHora().isBefore(agora))
+                .filter(c -> !"REALIZADA".equalsIgnoreCase(c.getStatus()))
+                .filter(this::naoCancelada)
+                .min(Comparator.comparing(Consulta::getDataHora))
+                .map(c -> new DashboardPacienteDTO.ProximaConsultaDTO(
+                        c.getId(),
+                        c.getNutricionista().getNome(),
+                        c.getDataHora(),
+                        c.getStatus()))
+                .orElse(null);
+
+        return new DashboardPacienteDTO(paciente.getNome(), consumo, proximaConsulta, dietaAtiva);
+    }
+
+    private Optional<PlanoAlimentar> buscarPlanoAtivo(Integer pacienteId) {
+        List<PlanoAlimentar> planos = planoAlimentarRepository.findByPaciente_IdOrderByIdDesc(pacienteId);
+        LocalDate hoje = LocalDate.now(FUSO_HORARIO);
+
+        Optional<PlanoAlimentar> publicadoVigente = planos.stream()
+                .filter(plano -> "PUBLICADO".equalsIgnoreCase(plano.getStatus()))
+                .filter(plano -> plano.getVigenciaInicio() == null || !plano.getVigenciaInicio().isAfter(hoje))
+                .filter(plano -> plano.getVigenciaFim() == null || !plano.getVigenciaFim().isBefore(hoje))
+                .findFirst();
+
+        return publicadoVigente;
+    }
+
+    private Optional<MetasNutricionais> buscarMetasNutricionais(Integer pacienteId) {
+        return buscarPlanoAtivo(pacienteId).map(this::paraMetas);
+    }
+
+    private MetasNutricionais paraMetas(PlanoAlimentar plano) {
+        return new MetasNutricionais(
+                nullableNumero(plano.getMetaCalorias()),
+                nullableNumero(plano.getMetaProteina()),
+                nullableNumero(plano.getMetaCarboidratos()),
+                nullableNumero(plano.getMetaGordura()));
+    }
+
+    private DashboardPacienteDTO.DietaResumoDTO paraDietaResumo(PlanoAlimentar plano) {
+        return new DashboardPacienteDTO.DietaResumoDTO(
+                plano.getId(),
+                nullableNumero(plano.getMetaCalorias()),
+                nullableNumero(plano.getMetaProteina()),
+                nullableNumero(plano.getMetaCarboidratos()),
+                nullableNumero(plano.getMetaGordura()),
+                plano.getNutricionista().getNome());
+    }
+
+    private double numero(java.math.BigDecimal valor) {
+        return valor == null ? 0.0 : valor.doubleValue();
+    }
+
+    private Double nullableNumero(java.math.BigDecimal valor) {
+        return valor == null ? null : valor.doubleValue();
+    }
+
+    private record MetasNutricionais(
+            Double calorias,
+            Double proteinas,
+            Double carboidratos,
+            Double gorduras) {
     }
 
     @Transactional(readOnly = true)

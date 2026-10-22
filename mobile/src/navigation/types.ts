@@ -8,6 +8,15 @@ export type RootStackParamList = {
   TrocarSenha: undefined;
   NovaSenha: { token: string };
   CriarConta: undefined;
-  Home: undefined;
+  Dashboard: undefined;
+  DadosPessoais: undefined;
+  Evolucao: undefined;
+  Agenda: undefined;
+  HorariosDisponiveis: {
+    nutricionistaId: number;
+    data: string;
+    consultaId?: number;
+    versao?: number;
+  };
   Health: undefined;
 };

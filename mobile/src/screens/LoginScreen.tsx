@@ -39,7 +39,7 @@ export default function LoginScreen() {
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
-          routes: [{ name: 'Home' }]
+          routes: [{ name: 'Dashboard' }]
         })
       );
     } catch (err: unknown) {

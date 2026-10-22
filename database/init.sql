@@ -176,6 +176,9 @@ CREATE TABLE Consumo_Diario (
     id_paciente INT NOT NULL,
     data_registro DATE NOT NULL,
     kcal_consumidas DECIMAL(6,2) DEFAULT 0,
+    proteinas_consumidas DECIMAL(8,2) DEFAULT 0,
+    carboidratos_consumidos DECIMAL(8,2) DEFAULT 0,
+    gorduras_consumidas DECIMAL(8,2) DEFAULT 0,
     agua_ml_consumida INT DEFAULT 0,
     CONSTRAINT unq_consumo_diario UNIQUE (id_paciente, data_registro),
     CONSTRAINT fk_consumo_paciente FOREIGN KEY (id_paciente) REFERENCES Paciente(id_paciente)
@@ -212,12 +215,52 @@ INSERT INTO Nutricionista (nome, email, senha, crn) VALUES
 -- 2. PACIENTES
 INSERT INTO Paciente (nome, cpf, data_nascimento, sexo, telefone, email, senha, email_confirmado) VALUES
 ('Arthur Henrique Deretti', '111.222.333-44', '2000-01-01', 'Masculino', '41999999999', 'arthur@email.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-('Artur Lachoman Falavinha', '555.666.777-88', '2000-02-02', 'Masculino', '41988888888', 'artur@email.com', '$2a$10$ExemploDeHashBcrypt', TRUE);
+('Artur Lachoman Falavinha', '555.666.777-88', '2000-02-02', 'Masculino', '41988888888', 'artur@email.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+('Arthur Teste Populado', '999.888.777-66', '1999-05-15', 'Masculino', '41977777777', 'teste_populado@email.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE);
 
--- 3. CONSULTAS (relaciona paciente e nutricionista por evento)
+-- 3. RELAÇÃO CLÍNICA
+INSERT INTO Relacao_Clinica (id_paciente, id_nutricionista, status) VALUES
+(1, 1, 'ATIVA'),
+(2, 1, 'ATIVA'),
+(3, 1, 'ATIVA');
+
+-- 4. CONSULTAS (relaciona paciente e nutricionista por evento)
 INSERT INTO Consulta (id_paciente, id_nutricionista, data_hora, status) VALUES
 (1, 1, '2026-09-01 10:00:00', 'REALIZADA'),
-(2, 1, '2026-09-01 11:00:00', 'REALIZADA');
+(2, 1, '2026-09-01 11:00:00', 'REALIZADA'),
+(3, 1, '2026-07-01 10:00:00', 'REALIZADA'),
+(3, 1, '2026-08-15 10:00:00', 'REALIZADA'),
+(3, 1, '2026-10-01 10:00:00', 'REALIZADA'),
+(3, 1, '2026-10-25 14:30:00', 'CONFIRMADA');
+
+-- 5. AVALIAÇÕES ANTROPOMÉTRICAS (Evolução exclusiva do perfil teste_populado@email.com - id 3)
+INSERT INTO Avaliacao_Antropometrica (
+    id_paciente, id_consulta, data_avaliacao,
+    peso, altura, imc, percentual_gordura, massa_muscular_kg,
+    prega_bicipital, prega_tricipital, prega_subescapular, prega_suprailiaca,
+    circunferencia_cintura, circunferencia_quadril, circunferencia_braco
+) VALUES
+(3, 3, '2026-07-01 10:00:00', 76.70, 1.75, 25.04, 19.50, 31.00, 7.00, 11.00, 13.00, 15.50, 86.00, 103.00, 34.00),
+(3, 4, '2026-08-15 10:00:00', 74.50, 1.75, 24.33, 19.00, 31.50, 6.50, 10.50, 12.50, 14.80, 85.00, 102.50, 34.00),
+(3, 5, '2026-10-01 10:00:00', 72.50, 1.75, 23.67, 18.50, 32.00, 6.00, 10.00, 12.00, 14.00, 84.00, 102.00, 34.00);
+
+-- 6. PLANO ALIMENTAR ATIVO E CONSUMO DIÁRIO MOCK (exclusivo do perfil teste_populado@email.com - id 3)
+INSERT INTO Plano_Alimentar (id_consulta, vet_meta_kcal, meta_carboidratos, meta_gordura, meta_proteina) VALUES
+(5, 2100.00, 245.00, 65.00, 180.00)
+ON CONFLICT (id_consulta) DO NOTHING;
+
+INSERT INTO Consumo_Diario (
+    id_paciente, data_registro, kcal_consumidas,
+    proteinas_consumidas, carboidratos_consumidos, gorduras_consumidas,
+    agua_ml_consumida
+) VALUES
+(3, CURRENT_DATE, 2100.00, 150.00, 230.00, 60.00, 2200)
+ON CONFLICT (id_paciente, data_registro) DO UPDATE
+SET kcal_consumidas = EXCLUDED.kcal_consumidas,
+    proteinas_consumidas = EXCLUDED.proteinas_consumidas,
+    carboidratos_consumidos = EXCLUDED.carboidratos_consumidos,
+    gorduras_consumidas = EXCLUDED.gorduras_consumidas;
+
 
 -- 4. ALIMENTOS (Base TACO simplificada)
 INSERT INTO Alimento (categoria, nome, kcal_100g, proteina_100g, carboidratos_100g) VALUES
