@@ -1,9 +1,8 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import BellIcon from '../../assets/appointments/bell.svg';
 import MenuIcon from '../../assets/appointments/menu.svg';
-import BrandAvatar from '../../assets/appointments/brand-avatar.png';
-import { colors, fontFamily, shadows } from '../../theme/tokens';
+import { shadows } from '../../theme/tokens';
 
 interface AppHeaderProps {
   onOpenMenu: () => void;
@@ -22,11 +21,14 @@ export function AppHeader({ onOpenMenu }: AppHeaderProps) {
         <MenuIcon />
       </Pressable>
 
-      <View style={styles.brand} accessibilityRole="header">
-        <View style={styles.avatarBorder}>
-          <Image source={BrandAvatar} style={styles.avatar} accessibilityIgnoresInvertColors />
-        </View>
-        <Text style={styles.title}>I Need a Nutri</Text>
+      <View style={styles.brand} accessibilityRole="header" accessibilityLabel="Nutri4You">
+        <Image
+          source={require('../../../assets/logo-nutri4u.webp')}
+          style={styles.logo}
+          resizeMode="contain"
+          accessibilityLabel="Nutri4U"
+          accessibilityIgnoresInvertColors
+        />
       </View>
 
       <Pressable
@@ -60,28 +62,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   brand: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    flexShrink: 1
   },
-  avatarBorder: {
-    width: 32,
-    height: 32,
-    borderRadius: 9999,
-    borderWidth: 1,
-    borderColor: 'rgba(0,111,30,0.2)',
-    padding: 1,
-    overflow: 'hidden'
-  },
-  avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 9999
-  },
-  title: {
-    color: colors.text,
-    fontFamily: fontFamily.bold,
-    fontSize: 18,
-    lineHeight: 28
+  logo: {
+    width: 144,
+    height: 43
   }
 });

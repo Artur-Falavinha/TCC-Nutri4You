@@ -5,6 +5,7 @@ import { AUTH_ROUTES } from './features/auth/auth.routes';
 import { AnamneseComponent } from './features/anamnese/anamnese.component';
 import { anamneseGuard } from './features/anamnese/anamnese.guard';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
+import { FeatureUnavailableComponent } from './features/feature-unavailable/feature-unavailable.component';
 import { HealthComponent } from './features/health/health.component';
 import { AppShellComponent } from './layout/app-shell.component';
 import { NotFoundComponent } from './features/not-found/not-found.component';
@@ -21,6 +22,28 @@ export const routes: Routes = [
         path: 'dashboard',
         component: DashboardComponent,
         title: 'Dashboard — Nutri4You'
+      },
+      {
+        path: 'agenda',
+        component: FeatureUnavailableComponent,
+        title: 'Agenda — Nutri4You',
+        data: {
+          titulo: 'Agenda',
+          descricao: 'A agenda completa ainda não está disponível. Consulte e gerencie os atendimentos no perfil de cada paciente.',
+          destino: '/pacientes',
+          acao: 'Ver pacientes'
+        }
+      },
+      {
+        path: 'configuracoes',
+        component: FeatureUnavailableComponent,
+        title: 'Configurações — Nutri4You',
+        data: {
+          titulo: 'Configurações',
+          descricao: 'As configurações da conta ainda não estão disponíveis.',
+          destino: '/dashboard',
+          acao: 'Voltar para o dashboard'
+        }
       },
       {
         path: 'anamnese',

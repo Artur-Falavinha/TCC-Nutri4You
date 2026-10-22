@@ -11,11 +11,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  Alert,
   ScrollView,
   ActivityIndicator
 } from 'react-native';
 
+import { useAppAlert } from '../components/feedback/AppAlertProvider';
 import { redefinirSenha } from '../core/auth/auth.service';
 import { ApiError } from '../core/api/api-response.types';
 import { isValidUuid } from '../core/utils/uuid.util';
@@ -23,6 +23,7 @@ import type { RootStackParamList } from '../navigation/types';
 
 export default function NovaSenhaScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { showAlert } = useAppAlert();
   const route = useRoute<RouteProp<RootStackParamList, 'NovaSenha'>>();
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
@@ -33,33 +34,33 @@ export default function NovaSenhaScreen() {
 
   useEffect(() => {
     if (!token || !isValidUuid(token)) {
-      Alert.alert('Link inválido', 'Token de redefinição ausente ou inválido.', [
+      showAlert('Link inválido', 'Token de redefinição ausente ou inválido.', [
         {
           text: 'OK',
           onPress: () => navigation.navigate('TrocarSenha')
         }
       ]);
     }
-  }, [token, navigation]);
+  }, [token, navigation, showAlert]);
 
   const handleSubmit = async () => {
     if (!token || !isValidUuid(token)) {
-      Alert.alert('Erro', 'Token de redefinição ausente ou inválido.');
+      showAlert('Erro', 'Token de redefinição ausente ou inválido.');
       return;
     }
 
     if (!novaSenha || !confirmarSenha) {
-      Alert.alert('Atenção', 'Preencha todos os campos.');
+      showAlert('Atenção', 'Preencha todos os campos.');
       return;
     }
 
     if (novaSenha.length < 8) {
-      Alert.alert('Atenção', 'A senha deve ter no mínimo 8 caracteres.');
+      showAlert('Atenção', 'A senha deve ter no mínimo 8 caracteres.');
       return;
     }
 
     if (novaSenha !== confirmarSenha) {
-      Alert.alert('Erro', 'As senhas não coincidem. Verifique e tente novamente.');
+      showAlert('Erro', 'As senhas não coincidem. Verifique e tente novamente.');
       return;
     }
 
@@ -67,7 +68,7 @@ export default function NovaSenhaScreen() {
 
     try {
       await redefinirSenha(token, novaSenha);
-      Alert.alert('Sucesso', 'Senha alterada com sucesso!', [
+      showAlert('Sucesso', 'Senha alterada com sucesso!', [
         {
           text: 'OK',
           onPress: () =>
@@ -85,7 +86,7 @@ export default function NovaSenhaScreen() {
         apiError?.error === 'REQUISICAO_INVALIDA' || apiError?.status === 400
           ? 'Token inválido ou expirado. Solicite uma nova recuperação de senha.'
           : (apiError?.message ?? 'Não foi possível alterar a senha.');
-      Alert.alert('Erro', mensagem);
+      showAlert('Erro', mensagem);
     } finally {
       setIsLoading(false);
     }

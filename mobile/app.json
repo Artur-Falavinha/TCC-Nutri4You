@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mobile",
+    "name": "Nutri4You",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,16 +12,15 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.mobile",
       "usesCleartextTraffic": true
     },
     "web": {
+      "name": "Nutri4You",
       "favicon": "./assets/favicon.png"
     },
     "plugins": [

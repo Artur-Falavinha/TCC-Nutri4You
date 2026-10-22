@@ -25,7 +25,7 @@ A modelagem de perguntas e respostas do `database/init.sql` foi mantida:
 
 Gravações são transacionais. O bloqueio pessimista da linha de Paciente serializa inclusive a primeira criação, e a versão otimista impede que uma edição antiga sobrescreva outra. As respostas condicionais que deixaram de se aplicar são removidas ao finalizar. Dados desativados também são removidos do rascunho recebido.
 
-O catálogo em `backend/src/main/resources/anamnese-fields.json` define os 57 campos, suas opções, tipos, limites e dependências. A API serve o mesmo catálogo usado pela tela. Alterações em códigos ou novas perguntas exigem uma nova migração correspondente.
+O catálogo em `backend/src/main/resources/anamnese-fields.json` define os 55 campos, suas opções, tipos, limites e dependências. A API serve o mesmo catálogo usado pela tela. Alterações em códigos ou novas perguntas exigem uma nova migração correspondente.
 
 ## API
 

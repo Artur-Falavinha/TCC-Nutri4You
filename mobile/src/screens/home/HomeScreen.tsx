@@ -83,11 +83,13 @@ export function HomeScreen({ navigation }: Props) {
   const salvar = async () => {
     const nomeLimpo = nome.trim();
     if (!nomeLimpo) {
+      setAviso('');
       setErro('Informe o nome.');
       return;
     }
     const nascimento = dataNascimento.trim() ? toIsoDate(dataNascimento) : undefined;
     if (dataNascimento.trim() && !nascimento) {
+      setAviso('');
       setErro('Data de nascimento inválida. Use DD/MM/AAAA.');
       return;
     }
