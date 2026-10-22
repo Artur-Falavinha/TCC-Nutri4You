@@ -154,9 +154,9 @@ export function EvolucaoScreen({ navigation }: Props) {
     if (graficoAba === 0 && atual?.peso != null && primeira?.peso != null) {
       const diffTotal = Number((atual.peso - primeira.peso).toFixed(1));
       if (diffTotal < 0) {
-        return `Você perdeu ${Math.abs(diffTotal)}Kg desde o início da sua jornada. Continue focado nos seus objetivos!`;
+        return `Você perdeu ${Math.abs(diffTotal)} kg desde o início da sua jornada. Continue focado nos seus objetivos!`;
       } else if (diffTotal > 0) {
-        return `Você ganhou ${diffTotal}Kg desde o início da sua jornada. Continue focado nos seus objetivos!`;
+        return `Você ganhou ${diffTotal} kg desde o início da sua jornada. Continue focado nos seus objetivos!`;
       } else {
         return 'Seu peso manteve-se estável desde o início da sua jornada. Continue focado nos seus objetivos!';
       }
@@ -307,9 +307,21 @@ export function EvolucaoScreen({ navigation }: Props) {
                         ]}
                       >
                         <Ionicons
-                          name={variacaoPesoRecente.direcao === 'queda' ? 'arrow-down' : 'arrow-up'}
+                          name={
+                            variacaoPesoRecente.direcao === 'queda'
+                              ? 'arrow-down'
+                              : variacaoPesoRecente.direcao === 'alta'
+                                ? 'arrow-up'
+                                : 'remove'
+                          }
                           size={12}
-                          color={variacaoPesoRecente.direcao === 'queda' ? '#006f1e' : '#b42318'}
+                          color={
+                            variacaoPesoRecente.direcao === 'queda'
+                              ? '#006f1e'
+                              : variacaoPesoRecente.direcao === 'alta'
+                                ? '#b42318'
+                                : '#64748b'
+                          }
                         />
                         <Text
                           style={[
@@ -350,9 +362,21 @@ export function EvolucaoScreen({ navigation }: Props) {
                         ]}
                       >
                         <Ionicons
-                          name={variacaoGorduraRecente.direcao === 'queda' ? 'arrow-down' : 'arrow-up'}
+                          name={
+                            variacaoGorduraRecente.direcao === 'queda'
+                              ? 'arrow-down'
+                              : variacaoGorduraRecente.direcao === 'alta'
+                                ? 'arrow-up'
+                                : 'remove'
+                          }
                           size={12}
-                          color={variacaoGorduraRecente.direcao === 'queda' ? '#006f1e' : '#b42318'}
+                          color={
+                            variacaoGorduraRecente.direcao === 'queda'
+                              ? '#006f1e'
+                              : variacaoGorduraRecente.direcao === 'alta'
+                                ? '#b42318'
+                                : '#64748b'
+                          }
                         />
                         <Text
                           style={[

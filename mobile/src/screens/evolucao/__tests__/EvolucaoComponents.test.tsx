@@ -105,6 +105,7 @@ describe('Evolução Components', () => {
       expect(str).toContain('0 cm');
       expect(str).toContain('Relação Cintura/Quadril');
       expect(str).toContain('0,82');
+      expect(str).toContain('-0.02');
     });
 
     it('permite alternar para o segundo slide exibindo massa muscular e dobras', async () => {
@@ -131,6 +132,7 @@ describe('Evolução Components', () => {
       expect(str).toContain('Prega Supra-ilíaca');
       expect(str).toContain('14,0 mm');
     });
+
   });
 
   describe('ConsumoProgressoCard', () => {
@@ -171,6 +173,29 @@ describe('Evolução Components', () => {
       expect(str).toContain('220');
       expect(str).toContain('Gorduras');
       expect(str).toContain('45');
+    });
+
+    it('não inventa uma meta calórica quando o plano ainda não a definiu', async () => {
+      let tree: renderer.ReactTestRenderer | undefined;
+      await act(async () => {
+        tree = renderer.create(
+          <ConsumoProgressoCard
+            consumo={{
+              data: 'Hoje',
+              caloriasConsumidas: 450,
+              metaCalorias: null,
+              proteinas: 20,
+              carboidratos: 50,
+              gorduras: 10
+            }}
+          />
+        );
+      });
+
+      const str = JSON.stringify(tree?.toJSON());
+      expect(str).toContain('450');
+      expect(str).toContain('Meta calórica ainda não definida.');
+      expect(str).not.toContain('2000');
     });
   });
 });

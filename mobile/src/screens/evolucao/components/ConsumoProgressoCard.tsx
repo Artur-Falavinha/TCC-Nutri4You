@@ -21,8 +21,14 @@ export function ConsumoProgressoCard({ consumo }: Props) {
     );
   }
 
-  const metaCal = consumo.metaCalorias || 2000;
-  const percCal = Math.min(100, Math.round((consumo.caloriasConsumidas / metaCal) * 100));
+  const metaCal = consumo.metaCalorias && consumo.metaCalorias > 0
+    ? consumo.metaCalorias
+    : null;
+  const percCal = metaCal
+    ? Math.max(0, Math.min(100, Math.round((consumo.caloriasConsumidas / metaCal) * 100)))
+    : null;
+  const formatarMacro = (valor: number | null | undefined) =>
+    valor == null || !Number.isFinite(valor) ? '—' : `${Math.round(valor)}g`;
 
   return (
     <View style={styles.card} testID="consumo-progresso-card">
@@ -35,18 +41,21 @@ export function ConsumoProgressoCard({ consumo }: Props) {
       <View style={styles.caloriasBloco}>
         <View style={styles.caloriasInfo}>
           <Text style={styles.caloriasValor}>{Math.round(consumo.caloriasConsumidas)}</Text>
-          <Text style={styles.caloriasMeta}>/ {metaCal} kcal ({percCal}%)</Text>
+          <Text style={styles.caloriasMeta}>
+            {metaCal ? `/ ${Math.round(metaCal)} kcal (${percCal}%)` : 'kcal'}
+          </Text>
         </View>
         <View style={styles.barraFundo}>
-          <View style={[styles.barraPreenchida, { width: `${percCal}%` }]} />
+          <View style={[styles.barraPreenchida, { width: `${percCal ?? 0}%` }]} />
         </View>
+        {!metaCal ? <Text style={styles.metaAusente}>Meta calórica ainda não definida.</Text> : null}
       </View>
 
       {/* Macronutrientes */}
       <View style={styles.macrosGrid}>
         <View style={styles.macroItem}>
           <Text style={styles.macroRotulo}>Proteínas</Text>
-          <Text style={styles.macroValor}>{Math.round(consumo.proteinas)}g</Text>
+          <Text style={styles.macroValor}>{formatarMacro(consumo.proteinas)}</Text>
           {consumo.metaProteinas ? (
             <Text style={styles.macroMeta}>meta: {consumo.metaProteinas}g</Text>
           ) : null}
@@ -54,7 +63,7 @@ export function ConsumoProgressoCard({ consumo }: Props) {
 
         <View style={styles.macroItem}>
           <Text style={styles.macroRotulo}>Carboidratos</Text>
-          <Text style={styles.macroValor}>{Math.round(consumo.carboidratos)}g</Text>
+          <Text style={styles.macroValor}>{formatarMacro(consumo.carboidratos)}</Text>
           {consumo.metaCarboidratos ? (
             <Text style={styles.macroMeta}>meta: {consumo.metaCarboidratos}g</Text>
           ) : null}
@@ -62,7 +71,7 @@ export function ConsumoProgressoCard({ consumo }: Props) {
 
         <View style={styles.macroItem}>
           <Text style={styles.macroRotulo}>Gorduras</Text>
-          <Text style={styles.macroValor}>{Math.round(consumo.gorduras)}g</Text>
+          <Text style={styles.macroValor}>{formatarMacro(consumo.gorduras)}</Text>
           {consumo.metaGorduras ? (
             <Text style={styles.macroMeta}>meta: {consumo.metaGorduras}g</Text>
           ) : null}
@@ -143,6 +152,11 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#006f1e',
     borderRadius: 4
+  },
+  metaAusente: {
+    marginTop: 6,
+    fontSize: 11,
+    color: '#64748b'
   },
   macrosGrid: {
     flexDirection: 'row',

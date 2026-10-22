@@ -5,11 +5,13 @@ import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.ConsumoDiario;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
+import com.nutri4you.backend.model.PlanoAlimentar;
 import com.nutri4you.backend.model.RelacaoClinica;
 import com.nutri4you.backend.repository.ConsultaRepository;
 import com.nutri4you.backend.repository.ConsumoDiarioRepository;
 import com.nutri4you.backend.repository.NutricionistaRepository;
 import com.nutri4you.backend.repository.PacienteRepository;
+import com.nutri4you.backend.repository.PlanoAlimentarRepository;
 import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import com.nutri4you.backend.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,6 +59,9 @@ class UsuarioControllerTest {
     private ConsumoDiarioRepository consumoDiarioRepository;
 
     @Autowired
+    private PlanoAlimentarRepository planoAlimentarRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private Nutricionista nutricionista;
@@ -91,34 +96,57 @@ class UsuarioControllerTest {
     }
 
     @Test
-    void consumoDiarioProgressoRetornaDadosPersistidos() throws Exception {
+    void consumoDiarioProgressoRetornaDados() throws Exception {
+        Consulta consulta = consultaRepository.save(TestDataFactory.consulta(paciente, nutricionista));
+        planoAlimentarRepository.save(new PlanoAlimentar(
+                consulta,
+                new BigDecimal("2200.00"),
+                new BigDecimal("250.00"),
+                new BigDecimal("65.00"),
+                new BigDecimal("160.00")));
         consumoDiarioRepository.save(new ConsumoDiario(
                 paciente,
                 LocalDate.now(),
-                new BigDecimal("1850.00"),
-                2000
-        ));
+                new BigDecimal("1234.50"),
+                new BigDecimal("91.20"),
+                new BigDecimal("180.30"),
+                new BigDecimal("42.10"),
+                1800));
         String token = loginComoPaciente();
 
         mockMvc.perform(get("/api/v1/usuarios/me/consumo-diario/progresso")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.caloriasConsumidas").value(1850.0))
-                .andExpect(jsonPath("$.data.metaCalorias").value(2100.0));
+                .andExpect(jsonPath("$.data.data").value("Hoje"))
+                .andExpect(jsonPath("$.data.caloriasConsumidas").value(1234.5))
+                .andExpect(jsonPath("$.data.metaCalorias").value(2200.0))
+                .andExpect(jsonPath("$.data.proteinas").value(91.2))
+                .andExpect(jsonPath("$.data.metaProteinas").value(160.0))
+                .andExpect(jsonPath("$.data.carboidratos").value(180.3))
+                .andExpect(jsonPath("$.data.gorduras").value(42.1));
     }
 
     @Test
-    void dashboardPacienteRetornaConsumoEProximaConsultaFutura() throws Exception {
+    void dashboardPacienteRetornaConsumoDietaEProximaConsultaFutura() throws Exception {
+        LocalDateTime futura = LocalDateTime.now().plusDays(3)
+                .withHour(14).withMinute(30).withSecond(0).withNano(0);
+        Consulta consulta = new Consulta(paciente, nutricionista, futura);
+        consulta.atualizar(futura, "CONFIRMADA", "Retorno agendado");
+        consulta = consultaRepository.save(consulta);
+        planoAlimentarRepository.save(new PlanoAlimentar(
+                consulta,
+                new BigDecimal("2100.00"),
+                new BigDecimal("245.00"),
+                new BigDecimal("65.00"),
+                new BigDecimal("180.00")));
         consumoDiarioRepository.save(new ConsumoDiario(
                 paciente,
                 LocalDate.now(),
-                new BigDecimal("2100.00"),
-                2200
-        ));
-        LocalDateTime futura = LocalDateTime.now().plusDays(3).withHour(14).withMinute(30).withSecond(0).withNano(0);
-        Consulta consulta = new Consulta(paciente, nutricionista, futura);
-        consulta.atualizar(futura, "CONFIRMADA", "Retorno agendado");
-        consultaRepository.save(consulta);
+                new BigDecimal("1850.00"),
+                new BigDecimal("140.00"),
+                new BigDecimal("210.00"),
+                new BigDecimal("55.00"),
+                2200));
 
         String token = loginComoPaciente();
 
@@ -126,18 +154,50 @@ class UsuarioControllerTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.nomePaciente").value(paciente.getNome()))
-                .andExpect(jsonPath("$.data.consumo.caloriasConsumidas").value(2100.0))
+                .andExpect(jsonPath("$.data.consumo.caloriasConsumidas").value(1850.0))
                 .andExpect(jsonPath("$.data.consumo.metaCalorias").value(2100.0))
+                .andExpect(jsonPath("$.data.dietaAtiva.metaProteina").value(180.0))
                 .andExpect(jsonPath("$.data.proximaConsulta.nutricionistaNome").value(nutricionista.getNome()))
                 .andExpect(jsonPath("$.data.proximaConsulta.status").value("CONFIRMADA"));
     }
 
+    @Test
+    void consumoDiarioNaoReaproveitaRegistroDeOutroDia() throws Exception {
+        consumoDiarioRepository.save(new ConsumoDiario(
+                paciente,
+                LocalDate.now().minusDays(1),
+                new BigDecimal("999.00"),
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                0));
+        String token = loginComoPaciente();
+
+        mockMvc.perform(get("/api/v1/usuarios/me/consumo-diario/progresso")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    void consumoDiarioRejeitaNutricionista() throws Exception {
+        String token = login("nutri@teste.com");
+
+        mockMvc.perform(get("/api/v1/usuarios/me/consumo-diario/progresso")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
     private String loginComoPaciente() throws Exception {
+        return login("paciente@teste.com");
+    }
+
+    private String login(String email) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email":"paciente@teste.com","senha":"senha123"}
-                                """))
+                        .content(String.format("""
+                                {"email":"%s","senha":"senha123"}
+                                """, email)))
                 .andExpect(status().isOk())
                 .andReturn();
 

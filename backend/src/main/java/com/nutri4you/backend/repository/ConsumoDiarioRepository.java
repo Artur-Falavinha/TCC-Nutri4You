@@ -9,7 +9,4 @@ import java.util.Optional;
 public interface ConsumoDiarioRepository extends JpaRepository<ConsumoDiario, Integer> {
 
     Optional<ConsumoDiario> findByPaciente_IdAndDataRegistro(Integer pacienteId, LocalDate dataRegistro);
-
-    Optional<ConsumoDiario> findFirstByPaciente_IdOrderByDataRegistroDesc(Integer pacienteId);
 }
-

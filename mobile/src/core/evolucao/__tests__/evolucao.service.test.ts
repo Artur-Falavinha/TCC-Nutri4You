@@ -58,6 +58,13 @@ describe('evolucao.service', () => {
       expect(calcularVariacao(undefined, undefined)).toBeNull();
       expect(calcularVariacao(NaN, 70)).toBeNull();
     });
+
+    it('respeita a precisao da medida sem produzir uma variacao -0.0', () => {
+      const resultado = calcularVariacao(0.8, 0.83, '', 2);
+
+      expect(resultado?.texto).toBe('-0.03');
+      expect(resultado?.direcao).toBe('queda');
+    });
   });
 
   describe('formatarDataMes e formatarDataDiaMes', () => {
@@ -75,6 +82,16 @@ describe('evolucao.service', () => {
     it('formata dia e mes no formato DD/MM', () => {
       expect(formatarDataDiaMes('2026-05-09T10:00:00')).toBe('09/05');
       expect(formatarDataDiaMes('2026-12-25T10:00:00')).toBe('25/12');
+    });
+
+    it('preserva a data civil em ISO sem deslocar pelo fuso horario', () => {
+      expect(formatarDataMes('2026-01-01')).toBe('Jan');
+      expect(formatarDataDiaMes('2026-01-01')).toBe('01/01');
+    });
+
+    it('rejeita datas civis impossiveis', () => {
+      expect(formatarDataMes('2026-02-30')).toBe('');
+      expect(formatarDataDiaMes('2026-13-01')).toBe('');
     });
   });
 

@@ -176,6 +176,9 @@ CREATE TABLE Consumo_Diario (
     id_paciente INT NOT NULL,
     data_registro DATE NOT NULL,
     kcal_consumidas DECIMAL(6,2) DEFAULT 0,
+    proteinas_consumidas DECIMAL(8,2) DEFAULT 0,
+    carboidratos_consumidos DECIMAL(8,2) DEFAULT 0,
+    gorduras_consumidas DECIMAL(8,2) DEFAULT 0,
     agua_ml_consumida INT DEFAULT 0,
     CONSTRAINT unq_consumo_diario UNIQUE (id_paciente, data_registro),
     CONSTRAINT fk_consumo_paciente FOREIGN KEY (id_paciente) REFERENCES Paciente(id_paciente)
@@ -246,10 +249,17 @@ INSERT INTO Plano_Alimentar (id_consulta, vet_meta_kcal, meta_carboidratos, meta
 (5, 2100.00, 245.00, 65.00, 180.00)
 ON CONFLICT (id_consulta) DO NOTHING;
 
-INSERT INTO Consumo_Diario (id_paciente, data_registro, kcal_consumidas, agua_ml_consumida) VALUES
-(3, CURRENT_DATE, 2100.00, 2200)
+INSERT INTO Consumo_Diario (
+    id_paciente, data_registro, kcal_consumidas,
+    proteinas_consumidas, carboidratos_consumidos, gorduras_consumidas,
+    agua_ml_consumida
+) VALUES
+(3, CURRENT_DATE, 2100.00, 150.00, 230.00, 60.00, 2200)
 ON CONFLICT (id_paciente, data_registro) DO UPDATE
-SET kcal_consumidas = EXCLUDED.kcal_consumidas;
+SET kcal_consumidas = EXCLUDED.kcal_consumidas,
+    proteinas_consumidas = EXCLUDED.proteinas_consumidas,
+    carboidratos_consumidos = EXCLUDED.carboidratos_consumidos,
+    gorduras_consumidas = EXCLUDED.gorduras_consumidas;
 
 
 -- 4. ALIMENTOS (Base TACO simplificada)
