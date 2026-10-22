@@ -26,12 +26,14 @@ public class ConsultaService {
     private final GestaoPacienteService pacientes;
     private final ConsultaRepository consultas;
     private final AvaliacaoAntropometricaRepository avaliacoes;
+    private final HorarioConsultaService horarios;
 
     public ConsultaService(GestaoPacienteService pacientes, ConsultaRepository consultas,
-                           AvaliacaoAntropometricaRepository avaliacoes) {
+                           AvaliacaoAntropometricaRepository avaliacoes, HorarioConsultaService horarios) {
         this.pacientes = pacientes;
         this.consultas = consultas;
         this.avaliacoes = avaliacoes;
+        this.horarios = horarios;
     }
 
     @Transactional(readOnly = true)
@@ -58,6 +60,7 @@ public class ConsultaService {
     public ConsultaResponse criar(Nutricionista nutricionista, Integer pacienteId, ConsultaRequest request) {
         Paciente paciente = pacientes.exigirAcesso(nutricionista, pacienteId);
         validar(request);
+        validarHorarioLivre(nutricionista.getId(), request, null);
         Consulta consulta = new Consulta(paciente, nutricionista, request.dataHora());
         consulta.atualizar(request.dataHora(), request.status(), observacao(request));
         consultas.save(consulta);
@@ -78,6 +81,7 @@ public class ConsultaService {
         if (existente != null && request.avaliacao() == null) {
             throw new IllegalArgumentException("Mantenha peso e altura da avaliacao ja registrada.");
         }
+        validarHorarioLivre(consulta.getNutricionista().getId(), request, consulta.getId());
         consulta.atualizar(request.dataHora(), request.status(), observacao(request));
         AvaliacaoAntropometrica avaliacao = salvarMedidas(consulta, request.avaliacao(), existente);
         consultas.flush();
@@ -132,6 +136,12 @@ public class ConsultaService {
 
     private String observacao(ConsultaRequest request) {
         return request.observacao() == null || request.observacao().isBlank() ? null : request.observacao().trim();
+    }
+
+    private void validarHorarioLivre(Integer nutricionistaId, ConsultaRequest request, Integer ignorarConsultaId) {
+        if (!"CANCELADA".equals(request.status())) {
+            horarios.exigirHorarioLivre(nutricionistaId, request.dataHora(), ignorarConsultaId);
+        }
     }
 
     private ConsultaResponse resposta(Consulta c, AvaliacaoAntropometrica a) {

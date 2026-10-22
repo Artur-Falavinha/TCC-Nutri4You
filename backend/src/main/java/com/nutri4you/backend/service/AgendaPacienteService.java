@@ -27,7 +27,6 @@ import java.util.List;
 public class AgendaPacienteService {
 
     private static final ZoneId FUSO_HORARIO = ZoneId.of("America/Sao_Paulo");
-    private static final int DURACAO_MINUTOS = 45;
     private static final List<LocalTime> HORARIOS_PADRAO = List.of(
             LocalTime.of(8, 0),
             LocalTime.of(9, 0),
@@ -41,14 +40,17 @@ public class AgendaPacienteService {
     private final ConsultaRepository consultas;
     private final NutricionistaRepository nutricionistas;
     private final RelacaoClinicaRepository relacoes;
+    private final HorarioConsultaService horarioConsulta;
 
     public AgendaPacienteService(
             ConsultaRepository consultas,
             NutricionistaRepository nutricionistas,
-            RelacaoClinicaRepository relacoes) {
+            RelacaoClinicaRepository relacoes,
+            HorarioConsultaService horarioConsulta) {
         this.consultas = consultas;
         this.nutricionistas = nutricionistas;
         this.relacoes = relacoes;
+        this.horarioConsulta = horarioConsulta;
     }
 
     @Transactional(readOnly = true)
@@ -82,13 +84,13 @@ public class AgendaPacienteService {
                 : HORARIOS_PADRAO.stream()
                         .map(data::atTime)
                         .filter(horario -> horario.isAfter(agora))
-                        .filter(horario -> !possuiConflito(ocupadas, horario, null))
+                        .filter(horario -> !horarioConsulta.possuiConflito(ocupadas, horario, null))
                         .toList();
         return new DisponibilidadeConsultaResponse(
                 nutricionista.getId(),
                 nutricionista.getNome(),
                 "Nutricionista Clínico",
-                DURACAO_MINUTOS,
+                HorarioConsultaService.DURACAO_MINUTOS,
                 data,
                 horarios);
     }
@@ -99,9 +101,8 @@ public class AgendaPacienteService {
             throw new IllegalArgumentException("Informe o nutricionista.");
         }
         Nutricionista nutricionista = exigirNutricionistaVinculado(paciente, request.nutricionistaId());
-        bloquearNutricionista(nutricionista.getId());
         validarHorario(request.dataHora());
-        exigirHorarioLivre(nutricionista.getId(), request.dataHora(), null);
+        horarioConsulta.exigirHorarioLivre(nutricionista.getId(), request.dataHora(), null);
         Consulta consulta = consultas.save(new Consulta(paciente, nutricionista, request.dataHora()));
         consultas.flush();
         return resposta(consulta);
@@ -117,9 +118,9 @@ public class AgendaPacienteService {
             throw new IllegalArgumentException("Somente consultas confirmadas podem ser reagendadas.");
         }
         validarVersao(request == null ? null : request.versao(), consulta);
-        bloquearNutricionista(consulta.getNutricionista().getId());
         validarHorario(request.dataHora());
-        exigirHorarioLivre(consulta.getNutricionista().getId(), request.dataHora(), consulta.getId());
+        horarioConsulta.exigirHorarioLivre(
+                consulta.getNutricionista().getId(), request.dataHora(), consulta.getId());
         consulta.reagendar(request.dataHora());
         consultas.flush();
         return resposta(consulta);
@@ -154,11 +155,6 @@ public class AgendaPacienteService {
                 .orElseThrow(ConsultaNaoEncontradaException::new);
     }
 
-    private void bloquearNutricionista(Integer nutricionistaId) {
-        nutricionistas.findByIdForUpdate(nutricionistaId)
-                .orElseThrow(() -> new IllegalArgumentException("Nutricionista não encontrado."));
-    }
-
     private void validarHorario(LocalDateTime dataHora) {
         if (dataHora == null) {
             throw new IllegalArgumentException("Informe a data e a hora da consulta.");
@@ -169,29 +165,6 @@ public class AgendaPacienteService {
         if (dataHora.getDayOfWeek() == DayOfWeek.SUNDAY || !HORARIOS_PADRAO.contains(dataHora.toLocalTime())) {
             throw new IllegalArgumentException("O horário escolhido não está disponível.");
         }
-    }
-
-    private void exigirHorarioLivre(Integer nutricionistaId, LocalDateTime dataHora, Integer ignorarConsultaId) {
-        List<Consulta> proximas = consultas
-                .findByNutricionista_IdAndStatusNotAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
-                        nutricionistaId,
-                        "CANCELADA",
-                        dataHora.minusMinutes(DURACAO_MINUTOS),
-                        dataHora.plusMinutes(DURACAO_MINUTOS));
-        if (possuiConflito(proximas, dataHora, ignorarConsultaId)) {
-            throw new ConsultaConflitoException("O horário selecionado já está ocupado.");
-        }
-    }
-
-    private boolean possuiConflito(
-            List<Consulta> consultasExistentes,
-            LocalDateTime novoInicio,
-            Integer ignorarConsultaId) {
-        LocalDateTime novoFim = novoInicio.plusMinutes(DURACAO_MINUTOS);
-        return consultasExistentes.stream()
-                .filter(consulta -> ignorarConsultaId == null || !ignorarConsultaId.equals(consulta.getId()))
-                .anyMatch(consulta -> consulta.getDataHora().isBefore(novoFim)
-                        && consulta.getDataHora().plusMinutes(DURACAO_MINUTOS).isAfter(novoInicio));
     }
 
     private void validarVersao(Long versao, Consulta consulta) {

@@ -155,6 +155,12 @@ class AgendaPacienteControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.horarios", hasItem(jsonDateTime(horario))));
 
+        mvc.perform(post("/api/v1/agenda/consultas")
+                        .header("Authorization", tokenPaciente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(solicitacao(horario)))
+                .andExpect(status().isCreated());
+
         Consulta pendente = consultas.save(new Consulta(
                 paciente, nutricionista, proximoDiaAtendimento(8).atTime(15, 30)));
         mvc.perform(post("/api/v1/agenda/consultas/{id}/cancelamento", pendente.getId())
@@ -162,6 +168,38 @@ class AgendaPacienteControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"versao\":" + pendente.getVersao() + "}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void pacienteENutricionistaCompartilhamBloqueioDeHorario() throws Exception {
+        LocalDate diaPaciente = proximoDiaAtendimento(12);
+        LocalDateTime horarioPaciente = diaPaciente.atTime(9, 0);
+        mvc.perform(post("/api/v1/agenda/consultas")
+                        .header("Authorization", tokenPaciente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(solicitacao(horarioPaciente)))
+                .andExpect(status().isCreated());
+
+        String consultasClinicas = "/api/v1/gestao-pacientes/" + paciente.getId() + "/consultas";
+        mvc.perform(post(consultasClinicas)
+                        .header("Authorization", tokenNutricionista)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(consultaConfirmada(horarioPaciente.plusMinutes(30))))
+                .andExpect(status().isConflict());
+
+        LocalDate diaNutricionista = proximoDiaAtendimento(14);
+        LocalDateTime horarioNutricionista = diaNutricionista.atTime(9, 0);
+        mvc.perform(post(consultasClinicas)
+                        .header("Authorization", tokenNutricionista)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(consultaConfirmada(horarioNutricionista)))
+                .andExpect(status().isCreated());
+
+        mvc.perform(post("/api/v1/agenda/consultas")
+                        .header("Authorization", tokenPaciente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(solicitacao(horarioNutricionista.plusMinutes(30))))
+                .andExpect(status().isConflict());
     }
 
     @Test
@@ -202,6 +240,10 @@ class AgendaPacienteControllerTest {
     private String solicitacao(LocalDateTime horario) {
         return "{\"nutricionistaId\":" + nutricionista.getId()
                 + ",\"dataHora\":\"" + horario + "\"}";
+    }
+
+    private String consultaConfirmada(LocalDateTime horario) {
+        return "{\"dataHora\":\"" + horario + "\",\"status\":\"CONFIRMADA\"}";
     }
 
     private String jsonDateTime(LocalDateTime horario) {
