@@ -3,7 +3,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Linking,
   RefreshControl,
   ScrollView,
@@ -14,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '../../components/layout/AppHeader';
+import { useAppAlert } from '../../components/feedback/AppAlertProvider';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { ApiError } from '../../core/api/api-response.types';
 import { logout } from '../../core/auth/auth.service';
@@ -39,6 +39,7 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 export function AppointmentsScreen({ navigation }: Props) {
+  const { showAlert } = useAppAlert();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [nutritionists, setNutritionists] = useState<NutricionistaVinculo[]>([]);
   const [userName, setUserName] = useState('Paciente');
@@ -112,7 +113,7 @@ export function AppointmentsScreen({ navigation }: Props) {
       await cancelAppointment(pendingCancellation.id, pendingCancellation.versao);
       setPendingCancellation(null);
       await load(true);
-      Alert.alert(
+      showAlert(
         'Consulta cancelada',
         'Se você adicionou essa consulta ao Google Agenda, remova o evento manualmente.'
       );

@@ -9,8 +9,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -43,6 +45,15 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleCorpoInvalido(HttpServletRequest request) {
         return ResponseEntity.badRequest().body(ApiErrorResponse.of(
                 400, "REQUISICAO_INVALIDA", "Confira os formatos de datas e valores informados.", request.getRequestURI()));
+    }
+
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class})
+    public ResponseEntity<ApiErrorResponse> handleParametroInvalido(HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of(
+                HttpStatus.BAD_REQUEST.value(),
+                "REQUISICAO_INVALIDA",
+                "Confira os parâmetros informados.",
+                request.getRequestURI()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

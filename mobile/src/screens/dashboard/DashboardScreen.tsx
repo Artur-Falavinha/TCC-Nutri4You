@@ -3,7 +3,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   ImageBackground,
   Pressable,
   RefreshControl,
@@ -17,6 +16,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import DietIcon from '../../assets/appointments/nav-diet.svg';
 import { AppHeader } from '../../components/layout/AppHeader';
+import { useAppAlert } from '../../components/feedback/AppAlertProvider';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { logout } from '../../core/auth/auth.service';
 import {
@@ -38,6 +38,7 @@ const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export function DashboardScreen({ navigation }: Props) {
+  const { showAlert } = useAppAlert();
   const [menuVisible, setMenuVisible] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
@@ -139,7 +140,7 @@ export function DashboardScreen({ navigation }: Props) {
         await sair();
         break;
       default:
-        Alert.alert(
+        showAlert(
           'Em breve',
           'Esta funcionalidade será disponibilizada nas próximas entregas.'
         );
@@ -152,7 +153,7 @@ export function DashboardScreen({ navigation }: Props) {
   };
 
   const handlePressAcessarDieta = () => {
-    Alert.alert(
+    showAlert(
       'Plano Alimentar',
       dados?.dietaAtiva
         ? `Seu plano alimentar atual prescrito por ${dados.dietaAtiva.nutricionistaNome || 'sua nutricionista'} possui meta de ${formatarNumeroMilhar(dados.dietaAtiva.metaKcal)} kcal.`

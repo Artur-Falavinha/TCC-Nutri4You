@@ -18,6 +18,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
@@ -237,6 +238,60 @@ class AgendaPacienteControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void errosDeConversaoEmParametrosRetornamEnvelopeDeRequisicaoInvalida() throws Exception {
+        String path = "/api/v1/agenda/disponibilidade";
+        String nutricionistaId = nutricionista.getId().toString();
+
+        assertRequisicaoInvalida(get(path)
+                .header("Authorization", tokenPaciente)
+                .param("nutricionistaId", nutricionistaId)
+                .param("data", "not-a-date"), path);
+        assertRequisicaoInvalida(get(path)
+                .header("Authorization", tokenPaciente)
+                .param("nutricionistaId", nutricionistaId)
+                .param("data", "2026-02-30"), path);
+        assertRequisicaoInvalida(get(path)
+                .header("Authorization", tokenPaciente)
+                .param("nutricionistaId", nutricionistaId)
+                .param("data", "10000-01-01"), path);
+        assertRequisicaoInvalida(get(path)
+                .header("Authorization", tokenPaciente)
+                .param("nutricionistaId", "not-an-id")
+                .param("data", proximoDiaAtendimento(2).toString()), path);
+        assertRequisicaoInvalida(get("/api/v1/gestao-pacientes/{id}/consultas", paciente.getId())
+                .header("Authorization", tokenNutricionista)
+                .param("pagina", "not-a-page"),
+                "/api/v1/gestao-pacientes/" + paciente.getId() + "/consultas");
+        assertRequisicaoInvalida(get("/api/v1/gestao-pacientes/not-an-id/consultas")
+                .header("Authorization", tokenNutricionista),
+                "/api/v1/gestao-pacientes/not-an-id/consultas");
+    }
+
+    @Test
+    void parametrosObrigatoriosAusentesRetornamEnvelopeDeRequisicaoInvalida() throws Exception {
+        String path = "/api/v1/agenda/disponibilidade";
+
+        assertRequisicaoInvalida(get(path)
+                .header("Authorization", tokenPaciente)
+                .param("nutricionistaId", nutricionista.getId().toString()), path);
+        assertRequisicaoInvalida(get(path)
+                .header("Authorization", tokenPaciente)
+                .param("data", proximoDiaAtendimento(2).toString()), path);
+    }
+
+    @Test
+    void errosDeConversaoNaoAlteramOsStatusDeAutenticacaoEAutorizacao() throws Exception {
+        mvc.perform(get("/api/v1/agenda/disponibilidade")
+                        .param("nutricionistaId", "not-an-id")
+                        .param("data", proximoDiaAtendimento(2).toString()))
+                .andExpect(status().isUnauthorized());
+
+        mvc.perform(get("/api/v1/gestao-pacientes/{id}/consultas", paciente.getId())
+                        .header("Authorization", tokenPaciente))
+                .andExpect(status().isForbidden());
+    }
+
     private String solicitacao(LocalDateTime horario) {
         return "{\"nutricionistaId\":" + nutricionista.getId()
                 + ",\"dataHora\":\"" + horario + "\"}";
@@ -248,6 +303,18 @@ class AgendaPacienteControllerTest {
 
     private String jsonDateTime(LocalDateTime horario) {
         return horario.format(JSON_DATE_TIME);
+    }
+
+    private void assertRequisicaoInvalida(
+            MockHttpServletRequestBuilder request,
+            String path) throws Exception {
+        mvc.perform(request)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("REQUISICAO_INVALIDA"))
+                .andExpect(jsonPath("$.message").value("Confira os parâmetros informados."))
+                .andExpect(jsonPath("$.path").value(path))
+                .andExpect(jsonPath("$.timestamp").isNotEmpty());
     }
 
     private LocalDate proximoDiaAtendimento(int dias) {

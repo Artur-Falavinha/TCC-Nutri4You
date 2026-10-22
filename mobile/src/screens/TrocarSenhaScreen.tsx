@@ -10,17 +10,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  Alert,
   ScrollView,
   ActivityIndicator
 } from 'react-native';
 
+import { useAppAlert } from '../components/feedback/AppAlertProvider';
 import { solicitarRecuperacaoSenha } from '../core/auth/auth.service';
 import { isValidUuid } from '../core/utils/uuid.util';
 import type { RootStackParamList } from '../navigation/types';
 
 export default function TrocarSenhaScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { showAlert } = useAppAlert();
   const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState('');
   const [token, setToken] = useState('');
@@ -29,24 +30,24 @@ export default function TrocarSenhaScreen() {
   const handleSubmit = async () => {
     if (step === 1) {
       if (!email.trim()) {
-        Alert.alert('Atenção', 'Preencha o e-mail cadastrado.');
+        showAlert('Atenção', 'Preencha o e-mail cadastrado.');
         return;
       }
       setIsLoading(true);
       const mensagem = await solicitarRecuperacaoSenha(email);
       setIsLoading(false);
       setStep(2);
-      Alert.alert('Pronto', mensagem);
+      showAlert('Pronto', mensagem);
       return;
     }
 
     const trimmed = token.trim();
     if (!trimmed) {
-      Alert.alert('Atenção', 'Cole o código de verificação (UUID).');
+      showAlert('Atenção', 'Cole o código de verificação (UUID).');
       return;
     }
     if (!isValidUuid(trimmed)) {
-      Alert.alert('Atenção', 'Código inválido. Informe um UUID válido.');
+      showAlert('Atenção', 'Código inválido. Informe um UUID válido.');
       return;
     }
     navigation.navigate('NovaSenha', { token: trimmed });

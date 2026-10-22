@@ -11,16 +11,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  Alert,
   ActivityIndicator
 } from 'react-native';
 
+import { useAppAlert } from '../components/feedback/AppAlertProvider';
 import { login } from '../core/auth/auth.service';
 import { ApiError } from '../core/api/api-response.types';
 import type { RootStackParamList } from '../navigation/types';
 
 export default function LoginScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { showAlert } = useAppAlert();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +29,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Atenção', 'Preencha todos os campos.');
+      showAlert('Atenção', 'Preencha todos os campos.');
       return;
     }
 
@@ -44,7 +45,7 @@ export default function LoginScreen() {
       );
     } catch (err: unknown) {
       const apiError = err instanceof ApiError ? err : null;
-      Alert.alert(
+      showAlert(
         apiError?.status === 401
           ? 'Erro de autenticação'
           : apiError?.status === 403
