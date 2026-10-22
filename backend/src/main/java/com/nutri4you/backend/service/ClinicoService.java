@@ -28,6 +28,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -36,6 +37,7 @@ import java.util.Optional;
 @Service
 public class ClinicoService {
 
+    private static final ZoneId FUSO_HORARIO = ZoneId.of("America/Sao_Paulo");
     private final GestaoPacienteService gestaoPacienteService;
     private final AvaliacaoAntropometricaRepository avaliacaoRepository;
     private static final String[] DIAS = {"Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"};
@@ -110,7 +112,7 @@ public class ClinicoService {
     @Transactional(readOnly = true)
     public ConsumoProgressoDTO consumoDiarioProgresso(Paciente paciente) {
         Optional<ConsumoDiario> consumo = consumoDiarioRepository
-                .findByPaciente_IdAndDataRegistro(paciente.getId(), LocalDate.now());
+                .findByPaciente_IdAndDataRegistro(paciente.getId(), LocalDate.now(FUSO_HORARIO));
         MetasNutricionais metas = buscarMetasNutricionais(paciente.getId()).orElse(null);
 
         if (consumo.isEmpty() && metas == null) {
@@ -137,12 +139,13 @@ public class ClinicoService {
                 .map(this::paraDietaResumo)
                 .orElse(null);
 
-        LocalDateTime limiteRecente = LocalDateTime.now().minusHours(2);
+        LocalDateTime agora = LocalDateTime.now(FUSO_HORARIO);
         DashboardPacienteDTO.ProximaConsultaDTO proximaConsulta = consultaRepository
                 .findByPaciente_IdOrderByDataHoraDesc(paciente.getId())
                 .stream()
+                .filter(c -> !c.getDataHora().isBefore(agora))
+                .filter(c -> !"REALIZADA".equalsIgnoreCase(c.getStatus()))
                 .filter(this::naoCancelada)
-                .filter(c -> !c.getDataHora().isBefore(limiteRecente))
                 .min(Comparator.comparing(Consulta::getDataHora))
                 .map(c -> new DashboardPacienteDTO.ProximaConsultaDTO(
                         c.getId(),
@@ -156,7 +159,7 @@ public class ClinicoService {
 
     private Optional<PlanoAlimentar> buscarPlanoAtivo(Integer pacienteId) {
         List<PlanoAlimentar> planos = planoAlimentarRepository.findByPaciente_IdOrderByIdDesc(pacienteId);
-        LocalDate hoje = LocalDate.now();
+        LocalDate hoje = LocalDate.now(FUSO_HORARIO);
 
         Optional<PlanoAlimentar> publicadoVigente = planos.stream()
                 .filter(plano -> "PUBLICADO".equalsIgnoreCase(plano.getStatus()))
@@ -164,11 +167,7 @@ public class ClinicoService {
                 .filter(plano -> plano.getVigenciaFim() == null || !plano.getVigenciaFim().isBefore(hoje))
                 .findFirst();
 
-        return publicadoVigente
-                .or(() -> planos.stream()
-                        .filter(plano -> plano.getConsulta() != null)
-                        .filter(plano -> naoCancelada(plano.getConsulta()))
-                        .findFirst());
+        return publicadoVigente;
     }
 
     private Optional<MetasNutricionais> buscarMetasNutricionais(Integer pacienteId) {
