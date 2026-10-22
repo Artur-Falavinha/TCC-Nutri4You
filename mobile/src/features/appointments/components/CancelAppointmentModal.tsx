@@ -35,12 +35,7 @@ export function CancelAppointmentModal({
           <Text style={styles.title}>Cancelar Consulta?</Text>
           {appointment ? (
             <Text style={styles.message}>
-              Tem certeza que deseja cancelar sua consulta com a{' '}
-              <Text style={styles.emphasis}>{appointment.nutricionistaNome}</Text> no dia{' '}
-              <Text style={styles.emphasis}>
-                {appointmentLongDateLabel(appointment.dataHora)}
-              </Text>
-              ?
+              {`Tem certeza que deseja cancelar sua consulta com ${appointment.nutricionistaNome} no dia ${appointmentLongDateLabel(appointment.dataHora)}?`}
             </Text>
           ) : null}
 
@@ -112,10 +107,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 26,
     textAlign: 'center'
-  },
-  emphasis: {
-    color: '#1a1c1c',
-    fontFamily: fontFamily.bold
   },
   actions: {
     width: '100%',

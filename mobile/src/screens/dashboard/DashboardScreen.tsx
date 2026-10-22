@@ -271,8 +271,7 @@ export function DashboardScreen({ navigation }: Props) {
                     strokeDashoffset={strokeDashoffset}
                     strokeLinecap="round"
                     fill="none"
-                    rotation="-90"
-                    origin={`${RING_SIZE / 2}, ${RING_SIZE / 2}`}
+                    transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
                   />
                 </Svg>
                 <View style={styles.ringCenter}>
