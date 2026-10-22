@@ -196,6 +196,10 @@ export function EvolucaoScreen({ navigation }: Props) {
       navigation.navigate('DadosPessoais');
       return;
     }
+    if (destino === 'appointments') {
+      navigation.navigate('Agenda');
+      return;
+    }
     if (destino === 'password') {
       navigation.navigate('TrocarSenha');
       return;

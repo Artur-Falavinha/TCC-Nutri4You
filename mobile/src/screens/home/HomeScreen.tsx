@@ -143,6 +143,10 @@ export function HomeScreen({ navigation }: Props) {
       navigation.navigate('Evolucao');
       return;
     }
+    if (destino === 'appointments') {
+      navigation.navigate('Agenda');
+      return;
+    }
     if (destino === 'password') {
       navigation.navigate('TrocarSenha');
       return;

@@ -4,4 +4,8 @@ public class ConsultaConflitoException extends RuntimeException {
     public ConsultaConflitoException() {
         super("Esta consulta foi alterada por outra sessao. Recarregue antes de salvar.");
     }
+
+    public ConsultaConflitoException(String mensagem) {
+        super(mensagem);
+    }
 }

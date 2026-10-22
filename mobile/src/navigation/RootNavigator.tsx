@@ -19,6 +19,8 @@ import { HealthScreen } from '../screens/health/HealthScreen';
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
 import { EvolucaoScreen } from '../screens/evolucao/EvolucaoScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
+import { AppointmentsScreen } from '../screens/appointments/AppointmentsScreen';
+import { AvailableSlotsScreen } from '../screens/appointments/AvailableSlotsScreen';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -39,6 +41,8 @@ const linking = {
       Dashboard: 'dashboard',
       Evolucao: 'evolucao',
       DadosPessoais: 'dados-pessoais',
+      Agenda: 'agenda',
+      HorariosDisponiveis: 'agenda/horarios',
       Health: 'health'
     }
   }
@@ -151,6 +155,16 @@ export function RootNavigator() {
         <Stack.Screen
           name="DadosPessoais"
           component={HomeScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Agenda"
+          component={AppointmentsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="HorariosDisponiveis"
+          component={AvailableSlotsScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen name="Health" component={HealthScreen} options={{ title: 'Status da API' }} />

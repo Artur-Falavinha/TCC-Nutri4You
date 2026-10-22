@@ -129,6 +129,9 @@ export function DashboardScreen({ navigation }: Props) {
       case 'results':
         navigation.navigate('Evolucao');
         break;
+      case 'appointments':
+        navigation.navigate('Agenda');
+        break;
       case 'password':
         navigation.navigate('TrocarSenha');
         break;
@@ -145,12 +148,7 @@ export function DashboardScreen({ navigation }: Props) {
   };
 
   const handlePressProximaConsulta = () => {
-    Alert.alert(
-      'Agenda de Consultas',
-      dados?.proximaConsulta
-        ? `Sua próxima consulta está agendada para ${formatarDataHoraConsulta(dados.proximaConsulta.dataHora)}.`
-        : 'Você ainda não possui uma próxima consulta agendada.'
-    );
+    navigation.navigate('Agenda');
   };
 
   const handlePressAcessarDieta = () => {
