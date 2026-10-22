@@ -650,7 +650,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end'
   },
   dietaImageStyle: {
-    borderRadius: radius.xl
+    borderRadius: radius.xl,
+    width: '100%',
+    height: '100%'
   },
   dietaOverlay: {
     flex: 1,
