@@ -39,7 +39,7 @@ export function MedidasGridCarousel({ avaliacoes }: Props) {
       };
     }
     const variacao = anterior && valAnterior != null
-      ? calcularVariacao(valAtual, valAnterior, unidade)
+      ? calcularVariacao(valAtual, valAnterior, unidade, decimais)
       : null;
 
     const valorFormatado = decimais === 0

@@ -132,19 +132,8 @@ public class UsuarioController {
 
     @GetMapping("/me/consumo-diario/progresso")
     public ResponseEntity<ApiResponse<ConsumoProgressoDTO>> consumoDiarioProgresso(Authentication authentication) {
-        paciente(authentication);
         return ResponseEntity.ok(ApiResponse.ok(
-                new ConsumoProgressoDTO(
-                        "Hoje",
-                        1850.0,
-                        2000.0,
-                        140.0,
-                        160.0,
-                        210.0,
-                        250.0,
-                        55.0,
-                        65.0
-                ),
+                clinicoService.consumoDiarioProgresso(paciente(authentication)),
                 "Consumo diário carregado."));
     }
 

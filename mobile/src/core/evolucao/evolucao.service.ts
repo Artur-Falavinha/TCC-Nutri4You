@@ -32,13 +32,13 @@ export interface EvolucaoHistorico {
 export interface ConsumoProgresso {
   data: string;
   caloriasConsumidas: number;
-  metaCalorias?: number;
+  metaCalorias?: number | null;
   proteinas: number;
-  metaProteinas?: number;
+  metaProteinas?: number | null;
   carboidratos: number;
-  metaCarboidratos?: number;
+  metaCarboidratos?: number | null;
   gorduras: number;
-  metaGorduras?: number;
+  metaGorduras?: number | null;
 }
 
 export interface VariacaoCalculada {
@@ -50,23 +50,49 @@ export interface VariacaoCalculada {
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
+function extrairData(dataIso: string): { dia: number; mes: number } | null {
+  if (!dataIso) return null;
+
+  const isoLocal = /^(\d{4})-(\d{2})-(\d{2})/.exec(dataIso);
+  if (isoLocal) {
+    const ano = Number(isoLocal[1]);
+    const mes = Number(isoLocal[2]);
+    const dia = Number(isoLocal[3]);
+    const validacao = new Date(Date.UTC(ano, mes - 1, dia));
+    if (
+      validacao.getUTCFullYear() === ano &&
+      validacao.getUTCMonth() === mes - 1 &&
+      validacao.getUTCDate() === dia
+    ) {
+      return { dia, mes };
+    }
+    return null;
+  }
+
+  const data = new Date(dataIso);
+  if (Number.isNaN(data.getTime())) return null;
+  return { dia: data.getDate(), mes: data.getMonth() + 1 };
+}
+
 export function formatarDataMes(dataIso: string): string {
-  if (!dataIso) return '';
-  const d = new Date(dataIso);
-  if (isNaN(d.getTime())) return '';
-  return MESES[d.getMonth()] || '';
+  const data = extrairData(dataIso);
+  return data ? MESES[data.mes - 1] || '' : '';
 }
 
 export function formatarDataDiaMes(dataIso: string): string {
-  if (!dataIso) return '';
-  const d = new Date(dataIso);
-  if (isNaN(d.getTime())) return '';
-  const dia = String(d.getDate()).padStart(2, '0');
-  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const data = extrairData(dataIso);
+  if (!data) return '';
+  const dia = String(data.dia).padStart(2, '0');
+  const mes = String(data.mes).padStart(2, '0');
   return `${dia}/${mes}`;
 }
 
-export function calcularVariacao(atual?: number | null, anterior?: number | null, unidade = ''): VariacaoCalculada | null {
+export function calcularVariacao(
+  atual?: number | null,
+  anterior?: number | null,
+  unidade = '',
+  decimais = 1
+): VariacaoCalculada | null {
   if (atual == null || anterior == null || isNaN(atual) || isNaN(anterior)) {
     return null;
   }
@@ -84,7 +110,8 @@ export function calcularVariacao(atual?: number | null, anterior?: number | null
   }
 
   const sinal = diff > 0 ? '+' : '-';
-  const texto = `${sinal}${absDiff.toFixed(1)} ${unidade}`.trim();
+  const casasDecimais = Math.max(0, Math.min(4, Math.trunc(decimais)));
+  const texto = `${sinal}${absDiff.toFixed(casasDecimais)} ${unidade}`.trim();
   return {
     valor: Number(diff.toFixed(2)),
     percentual: Number(percentual.toFixed(1)),
