@@ -165,9 +165,9 @@ export function EvolucaoScreen({ navigation }: Props) {
     if (graficoAba === 1 && atual?.percentualGordura != null && primeira?.percentualGordura != null) {
       const diffTotal = Number((atual.percentualGordura - primeira.percentualGordura).toFixed(1));
       if (diffTotal < 0) {
-        return `Você perdeu ${Math.abs(diffTotal)}% de gordura corporal desde o início da sua jornada. Continue focado nos seus objetivos!`;
+        return `Seu percentual de gordura diminuiu ${Math.abs(diffTotal)} pontos percentuais desde o início da sua jornada. Continue focado nos seus objetivos!`;
       } else if (diffTotal > 0) {
-        return `Sua gordura corporal variou +${diffTotal}% desde o início da sua jornada. Continue focado nos seus objetivos!`;
+        return `Seu percentual de gordura aumentou ${diffTotal} pontos percentuais desde o início da sua jornada. Continue focado nos seus objetivos!`;
       } else {
         return 'Seu percentual de gordura manteve-se estável desde o início da sua jornada.';
       }
