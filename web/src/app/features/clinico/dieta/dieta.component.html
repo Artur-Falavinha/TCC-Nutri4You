@@ -334,6 +334,7 @@
                             <li
                               role="option"
                               class="taco-dropdown__option"
+                              [attr.aria-selected]="alimento.id === item.alimentoId"
                               [class.taco-dropdown__option--selected]="alimento.id === item.alimentoId"
                               (mousedown)="selecionarAlimentoTaco(item, alimento)"
                             >
@@ -439,6 +440,7 @@
                                   <li
                                     role="option"
                                     class="taco-dropdown__option"
+                                    [attr.aria-selected]="alimento.id === sub.alimentoId"
                                     [class.taco-dropdown__option--selected]="alimento.id === sub.alimentoId"
                                     (mousedown)="selecionarAlimentoTaco(sub, alimento)"
                                   >

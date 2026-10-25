@@ -61,7 +61,7 @@ export class DietaComponent implements OnInit {
 
   planosHistorico: PlanoAlimentarResponse[] = [];
   planoAtualId: number | null = null;
-  statusPlano: string = 'RASCUNHO';
+  statusPlano = 'RASCUNHO';
   versaoPlano: number | null = null;
   tituloPlano = 'Plano alimentar';
   observacoesPlano = '';
