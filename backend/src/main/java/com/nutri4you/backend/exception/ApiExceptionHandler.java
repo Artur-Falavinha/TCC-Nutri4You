@@ -19,7 +19,9 @@ public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
-    @ExceptionHandler({ConsultaNaoEncontradaException.class,
+    @ExceptionHandler({
+            ConsultaNaoEncontradaException.class,
+            PlanoNaoEncontradoException.class,
             com.nutri4you.backend.service.PacienteNaoEncontradoException.class})
     public ResponseEntity<ApiErrorResponse> handlePlanoNaoEncontrado(
             RuntimeException exception, HttpServletRequest request) {
@@ -27,7 +29,7 @@ public class ApiExceptionHandler {
                 404, "NAO_ENCONTRADO", exception.getMessage(), request.getRequestURI()));
     }
 
-    @ExceptionHandler(ConsultaConflitoException.class)
+    @ExceptionHandler({ConsultaConflitoException.class, PlanoConflitoException.class})
     public ResponseEntity<ApiErrorResponse> handlePlanoConflito(
             RuntimeException exception, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(

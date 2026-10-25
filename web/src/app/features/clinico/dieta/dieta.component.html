@@ -1,0 +1,610 @@
+<header class="page-header">
+  <h1>{{ nomePaciente || 'Paciente' }}</h1>
+  <app-patient-tabs [patientId]="patientId" />
+</header>
+
+<main class="canvas" [attr.aria-busy]="carregando || salvando">
+  <app-form-alert [message]="erro" type="error" />
+  <app-form-alert [message]="mensagem" type="success" />
+
+  @if (carregando) {
+    <p class="state" role="status">Carregando prescrição de dieta e Tabela TACO...</p>
+  } @else if (!carregado) {
+    <div class="state">
+      <app-ui-button
+        label="Tentar novamente"
+        icon="arrow-clockwise"
+        [fullWidth]="false"
+        (click)="carregarDadosIniciais()"
+      />
+    </div>
+  } @else {
+    <section class="plan-topbar" aria-label="Controle do plano alimentar">
+      <div class="plan-topbar__info">
+        <div class="plan-title-row">
+          <h2>{{ tituloPlano || 'Plano alimentar' }}</h2>
+          <span
+            class="status-badge"
+            [class.status-badge--publicado]="statusPlano === 'PUBLICADO'"
+            [class.status-badge--substituido]="statusPlano === 'SUBSTITUIDO'"
+          >
+            {{ statusLabel(statusPlano) }}
+          </span>
+        </div>
+        <p class="subtitle">
+          Catálogo oficial integrado: Tabela TACO ({{ catalogoTaco.length }} alimentos disponíveis)
+        </p>
+      </div>
+
+      <div class="plan-topbar__actions">
+        @if (planosHistorico.length > 1) {
+          <label class="plan-history-select">
+            <span class="sr-only">Selecionar versão do plano</span>
+            <select
+              aria-label="Histórico de planos alimentares"
+              [ngModel]="planoAtualId"
+              (ngModelChange)="selecionarPlanoHistorico($event)"
+            >
+              @for (p of planosHistorico; track p.id) {
+                <option [value]="p.id">
+                  #{{ p.id }} · {{ p.titulo }} ({{ statusLabel(p.status) }})
+                </option>
+              }
+            </select>
+          </label>
+        }
+
+        <button
+          type="button"
+          class="btn-outline"
+          (click)="exibirConfiguracoesPlano = !exibirConfiguracoesPlano"
+        >
+          <i class="ph ph-sliders-horizontal" aria-hidden="true"></i>
+          Vigência e observações
+        </button>
+
+        @if (planoAtualId) {
+          <button type="button" class="btn-outline" (click)="abrirListaCompras()">
+            <i class="ph ph-shopping-cart" aria-hidden="true"></i>
+            Lista de compras
+          </button>
+        }
+
+        @if (somenteLeitura) {
+          <button type="button" class="btn-brand" (click)="duplicarParaNovoRascunho()">
+            <i class="ph ph-copy" aria-hidden="true"></i>
+            Criar cópia editável
+          </button>
+        } @else if (planoAtualId) {
+          <button type="button" class="btn-outline" (click)="iniciarNovoPlano()">
+            <i class="ph ph-file-plus" aria-hidden="true"></i>
+            Novo plano
+          </button>
+        }
+      </div>
+    </section>
+
+    @if (exibirConfiguracoesPlano) {
+      <section class="plan-settings-card" aria-label="Configurações de vigência e observações">
+        <div class="plan-settings-grid">
+          <div class="field-group">
+            <label for="tituloPlano">Título do plano</label>
+            <input
+              id="tituloPlano"
+              type="text"
+              [(ngModel)]="tituloPlano"
+              [disabled]="somenteLeitura"
+              maxlength="100"
+              placeholder="Ex: Plano alimentar hipertrofia"
+            />
+          </div>
+          <div class="field-group">
+            <label for="vigenciaInicio">Início da vigência</label>
+            <input
+              id="vigenciaInicio"
+              type="date"
+              [(ngModel)]="vigenciaInicio"
+              [disabled]="somenteLeitura"
+            />
+          </div>
+          <div class="field-group">
+            <label for="vigenciaFim">Fim da vigência (opcional)</label>
+            <input
+              id="vigenciaFim"
+              type="date"
+              [(ngModel)]="vigenciaFim"
+              [disabled]="somenteLeitura"
+            />
+          </div>
+          <div class="field-group">
+            <label for="categoriaFiltro">Filtrar alimentos por grupo TACO</label>
+            <select id="categoriaFiltro" [(ngModel)]="categoriaFiltro">
+              <option value="">Todos os grupos alimentares</option>
+              @for (cat of categoriasTaco; track cat) {
+                <option [value]="cat">{{ cat }}</option>
+              }
+            </select>
+          </div>
+          <div class="field-group field-group--full">
+            <label for="observacoesPlano">Observações e orientações nutricionais</label>
+            <textarea
+              id="observacoesPlano"
+              rows="2"
+              [(ngModel)]="observacoesPlano"
+              [disabled]="somenteLeitura"
+              placeholder="Recomendações de hidratação, preparo dos alimentos ou suplementação..."
+            ></textarea>
+          </div>
+        </div>
+      </section>
+    }
+
+    <!-- Seletor de Dias da Semana (Figma 2589-2782 / Figura 21) -->
+    <section class="weekdays-bar" aria-label="Dias da semana">
+      <div class="weekdays-pills" role="tablist">
+        @for (dia of diasSemana; track dia) {
+          <button
+            type="button"
+            role="tab"
+            class="weekday-pill"
+            [class.weekday-pill--active]="diaSelecionado === dia"
+            [attr.aria-selected]="diaSelecionado === dia"
+            (click)="selecionarDia(dia)"
+          >
+            <span>{{ dia }}</span>
+            @if (quantidadeRefeicoesNoDia(dia) > 0) {
+              <small class="weekday-pill__count">{{ quantidadeRefeicoesNoDia(dia) }}</small>
+            }
+          </button>
+        }
+      </div>
+
+      @if (!somenteLeitura && refeicoesDoDia.length > 0) {
+        <button
+          type="button"
+          class="btn-link-replicate"
+          title="Copiar todas as refeições deste dia para os demais dias da semana"
+          (click)="replicarDiaParaTodos()"
+        >
+          <i class="ph ph-arrows-Clockwise" aria-hidden="true"></i>
+          Replicar {{ diaSelecionado }} para toda a semana
+        </button>
+      }
+    </section>
+
+    <!-- Resumo Nutricional em Tempo Real do Dia Selecionado -->
+    <section class="day-macros-summary" [attr.aria-label]="'Resumo nutricional de ' + diaSelecionado">
+      <div class="macro-metric">
+        <span class="macro-metric__label">Calorias ({{ diaSelecionado }})</span>
+        <strong class="macro-metric__value">
+          {{ nutrientesDoDiaSelecionado.kcal | number:'1.0-2' }} <small>kcal</small>
+        </strong>
+      </div>
+      <div class="macro-metric">
+        <span class="macro-metric__label">Proteínas</span>
+        <strong class="macro-metric__value">
+          {{ nutrientesDoDiaSelecionado.proteina | number:'1.0-2' }} <small>g</small>
+        </strong>
+      </div>
+      <div class="macro-metric">
+        <span class="macro-metric__label">Carboidratos</span>
+        <strong class="macro-metric__value">
+          {{ nutrientesDoDiaSelecionado.carboidratos | number:'1.0-2' }} <small>g</small>
+        </strong>
+      </div>
+      <div class="macro-metric">
+        <span class="macro-metric__label">Lipídeos (Gorduras)</span>
+        <strong class="macro-metric__value">
+          {{ nutrientesDoDiaSelecionado.gordura | number:'1.0-2' }} <small>g</small>
+        </strong>
+      </div>
+      <div class="macro-metric">
+        <span class="macro-metric__label">Fibras</span>
+        <strong class="macro-metric__value">
+          {{ nutrientesDoDiaSelecionado.fibra | number:'1.0-2' }} <small>g</small>
+        </strong>
+      </div>
+    </section>
+
+    <!-- Lista de Cards de Refeição do Dia Selecionado -->
+    @if (refeicoesDoDia.length === 0) {
+      <div class="empty-day-card">
+        <i class="ph ph-fork-knife" aria-hidden="true"></i>
+        <h3>Nenhuma refeição cadastrada para {{ diaSelecionado }}</h3>
+        <p>Adicione uma nova refeição ou cole uma refeição copiada de outro dia.</p>
+        @if (!somenteLeitura) {
+          <div class="empty-day-card__actions">
+            <button type="button" class="btn-brand" (click)="adicionarRefeicao('Café da manhã')">
+              <i class="ph ph-plus" aria-hidden="true"></i>
+              Nova refeição
+            </button>
+            @if (refeicaoCopiada) {
+              <button type="button" class="btn-outline" (click)="colarRefeicao()">
+                <i class="ph ph-clipboard-text" aria-hidden="true"></i>
+                Colar refeição ({{ refeicaoCopiada.nome || 'Copiada' }})
+              </button>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <div class="meals-list">
+      @for (refeicao of refeicoesDoDia; track refeicao.uid; let mealIdx = $index) {
+        <article class="meal-card" [attr.aria-label]="'Refeição ' + (refeicao.nome || (mealIdx + 1))">
+          <!-- Cabeçalho da Refeição: Nome, Horário e Botões (Apagar refeição, Copiar refeição, Adicionar alimento) -->
+          <div class="meal-card__header">
+            <div class="meal-card__title-inputs">
+              <div class="field-group meal-name-field">
+                <label [for]="'meal-name-' + refeicao.uid">Nome da refeição</label>
+                <input
+                  [id]="'meal-name-' + refeicao.uid"
+                  type="text"
+                  [(ngModel)]="refeicao.nome"
+                  [disabled]="somenteLeitura"
+                  placeholder="Ex: Café da manhã, Almoço, Jantar"
+                />
+              </div>
+
+              <div class="field-group meal-time-field">
+                <label [for]="'meal-time-' + refeicao.uid">Horário</label>
+                <input
+                  [id]="'meal-time-' + refeicao.uid"
+                  type="time"
+                  [(ngModel)]="refeicao.horario"
+                  [disabled]="somenteLeitura"
+                />
+              </div>
+            </div>
+
+            @if (!somenteLeitura) {
+              <div class="meal-card__actions">
+                <button
+                  type="button"
+                  class="btn-meal-action btn-meal-action--danger"
+                  (click)="removerRefeicao(refeicao.uid)"
+                >
+                  <i class="ph ph-trash" aria-hidden="true"></i>
+                  Apagar refeição
+                </button>
+                <button
+                  type="button"
+                  class="btn-meal-action"
+                  (click)="copiarRefeicao(refeicao)"
+                >
+                  <i class="ph ph-copy" aria-hidden="true"></i>
+                  Copiar refeição
+                </button>
+                <button
+                  type="button"
+                  class="btn-meal-action btn-meal-action--primary"
+                  (click)="adicionarAlimento(refeicao)"
+                >
+                  <i class="ph ph-plus" aria-hidden="true"></i>
+                  Adicionar alimento
+                </button>
+              </div>
+            }
+          </div>
+
+          <!-- Subtotal Nutricional da Refeição -->
+          @let subtotal = nutrientesDaRefeicao(refeicao);
+          <div class="meal-card__subtotal">
+            <span>Total da refeição:</span>
+            <strong>{{ subtotal.kcal | number:'1.0-1' }} kcal</strong>
+            <span>·</span>
+            <span>P: {{ subtotal.proteina | number:'1.0-1' }}g</span>
+            <span>·</span>
+            <span>C: {{ subtotal.carboidratos | number:'1.0-1' }}g</span>
+            <span>·</span>
+            <span>G: {{ subtotal.gordura | number:'1.0-1' }}g</span>
+          </div>
+
+          <!-- Lista de Alimentos da Refeição -->
+          <div class="food-items-container">
+            @for (item of refeicao.itens; track item.uid; let itemIdx = $index) {
+              <div class="food-item-block">
+                <div class="food-row">
+                  <!-- Campo Alimento com Autocomplete TACO -->
+                  <div class="field-group food-search-field">
+                    <label [for]="'food-input-' + item.uid">Alimento</label>
+                    <div class="autocomplete-wrapper">
+                      <input
+                        [id]="'food-input-' + item.uid"
+                        type="text"
+                        autocomplete="off"
+                        [ngModel]="item.termoBusca"
+                        (ngModelChange)="aoDigitarBuscaAlimento(item, $event)"
+                        (focus)="abrirDropdownAlimento(item)"
+                        (blur)="fecharDropdownComDelay(item)"
+                        [disabled]="somenteLeitura"
+                        placeholder="Pesquisar alimento na Tabela TACO (ex: Arroz, Frango, Banana)..."
+                      />
+                      <i class="ph ph-magnifying-glass autocomplete-icon" aria-hidden="true"></i>
+
+                      @if (item.abertoDropdown && !somenteLeitura) {
+                        @let sugestoes = filtrarSugestoesTaco(item.termoBusca);
+                        <ul class="taco-dropdown" role="listbox" aria-label="Sugestões da Tabela TACO">
+                          @if (sugestoes.length === 0) {
+                            <li class="taco-dropdown__empty">
+                              Nenhum alimento encontrado para "{{ item.termoBusca }}".
+                            </li>
+                          }
+                          @for (alimento of sugestoes; track alimento.id) {
+                            <li
+                              role="option"
+                              class="taco-dropdown__option"
+                              [class.taco-dropdown__option--selected]="alimento.id === item.alimentoId"
+                              (mousedown)="selecionarAlimentoTaco(item, alimento)"
+                            >
+                              <div class="taco-option__main">
+                                <span class="taco-option__name">{{ alimento.nome }}</span>
+                                @if (alimento.categoria) {
+                                  <span class="taco-option__cat">{{ alimento.categoria }}</span>
+                                }
+                              </div>
+                              <div class="taco-option__macros">
+                                <span>100g:</span>
+                                <strong>{{ alimento.kcal100g | number:'1.0-0' }} kcal</strong>
+                                <span>P: {{ alimento.proteina100g | number:'1.0-1' }}g</span>
+                                <span>C: {{ alimento.carboidratos100g | number:'1.0-1' }}g</span>
+                                <span>G: {{ alimento.gordura100g | number:'1.0-1' }}g</span>
+                              </div>
+                            </li>
+                          }
+                        </ul>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Campo Qtd (g) -->
+                  <div class="field-group food-qty-field">
+                    <label [for]="'food-qty-' + item.uid">Qtd (g)</label>
+                    <input
+                      [id]="'food-qty-' + item.uid"
+                      type="number"
+                      min="1"
+                      max="5000"
+                      step="1"
+                      [(ngModel)]="item.quantidadeGramas"
+                      [disabled]="somenteLeitura"
+                      placeholder="100"
+                    />
+                  </div>
+
+                  <!-- Resumo de Macros calculado proporcionalmente à Qtd(g) -->
+                  @let calcItem = nutrientesDoItem(item);
+                  <div class="food-calculated-pill" title="Nutrientes calculados para a porção informada">
+                    <strong>{{ calcItem.kcal | number:'1.0-0' }} kcal</strong>
+                    <span>P {{ calcItem.proteina | number:'1.0-1' }}g</span>
+                    <span>C {{ calcItem.carboidratos | number:'1.0-1' }}g</span>
+                    <span>G {{ calcItem.gordura | number:'1.0-1' }}g</span>
+                  </div>
+
+                  <!-- Botões de ação do item: [+] Verde (Adicionar Substituto) e [Lixeira] Vermelho -->
+                  @if (!somenteLeitura) {
+                    <div class="food-row__buttons">
+                      <button
+                        type="button"
+                        class="icon-sq-btn icon-sq-btn--add-sub"
+                        title="Adicionar alimento substituto"
+                        aria-label="Adicionar alimento substituto"
+                        (click)="adicionarSubstituto(item)"
+                      >
+                        <i class="ph ph-plus" aria-hidden="true"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="icon-sq-btn icon-sq-btn--delete"
+                        title="Remover alimento"
+                        aria-label="Remover alimento"
+                        (click)="removerAlimento(refeicao, item.uid)"
+                      >
+                        <i class="ph ph-trash" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  }
+                </div>
+
+                <!-- Lista de Substitutos vinculados ao item principal (Figma 2589-2782) -->
+                @if (item.substitutos.length > 0) {
+                  <div class="substitutes-list">
+                    @for (sub of item.substitutos; track sub.uid; let subIdx = $index) {
+                      <div class="food-row food-row--substitute">
+                        <div class="field-group food-search-field">
+                          <label [for]="'sub-input-' + sub.uid">Substituto {{ subIdx + 1 }}</label>
+                          <div class="autocomplete-wrapper">
+                            <input
+                              [id]="'sub-input-' + sub.uid"
+                              type="text"
+                              autocomplete="off"
+                              [ngModel]="sub.termoBusca"
+                              (ngModelChange)="aoDigitarBuscaAlimento(sub, $event)"
+                              (focus)="abrirDropdownAlimento(sub)"
+                              (blur)="fecharDropdownComDelay(sub)"
+                              [disabled]="somenteLeitura"
+                              placeholder="Pesquisar alimento substituto na Tabela TACO..."
+                            />
+                            <i class="ph ph-magnifying-glass autocomplete-icon" aria-hidden="true"></i>
+
+                            @if (sub.abertoDropdown && !somenteLeitura) {
+                              @let sugestoesSub = filtrarSugestoesTaco(sub.termoBusca);
+                              <ul class="taco-dropdown" role="listbox" aria-label="Sugestões de substituto TACO">
+                                @if (sugestoesSub.length === 0) {
+                                  <li class="taco-dropdown__empty">
+                                    Nenhum alimento encontrado para "{{ sub.termoBusca }}".
+                                  </li>
+                                }
+                                @for (alimento of sugestoesSub; track alimento.id) {
+                                  <li
+                                    role="option"
+                                    class="taco-dropdown__option"
+                                    [class.taco-dropdown__option--selected]="alimento.id === sub.alimentoId"
+                                    (mousedown)="selecionarAlimentoTaco(sub, alimento)"
+                                  >
+                                    <div class="taco-option__main">
+                                      <span class="taco-option__name">{{ alimento.nome }}</span>
+                                      @if (alimento.categoria) {
+                                        <span class="taco-option__cat">{{ alimento.categoria }}</span>
+                                      }
+                                    </div>
+                                    <div class="taco-option__macros">
+                                      <span>100g:</span>
+                                      <strong>{{ alimento.kcal100g | number:'1.0-0' }} kcal</strong>
+                                      <span>P: {{ alimento.proteina100g | number:'1.0-1' }}g</span>
+                                      <span>C: {{ alimento.carboidratos100g | number:'1.0-1' }}g</span>
+                                      <span>G: {{ alimento.gordura100g | number:'1.0-1' }}g</span>
+                                    </div>
+                                  </li>
+                                }
+                              </ul>
+                            }
+                          </div>
+                        </div>
+
+                        <div class="field-group food-qty-field">
+                          <label [for]="'sub-qty-' + sub.uid">Qtd (g)</label>
+                          <input
+                            [id]="'sub-qty-' + sub.uid"
+                            type="number"
+                            min="1"
+                            max="5000"
+                            step="1"
+                            [(ngModel)]="sub.quantidadeGramas"
+                            [disabled]="somenteLeitura"
+                            placeholder="100"
+                          />
+                        </div>
+
+                        @let calcSub = nutrientesDoItem(sub);
+                        <div class="food-calculated-pill food-calculated-pill--sub">
+                          <strong>{{ calcSub.kcal | number:'1.0-0' }} kcal</strong>
+                          <span>P {{ calcSub.proteina | number:'1.0-1' }}g</span>
+                          <span>C {{ calcSub.carboidratos | number:'1.0-1' }}g</span>
+                          <span>G {{ calcSub.gordura | number:'1.0-1' }}g</span>
+                        </div>
+
+                        @if (!somenteLeitura) {
+                          <div class="food-row__buttons">
+                            <button
+                              type="button"
+                              class="icon-sq-btn icon-sq-btn--delete"
+                              title="Remover substituto"
+                              aria-label="Remover substituto"
+                              (click)="removerSubstituto(item, sub.uid)"
+                            >
+                              <i class="ph ph-trash" aria-hidden="true"></i>
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </article>
+      }
+    </div>
+
+    <!-- Barra Inferior de Ações (Figma 2589-2782: Colar refeição, + Nova refeição, Salvar rascunho, Publicar dieta) -->
+    @if (!somenteLeitura) {
+      <footer class="diet-footer-bar">
+        <div class="diet-footer-bar__left">
+          <button
+            type="button"
+            class="btn-outline"
+            [disabled]="!refeicaoCopiada || salvando"
+            (click)="colarRefeicao()"
+          >
+            <i class="ph ph-clipboard-text" aria-hidden="true"></i>
+            Colar refeição
+          </button>
+
+          <button
+            type="button"
+            class="btn-brand-secondary"
+            [disabled]="salvando"
+            (click)="adicionarRefeicao()"
+          >
+            <i class="ph ph-plus" aria-hidden="true"></i>
+            Nova refeição
+          </button>
+        </div>
+
+        <div class="diet-footer-bar__right">
+          <button
+            type="button"
+            class="btn-outline"
+            [disabled]="salvando"
+            (click)="salvarRascunho()"
+          >
+            <i class="ph ph-floppy-disk" aria-hidden="true"></i>
+            Salvar rascunho
+          </button>
+
+          <button
+            type="button"
+            class="btn-brand"
+            [disabled]="salvando"
+            (click)="publicarDieta()"
+          >
+            <i class="ph ph-check-circle" aria-hidden="true"></i>
+            {{ salvando ? 'Salvando...' : 'Publicar dieta' }}
+          </button>
+        </div>
+      </footer>
+    }
+  }
+</main>
+
+<!-- Modal de Lista de Compras Derivada (Somente Leitura para conferência do Nutricionista) -->
+@if (exibirModalListaCompras) {
+  <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="lista-compras-title">
+    <div class="modal-card">
+      <div class="modal-card__header">
+        <div>
+          <h3 id="lista-compras-title">Lista de compras consolidada (Visualização)</h3>
+          <p class="subtitle">
+            Conferência dos alimentos e quantidades gerados para o aplicativo do paciente
+          </p>
+        </div>
+        <button
+          type="button"
+          class="icon-sq-btn"
+          aria-label="Fechar lista de compras"
+          (click)="fecharListaCompras()"
+        >
+          <i class="ph ph-x" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="modal-card__body">
+        @if (carregandoListaCompras) {
+          <p class="state">Carregando lista de compras...</p>
+        } @else if (!listaCompras?.itens?.length) {
+          <p class="state">Nenhum alimento encontrado nas refeições deste plano.</p>
+        } @else {
+          <ul class="shopping-list">
+            @for (item of listaCompras!.itens; track item.id) {
+              <li class="shopping-list__item">
+                <div class="shopping-list__info">
+                  <i class="ph ph-basket" aria-hidden="true"></i>
+                  <span class="shopping-list__name">{{ item.nomeItem }}</span>
+                </div>
+                <span class="shopping-list__cat">{{ item.categoria || 'Outros' }}</span>
+                <strong class="shopping-list__qty">{{ item.quantidade }}</strong>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      <div class="modal-card__footer">
+        <button type="button" class="btn-brand" (click)="fecharListaCompras()">Fechar</button>
+      </div>
+    </div>
+  </div>
+}
+

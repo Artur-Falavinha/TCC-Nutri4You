@@ -14,6 +14,7 @@ $v5 = Get-Content (Join-Path $migrations 'V5__remover_medidas_da_anamnese.sql') 
 $v6 = Get-Content (Join-Path $migrations 'V6__ciclo_plano_alimentar.sql') -Raw
 $v7 = Get-Content (Join-Path $migrations 'V7__registro_consultas.sql') -Raw
 $v8 = Get-Content (Join-Path $migrations 'V8__macronutrientes_consumo_diario.sql') -Raw
+$v9 = Get-Content (Join-Path $migrations 'V9__prescricao_dieta_e_taco.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
 
 # Every scenario uses a new schema inside a transaction, rolled back even on
@@ -113,6 +114,7 @@ UPDATE Consulta SET observacao = 'Registro legado' WHERE id_consulta = 1;
 $v7
 $v6
 $v8
+$v9
 DO `$`$
 BEGIN
     IF EXISTS (
@@ -128,6 +130,11 @@ BEGIN
         WHERE table_schema = current_schema() AND table_name = 'consumo_diario'
           AND column_name IN ('proteinas_consumidas', 'carboidratos_consumidos', 'gorduras_consumidas')) <> 3 THEN
         RAISE EXCEPTION 'V8 must add all daily macronutrients';
+    END IF;
+    IF (SELECT count(*) FROM information_schema.columns
+        WHERE table_schema = current_schema() AND table_name = 'alimento'
+          AND column_name IN ('numero_taco', 'gordura_100g', 'fibra_100g')) <> 3 THEN
+        RAISE EXCEPTION 'V9 must add TACO columns to Alimento';
     END IF;
 END;
 `$`$;
