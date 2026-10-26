@@ -18,6 +18,7 @@ import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu'
 import { ApiError } from '../../core/api/api-response.types';
 import { logout } from '../../core/auth/auth.service';
 import { formatGrams } from '../../features/dieta/dieta.formatters';
+import { getShoppingListProgress, groupShoppingItemsByCategory } from '../../features/dieta/dieta.shopping-list';
 import {
   DEFAULT_SHOPPING_DAYS,
   getShoppingList,
@@ -49,6 +50,8 @@ export function ShoppingListScreen({ navigation }: Props) {
   const [menuNotice, setMenuNotice] = useState('');
   const [list, setList] = useState<ShoppingList | null>(null);
   const requestId = useRef(0);
+  const itemGroups = list ? groupShoppingItemsByCategory(list.itens) : [];
+  const progress = list ? getShoppingListProgress(list.itens) : null;
 
   const loadList = useCallback(async (requestedDays: number, refresh = false) => {
     const currentRequest = ++requestId.current;
@@ -317,6 +320,34 @@ export function ShoppingListScreen({ navigation }: Props) {
 
             <View style={styles.summaryCard}>
               <Text style={styles.summaryTitle}>{list.planoTitulo}</Text>
+              {progress ? (
+                <View style={styles.progressSection}>
+                  <View style={styles.progressLabels}>
+                    <Text style={styles.progressCount} accessibilityLiveRegion="polite">
+                      {progress.comprados} de {progress.total}{' '}
+                      {progress.total === 1 ? 'item comprado' : 'itens comprados'}
+                    </Text>
+                    <Text style={styles.progressPercent}>{progress.percentual}%</Text>
+                  </View>
+                  <View
+                    style={styles.progressTrack}
+                    accessibilityRole="progressbar"
+                    accessibilityLabel="Progresso das compras"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={progress.percentual}
+                    aria-valuetext={`${progress.comprados} de ${progress.total} itens comprados, ${progress.percentual}%`}
+                    accessibilityValue={{
+                      min: 0,
+                      max: 100,
+                      now: progress.percentual,
+                      text: `${progress.comprados} de ${progress.total} itens comprados, ${progress.percentual}%`
+                    }}
+                  >
+                    <View style={[styles.progressFill, { width: `${progress.percentual}%` }]} />
+                  </View>
+                </View>
+              ) : null}
               <View style={styles.countsRow}>
                 <View style={styles.countBox}>
                   <Text style={styles.countNumber}>{list.itensPendentes}</Text>
@@ -341,41 +372,47 @@ export function ShoppingListScreen({ navigation }: Props) {
                 </Text>
               </View>
             ) : (
-              list.itens.map((item) => {
-                const saving = savingFoodId === item.alimentoId;
-                return (
-                  <View key={item.alimentoId} style={styles.itemCard}>
-                    <View style={styles.itemDetails}>
-                      <Text style={[styles.itemName, item.comprado && styles.itemNameBought]}>
-                        {item.nome}
-                      </Text>
-                      <Text style={styles.itemCategory}>{item.categoria}</Text>
-                      <Text style={styles.quantity}>{formatGrams(item.quantidadeGramas)} g</Text>
-                    </View>
-                    <Pressable
-                      style={[styles.checkButton, item.comprado && styles.checkedButton]}
-                      onPress={() => void toggleItem(item.alimentoId, !item.comprado)}
-                      disabled={savingFoodId !== null || loading || refreshing}
-                      accessibilityRole="checkbox"
-                      aria-checked={item.comprado}
-                      accessibilityLabel={`${item.comprado ? 'Desmarcar' : 'Marcar'} ${item.nome} como comprado`}
-                      accessibilityState={{
-                        checked: item.comprado,
-                        disabled: savingFoodId !== null || loading || refreshing,
-                        busy: saving
-                      }}
-                    >
-                      {saving ? (
-                        <ActivityIndicator size="small" color={colors.brand} />
-                      ) : (
-                        <Text style={[styles.checkText, item.comprado && styles.checkedText]}>
-                          {item.comprado ? 'Comprado' : 'Marcar'}
-                        </Text>
-                      )}
-                    </Pressable>
-                  </View>
-                );
-              })
+              itemGroups.map((group) => (
+                <View key={group.categoria} style={styles.categorySection}>
+                  <Text style={styles.categoryHeading} accessibilityRole="header">
+                    {group.categoria}
+                  </Text>
+                  {group.itens.map((item) => {
+                    const saving = savingFoodId === item.alimentoId;
+                    return (
+                      <View key={item.alimentoId} style={styles.itemCard}>
+                        <View style={styles.itemDetails}>
+                          <Text style={[styles.itemName, item.comprado && styles.itemNameBought]}>
+                            {item.nome}
+                          </Text>
+                          <Text style={styles.quantity}>{formatGrams(item.quantidadeGramas)} g</Text>
+                        </View>
+                        <Pressable
+                          style={[styles.checkButton, item.comprado && styles.checkedButton]}
+                          onPress={() => void toggleItem(item.alimentoId, !item.comprado)}
+                          disabled={savingFoodId !== null || loading || refreshing}
+                          accessibilityRole="checkbox"
+                          aria-checked={item.comprado}
+                          accessibilityLabel={`${item.comprado ? 'Desmarcar' : 'Marcar'} ${item.nome} como comprado`}
+                          accessibilityState={{
+                            checked: item.comprado,
+                            disabled: savingFoodId !== null || loading || refreshing,
+                            busy: saving
+                          }}
+                        >
+                          {saving ? (
+                            <ActivityIndicator size="small" color={colors.brand} />
+                          ) : (
+                            <Text style={[styles.checkText, item.comprado && styles.checkedText]}>
+                              {item.comprado ? 'Comprado' : 'Marcar'}
+                            </Text>
+                          )}
+                        </Pressable>
+                      </View>
+                    );
+                  })}
+                </View>
+              ))
             )}
           </View>
         )}
@@ -407,6 +444,12 @@ const styles = StyleSheet.create({
   listSection: { gap: spacing.sm },
   summaryCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, gap: spacing.md },
   summaryTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 16 },
+  progressSection: { gap: spacing.xs },
+  progressLabels: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  progressCount: { color: colors.text, fontFamily: fontFamily.semibold, fontSize: 13 },
+  progressPercent: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 14 },
+  progressTrack: { height: 10, backgroundColor: colors.pageAlt, borderRadius: radius.pill, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: colors.brand, borderRadius: radius.pill },
   countsRow: { flexDirection: 'row', gap: spacing.sm },
   countBox: { flex: 1, alignItems: 'center', backgroundColor: colors.pageAlt, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.xs },
   countNumber: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 20 },
@@ -415,7 +458,8 @@ const styles = StyleSheet.create({
   itemDetails: { flex: 1, gap: 3 },
   itemName: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 15, lineHeight: 21 },
   itemNameBought: { color: colors.textSecondary, textDecorationLine: 'line-through' },
-  itemCategory: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 12 },
+  categorySection: { gap: spacing.xs },
+  categoryHeading: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 16, marginTop: spacing.xs },
   quantity: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 14, marginTop: 2 },
   checkButton: { minWidth: 82, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.brand, borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   checkedButton: { backgroundColor: colors.brandSoft },

@@ -4,6 +4,7 @@ import { PacientesListaComponent } from './pages/lista/pacientes-lista.component
 import { DadosComponent } from '../clinico/dados/dados.component';
 import { HistoricoComponent } from '../clinico/historico/historico.component';
 import { ConsultasComponent, consultaPendenteGuard } from '../clinico/consultas/consultas.component';
+import { DietaComponent, dietaPendenteGuard } from '../dieta/dieta.component';
 
 export const PACIENTES_ROUTES: Routes = [
   {
@@ -15,6 +16,12 @@ export const PACIENTES_ROUTES: Routes = [
   { path: ':id/historico', component: HistoricoComponent, title: 'Histórico — Nutri4You' },
   { path: ':id/medidas', redirectTo: ':id/consultas', pathMatch: 'full' },
   { path: ':id/consultas', component: ConsultasComponent, title: 'Consultas — Nutri4You' },
+  {
+    path: ':id/dieta',
+    component: DietaComponent,
+    canDeactivate: [dietaPendenteGuard],
+    title: 'Dieta — Nutri4You'
+  },
   {
     path: ':id/consultas/nova',
     component: ConsultasComponent,
