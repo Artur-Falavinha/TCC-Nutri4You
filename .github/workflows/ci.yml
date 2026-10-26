@@ -95,6 +95,9 @@ jobs:
       - name: Executar lint
         run: npm run lint
 
+      - name: Executar testes no Chrome Headless
+        run: npm test -- --watch=false --browsers=ChromeHeadless
+
       - name: Executar build
         run: npm run build
 

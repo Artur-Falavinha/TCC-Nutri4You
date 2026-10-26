@@ -200,6 +200,14 @@ export function EvolucaoScreen({ navigation }: Props) {
       navigation.navigate('Agenda');
       return;
     }
+    if (destino === 'diet') {
+      navigation.navigate('Dieta');
+      return;
+    }
+    if (destino === 'shopping') {
+      navigation.navigate('Compras');
+      return;
+    }
     if (destino === 'password') {
       navigation.navigate('TrocarSenha');
       return;

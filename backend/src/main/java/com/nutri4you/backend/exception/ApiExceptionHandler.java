@@ -10,16 +10,16 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
-    @ExceptionHandler({ConsultaNaoEncontradaException.class,
+    @ExceptionHandler({ConsultaNaoEncontradaException.class, PlanoNaoEncontradoException.class,
             com.nutri4you.backend.service.PacienteNaoEncontradoException.class})
     public ResponseEntity<ApiErrorResponse> handlePlanoNaoEncontrado(
             RuntimeException exception, HttpServletRequest request) {
@@ -27,7 +27,7 @@ public class ApiExceptionHandler {
                 404, "NAO_ENCONTRADO", exception.getMessage(), request.getRequestURI()));
     }
 
-    @ExceptionHandler(ConsultaConflitoException.class)
+    @ExceptionHandler({ConsultaConflitoException.class, PlanoConflitoException.class})
     public ResponseEntity<ApiErrorResponse> handlePlanoConflito(
             RuntimeException exception, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(
@@ -98,6 +98,12 @@ public class ApiExceptionHandler {
                 "METODO_NAO_PERMITIDO",
                 "Operação não disponível.",
                 request.getRequestURI()));
+    }
+
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleRecursoNaoEncontrado(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiErrorResponse.of(
+                404, "NAO_ENCONTRADO", "Recurso não encontrado.", request.getRequestURI()));
     }
 
     @ExceptionHandler(Exception.class)

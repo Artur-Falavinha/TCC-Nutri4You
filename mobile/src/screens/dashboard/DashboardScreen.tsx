@@ -133,6 +133,12 @@ export function DashboardScreen({ navigation }: Props) {
       case 'appointments':
         navigation.navigate('Agenda');
         break;
+      case 'diet':
+        navigation.navigate('Dieta');
+        break;
+      case 'shopping':
+        navigation.navigate('Compras');
+        break;
       case 'password':
         navigation.navigate('TrocarSenha');
         break;
@@ -153,12 +159,7 @@ export function DashboardScreen({ navigation }: Props) {
   };
 
   const handlePressAcessarDieta = () => {
-    showAlert(
-      'Plano Alimentar',
-      dados?.dietaAtiva
-        ? `Seu plano alimentar atual prescrito por ${dados.dietaAtiva.nutricionistaNome || 'sua nutricionista'} possui meta de ${formatarNumeroMilhar(dados.dietaAtiva.metaKcal)} kcal.`
-        : 'Sua nutricionista ainda não publicou um plano alimentar detalhado para visualização.'
-    );
+    navigation.navigate('Dieta');
   };
 
   const primeiroNome = extrairPrimeiroNome(dados?.nomePaciente);

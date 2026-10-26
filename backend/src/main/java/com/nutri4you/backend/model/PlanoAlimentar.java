@@ -1,5 +1,8 @@
 package com.nutri4you.backend.model;
 
+import com.nutri4you.backend.dto.PrescricaoDTO.Nutrientes;
+
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -8,11 +11,17 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "Plano_Alimentar")
@@ -56,8 +65,76 @@ public class PlanoAlimentar {
     @Column(name = "meta_proteina", precision = 8, scale = 2)
     private BigDecimal metaProteina;
 
-    protected PlanoAlimentar() {
+    @Version
+    @Column(nullable = false)
+    private Long versao = 0L;
+
+    @Column(nullable = false, length = 150)
+    private String titulo = "Plano alimentar";
+
+    @Column(length = 4000)
+    private String orientacoes;
+
+    @Column(name = "criado_em", nullable = false)
+    private Instant criadoEm = Instant.now();
+
+    @Column(name = "revisado_em", nullable = false)
+    private Instant revisadoEm = Instant.now();
+
+    @Column(name = "publicado_em")
+    private Instant publicadoEm;
+
+    @OneToMany(mappedBy = "plano", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("horario, id")
+    private List<Refeicao> refeicoes = new ArrayList<>();
+
+    @OneToMany(mappedBy = "plano", cascade = CascadeType.REMOVE)
+    private List<ListaCompras> listasCompras = new ArrayList<>();
+
+    public PlanoAlimentar(Paciente paciente, Nutricionista nutricionista) {
+        this.paciente = paciente;
+        this.nutricionista = nutricionista;
     }
+
+    public void editar(
+            String titulo, String orientacoes, LocalDate inicio, LocalDate fim, Nutrientes metas) {
+        this.revisadoEm = Instant.now();
+        this.titulo = titulo;
+        this.orientacoes = orientacoes;
+        this.vigenciaInicio = inicio;
+        this.vigenciaFim = fim;
+        this.metaCalorias = metas == null ? null : metas.kcal();
+        this.metaProteina = metas == null ? null : metas.proteinas();
+        this.metaCarboidratos = metas == null ? null : metas.carboidratos();
+        this.metaGordura = metas == null ? null : metas.gorduras();
+    }
+
+    public void publicar() {
+        status = "PUBLICADO";
+        publicadoEm = Instant.now();
+    }
+
+    public Long getVersao() {
+        return versao;
+    }
+
+    public String getTitulo() {
+        return titulo;
+    }
+
+    public String getOrientacoes() {
+        return orientacoes;
+    }
+
+    public Instant getPublicadoEm() {
+        return publicadoEm;
+    }
+
+    public List<Refeicao> getRefeicoes() {
+        return refeicoes;
+    }
+
+    protected PlanoAlimentar() {}
 
     public PlanoAlimentar(
             Consulta consulta,
