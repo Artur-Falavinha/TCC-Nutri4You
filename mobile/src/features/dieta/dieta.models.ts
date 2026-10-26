@@ -3,6 +3,7 @@ export interface Nutrients {
   proteinas: number;
   carboidratos: number;
   gorduras: number;
+  fibras: number | null;
 }
 
 export interface Food {
@@ -14,6 +15,7 @@ export interface Food {
   proteina100g: number | null;
   carboidratos100g: number | null;
   gordura100g: number | null;
+  fibra100g: number | null;
   fonte: string;
   versaoFonte: string;
   observacaoFonte: string | null;
@@ -21,6 +23,13 @@ export interface Food {
 }
 
 export interface MealPlanItem {
+  alimento: Food;
+  quantidadeGramas: number;
+  nutrientes: Nutrients;
+  substitutos: FoodSubstitute[];
+}
+
+export interface FoodSubstitute {
   alimento: Food;
   quantidadeGramas: number;
   nutrientes: Nutrients;

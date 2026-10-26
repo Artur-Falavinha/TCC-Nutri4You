@@ -22,7 +22,9 @@ import {
   formatFoodSource,
   formatGrams,
   formatNutrient,
-  formatTime
+  formatNutrientAmount,
+  formatTime,
+  nutrientEntries
 } from '../../features/dieta/dieta.formatters';
 import { getActiveMealPlan } from '../../features/dieta/dieta.service';
 import { MealPlan } from '../../features/dieta/dieta.models';
@@ -285,30 +287,56 @@ export function MealPlanScreen({ navigation }: Props) {
                       <Text style={styles.mealTime}>{formatTime(meal.horario)}</Text>
                     </View>
                     {meal.itens.map((item) => (
-                      <View key={item.alimento.id} style={styles.foodRow}>
-                        <View style={styles.foodDetails}>
-                          <Text style={styles.foodName}>{item.alimento.nome}</Text>
-                          <Text style={styles.foodMeta}>{formatNutrient(item.nutrientes.kcal)} kcal</Text>
-                          <Text style={styles.foodSource}>
-                            {formatFoodSource(item.alimento.fonte, item.alimento.versaoFonte)}
-                            {item.alimento.codigoTaco != null
-                              ? ` · Código TACO ${item.alimento.codigoTaco}`
-                              : ''}
+                      <View key={item.alimento.id} style={styles.foodItem}>
+                        <View style={styles.foodRow}>
+                          <View style={styles.foodDetails}>
+                            <Text style={styles.foodName}>{item.alimento.nome}</Text>
+                            <Text style={styles.foodMeta}>
+                              {formatNutrient(item.nutrientes.kcal)} kcal · Fibras{' '}
+                              {formatNutrientAmount(item.nutrientes.fibras)}
+                            </Text>
+                            <Text style={styles.foodSource}>
+                              {formatFoodSource(item.alimento.fonte, item.alimento.versaoFonte)}
+                              {item.alimento.codigoTaco != null
+                                ? ` · Código TACO ${item.alimento.codigoTaco}`
+                                : ''}
+                            </Text>
+                            {item.alimento.observacaoFonte ? (
+                              <Text style={styles.foodSource}>Observação: {item.alimento.observacaoFonte}</Text>
+                            ) : null}
+                          </View>
+                          <Text style={styles.foodQuantity} accessibilityLabel={`${formatGrams(item.quantidadeGramas)} gramas`}>
+                            {formatGrams(item.quantidadeGramas)} g
                           </Text>
-                          {item.alimento.observacaoFonte ? (
-                            <Text style={styles.foodSource}>Observação: {item.alimento.observacaoFonte}</Text>
-                          ) : null}
                         </View>
-                        <Text style={styles.foodQuantity} accessibilityLabel={`${formatGrams(item.quantidadeGramas)} gramas`}>
-                          {formatGrams(item.quantidadeGramas)} g
-                        </Text>
+                        {item.substitutos?.length ? (
+                          <View style={styles.substitutions}>
+                            {item.substitutos.map((substitute, index) => (
+                              <View key={`${substitute.alimento.id}-${index}`} style={styles.substituteCard}>
+                                <Text style={styles.substituteLabel}>Substituto informativo</Text>
+                                <View style={styles.substituteFoodRow}>
+                                  <Text style={styles.substituteFoodName}>{substitute.alimento.nome}</Text>
+                                  <Text style={styles.foodQuantity}>
+                                    {formatGrams(substitute.quantidadeGramas)} g
+                                  </Text>
+                                </View>
+                                <Text style={styles.substituteNutrition}>
+                                  {nutrientEntries(substitute.nutrientes)
+                                    .map((entry) => `${entry.label}: ${entry.value}`)
+                                    .join(' · ')}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        ) : null}
                       </View>
                     ))}
                     <View style={styles.mealTotals}>
                       <Text style={styles.mealTotalsTitle}>Total da refeição</Text>
                       <Text style={styles.mealTotalsText}>
                         {formatNutrient(meal.totais.kcal)} kcal · {formatNutrient(meal.totais.proteinas)} g proteínas ·{' '}
-                        {formatNutrient(meal.totais.carboidratos)} g carboidratos · {formatNutrient(meal.totais.gorduras)} g gorduras
+                        {formatNutrient(meal.totais.carboidratos)} g carboidratos · {formatNutrient(meal.totais.gorduras)} g gorduras ·{' '}
+                        Fibras {formatNutrientAmount(meal.totais.fibras)}
                       </Text>
                     </View>
                   </View>
@@ -354,12 +382,19 @@ const styles = StyleSheet.create({
   mealHeadingWide: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   mealTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 16 },
   mealTime: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 14 },
-  foodRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: spacing.xs },
+  foodItem: { gap: spacing.xs, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: spacing.xs },
+  foodRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm },
   foodDetails: { flex: 1, gap: 3 },
   foodName: { color: colors.text, fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 20 },
   foodMeta: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 13 },
   foodSource: { color: colors.textSubtle, fontFamily: fontFamily.regular, fontSize: 11, lineHeight: 16 },
   foodQuantity: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 13 },
+  substitutions: { gap: spacing.xs, marginLeft: spacing.sm },
+  substituteCard: { backgroundColor: colors.pageAlt, borderRadius: radius.md, padding: spacing.sm, gap: spacing.xs },
+  substituteLabel: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 12 },
+  substituteFoodRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm },
+  substituteFoodName: { flex: 1, color: colors.text, fontFamily: fontFamily.semibold, fontSize: 13, lineHeight: 19 },
+  substituteNutrition: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 11, lineHeight: 16 },
   mealTotals: { backgroundColor: colors.pageAlt, borderRadius: radius.md, padding: spacing.sm, gap: spacing.xxs },
   mealTotalsTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 12 },
   mealTotalsText: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 12, lineHeight: 18 },

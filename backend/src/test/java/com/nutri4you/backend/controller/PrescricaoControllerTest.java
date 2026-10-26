@@ -549,4 +549,120 @@ class PrescricaoControllerTest {
                                 .header("Authorization", "Bearer " + autorToken))
                 .andExpect(status().isBadRequest());
     }
+    String comSubstitutos(String substitutos) {
+        return corpo(hoje, hoje.plusDays(5), null)
+                .replace("\"quantidadeGramas\":33.33", "\"quantidadeGramas\":33.33,\"substitutos\":" + substitutos);
+    }
+
+    @Test
+    void substitutosSaoInformativosPreservamSnapshotsEFicamForaDasCompras() throws Exception {
+        em.createNativeQuery("update alimento set fibra_100g = 3 where id_alimento = 1001").executeUpdate();
+        em.createNativeQuery("update alimento set fibra_100g = 9 where id_alimento = 1002").executeUpdate();
+        MvcResult criado = criar(autorToken,
+                comSubstitutos("[{\"alimentoId\":1002,\"quantidadeGramas\":50}]"));
+        int planoId = id(criado);
+        em.clear();
+        mvc.perform(get(url + "/" + planoId).header("Authorization", "Bearer " + autorToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totais.kcal").value(85.63))
+                .andExpect(jsonPath("$.data.totais.fibras").value(2.00))
+                .andExpect(jsonPath("$.data.refeicoes[0].itens[0].substitutos", hasSize(1)))
+                .andExpect(jsonPath("$.data.refeicoes[0].itens[0].substitutos[0].nutrientes.fibras").value(4.5));
+        mvc.perform(get(url + "/" + planoId + "/lista-compras").header("Authorization", "Bearer " + autorToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.dias").value(7))
+                .andExpect(jsonPath("$.data.itens", hasSize(1)))
+                .andExpect(jsonPath("$.data.itens[0].alimentoId").value(1001))
+                .andExpect(jsonPath("$.data.itens[0].quantidadeGramas").value(466.62));
+        publicar(planoId, versao(criado), autorToken);
+        em.createNativeQuery("update alimento set fibra_100g = 100, kcal_100g = 999 where id_alimento in (1001,1002)").executeUpdate();
+        em.clear();
+        mvc.perform(get("/api/v1/me/plano-alimentar").header("Authorization", "Bearer " + pacienteToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totais.kcal").value(85.63))
+                .andExpect(jsonPath("$.data.totais.fibras").value(2.00))
+                .andExpect(jsonPath("$.data.refeicoes[0].itens[0].substitutos[0].nutrientes.kcal").value(64.23))
+                .andExpect(jsonPath("$.data.refeicoes[0].itens[0].substitutos[0].nutrientes.fibras").value(4.5));
+        mvc.perform(get("/api/v1/me/lista-compras").header("Authorization", "Bearer " + pacienteToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.itens", hasSize(1)));
+        mvc.perform(put("/api/v1/me/lista-compras/itens/1002")
+                .header("Authorization", "Bearer " + pacienteToken).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"planoId\":" + planoId + ",\"dias\":7,\"comprado\":true}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void previaIsolaAutoriaIgnoraMarcacoesENaoAlteraPlanoOuChecklist() throws Exception {
+        MvcResult criado = criar(autorToken, corpo(hoje, hoje.plusDays(2), null));
+        int planoId = id(criado);
+        String previa = url + "/" + planoId + "/lista-compras";
+        mvc.perform(get(previa)).andExpect(status().isUnauthorized());
+        mvc.perform(get(previa).header("Authorization", "Bearer " + pacienteToken)).andExpect(status().isForbidden());
+        mvc.perform(get(previa).header("Authorization", "Bearer " + segundoToken)).andExpect(status().isNotFound());
+        for (String dias : new String[] {"0", "31", "abc"}) {
+            mvc.perform(get(previa).param("dias", dias).header("Authorization", "Bearer " + autorToken))
+                    .andExpect(status().isBadRequest());
+        }
+        mvc.perform(get(previa).header("Authorization", "Bearer " + autorToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.itensComprados").value(0));
+        assertThat(listas.count()).isZero();
+        ListaCompras lista = new ListaCompras(em.find(PlanoAlimentar.class, planoId), 7);
+        lista.marcar(em.find(Alimento.class, 1001), true);
+        listas.saveAndFlush(lista);
+        mvc.perform(get(previa).header("Authorization", "Bearer " + autorToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.itens[0].comprado").value(false));
+        assertThat(listas.count()).isEqualTo(1);
+        em.clear();
+        assertThat(em.find(PlanoAlimentar.class, planoId).getVersao()).isEqualTo(versao(criado));
+        assertThat(listas.findByPlano_IdAndDias(planoId, 7).orElseThrow().getItens().getFirst().isComprado()).isTrue();
+        publicar(planoId, versao(criado), autorToken);
+        mvc.perform(get(previa).param("dias", "30").header("Authorization", "Bearer " + autorToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.itens[0].quantidadeGramas").value(1999.8));
+    }
+
+    @Test
+    void validaSubstitutosEExcluiDependenciasAoEditarOuExcluirRascunho() throws Exception {
+        for (String substitutos : new String[] {
+                "[null]", "[{}]", "[{\"alimentoId\":1001,\"quantidadeGramas\":10}]",
+                "[{\"alimentoId\":1002,\"quantidadeGramas\":10},{\"alimentoId\":1002,\"quantidadeGramas\":20}]",
+                "[{\"alimentoId\":1003,\"quantidadeGramas\":10}]", "[{\"alimentoId\":1004,\"quantidadeGramas\":10}]",
+                "[{\"alimentoId\":9999,\"quantidadeGramas\":10}]", "[{\"alimentoId\":1002,\"quantidadeGramas\":0}]",
+                "[{\"alimentoId\":1002,\"quantidadeGramas\":10000.01}]", "[{\"alimentoId\":1002,\"quantidadeGramas\":1.001}]",
+                "[" + String.join(",", java.util.Collections.nCopies(11, "{\"alimentoId\":1002,\"quantidadeGramas\":10}")) + "]"
+        }) {
+            mvc.perform(post(url).header("Authorization", "Bearer " + autorToken)
+                    .contentType(MediaType.APPLICATION_JSON).content(comSubstitutos(substitutos)))
+                    .andExpect(status().isBadRequest());
+        }
+        MvcResult criado = criar(autorToken, comSubstitutos("[{\"alimentoId\":1002,\"quantidadeGramas\":50}]"));
+        int planoId = id(criado);
+        assertThat(((Number) em.createNativeQuery("select count(*) from substituto_item_refeicao").getSingleResult()).intValue()).isEqualTo(2);
+        MvcResult atualizado = mvc.perform(put(url + "/" + planoId).header("Authorization", "Bearer " + autorToken)
+                .contentType(MediaType.APPLICATION_JSON).content(corpo(hoje, hoje, versao(criado))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.refeicoes[0].itens[0].substitutos", hasSize(0))).andReturn();
+        em.clear();
+        assertThat(((Number) em.createNativeQuery("select count(*) from substituto_item_refeicao").getSingleResult()).intValue()).isZero();
+        MvcResult comAlternativas = mvc.perform(put(url + "/" + planoId).header("Authorization", "Bearer " + autorToken)
+                .contentType(MediaType.APPLICATION_JSON).content(comSubstitutos("[{\"alimentoId\":1002,\"quantidadeGramas\":50}]")
+                        .replace("\"versao\":null", "\"versao\":" + versao(atualizado))))
+                .andExpect(status().isOk()).andReturn();
+        mvc.perform(delete(url + "/" + planoId).param("versao", "" + versao(comAlternativas))
+                .header("Authorization", "Bearer " + autorToken)).andExpect(status().isNoContent());
+        assertThat(((Number) em.createNativeQuery("select count(*) from substituto_item_refeicao").getSingleResult()).intValue()).isZero();
+    }
+
+    @Test
+    void fibraAusentePermaneceNulaESubstitutosSaoSempreUmaLista() throws Exception {
+        MvcResult criado = criar(autorToken, corpo(hoje, hoje, null));
+        mvc.perform(get(url + "/" + id(criado)).header("Authorization", "Bearer " + autorToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totais.fibras").isEmpty())
+                .andExpect(jsonPath("$.data.refeicoes[0].itens[0].nutrientes.fibras").isEmpty())
+                .andExpect(jsonPath("$.data.refeicoes[0].itens[0].substitutos", hasSize(0)));
+        mvc.perform(get("/api/v1/alimentos").param("nome", "feijao").header("Authorization", "Bearer " + autorToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.alimentos[0].fibra100g").isEmpty());
+        mvc.perform(get("/api/v1/rota-inexistente").header("Authorization", "Bearer " + autorToken))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.error").value("NAO_ENCONTRADO"));
+    }
+
 }

@@ -6,6 +6,7 @@ import {
   formatTime,
   nutrientEntries
 } from '../dieta.formatters';
+import { Nutrients } from '../dieta.models';
 
 describe('dieta.formatters', () => {
   it('formata nutrientes com duas casas decimais e vírgula', () => {
@@ -37,11 +38,21 @@ describe('dieta.formatters', () => {
   });
 
   it('mapeia energia e macronutrientes para valores legíveis', () => {
-    expect(nutrientEntries({ kcal: 150, proteinas: 3, carboidratos: 24, gorduras: 2 })).toEqual([
+    expect(nutrientEntries({ kcal: 150, proteinas: 3, carboidratos: 24, gorduras: 2, fibras: 1.5 })).toEqual([
       { label: 'Energia', value: '150,00 kcal' },
       { label: 'Proteínas', value: '3,00 g' },
       { label: 'Carboidratos', value: '24,00 g' },
-      { label: 'Gorduras', value: '2,00 g' }
+      { label: 'Gorduras', value: '2,00 g' },
+      { label: 'Fibras', value: '1,50 g' }
     ]);
+  });
+
+  it('mantém fibras desconhecidas como não informadas em vez de zero', () => {
+    expect(nutrientEntries({ kcal: 150, proteinas: 3, carboidratos: 24, gorduras: 2, fibras: null }).at(-1))
+      .toEqual({ label: 'Fibras', value: '—' });
+    expect(
+      nutrientEntries({ kcal: 150, proteinas: 3, carboidratos: 24, gorduras: 2 } as unknown as Nutrients).at(-1)
+    )
+      .toEqual({ label: 'Fibras', value: '—' });
   });
 });

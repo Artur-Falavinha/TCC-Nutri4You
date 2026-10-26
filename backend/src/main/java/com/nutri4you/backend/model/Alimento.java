@@ -44,6 +44,9 @@ public class Alimento {
     @Column(name = "gordura_100g", precision = 12, scale = 6)
     private BigDecimal gordura100g;
 
+    @Column(name = "fibra_100g", precision = 12, scale = 6)
+    private BigDecimal fibra100g;
+
     @Column(length = 240)
     private String fonte;
 
@@ -83,7 +86,7 @@ public class Alimento {
     }
 
     public Nutrientes nutrientes() {
-        return new Nutrientes(kcal100g, proteina100g, carboidratos100g, gordura100g);
+        return new Nutrientes(kcal100g, proteina100g, carboidratos100g, gordura100g, fibra100g);
     }
 
     public AlimentoDTO paraResposta() {
@@ -96,6 +99,7 @@ public class Alimento {
                 proteina100g,
                 carboidratos100g,
                 gordura100g,
+                fibra100g,
                 fonte,
                 versaoFonte,
                 observacaoFonte,

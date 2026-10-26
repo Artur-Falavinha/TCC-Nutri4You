@@ -35,4 +35,20 @@ class NutrientesTest {
         assertThat(minimo.arredondar().kcal()).isEqualByComparingTo("0.01");
         assertThat(minimo.arredondar().proteinas()).isEqualByComparingTo("0.00");
     }
+    @Test
+    void fibraDesconhecidaPermaneceNulaNaPorcaoENaSoma() {
+        Nutrientes conhecido = new Nutrientes(BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE,
+                BigDecimal.ONE, new BigDecimal("2.749333"));
+        Nutrientes desconhecido = new Nutrientes(BigDecimal.ONE, BigDecimal.ONE,
+                BigDecimal.ONE, BigDecimal.ONE);
+        assertThat(desconhecido.proporcional(new BigDecimal("50")).arredondar().fibras()).isNull();
+        assertThat(conhecido.somar(desconhecido).fibras()).isNull();
+        assertThat(desconhecido.somar(conhecido).fibras()).isNull();
+        assertThat(conhecido.proporcional(new BigDecimal("33.33")).somar(
+                conhecido.proporcional(new BigDecimal("33.33"))).arredondar().fibras())
+                .isEqualByComparingTo("1.83");
+        assertThat(Nutrientes.zero().somar(conhecido).fibras()).isEqualByComparingTo("2.749333");
+        assertThat(Nutrientes.zero().arredondar().fibras()).isEqualByComparingTo("0.00");
+    }
+
 }

@@ -16,20 +16,25 @@ import {
   Alimento,
   CampoNumericoEdicao,
   ItemEdicao,
+  ItemListaCompras,
+  ListaCompras,
   MetasEdicao,
   Nutrientes,
   PaginaAlimentos,
   Plano,
   PlanoEdicao,
   PlanoRequest,
-  RefeicaoEdicao
+  RefeicaoEdicao,
+  SubstitutoEdicao
 } from './dieta.models';
 import { DietaService } from './dieta.service';
 
 type TelaDieta = 'lista' | 'detalhe' | 'editor';
 type FiltrosBuscaAlimentos = { nome: string; categoria: string; pagina: number } | null;
+type PedidoListaCompras = { planoId: number; dias: number } | null;
 
-const NUTRIENTES_VAZIOS: Nutrientes = { kcal: 0, proteinas: 0, carboidratos: 0, gorduras: 0 };
+const NUTRIENTES_VAZIOS: Nutrientes = { kcal: 0, proteinas: 0, carboidratos: 0, gorduras: 0, fibras: 0 };
+const MAXIMO_SUBSTITUTOS = 10;
 
 @Component({
   selector: 'app-dieta',
@@ -69,22 +74,44 @@ export class DietaComponent implements OnInit {
   buscaAlimento = '';
   categoriaSelecionada = '';
   refeicaoSelecionada: number | null = null;
+  modoBuscaSubstituto = false;
+  modalListaCompras = false;
+  diasListaCompras: number | null = 7;
+  listaCompras: ListaCompras | null = null;
+  itensListaComprasPorCategoria: { categoria: string; itens: ItemListaCompras[] }[] = [];
+  listaComprasCarregando = false;
+  listaComprasErro = '';
   private original = this.assinatura();
   private chaveAtual = 0;
   private refeicaoCopiada: {
     nome: string;
     horario: string;
-    itens: { alimento: Alimento | null; quantidadeGramas: CampoNumericoEdicao }[];
+    itens: {
+      alimento: Alimento | null;
+      quantidadeGramas: CampoNumericoEdicao;
+      substitutos: { alimento: Alimento | null; quantidadeGramas: CampoNumericoEdicao }[];
+    }[];
   } | null = null;
   private readonly buscasAlimentos$ = new Subject<FiltrosBuscaAlimentos>();
+  private readonly buscasListaCompras$ = new Subject<PedidoListaCompras>();
   private elementoAtivoAntesDaBusca: HTMLElement | null = null;
+  private elementoAtivoAntesDaListaCompras: HTMLElement | null = null;
+  private substitutoSelecionado: { refeicaoChave: number; itemChave: number } | null = null;
 
   get podeColarRefeicao(): boolean {
     return this.refeicaoCopiada !== null && this.form.refeicoes.length < 20;
   }
 
+  get periodoListaComprasValido(): boolean {
+    return this.diasListaCompras !== null
+      && Number.isInteger(this.diasListaCompras)
+      && this.diasListaCompras >= 1
+      && this.diasListaCompras <= 30;
+  }
+
   ngOnInit(): void {
     this.configurarBuscaAlimentos();
+    this.configurarPreviaListaCompras();
     this.carregar();
   }
 
@@ -191,7 +218,11 @@ export class DietaComponent implements OnInit {
       horario: refeicao.horario,
       itens: refeicao.itens.map(item => ({
         alimento: item.alimento ? { ...item.alimento } : null,
-        quantidadeGramas: item.quantidadeGramas
+        quantidadeGramas: item.quantidadeGramas,
+        substitutos: item.substitutos.map(substituto => ({
+          alimento: substituto.alimento ? { ...substituto.alimento } : null,
+          quantidadeGramas: substituto.quantidadeGramas
+        }))
       }))
     };
     this.mensagem = 'Refeição copiada.';
@@ -211,7 +242,12 @@ export class DietaComponent implements OnInit {
       itens: this.refeicaoCopiada.itens.map(item => ({
         chave: this.proximaChave(),
         alimento: item.alimento ? { ...item.alimento } : null,
-        quantidadeGramas: item.quantidadeGramas
+        quantidadeGramas: item.quantidadeGramas,
+        substitutos: item.substitutos.map(substituto => ({
+          chave: this.proximaChave(),
+          alimento: substituto.alimento ? { ...substituto.alimento } : null,
+          quantidadeGramas: substituto.quantidadeGramas
+        }))
       }))
     });
     this.erro = '';
@@ -223,8 +259,21 @@ export class DietaComponent implements OnInit {
   }
 
   abrirBuscaAlimentos(refeicao: RefeicaoEdicao): void {
+    this.abrirBuscaCatalogo(refeicao, null);
+  }
+
+  abrirBuscaSubstitutos(refeicao: RefeicaoEdicao, item: ItemEdicao): void {
+    if (!item.alimento || item.substitutos.length >= MAXIMO_SUBSTITUTOS) return;
+    this.abrirBuscaCatalogo(refeicao, item);
+  }
+
+  private abrirBuscaCatalogo(refeicao: RefeicaoEdicao, itemSubstituido: ItemEdicao | null): void {
     this.elementoAtivoAntesDaBusca = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.refeicaoSelecionada = refeicao.chave;
+    this.substitutoSelecionado = itemSubstituido
+      ? { refeicaoChave: refeicao.chave, itemChave: itemSubstituido.chave }
+      : null;
+    this.modoBuscaSubstituto = itemSubstituido !== null;
     this.modalAlimentos = true;
     this.buscaAlimento = '';
     this.categoriaSelecionada = '';
@@ -239,6 +288,8 @@ export class DietaComponent implements OnInit {
   fecharBuscaAlimentos(): void {
     this.modalAlimentos = false;
     this.refeicaoSelecionada = null;
+    this.substitutoSelecionado = null;
+    this.modoBuscaSubstituto = false;
     this.alimentosCarregando = false;
     this.buscasAlimentos$.next(null);
     this.elementoAtivoAntesDaBusca?.focus();
@@ -259,6 +310,10 @@ export class DietaComponent implements OnInit {
     if (!alimento.disponivelParaPrescricao || this.refeicaoSelecionada === null) return;
     const refeicao = this.form.refeicoes.find(item => item.chave === this.refeicaoSelecionada);
     if (!refeicao) return;
+    if (this.substitutoSelecionado) {
+      this.adicionarSubstituto(refeicao, this.substitutoSelecionado.itemChave, alimento);
+      return;
+    }
     if (refeicao.itens.some(item => item.alimento?.id === alimento.id)) {
       this.mensagemAlimento = 'Este alimento já está nesta refeição. Ajuste a quantidade no editor.';
       return;
@@ -267,8 +322,50 @@ export class DietaComponent implements OnInit {
       this.mensagemAlimento = 'Uma refeição pode conter até 100 alimentos.';
       return;
     }
-    refeicao.itens.push({ chave: this.proximaChave(), alimento, quantidadeGramas: '' });
+    refeicao.itens.push({ chave: this.proximaChave(), alimento, quantidadeGramas: '', substitutos: [] });
     this.mensagemAlimento = `${alimento.nome} adicionado à refeição.`;
+  }
+
+  removerSubstituto(item: ItemEdicao, substituto: SubstitutoEdicao): void {
+    item.substitutos = item.substitutos.filter(itemAtual => itemAtual.chave !== substituto.chave);
+  }
+
+  abrirPreviaListaCompras(): void {
+    if (this.tela !== 'detalhe' || !this.planoSelecionado) return;
+    this.elementoAtivoAntesDaListaCompras = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    this.modalListaCompras = true;
+    this.listaCompras = null;
+    this.itensListaComprasPorCategoria = [];
+    this.listaComprasErro = '';
+    this.carregarListaCompras();
+    setTimeout(() => document.getElementById('dias-lista-compras')?.focus());
+  }
+
+  carregarListaCompras(): void {
+    const plano = this.planoSelecionado;
+    if (!this.modalListaCompras || !plano) return;
+    if (!this.periodoListaComprasValido) {
+      this.listaCompras = null;
+      this.itensListaComprasPorCategoria = [];
+      this.listaComprasCarregando = false;
+      this.listaComprasErro = 'Informe um número inteiro entre 1 e 30 dias.';
+      return;
+    }
+    this.listaCompras = null;
+    this.itensListaComprasPorCategoria = [];
+    this.listaComprasErro = '';
+    this.listaComprasCarregando = true;
+    this.buscasListaCompras$.next({ planoId: plano.id, dias: this.diasListaCompras! });
+  }
+
+  fecharPreviaListaCompras(): void {
+    this.modalListaCompras = false;
+    this.listaComprasCarregando = false;
+    this.buscasListaCompras$.next(null);
+    this.listaCompras = null;
+    this.itensListaComprasPorCategoria = [];
+    this.elementoAtivoAntesDaListaCompras?.focus();
+    this.elementoAtivoAntesDaListaCompras = null;
   }
 
   removerAlimento(refeicao: RefeicaoEdicao, item: ItemEdicao): void {
@@ -383,13 +480,28 @@ export class DietaComponent implements OnInit {
       kcal: (alimento.kcal100g ?? 0) * fator,
       proteinas: (alimento.proteina100g ?? 0) * fator,
       carboidratos: (alimento.carboidratos100g ?? 0) * fator,
-      gorduras: (alimento.gordura100g ?? 0) * fator
+      gorduras: (alimento.gordura100g ?? 0) * fator,
+      fibras: alimento.fibra100g === null ? null : alimento.fibra100g * fator
     };
+  }
+
+  nutrientesSubstitutoPrevistos(substituto: SubstitutoEdicao): Nutrientes {
+    const item: ItemEdicao = {
+      chave: substituto.chave,
+      alimento: substituto.alimento,
+      quantidadeGramas: substituto.quantidadeGramas,
+      substitutos: []
+    };
+    return this.nutrientesPrevistos(item);
   }
 
   formatarNutriente(valor: number | null | undefined): string {
     if (valor === null || valor === undefined || !Number.isFinite(Number(valor))) return '—';
     return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(valor));
+  }
+
+  formatarFibra(valor: number | null | undefined): string {
+    return valor === null || valor === undefined ? 'Não informado' : this.formatarNutriente(valor);
   }
 
   statusLabel(status: Plano['status']): string {
@@ -420,7 +532,8 @@ export class DietaComponent implements OnInit {
 
   @HostListener('document:keydown.escape')
   fecharModalComEscape(): void {
-    if (this.modalAlimentos) this.fecharBuscaAlimentos();
+    if (this.modalListaCompras) this.fecharPreviaListaCompras();
+    else if (this.modalAlimentos) this.fecharBuscaAlimentos();
   }
 
   private carregarCategorias(): void {
@@ -458,6 +571,58 @@ export class DietaComponent implements OnInit {
     });
   }
 
+  private configurarPreviaListaCompras(): void {
+    this.buscasListaCompras$.pipe(
+      switchMap(pedido => {
+        if (pedido === null) return EMPTY;
+        return this.dieta.previsualizarListaCompras(this.patientId, pedido.planoId, pedido.dias).pipe(
+          catchError((error: ApiErrorResponse) => {
+            this.listaComprasErro = error.message || 'Não foi possível carregar a prévia da lista de compras.';
+            this.listaComprasCarregando = false;
+            return EMPTY;
+          })
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(resultado => {
+      this.listaCompras = resultado;
+      this.itensListaComprasPorCategoria = this.agruparItensListaCompras(resultado.itens);
+      this.listaComprasCarregando = false;
+    });
+  }
+
+  private agruparItensListaCompras(itens: ItemListaCompras[]): { categoria: string; itens: ItemListaCompras[] }[] {
+    const grupos = new Map<string, ItemListaCompras[]>();
+    for (const item of itens) {
+      const categoria = item.categoria?.trim() || 'Sem categoria';
+      const itensDaCategoria = grupos.get(categoria) ?? [];
+      itensDaCategoria.push(item);
+      grupos.set(categoria, itensDaCategoria);
+    }
+    return [...grupos.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, 'pt-BR'))
+      .map(([categoria, itensDaCategoria]) => ({ categoria, itens: itensDaCategoria }));
+  }
+
+  private adicionarSubstituto(refeicao: RefeicaoEdicao, itemChave: number, alimento: Alimento): void {
+    const item = refeicao.itens.find(itemAtual => itemAtual.chave === itemChave);
+    if (!item?.alimento) return;
+    if (item.substitutos.length >= MAXIMO_SUBSTITUTOS) {
+      this.mensagemAlimento = `Um alimento pode ter até ${MAXIMO_SUBSTITUTOS} substitutos.`;
+      return;
+    }
+    if (item.alimento.id === alimento.id) {
+      this.mensagemAlimento = 'O substituto deve ser diferente do alimento principal.';
+      return;
+    }
+    if (item.substitutos.some(substituto => substituto.alimento?.id === alimento.id)) {
+      this.mensagemAlimento = 'Este substituto já foi adicionado para este alimento.';
+      return;
+    }
+    item.substitutos.push({ chave: this.proximaChave(), alimento, quantidadeGramas: '' });
+    this.mensagemAlimento = `${alimento.nome} adicionado como substituto informativo.`;
+  }
+
   private validarFormulario(): Record<string, string> {
     const errors: Record<string, string> = {};
     const titulo = this.form.titulo.trim();
@@ -488,6 +653,31 @@ export class DietaComponent implements OnInit {
         }
         if (gramas === null || gramas <= 0 || gramas > 10000 || !this.temNoMaximoDuasCasas(item.quantidadeGramas)) {
           errors[`${itemPrefixo}-gramas`] = 'Informe uma quantidade maior que zero, até 10.000 g e com no máximo duas casas decimais.';
+        }
+        if (item.substitutos.length > MAXIMO_SUBSTITUTOS) {
+          errors[`${itemPrefixo}-substitutos`] = `Um alimento pode ter até ${MAXIMO_SUBSTITUTOS} substitutos.`;
+        }
+        for (const substituto of item.substitutos) {
+          const substitutoPrefixo = `${itemPrefixo}-substituto-${substituto.chave}`;
+          const gramasSubstituto = this.numero(substituto.quantidadeGramas);
+          if (!substituto.alimento) {
+            errors[`${substitutoPrefixo}-alimento`] = 'Selecione um substituto do catálogo.';
+          } else {
+            if (!substituto.alimento.disponivelParaPrescricao) {
+              errors[`${substitutoPrefixo}-alimento`] = 'Este substituto não tem dados calculáveis.';
+            }
+            if (substituto.alimento.id === item.alimento?.id) {
+              errors[`${substitutoPrefixo}-alimento`] = 'O substituto deve ser diferente do alimento principal.';
+            }
+            if (item.substitutos.some(outro => outro.chave !== substituto.chave
+              && outro.alimento?.id === substituto.alimento?.id)) {
+              errors[`${substitutoPrefixo}-alimento`] = 'Remova substitutos repetidos para este alimento.';
+            }
+          }
+          if (gramasSubstituto === null || gramasSubstituto <= 0 || gramasSubstituto > 10000
+            || !this.temNoMaximoDuasCasas(substituto.quantidadeGramas)) {
+            errors[`${substitutoPrefixo}-gramas`] = 'Informe uma quantidade maior que zero, até 10.000 g e com no máximo duas casas decimais.';
+          }
         }
       }
       if (indice >= 20) break;
@@ -547,7 +737,11 @@ export class DietaComponent implements OnInit {
         horario: refeicao.horario,
         itens: refeicao.itens.map(item => ({
           alimentoId: item.alimento!.id,
-          quantidadeGramas: this.numero(item.quantidadeGramas) ?? 0
+          quantidadeGramas: this.numero(item.quantidadeGramas) ?? 0,
+          substitutos: item.substitutos.map(substituto => ({
+            alimentoId: substituto.alimento!.id,
+            quantidadeGramas: this.numero(substituto.quantidadeGramas) ?? 0
+          }))
         }))
       }))
     };
@@ -579,8 +773,13 @@ export class DietaComponent implements OnInit {
         horario: refeicao.horario.slice(0, 5),
         itens: refeicao.itens.map(item => ({
           chave: this.proximaChave(),
-          alimento: item.alimento,
-          quantidadeGramas: String(item.quantidadeGramas)
+          alimento: { ...item.alimento },
+          quantidadeGramas: String(item.quantidadeGramas),
+          substitutos: (item.substitutos ?? []).map(substituto => ({
+            chave: this.proximaChave(),
+            alimento: substituto.alimento ? { ...substituto.alimento } : null,
+            quantidadeGramas: String(substituto.quantidadeGramas)
+          }))
         }))
       }))
     };
@@ -603,7 +802,8 @@ export class DietaComponent implements OnInit {
       kcal: a.kcal + b.kcal,
       proteinas: a.proteinas + b.proteinas,
       carboidratos: a.carboidratos + b.carboidratos,
-      gorduras: a.gorduras + b.gorduras
+      gorduras: a.gorduras + b.gorduras,
+      fibras: a.fibras === null || b.fibras === null ? null : a.fibras + b.fibras
     };
   }
 

@@ -48,8 +48,10 @@ public class Refeicao {
         this.horario = horario;
     }
 
-    public void adicionar(Alimento alimento, BigDecimal gramas) {
-        itens.add(new ItemRefeicao(this, alimento, gramas));
+    public ItemRefeicao adicionar(Alimento alimento, BigDecimal gramas) {
+        ItemRefeicao item = new ItemRefeicao(this, alimento, gramas);
+        itens.add(item);
+        return item;
     }
 
     public Integer getId() {

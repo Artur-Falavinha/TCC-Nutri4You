@@ -3,6 +3,7 @@ import { map } from 'rxjs';
 
 import { ApiService } from '../../core/services/api.service';
 import {
+  ListaCompras,
   PaginaAlimentos,
   Plano,
   PlanoRequest
@@ -57,6 +58,13 @@ export class DietaService {
     return this.api.post<Plano>(
       `${this.caminhoPlanos(pacienteId)}/${planoId}/publicacao`,
       { versao }
+    );
+  }
+
+  previsualizarListaCompras(pacienteId: number, planoId: number, dias: number) {
+    return this.api.get<ListaCompras>(
+      `${this.caminhoPlanos(pacienteId)}/${planoId}/lista-compras`,
+      { params: { dias } }
     );
   }
 

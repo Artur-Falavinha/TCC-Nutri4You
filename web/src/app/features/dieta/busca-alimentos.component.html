@@ -1,7 +1,7 @@
 <div class="modal-backdrop">
   <section class="food-modal" role="dialog" aria-modal="true" aria-labelledby="food-modal-title" aria-describedby="food-modal-help">
     <header class="food-modal__header">
-      <div><h2 id="food-modal-title">Buscar alimentos</h2><p id="food-modal-help">Catálogo TACO · NEPA/UNICAMP, 4ª edição</p></div>
+      <div><h2 id="food-modal-title">{{ modoSubstituto ? 'Buscar substitutos' : 'Buscar alimentos' }}</h2><p id="food-modal-help">Catálogo TACO · NEPA/UNICAMP, 4ª edição</p></div>
       <button type="button" class="icon-action" aria-label="Fechar busca" (click)="fechar.emit()"><i class="ph ph-x" aria-hidden="true"></i></button>
     </header>
     <form class="food-search" (ngSubmit)="buscar.emit(0)">
@@ -33,12 +33,12 @@
           @for (alimento of paginaAlimentos?.alimentos; track alimento.id) {
             <li class="catalog-food">
               <div><h3>{{ alimento.nome }}</h3><p>{{ alimento.categoria }} · {{ alimento.fonte }} {{ alimento.versaoFonte }}</p>
-                <dl class="catalog-nutrients"><div><dt>kcal</dt><dd>{{ formatarNutriente(alimento.kcal100g) }}</dd></div><div><dt>P</dt><dd>{{ formatarNutriente(alimento.proteina100g) }} g</dd></div><div><dt>C</dt><dd>{{ formatarNutriente(alimento.carboidratos100g) }} g</dd></div><div><dt>G</dt><dd>{{ formatarNutriente(alimento.gordura100g) }} g</dd></div></dl>
+                <dl class="catalog-nutrients"><div><dt>kcal</dt><dd>{{ formatarNutriente(alimento.kcal100g) }}</dd></div><div><dt>P</dt><dd>{{ formatarNutriente(alimento.proteina100g) }} g</dd></div><div><dt>C</dt><dd>{{ formatarNutriente(alimento.carboidratos100g) }} g</dd></div><div><dt>G</dt><dd>{{ formatarNutriente(alimento.gordura100g) }} g</dd></div><div><dt>Fibras</dt><dd>{{ alimento.fibra100g === null ? 'Não informado' : formatarNutriente(alimento.fibra100g) + ' g' }}</dd></div></dl>
                 @if (alimento.observacaoFonte) { <small class="source-note">{{ alimento.observacaoFonte }}</small> }
                 @if (!alimento.disponivelParaPrescricao) { <small class="unavailable-note">Sem dados nutricionais suficientes para prescrição</small> }
               </div>
               <button type="button" class="action secondary" [disabled]="!alimento.disponivelParaPrescricao" (click)="adicionarAlimento.emit(alimento)">
-                {{ alimento.disponivelParaPrescricao ? 'Adicionar' : 'Indisponível' }}
+                {{ !alimento.disponivelParaPrescricao ? 'Indisponível' : (modoSubstituto ? 'Adicionar substituto' : 'Adicionar') }}
               </button>
             </li>
           }

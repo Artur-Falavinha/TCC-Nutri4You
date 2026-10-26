@@ -226,7 +226,7 @@ export function ShoppingListScreen({ navigation }: Props) {
               Lista de compras
             </Text>
             <Text style={styles.subtitle}>
-              Quantidades agrupadas pelo plano alimentar no período escolhido.
+              Inclui apenas os alimentos principais; substituições opcionais não são somadas.
             </Text>
           </View>
           <Pressable

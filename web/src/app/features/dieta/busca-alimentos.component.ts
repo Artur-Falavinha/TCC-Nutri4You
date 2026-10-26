@@ -19,6 +19,7 @@ export class BuscaAlimentosComponent {
   @Input() paginaAlimentos: PaginaAlimentos | null = null;
   @Input() buscaAlimento = '';
   @Input() categoriaSelecionada = '';
+  @Input() modoSubstituto = false;
 
   @Output() buscaAlimentoChange = new EventEmitter<string>();
   @Output() categoriaSelecionadaChange = new EventEmitter<string>();

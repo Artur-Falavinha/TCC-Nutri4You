@@ -69,6 +69,9 @@
         </div>
       </div>
       <div class="actions">
+        @if (plano.status !== 'SUBSTITUIDO') {
+          <app-ui-button label="Prévia de compras" icon="basket" variant="secondary" [fullWidth]="false" (click)="abrirPreviaListaCompras()" />
+        }
         @if (plano.status === 'RASCUNHO') {
           <app-ui-button label="Editar rascunho" icon="pencil-simple" variant="secondary" [fullWidth]="false" (click)="abrirEdicao()" />
           <app-ui-button label="Publicar" icon="check-circle" [fullWidth]="false" [loading]="publicando" (click)="publicar()" />
@@ -110,6 +113,7 @@
         <div><dt>Proteínas</dt><dd>{{ formatarNutriente(plano.totais.proteinas) }} g</dd></div>
         <div><dt>Carboidratos</dt><dd>{{ formatarNutriente(plano.totais.carboidratos) }} g</dd></div>
         <div><dt>Gorduras</dt><dd>{{ formatarNutriente(plano.totais.gorduras) }} g</dd></div>
+        <div><dt>Fibras</dt><dd>{{ formatarFibra(plano.totais.fibras) }}{{ plano.totais.fibras === null ? '' : ' g' }}</dd></div>
       </dl>
     </section>
 
@@ -125,15 +129,28 @@
               <p class="empty-inline">Nenhum alimento adicionado.</p>
             } @else {
               <div class="table-scroll">
+                <p class="section-help">Substitutos são informativos. Não entram nos totais do plano nem na prévia de compras.</p>
                 <table>
-                  <thead><tr><th>Alimento</th><th>Quantidade</th><th>Energia</th><th>Proteínas</th><th>Carboidratos</th><th>Gorduras</th></tr></thead>
+                  <thead><tr><th>Alimento</th><th>Quantidade</th><th>Energia</th><th>Proteínas</th><th>Carboidratos</th><th>Gorduras</th><th>Fibras</th></tr></thead>
                   <tbody>
                     @for (item of refeicao.itens; track item.alimento.id) {
                       <tr>
                         <td>{{ item.alimento.nome }}</td><td>{{ formatarNutriente(item.quantidadeGramas) }} g</td>
                         <td>{{ formatarNutriente(item.nutrientes.kcal) }} kcal</td><td>{{ formatarNutriente(item.nutrientes.proteinas) }} g</td>
                         <td>{{ formatarNutriente(item.nutrientes.carboidratos) }} g</td><td>{{ formatarNutriente(item.nutrientes.gorduras) }} g</td>
+                        <td>{{ formatarFibra(item.nutrientes.fibras) }}{{ item.nutrientes.fibras === null ? '' : ' g' }}</td>
                       </tr>
+                      @for (substituto of item.substitutos; track substituto.alimento.id) {
+                        <tr class="substitute-row">
+                          <td><span class="substitute-label">Substituto informativo</span><strong>{{ substituto.alimento.nome }}</strong></td>
+                          <td>{{ formatarNutriente(substituto.quantidadeGramas) }} g</td>
+                          <td>{{ formatarNutriente(substituto.nutrientes.kcal) }} kcal</td>
+                          <td>{{ formatarNutriente(substituto.nutrientes.proteinas) }} g</td>
+                          <td>{{ formatarNutriente(substituto.nutrientes.carboidratos) }} g</td>
+                          <td>{{ formatarNutriente(substituto.nutrientes.gorduras) }} g</td>
+                          <td>{{ formatarFibra(substituto.nutrientes.fibras) }}{{ substituto.nutrientes.fibras === null ? '' : ' g' }}</td>
+                        </tr>
+                      }
                     }
                   </tbody>
                 </table>
@@ -144,6 +161,7 @@
               <div><dt>Proteínas</dt><dd>{{ formatarNutriente(refeicao.totais.proteinas) }} g</dd></div>
               <div><dt>Carboidratos</dt><dd>{{ formatarNutriente(refeicao.totais.carboidratos) }} g</dd></div>
               <div><dt>Gorduras</dt><dd>{{ formatarNutriente(refeicao.totais.gorduras) }} g</dd></div>
+              <div><dt>Fibras</dt><dd>{{ formatarFibra(refeicao.totais.fibras) }}{{ refeicao.totais.fibras === null ? '' : ' g' }}</dd></div>
             </dl>
           </article>
         }
@@ -249,25 +267,51 @@
                   } @else {
                     <div class="food-editor-list">
                       @for (item of refeicao.itens; track item.chave) {
-                        <div class="food-editor-row">
-                          <div class="food-name"><strong>{{ item.alimento?.nome || 'Alimento' }}</strong><small>{{ item.alimento?.categoria }}</small>
-                            @if (errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-alimento']) { <span class="field-error" role="alert">{{ errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-alimento'] }}</span> }
+                        @let nutrientesItem = nutrientesPrevistos(item);
+                        <div class="food-editor-group">
+                          <div class="food-editor-row">
+                            <div class="food-name"><strong>{{ item.alimento?.nome || 'Alimento' }}</strong><small>{{ item.alimento?.categoria }}</small>
+                              @if (errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-alimento']) { <span class="field-error" role="alert">{{ errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-alimento'] }}</span> }
+                            </div>
+                            <label class="field grams-field" [for]="'gramas-' + item.chave"><span>Quantidade do alimento principal</span>
+                              <span class="input-unit"><input [id]="'gramas-' + item.chave" [name]="'gramas-' + item.chave" type="number" min="0.01" max="10000" step="0.01" inputmode="decimal" placeholder="0" [(ngModel)]="item.quantidadeGramas" [attr.aria-invalid]="!!errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-gramas']" /><span>g</span></span>
+                              @if (errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-gramas']) { <span class="field-error" role="alert">{{ errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-gramas'] }}</span> }
+                            </label>
+                            <div class="food-preview"><span>Prévia do alimento principal</span><strong>{{ formatarNutriente(nutrientesItem.kcal) }} kcal</strong><small>P {{ formatarNutriente(nutrientesItem.proteinas) }} g · C {{ formatarNutriente(nutrientesItem.carboidratos) }} g · G {{ formatarNutriente(nutrientesItem.gorduras) }} g · Fibras {{ formatarFibra(nutrientesItem.fibras) }}{{ nutrientesItem.fibras === null ? '' : ' g' }}</small></div>
+                            <button type="button" class="icon-action danger-text" (click)="removerAlimento(refeicao, item)" [attr.aria-label]="'Remover ' + (item.alimento?.nome || 'alimento')"><i class="ph ph-x-circle" aria-hidden="true"></i></button>
                           </div>
-                          <label class="field grams-field" [for]="'gramas-' + item.chave"><span>Quantidade</span>
-                            <span class="input-unit"><input [id]="'gramas-' + item.chave" [name]="'gramas-' + item.chave" type="number" min="0.01" max="10000" step="0.01" inputmode="decimal" placeholder="0" [(ngModel)]="item.quantidadeGramas" [attr.aria-invalid]="!!errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-gramas']" /><span>g</span></span>
-                            @if (errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-gramas']) { <span class="field-error" role="alert">{{ errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-gramas'] }}</span> }
-                          </label>
-                          <div class="food-preview"><span>Prévia</span><strong>{{ formatarNutriente(nutrientesPrevistos(item).kcal) }} kcal</strong><small>P {{ formatarNutriente(nutrientesPrevistos(item).proteinas) }} g · C {{ formatarNutriente(nutrientesPrevistos(item).carboidratos) }} g · G {{ formatarNutriente(nutrientesPrevistos(item).gorduras) }} g</small></div>
-                          <button type="button" class="icon-action danger-text" (click)="removerAlimento(refeicao, item)" [attr.aria-label]="'Remover ' + (item.alimento?.nome || 'alimento')"><i class="ph ph-x-circle" aria-hidden="true"></i></button>
+                          <section class="substitutes-editor" [attr.aria-label]="'Substitutos informativos de ' + (item.alimento?.nome || 'alimento')">
+                            <div class="section-heading substitutes-heading">
+                              <div><h5>Substitutos informativos</h5><p class="section-help">Cada substituto tem quantidade e nutrientes próprios. Não altera os totais do plano nem a lista de compras.</p></div>
+                              <button type="button" class="text-action" (click)="abrirBuscaSubstitutos(refeicao, item)" [disabled]="!item.alimento || item.substitutos.length >= 10" [attr.aria-label]="'Adicionar substituto para ' + (item.alimento?.nome || 'alimento')"><i class="ph ph-plus" aria-hidden="true"></i>Adicionar substituto ({{ item.substitutos.length }}/10)</button>
+                            </div>
+                            @if (errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-substitutos']) { <p class="field-error" role="alert">{{ errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-substitutos'] }}</p> }
+                            @for (substituto of item.substitutos; track substituto.chave) {
+                              @let nutrientesSubstituto = nutrientesSubstitutoPrevistos(substituto);
+                              <div class="substitute-editor-row">
+                                <div class="food-name"><strong>{{ substituto.alimento?.nome || 'Substituto' }}</strong><small>{{ substituto.alimento?.categoria }}</small>
+                                  @if (errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-substituto-' + substituto.chave + '-alimento']) { <span class="field-error" role="alert">{{ errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-substituto-' + substituto.chave + '-alimento'] }}</span> }
+                                </div>
+                                <label class="field grams-field" [for]="'gramas-substituto-' + substituto.chave"><span>Quantidade do substituto</span>
+                                  <span class="input-unit"><input [id]="'gramas-substituto-' + substituto.chave" [name]="'gramas-substituto-' + substituto.chave" type="number" min="0.01" max="10000" step="0.01" inputmode="decimal" placeholder="0" [(ngModel)]="substituto.quantidadeGramas" [attr.aria-invalid]="!!errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-substituto-' + substituto.chave + '-gramas']" /><span>g</span></span>
+                                  @if (errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-substituto-' + substituto.chave + '-gramas']) { <span class="field-error" role="alert">{{ errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-substituto-' + substituto.chave + '-gramas'] }}</span> }
+                                </label>
+                                <div class="food-preview"><span>Prévia deste substituto</span><strong>{{ formatarNutriente(nutrientesSubstituto.kcal) }} kcal</strong><small>P {{ formatarNutriente(nutrientesSubstituto.proteinas) }} g · C {{ formatarNutriente(nutrientesSubstituto.carboidratos) }} g · G {{ formatarNutriente(nutrientesSubstituto.gorduras) }} g · Fibras {{ formatarFibra(nutrientesSubstituto.fibras) }}{{ nutrientesSubstituto.fibras === null ? '' : ' g' }}</small></div>
+                                <button type="button" class="icon-action danger-text" (click)="removerSubstituto(item, substituto)" [attr.aria-label]="'Remover substituto ' + (substituto.alimento?.nome || '')"><i class="ph ph-x-circle" aria-hidden="true"></i></button>
+                              </div>
+                            }
+                          </section>
                         </div>
                       }
                     </div>
                   }
+                  @let totaisPrevistosRefeicao = totaisRefeicaoPrevistos(refeicao);
                   <dl class="meal-total preview-total">
-                    <div><dt>Prévia da refeição</dt><dd>{{ formatarNutriente(totaisRefeicaoPrevistos(refeicao).kcal) }} kcal</dd></div>
-                    <div><dt>Proteínas</dt><dd>{{ formatarNutriente(totaisRefeicaoPrevistos(refeicao).proteinas) }} g</dd></div>
-                    <div><dt>Carboidratos</dt><dd>{{ formatarNutriente(totaisRefeicaoPrevistos(refeicao).carboidratos) }} g</dd></div>
-                    <div><dt>Gorduras</dt><dd>{{ formatarNutriente(totaisRefeicaoPrevistos(refeicao).gorduras) }} g</dd></div>
+                    <div><dt>Prévia da refeição</dt><dd>{{ formatarNutriente(totaisPrevistosRefeicao.kcal) }} kcal</dd></div>
+                    <div><dt>Proteínas</dt><dd>{{ formatarNutriente(totaisPrevistosRefeicao.proteinas) }} g</dd></div>
+                    <div><dt>Carboidratos</dt><dd>{{ formatarNutriente(totaisPrevistosRefeicao.carboidratos) }} g</dd></div>
+                    <div><dt>Gorduras</dt><dd>{{ formatarNutriente(totaisPrevistosRefeicao.gorduras) }} g</dd></div>
+                    <div><dt>Fibras</dt><dd>{{ formatarFibra(totaisPrevistosRefeicao.fibras) }}{{ totaisPrevistosRefeicao.fibras === null ? '' : ' g' }}</dd></div>
                   </dl>
                 </article>
               }
@@ -278,11 +322,13 @@
         <section class="summary-card preview-card" aria-labelledby="preview-title">
           <h3 id="preview-title">Prévia dos totais diários</h3>
           <p class="section-help">Estimativa baseada nos valores do catálogo. Os totais do plano são atualizados ao salvar.</p>
+          @let totaisPrevistosDia = totaisPrevistos;
           <dl class="nutrient-grid">
-            <div><dt>Energia</dt><dd>{{ formatarNutriente(totaisPrevistos.kcal) }} kcal</dd></div>
-            <div><dt>Proteínas</dt><dd>{{ formatarNutriente(totaisPrevistos.proteinas) }} g</dd></div>
-            <div><dt>Carboidratos</dt><dd>{{ formatarNutriente(totaisPrevistos.carboidratos) }} g</dd></div>
-            <div><dt>Gorduras</dt><dd>{{ formatarNutriente(totaisPrevistos.gorduras) }} g</dd></div>
+            <div><dt>Energia</dt><dd>{{ formatarNutriente(totaisPrevistosDia.kcal) }} kcal</dd></div>
+            <div><dt>Proteínas</dt><dd>{{ formatarNutriente(totaisPrevistosDia.proteinas) }} g</dd></div>
+            <div><dt>Carboidratos</dt><dd>{{ formatarNutriente(totaisPrevistosDia.carboidratos) }} g</dd></div>
+            <div><dt>Gorduras</dt><dd>{{ formatarNutriente(totaisPrevistosDia.gorduras) }} g</dd></div>
+            <div><dt>Fibras</dt><dd>{{ formatarFibra(totaisPrevistosDia.fibras) }}{{ totaisPrevistosDia.fibras === null ? '' : ' g' }}</dd></div>
           </dl>
         </section>
       </fieldset>
@@ -298,6 +344,7 @@
     [alimentosCarregando]="alimentosCarregando"
     [alimentosErro]="alimentosErro"
     [mensagemAlimento]="mensagemAlimento"
+    [modoSubstituto]="modoBuscaSubstituto"
     [paginaAlimentos]="paginaAlimentos"
     [buscaAlimento]="buscaAlimento"
     (buscaAlimentoChange)="buscaAlimento = $event"
@@ -307,4 +354,52 @@
     (recarregarCategorias)="recarregarCategorias()"
     (adicionarAlimento)="adicionarAlimento($event)"
     (fechar)="fecharBuscaAlimentos()" />
+}
+
+@if (modalListaCompras && planoSelecionado) {
+  <div class="shopping-preview-backdrop">
+    <section class="shopping-preview" role="dialog" aria-modal="true" aria-labelledby="shopping-preview-title" aria-describedby="shopping-preview-help">
+      <header class="shopping-preview__header">
+        <div>
+          <h2 id="shopping-preview-title">Prévia da lista de compras</h2>
+          <p>{{ listaCompras?.planoTitulo || planoSelecionado.titulo }} · versão {{ planoSelecionado.versao }}</p>
+        </div>
+        <button type="button" class="icon-action" aria-label="Fechar prévia da lista de compras" (click)="fecharPreviaListaCompras()"><i class="ph ph-x" aria-hidden="true"></i></button>
+      </header>
+      <p id="shopping-preview-help" class="section-help">A lista usa somente os alimentos principais. As quantidades diárias são multiplicadas pelos dias escolhidos; substitutos são informativos e não entram neste cálculo. Esta visualização não altera as marcações do paciente.</p>
+      <div class="shopping-preview__controls">
+        <label class="field" for="dias-lista-compras"><span>Período da prévia</span>
+          <span class="input-unit"><input id="dias-lista-compras" name="dias-lista-compras" type="number" min="1" max="30" step="1" inputmode="numeric" [ngModelOptions]="{ standalone: true }" [(ngModel)]="diasListaCompras" [attr.aria-invalid]="!periodoListaComprasValido" /><span>dias</span></span>
+        </label>
+        <button type="button" class="action secondary" (click)="carregarListaCompras()" [disabled]="listaComprasCarregando || !periodoListaComprasValido"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i>Atualizar prévia</button>
+      </div>
+      @if (!periodoListaComprasValido) { <p class="field-error" role="alert">Informe um número inteiro entre 1 e 30 dias.</p> }
+      @if (listaComprasErro) { <p class="field-error" role="alert">{{ listaComprasErro }}</p> }
+      @if (listaComprasCarregando) {
+        <p class="state" role="status">Calculando quantidades para {{ diasListaCompras }} dia(s)...</p>
+      } @else if (listaCompras && !listaComprasErro) {
+        <div class="shopping-preview__summary" aria-live="polite">
+          <span>{{ listaCompras.totalItens }} alimento(s)</span>
+          <span>Período: {{ listaCompras.dias }} dia(s)</span>
+        </div>
+        @if (listaCompras.itens.length === 0) {
+          <p class="empty-inline">Este plano ainda não tem alimentos principais para incluir na lista.</p>
+        } @else {
+          <div class="shopping-preview__categories">
+            @for (grupo of itensListaComprasPorCategoria; track grupo.categoria) {
+              <section class="shopping-category" [attr.aria-labelledby]="'shopping-category-' + $index">
+                <h3 [id]="'shopping-category-' + $index">{{ grupo.categoria }}</h3>
+                <ul>
+                  @for (item of grupo.itens; track item.alimentoId) {
+                    <li><span>{{ item.nome }}</span><strong>{{ formatarNutriente(item.quantidadeGramas) }} g</strong></li>
+                  }
+                </ul>
+              </section>
+            }
+          </div>
+        }
+      }
+      <footer class="shopping-preview__footer"><button type="button" class="action secondary" (click)="fecharPreviaListaCompras()">Fechar</button></footer>
+    </section>
+  </div>
 }

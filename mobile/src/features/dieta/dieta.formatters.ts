@@ -4,6 +4,10 @@ export function formatNutrient(value: number): string {
   return value.toFixed(2).replace('.', ',');
 }
 
+export function formatNutrientAmount(value: number | null | undefined): string {
+  return value == null ? '—' : `${formatNutrient(value)} g`;
+}
+
 export function formatGrams(value: number): string {
   return value.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
 }
@@ -49,6 +53,7 @@ export function nutrientEntries(nutrients: Nutrients): { label: string; value: s
     { label: 'Energia', value: `${formatNutrient(nutrients.kcal)} kcal` },
     { label: 'Proteínas', value: `${formatNutrient(nutrients.proteinas)} g` },
     { label: 'Carboidratos', value: `${formatNutrient(nutrients.carboidratos)} g` },
-    { label: 'Gorduras', value: `${formatNutrient(nutrients.gorduras)} g` }
+    { label: 'Gorduras', value: `${formatNutrient(nutrients.gorduras)} g` },
+    { label: 'Fibras', value: formatNutrientAmount(nutrients.fibras) }
   ];
 }

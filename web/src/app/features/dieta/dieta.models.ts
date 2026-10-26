@@ -3,6 +3,14 @@ export interface Nutrientes {
   proteinas: number;
   carboidratos: number;
   gorduras: number;
+  fibras: number | null;
+}
+
+export interface MetasNutricionais {
+  kcal: number;
+  proteinas: number;
+  carboidratos: number;
+  gorduras: number;
 }
 
 export interface Alimento {
@@ -14,6 +22,7 @@ export interface Alimento {
   proteina100g: number | null;
   carboidratos100g: number | null;
   gordura100g: number | null;
+  fibra100g: number | null;
   fonte: string;
   versaoFonte: string;
   observacaoFonte: string | null;
@@ -29,6 +38,13 @@ export interface PaginaAlimentos {
 }
 
 export interface ItemRefeicao {
+  alimento: Alimento;
+  quantidadeGramas: number;
+  nutrientes: Nutrientes;
+  substitutos: SubstitutoRefeicao[];
+}
+
+export interface SubstitutoRefeicao {
   alimento: Alimento;
   quantidadeGramas: number;
   nutrientes: Nutrientes;
@@ -56,7 +72,7 @@ export interface Plano {
   vigenciaInicio: string | null;
   vigenciaFim: string | null;
   publicadoEm: string | null;
-  metas: Nutrientes | null;
+  metas: MetasNutricionais | null;
   totais: Nutrientes;
   refeicoes: Refeicao[];
 }
@@ -66,12 +82,16 @@ export interface PlanoRequest {
   orientacoes: string | null;
   vigenciaInicio: string | null;
   vigenciaFim: string | null;
-  metas: Nutrientes | null;
+  metas: MetasNutricionais | null;
   versao?: number;
   refeicoes: {
     nome: string;
     horario: string;
-    itens: { alimentoId: number; quantidadeGramas: number }[];
+    itens: {
+      alimentoId: number;
+      quantidadeGramas: number;
+      substitutos?: { alimentoId: number; quantidadeGramas: number }[];
+    }[];
   }[];
 }
 
@@ -88,6 +108,13 @@ export interface ItemEdicao {
   chave: number;
   alimento: Alimento | null;
   quantidadeGramas: CampoNumericoEdicao;
+  substitutos: SubstitutoEdicao[];
+}
+
+export interface SubstitutoEdicao {
+  chave: number;
+  alimento: Alimento | null;
+  quantidadeGramas: CampoNumericoEdicao;
 }
 
 export interface MetasEdicao {
@@ -95,6 +122,24 @@ export interface MetasEdicao {
   proteinas: CampoNumericoEdicao;
   carboidratos: CampoNumericoEdicao;
   gorduras: CampoNumericoEdicao;
+}
+
+export interface ItemListaCompras {
+  alimentoId: number;
+  nome: string;
+  categoria: string | null;
+  quantidadeGramas: number;
+  comprado: boolean;
+}
+
+export interface ListaCompras {
+  planoId: number;
+  planoTitulo: string;
+  dias: number;
+  totalItens: number;
+  itensComprados: number;
+  itensPendentes: number;
+  itens: ItemListaCompras[];
 }
 
 export interface PlanoEdicao {

@@ -4,6 +4,8 @@ import com.nutri4you.backend.dto.PrescricaoDTO.CompraRequest;
 import com.nutri4you.backend.dto.PrescricaoDTO.ItemCompraDTO;
 import com.nutri4you.backend.dto.PrescricaoDTO.ItemRefeicaoDTO;
 import com.nutri4you.backend.dto.PrescricaoDTO.ItemRequest;
+import com.nutri4you.backend.dto.PrescricaoDTO.SubstitutoRequest;
+import com.nutri4you.backend.dto.PrescricaoDTO.SubstitutoDTO;
 import com.nutri4you.backend.dto.PrescricaoDTO.ListaComprasDTO;
 import com.nutri4you.backend.dto.PrescricaoDTO.Nutrientes;
 import com.nutri4you.backend.dto.PrescricaoDTO.PlanoDTO;
@@ -132,6 +134,12 @@ public class PrescricaoService {
         return plano == null ? null : respostaCompras(plano, dias);
     }
 
+    public ListaComprasDTO previaCompras(Nutricionista autor, Integer pacienteId, Integer id, int dias) {
+        validarDias(dias);
+        acesso.exigirAcesso(autor, pacienteId);
+        return respostaCompras(exigirAutoria(autor, pacienteId, id), dias, Map.of());
+    }
+
     @Transactional
     public ListaComprasDTO marcar(Paciente paciente, Integer alimentoId, CompraRequest request) {
         if (request == null
@@ -232,22 +240,34 @@ public class PrescricaoService {
             if (item == null || item.alimentoId() == null || !ids.add(item.alimentoId()))
                 throw new IllegalArgumentException(
                         "Alimentos devem ser válidos e não podem se repetir na mesma refeição.");
-            validarNumero(
-                    item.quantidadeGramas(),
-                    new BigDecimal("10000"),
-                    false,
-                    "Quantidade em gramas");
-            Alimento alimento =
-                    alimentos
-                            .findById(item.alimentoId())
-                            .orElseThrow(
-                                    () -> new IllegalArgumentException("Alimento não encontrado."));
-            if (!alimento.calculavel())
-                throw new IllegalArgumentException(
-                        "Alimento sem dados nutricionais calculáveis para prescrição.");
-            refeicao.adicionar(alimento, item.quantidadeGramas());
+            Alimento alimento = exigirAlimento(item.alimentoId(), item.quantidadeGramas());
+            ItemRefeicao principal = refeicao.adicionar(alimento, item.quantidadeGramas());
+            adicionarSubstitutos(principal, item);
         }
         return refeicao;
+    }
+
+    private Alimento exigirAlimento(Integer alimentoId, BigDecimal gramas) {
+        validarNumero(gramas, new BigDecimal("10000"), false, "Quantidade em gramas");
+        if (alimentoId == null) throw new IllegalArgumentException("Alimento inválido.");
+        Alimento alimento = alimentos.findById(alimentoId)
+                .orElseThrow(() -> new IllegalArgumentException("Alimento não encontrado."));
+        if (!alimento.calculavel())
+            throw new IllegalArgumentException("Alimento sem dados nutricionais calculáveis para prescrição.");
+        return alimento;
+    }
+
+    private void adicionarSubstitutos(ItemRefeicao principal, ItemRequest request) {
+        if (request.substitutos().size() > 10)
+            throw new IllegalArgumentException("Informe no máximo 10 substitutos por alimento.");
+        Set<Integer> ids = new HashSet<>();
+        ids.add(request.alimentoId());
+        for (SubstitutoRequest substituto : request.substitutos()) {
+            if (substituto == null || substituto.alimentoId() == null || !ids.add(substituto.alimentoId()))
+                throw new IllegalArgumentException("Substitutos não podem se repetir nem ser o alimento principal.");
+            Alimento alimento = exigirAlimento(substituto.alimentoId(), substituto.quantidadeGramas());
+            principal.adicionarSubstituto(alimento, substituto.quantidadeGramas());
+        }
     }
 
     private void validarTexto(String texto, int limite, String campo) {
@@ -291,7 +311,9 @@ public class PrescricaoService {
                                                                 i ->
                                                                         !i.calculavel()
                                                                                 || !i.getAlimento()
-                                                                                        .calculavel()))) {
+                                                                                        .calculavel()
+                                                                                || i.getSubstitutos().stream()
+                                                                                        .anyMatch(s -> !s.getAlimento().calculavel())))) {
             throw new IllegalArgumentException(
                     "Publicação exige refeições com alimentos e nutrientes calculáveis.");
         }
@@ -340,7 +362,10 @@ public class PrescricaoService {
                                                                                                 .arredondar()
                                                                                         : Nutrientes
                                                                                                 .zero()
-                                                                                                .arredondar()))
+                                                                                                .arredondar(),
+                                                                                i.getSubstitutos().stream()
+                                                                                        .map(s -> new SubstitutoDTO(s.getAlimento().paraResposta(), s.getQuantidadeGramas(), s.nutrientes().arredondar()))
+                                                                                        .toList()))
                                                         .toList(),
                                                 totalRefeicao(r).arredondar()))
                         .toList();
@@ -386,6 +411,10 @@ public class PrescricaoService {
                                                         marcacoes.put(
                                                                 i.getAlimento().getId(),
                                                                 i.isComprado())));
+        return respostaCompras(plano, dias, marcacoes);
+    }
+
+    private ListaComprasDTO respostaCompras(PlanoAlimentar plano, int dias, Map<Integer, Boolean> marcacoes) {
         Map<Integer, BigDecimal> gramas = new LinkedHashMap<>();
         Map<Integer, Alimento> catalogo = new HashMap<>();
         plano.getRefeicoes()

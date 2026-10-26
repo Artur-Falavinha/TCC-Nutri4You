@@ -84,6 +84,15 @@ public class PrescricaoController {
         return ApiResponse.ok(prescricoes.buscar(nutricionista(auth), pacienteId, id));
     }
 
+    @GetMapping("/gestao-pacientes/{pacienteId}/planos-alimentares/{id}/lista-compras")
+    public ApiResponse<ListaComprasDTO> previaCompras(
+            Authentication auth,
+            @PathVariable Integer pacienteId,
+            @PathVariable Integer id,
+            @RequestParam(defaultValue = "7") int dias) {
+        return ApiResponse.ok(prescricoes.previaCompras(nutricionista(auth), pacienteId, id, dias));
+    }
+
     @PutMapping("/gestao-pacientes/{pacienteId}/planos-alimentares/{id}")
     public ApiResponse<PlanoDTO> editar(
             Authentication auth,
