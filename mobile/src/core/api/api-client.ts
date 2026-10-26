@@ -56,7 +56,7 @@ class ApiClient {
         status: 0,
         error: 'ERRO_DE_REDE',
         message:
-          'Nao foi possivel conectar a API. Verifique sua conexao ou se o backend esta no ar.',
+          'Não foi possível conectar ao sistema. Verifique sua conexão e tente novamente.',
         path: url,
         timestamp: new Date().toISOString()
       });
@@ -72,7 +72,7 @@ class ApiClient {
       throw new ApiError({
         status: response.status,
         error: body?.error ?? response.statusText ?? 'ERRO_DESCONHECIDO',
-        message: body?.message ?? 'Nao foi possivel completar a requisicao.',
+        message: body?.message ?? 'Não foi possível concluir a solicitação.',
         path: url,
         timestamp: new Date().toISOString()
       });

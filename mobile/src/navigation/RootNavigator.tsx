@@ -21,6 +21,8 @@ import { EvolucaoScreen } from '../screens/evolucao/EvolucaoScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { AppointmentsScreen } from '../screens/appointments/AppointmentsScreen';
 import { AvailableSlotsScreen } from '../screens/appointments/AvailableSlotsScreen';
+import { MealPlanScreen } from '../screens/dieta/MealPlanScreen';
+import { ShoppingListScreen } from '../screens/dieta/ShoppingListScreen';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -40,6 +42,8 @@ const linking = {
       CriarConta: 'cadastro',
       Dashboard: 'dashboard',
       Evolucao: 'evolucao',
+      Dieta: 'dieta',
+      Compras: 'compras',
       DadosPessoais: 'dados-pessoais',
       Agenda: 'agenda',
       HorariosDisponiveis: 'agenda/horarios',
@@ -154,6 +158,12 @@ export function RootNavigator() {
         <Stack.Screen
           name="Evolucao"
           component={EvolucaoScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen name="Dieta" component={MealPlanScreen} options={{ headerShown: false }} />
+        <Stack.Screen
+          name="Compras"
+          component={ShoppingListScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

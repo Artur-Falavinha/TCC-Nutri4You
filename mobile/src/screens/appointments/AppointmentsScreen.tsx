@@ -138,6 +138,14 @@ export function AppointmentsScreen({ navigation }: Props) {
     if (destination === 'appointments') {
       return;
     }
+    if (destination === 'diet') {
+      navigation.navigate('Dieta');
+      return;
+    }
+    if (destination === 'shopping') {
+      navigation.navigate('Compras');
+      return;
+    }
     if (destination === 'home') {
       navigation.navigate('Dashboard');
       return;

@@ -14,6 +14,8 @@ $v5 = Get-Content (Join-Path $migrations 'V5__remover_medidas_da_anamnese.sql') 
 $v6 = Get-Content (Join-Path $migrations 'V6__ciclo_plano_alimentar.sql') -Raw
 $v7 = Get-Content (Join-Path $migrations 'V7__registro_consultas.sql') -Raw
 $v8 = Get-Content (Join-Path $migrations 'V8__macronutrientes_consumo_diario.sql') -Raw
+$v9 = Get-Content (Join-Path $migrations 'V9__catalogo_taco.sql') -Raw
+$v10 = Get-Content (Join-Path $migrations 'V10__prescricao_alimentar.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
 
 # Every scenario uses a new schema inside a transaction, rolled back even on
@@ -113,6 +115,44 @@ UPDATE Consulta SET observacao = 'Registro legado' WHERE id_consulta = 1;
 $v7
 $v6
 $v8
+$v9
+$v10
+DO `$`$
+BEGIN
+    IF (SELECT count(*) FROM Alimento WHERE catalogo_ativo) <> 597
+       OR (SELECT count(DISTINCT categoria) FROM Alimento WHERE catalogo_ativo) <> 15
+       OR (SELECT count(*) FROM Alimento WHERE catalogo_ativo AND disponivel_prescricao) <> 592 THEN
+        RAISE EXCEPTION 'V9 must import the complete validated TACO catalog';
+    END IF;
+    IF (SELECT count(*) FROM Alimento WHERE codigo_taco IS NULL AND NOT catalogo_ativo) <> 5 THEN
+        RAISE EXCEPTION 'V9 must preserve the five legacy food records';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 3
+                   AND kcal_100g = 128.258486 AND proteina_100g = 2.520817
+                   AND carboidratos_100g = 28.059850 AND gordura_100g = 0.227000) THEN
+        RAISE EXCEPTION 'V9 changed the reference food composition';
+    END IF;
+    IF EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco IN (450, 457, 458, 591)
+                AND (disponivel_prescricao OR kcal_100g IS NOT NULL)) THEN
+        RAISE EXCEPTION 'V9 must not invent values under scientific reassessment';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 259
+                   AND proteina_100g = 0 AND carboidratos_100g = 0
+                   AND observacao_fonte LIKE '%NA%') THEN
+        RAISE EXCEPTION 'V9 must retain non-applicable source qualifiers';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 288
+                   AND carboidratos_100g = 0 AND observacao_fonte IS NOT NULL) THEN
+        RAISE EXCEPTION 'V9 must record normalization of the source rounding residual';
+    END IF;
+    IF EXISTS (SELECT 1 FROM Item_Refeicao i JOIN Alimento a ON a.id_alimento = i.id_alimento
+                WHERE i.kcal_100g IS DISTINCT FROM a.kcal_100g
+                   OR i.proteina_100g IS DISTINCT FROM a.proteina_100g
+                   OR i.carboidratos_100g IS DISTINCT FROM a.carboidratos_100g) THEN
+        RAISE EXCEPTION 'V10 must preserve legacy food compositions in item snapshots';
+    END IF;
+END;
+`$`$;
 DO `$`$
 BEGIN
     IF EXISTS (
