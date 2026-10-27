@@ -65,7 +65,7 @@ public class ClinicoService {
     public AvaliacaoResponse registrarAvaliacao(Nutricionista nutricionista, Integer pacienteId, AvaliacaoRequest request) {
         Paciente paciente = gestaoPacienteService.exigirAcesso(nutricionista, pacienteId);
         validarMedidas(request);
-        AvaliacaoAntropometrica avaliacao = new AvaliacaoAntropometrica(paciente, LocalDateTime.now());
+        AvaliacaoAntropometrica avaliacao = new AvaliacaoAntropometrica(paciente, LocalDateTime.now(java.time.ZoneId.of("America/Sao_Paulo")));
         aplicar(avaliacao, request);
         return paraResposta(avaliacaoRepository.save(avaliacao));
     }
@@ -110,7 +110,7 @@ public class ClinicoService {
     @Transactional(readOnly = true)
     public ConsumoProgressoDTO consumoDiarioProgresso(Paciente paciente) {
         Optional<ConsumoDiario> consumo = consumoDiarioRepository
-                .findByPaciente_IdAndDataRegistro(paciente.getId(), LocalDate.now());
+                .findByPaciente_IdAndDataRegistro(paciente.getId(), LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")));
         MetasNutricionais metas = buscarMetasNutricionais(paciente.getId()).orElse(null);
 
         if (consumo.isEmpty() && metas == null) {
@@ -137,7 +137,7 @@ public class ClinicoService {
                 .map(this::paraDietaResumo)
                 .orElse(null);
 
-        LocalDateTime limiteRecente = LocalDateTime.now().minusHours(2);
+        LocalDateTime limiteRecente = LocalDateTime.now(java.time.ZoneId.of("America/Sao_Paulo")).minusHours(2);
         DashboardPacienteDTO.ProximaConsultaDTO proximaConsulta = consultaRepository
                 .findByPaciente_IdOrderByDataHoraDesc(paciente.getId())
                 .stream()
@@ -156,7 +156,7 @@ public class ClinicoService {
 
     private Optional<PlanoAlimentar> buscarPlanoAtivo(Integer pacienteId) {
         List<PlanoAlimentar> planos = planoAlimentarRepository.findByPaciente_IdOrderByIdDesc(pacienteId);
-        LocalDate hoje = LocalDate.now();
+        LocalDate hoje = LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo"));
 
         Optional<PlanoAlimentar> publicadoVigente = planos.stream()
                 .filter(plano -> "PUBLICADO".equalsIgnoreCase(plano.getStatus()))
@@ -164,11 +164,7 @@ public class ClinicoService {
                 .filter(plano -> plano.getVigenciaFim() == null || !plano.getVigenciaFim().isBefore(hoje))
                 .findFirst();
 
-        return publicadoVigente
-                .or(() -> planos.stream()
-                        .filter(plano -> plano.getConsulta() != null)
-                        .filter(plano -> naoCancelada(plano.getConsulta()))
-                        .findFirst());
+        return publicadoVigente;
     }
 
     private Optional<MetasNutricionais> buscarMetasNutricionais(Integer pacienteId) {
@@ -210,7 +206,7 @@ public class ClinicoService {
 
     @Transactional(readOnly = true)
     public AgendaResponse agenda(Nutricionista nutricionista) {
-        LocalDate hoje = LocalDate.now();
+        LocalDate hoje = LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo"));
         LocalDate segunda = hoje.with(DayOfWeek.MONDAY);
         YearMonth mesAtual = YearMonth.from(hoje);
         LocalDateTime inicio12 = mesAtual.minusMonths(11).atDay(1).atStartOfDay();

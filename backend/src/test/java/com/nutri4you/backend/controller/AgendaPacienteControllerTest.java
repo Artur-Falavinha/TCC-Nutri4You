@@ -44,6 +44,7 @@ class AgendaPacienteControllerTest {
     private static final DateTimeFormatter JSON_DATE_TIME =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
+    @Autowired com.nutri4you.backend.service.HorarioAtendimentoService horarios;
     @Autowired MockMvc mvc;
     @Autowired PacienteRepository pacientes;
     @Autowired NutricionistaRepository nutricionistas;
@@ -61,6 +62,13 @@ class AgendaPacienteControllerTest {
         nutricionista = nutricionistas.save(TestDataFactory.nutricionista(encoder));
         paciente = pacientes.save(TestDataFactory.pacienteConfirmado(encoder));
         relacoes.save(RelacaoClinica.criar(paciente, nutricionista));
+        var configuracao = new java.util.ArrayList<com.nutri4you.backend.dto.HorarioAtendimentoDTO>();
+        for (int dia = 1; dia <= 6; dia++) {
+            for (String h : java.util.List.of("08:00", "09:00", "09:30", "10:15", "11:00", "14:00", "14:45", "15:30")) {
+                configuracao.add(new com.nutri4you.backend.dto.HorarioAtendimentoDTO(dia, java.time.LocalTime.parse(h)));
+            }
+        }
+        horarios.salvar(nutricionista, configuracao);
         tokenPaciente = login("paciente@teste.com");
         tokenNutricionista = login("nutri@teste.com");
     }

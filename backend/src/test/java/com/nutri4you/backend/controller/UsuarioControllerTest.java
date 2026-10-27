@@ -98,7 +98,7 @@ class UsuarioControllerTest {
     @Test
     void consumoDiarioProgressoRetornaDados() throws Exception {
         Consulta consulta = consultaRepository.save(TestDataFactory.consulta(paciente, nutricionista));
-        planoAlimentarRepository.save(new PlanoAlimentar(
+        publicarPlano(new PlanoAlimentar(
                 consulta,
                 new BigDecimal("2200.00"),
                 new BigDecimal("250.00"),
@@ -133,7 +133,7 @@ class UsuarioControllerTest {
         Consulta consulta = new Consulta(paciente, nutricionista, futura);
         consulta.atualizar(futura, "CONFIRMADA", "Retorno agendado");
         consulta = consultaRepository.save(consulta);
-        planoAlimentarRepository.save(new PlanoAlimentar(
+        publicarPlano(new PlanoAlimentar(
                 consulta,
                 new BigDecimal("2100.00"),
                 new BigDecimal("245.00"),
@@ -203,4 +203,11 @@ class UsuarioControllerTest {
 
         return JsonPath.read(result.getResponse().getContentAsString(), "$.data.token");
     }
+    private void publicarPlano(PlanoAlimentar p) {
+        p.editar(p.getConsulta(), LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")), null,
+                p.getMetaCalorias(), p.getMetaCarboidratos(), p.getMetaGordura(), p.getMetaProteina());
+        p.publicar();
+        planoAlimentarRepository.save(p);
+    }
+
 }

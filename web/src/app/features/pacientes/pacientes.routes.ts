@@ -1,3 +1,4 @@
+import { PlanoComponent, planoPendenteGuard } from '../plano-alimentar/plano.component';
 import { Routes } from '@angular/router';
 
 import { PacientesListaComponent } from './pages/lista/pacientes-lista.component';
@@ -11,17 +12,12 @@ export const PACIENTES_ROUTES: Routes = [
     component: PacientesListaComponent,
     title: 'Gestão de Pacientes — Nutri4You'
   },
+  { path: ':id/plano-alimentar', component: PlanoComponent, canDeactivate: [planoPendenteGuard], title: 'Plano alimentar — Nutri4You' },
   { path: ':id/dados', component: DadosComponent, title: 'Dados do paciente — Nutri4You' },
   { path: ':id/historico', component: HistoricoComponent, title: 'Histórico — Nutri4You' },
   { path: ':id/medidas', redirectTo: ':id/consultas', pathMatch: 'full' },
   { path: ':id/consultas', component: ConsultasComponent, title: 'Consultas — Nutri4You' },
-  {
-    path: ':id/consultas/nova',
-    component: ConsultasComponent,
-    data: { editor: true },
-    canDeactivate: [consultaPendenteGuard],
-    title: 'Nova consulta — Nutri4You'
-  },
+  { path: ':id/consultas/nova', redirectTo: ':id/consultas', pathMatch: 'full' },
   {
     path: ':id/consultas/:consultaId',
     component: ConsultasComponent,

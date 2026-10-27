@@ -1,3 +1,4 @@
+import { AgendaComponent, agendaPendenteGuard } from './features/agenda/agenda.component';
 import { Routes } from '@angular/router';
 
 import { authGuard } from './core/guards/auth.guard';
@@ -17,6 +18,7 @@ export const routes: Routes = [
     component: AppShellComponent,
     canActivate: [authGuard],
     children: [
+      { path: 'agenda', component: AgendaComponent, canDeactivate: [agendaPendenteGuard], title: 'Agenda — Nutri4You' },
       {
         path: 'dashboard',
         component: DashboardComponent,

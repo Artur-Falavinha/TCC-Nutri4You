@@ -11,7 +11,10 @@ Base: `/api/v1/gestao-pacientes/{pacienteId}/consultas`.
 | Metodo | Rota | Resultado |
 | --- | --- | --- |
 | GET | Base + `?pagina=0` | Pagina de 10 consultas, data e ID decrescentes |
-| POST | Base | Cria consulta e avaliacao em uma transacao; HTTP 201 |
+| POST | Base | Criação livre desativada; retorna 400 orientando agendar |
+| POST | Base + `/{id}/confirmacao` | Aprova solicitação futura pendente; exige `versao` |
+| POST | Base + `/{id}/inicio` | Inicia confirmada dentro da janela; exige `versao` |
+| POST | Base + `/{id}/cancelamento` | Cancela pendente/confirmada não iniciada; exige `versao` |
 | GET | Base + `/{id}` | Consulta e avaliacao vinculada |
 | PUT | Base + `/{id}` | Atualiza o mesmo registro; exige `versao` |
 
@@ -44,7 +47,7 @@ As respostas usam `ApiResponse`. Listagem retorna `itens`, `pagina`,
 }
 ```
 
-`versao` e dispensavel na criacao. O IMC e calculado pelo servidor, nao recebido
+`versao` é obrigatória nas ações e edição; criação livre desativada. O IMC e calculado pelo servidor, nao recebido
 do cliente. A tela mostra altura em centimetros inteiros; a API conserva metros
 com ate duas casas decimais. Data/hora mantem a modelagem de horario civil da
 clinica (`TIMESTAMP WITHOUT TIME ZONE`), interpretado em America/Sao_Paulo.
@@ -55,7 +58,7 @@ clinica (`TIMESTAMP WITHOUT TIME ZONE`), interpretado em America/Sao_Paulo.
 - Status: `AGUARDANDO_CONFIRMACAO`, `CONFIRMADA`, `REALIZADA`, `CANCELADA`.
   A tela apresenta `REALIZADA` como **Concluida**.
 - Consulta futura nao pode ser concluida. Conclusao exige peso e altura.
-- Agendamento/cancelamento sem avaliacao aceita `avaliacao: null`.
+- Ações de agenda não exigem avaliação. Edição de atendimento exige início prévio e não altera horário agendado.
   Quando qualquer medida for enviada, peso e altura sao obrigatorios.
 - Peso: 1 a 500 kg; altura: 0,30 a 2,70 m; gordura: 0 a 100%; massa muscular:
   0 a 300 kg; pregas: 0,1 a 100 mm; cintura/quadril: 0,1 a 300 cm;
@@ -89,3 +92,9 @@ e restrito ao checksum conhecido; nao apagar volumes nem recalcular horarios.
   incluindo preservacao de consultas e unicidade de avaliacao.
   Este script nao verifica o mecanismo Flyway de checksum/baseline.
 - Frontend: `npm run build`, `npm run lint` e testes em ChromeHeadless.
+
+## Início do atendimento
+
+Janela confirmada por Gabriel: 15 minutos antes até 15 minutos depois, inclusive. Configurável por `CONSULTA_INICIO_MINUTOS_ANTES` e `CONSULTA_INICIO_MINUTOS_DEPOIS` (0 a 1440). O servidor retorna `iniciadaEm`, `inicioPermitidoDe`, `inicioPermitidoAte` (ISO com offset) e `podeIniciar`. A web atualiza o botão pelos limites retornados; a API revalida no momento da ação. Não se pode iniciar duas vezes ou sem confirmação.
+
+V10 acrescenta o início sem fabricar dados para consultas legadas. Consultas históricas realizadas continuam editáveis; novos atendimentos exigem início. A edição aceita CONFIRMADA ou REALIZADA, sem reabrir uma realizada. Aprovação/cancelamento usam ações próprias. A rota web `/consultas/nova` redireciona à listagem. Novos atendimentos devem partir de solicitação aprovada.

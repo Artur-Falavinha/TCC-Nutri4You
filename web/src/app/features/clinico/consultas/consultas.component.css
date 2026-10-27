@@ -78,3 +78,8 @@ textarea::placeholder { color: var(--color-text-muted); }
   .metrics { width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
   .consulta-row > .action { width: 100%; }
 }
+
+.consulta-row { flex-wrap: wrap; }
+.consulta-row .actions { flex-wrap: wrap; align-items: center; }
+.consulta-row .actions small { flex-basis: 100%; max-width: 360px; line-height: 1.5; }
+.action:disabled { opacity: .5; cursor: default; filter: none; }

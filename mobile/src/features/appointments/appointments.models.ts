@@ -11,6 +11,7 @@ export interface Appointment {
   dataHora: string;
   status: AppointmentStatus;
   versao: number;
+  iniciadaEm?: string | null;
 }
 
 export interface AppointmentAvailability {

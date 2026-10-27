@@ -11,6 +11,12 @@ $v2 = Get-Content (Join-Path $migrations 'V2__anamnese_unica.sql') -Raw
 $v3 = Get-Content (Join-Path $migrations 'V3__anamnese_fuso_horario.sql') -Raw
 $v4 = Get-Content (Join-Path $migrations 'V4__token_email_titular.sql') -Raw
 $v5 = Get-Content (Join-Path $migrations 'V5__remover_medidas_da_anamnese.sql') -Raw
+$v6 = Get-Content (Join-Path $migrations 'V6__ciclo_plano_alimentar.sql') -Raw
+$v8 = Get-Content (Join-Path $migrations 'V8__macronutrientes_consumo_diario.sql') -Raw
+$v9 = Get-Content (Join-Path $migrations 'V9__horarios_atendimento.sql') -Raw
+$v10 = Get-Content (Join-Path $migrations 'V10__inicio_consulta.sql') -Raw
+$v11 = Get-Content (Join-Path $migrations 'V11__refeicoes_semanais.sql') -Raw
+$v12 = Get-Content (Join-Path $migrations 'V12__exames_metadados_seguranca.sql') -Raw
 $v7 = Get-Content (Join-Path $migrations 'V7__registro_consultas.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
 
@@ -107,6 +113,7 @@ $v4
 $v4
 $assertions
 $v5
+$v6
 UPDATE Consulta SET observacao = 'Registro legado' WHERE id_consulta = 1;
 $v7
 DO `$`$
@@ -128,6 +135,38 @@ BEGIN
         RAISE EXCEPTION 'Duplicate assessment accepted for consultation';
     EXCEPTION WHEN unique_violation THEN NULL;
     END;
+END;
+`$`$;
+$v8
+$v9
+$v10
+$v11
+$v12
+DO `$`$
+BEGIN
+    IF (SELECT count(*) FROM Horario_Atendimento) <> (SELECT count(*) * 48 FROM Nutricionista) THEN
+        RAISE EXCEPTION 'V9 did not preserve the legacy weekly schedule';
+    END IF;
+    IF EXISTS (SELECT 1 FROM Plano_Alimentar WHERE id_paciente IS NULL OR id_nutricionista IS NULL) THEN
+        RAISE EXCEPTION 'V6 lost plan ownership';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM Consulta WHERE id_consulta = 1 AND iniciada_em IS NULL) THEN
+        RAISE EXCEPTION 'V10 lost legacy consultation';
+    END IF;
+    BEGIN
+        INSERT INTO Horario_Atendimento (id_nutricionista, dia_semana, horario) VALUES (1, 8, '10:00');
+        RAISE EXCEPTION 'Invalid weekday accepted';
+    EXCEPTION WHEN check_violation THEN NULL;
+    END;
+END;
+`$`$;
+INSERT INTO Exame (id_paciente, id_nutricionista, nome_exame, arquivo, arquivo_tipo, arquivo_tamanho)
+VALUES (1, 1, 'Teste isolado', decode('255044462d', 'hex'), 'application/pdf', 5);
+DO `$`$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM Exame WHERE nome_exame = 'Teste isolado' AND octet_length(arquivo) = 5 AND versao = 0) THEN
+        RAISE EXCEPTION 'V12 binary storage or version failed';
+    END IF;
 END;
 `$`$;
 ROLLBACK;

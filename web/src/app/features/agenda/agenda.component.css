@@ -1,0 +1,19 @@
+:host { display: block; }
+.agenda { max-width: 1100px; margin: auto; padding: 32px; color: var(--color-text-primary, #26352c); }
+h1 { font-size: 30px; margin: 0 0 16px; }
+p { line-height: 1.6; }
+fieldset { border: 1px solid #dbe6de; border-radius: 16px; padding: 24px; margin-top: 24px; background: white; }
+legend { padding: 0 8px; font-weight: 600; }
+.adicionar { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; margin-bottom: 24px; }
+label { display: grid; gap: 8px; }
+input, select, button { font: inherit; padding: 10px 16px; border: 1px solid #c3d3c7; border-radius: 8px; }
+button { cursor: pointer; background: #edf5ef; color: #245434; }
+button:disabled { opacity: .6; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #76a785; outline-offset: 2px; }
+section { border-top: 1px solid #e5ece7; padding: 16px 0; }
+h2 { font-size: 16px; margin: 0 0 12px; }
+.horarios { display: flex; flex-wrap: wrap; gap: 8px; }
+.horario span { margin-left: 12px; }
+.fechado { color: #68756b; }
+.salvar { background: #28633c; color: white; margin-top: 24px; }
+@media (max-width: 600px) { .agenda { padding: 16px; } fieldset { padding: 16px; } }

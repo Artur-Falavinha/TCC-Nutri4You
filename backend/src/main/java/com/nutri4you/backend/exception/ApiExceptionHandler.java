@@ -17,7 +17,7 @@ public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
-    @ExceptionHandler({ConsultaNaoEncontradaException.class,
+    @ExceptionHandler({ExameNaoEncontradoException.class, PlanoNaoEncontradoException.class, ConsultaNaoEncontradaException.class,
             com.nutri4you.backend.service.PacienteNaoEncontradoException.class})
     public ResponseEntity<ApiErrorResponse> handlePlanoNaoEncontrado(
             RuntimeException exception, HttpServletRequest request) {
@@ -25,7 +25,7 @@ public class ApiExceptionHandler {
                 404, "NAO_ENCONTRADO", exception.getMessage(), request.getRequestURI()));
     }
 
-    @ExceptionHandler(ConsultaConflitoException.class)
+    @ExceptionHandler({PlanoConflitoException.class, ConsultaConflitoException.class})
     public ResponseEntity<ApiErrorResponse> handlePlanoConflito(
             RuntimeException exception, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(
@@ -87,6 +87,18 @@ public class ApiExceptionHandler {
                 "METODO_NAO_PERMITIDO",
                 "Operação não disponível.",
                 request.getRequestURI()));
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleArquivoGrande(HttpServletRequest request) {
+        return ResponseEntity.status(413).body(ApiErrorResponse.of(413, "ARQUIVO_MUITO_GRANDE", "Envie um arquivo de até 5 MiB.", request.getRequestURI()));
+    }
+
+    @ExceptionHandler({org.springframework.web.bind.MissingServletRequestParameterException.class,
+            org.springframework.web.multipart.support.MissingServletRequestPartException.class,
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<ApiErrorResponse> handleParametroInvalido(HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of(400, "REQUISICAO_INVALIDA", "Confira os parâmetros obrigatórios e seus formatos.", request.getRequestURI()));
     }
 
     @ExceptionHandler(Exception.class)

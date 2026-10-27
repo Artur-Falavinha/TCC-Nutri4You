@@ -1,0 +1,80 @@
+<header><h1>Plano alimentar</h1><app-patient-tabs [patientId]="patientId" /></header>
+<main [attr.aria-busy]="carregando || salvando">
+  <app-form-alert [message]="erro" type="error" /><app-form-alert [message]="mensagem" type="success" />
+  @if (carregando) { <p role="status">Carregando planos...</p> }
+  @else if (!carregado) { <button type="button" (click)="carregar()">Tentar novamente</button> }
+  @else {
+    <div class="toolbar"><a [routerLink]="['/pacientes', patientId, 'consultas']">Voltar às consultas</a>
+      <div class="actions"><button type="button" [disabled]="salvando" (click)="recarregar()">Recarregar</button>
+      <button type="button" [disabled]="salvando" (click)="abrirMetas(true)">Novo plano</button></div></div>
+    <nav class="planos" aria-label="Planos alimentares">@for (p of planos; track p.id) {
+      <button type="button" [class.selected]="plano?.id === p.id" [disabled]="salvando" (click)="selecionar(p)">Plano {{ p.id }} · {{ p.status }}</button>
+    } @empty { <p>Nenhum plano cadastrado.</p> }</nav>
+    @if (editandoMetas) {
+      <form (ngSubmit)="salvarMetas()"><fieldset [disabled]="salvando"><legend>Vigência e metas diárias</legend>
+        <p>Estas metas são usadas como referência em cada dia da semana.</p>
+        <div class="fields">
+          <label>Início da vigência<input type="date" name="inicio" [(ngModel)]="metas.vigenciaInicio" /></label>
+          <label>Fim da vigência<input type="date" name="fim" [(ngModel)]="metas.vigenciaFim" /></label>
+          <label>Energia (kcal)<input type="number" min="0" max="9999.99" step="0.01" name="kcal" [(ngModel)]="metas.metaKcal" /></label>
+          <label>Proteínas (g)<input type="number" min="0" max="9999.99" step="0.01" name="proteina" [(ngModel)]="metas.metaProteina" /></label>
+          <label>Carboidratos (g)<input type="number" min="0" max="9999.99" step="0.01" name="carboidratos" [(ngModel)]="metas.metaCarboidratos" /></label>
+          <label>Gorduras (g)<input type="number" min="0" max="9999.99" step="0.01" name="gordura" [(ngModel)]="metas.metaGordura" /></label>
+        </div><div class="actions"><button type="submit">Salvar metas</button><button type="button" (click)="cancelarEditor()">Cancelar</button></div>
+      </fieldset></form>
+    }
+    @if (plano) {
+      <div class="toolbar"><h2>Plano {{ plano.id }} · {{ plano.status }}</h2>
+        @if (plano.status === 'RASCUNHO' && !editor && !editandoMetas) {
+          <div class="actions"><button type="button" [disabled]="salvando" (click)="abrirMetas()">Editar metas</button><button type="button" [disabled]="salvando" (click)="publicar()">Publicar plano</button></div>
+        }
+      </div>
+      <nav class="dias" aria-label="Dia da semana">@for (nome of dias; track nome; let i = $index) {
+        <button type="button" [attr.aria-pressed]="dia === i + 1" [class.selected]="dia === i + 1" [disabled]="salvando || !!editor" (click)="dia = i + 1">{{ nome }}</button>
+      }</nav>
+      <p title="Totais calculados pelas quantidades de alimentos prescritas neste dia. Não representam refeições consumidas pelo paciente.">Progresso do planejamento de {{ dias[dia - 1] }} em relação às metas diárias</p>
+      <div class="indicadores">@for (i of indicadores; track i.nome) {
+        <section class="indicador" [class.excesso]="i.valor !== null && i.meta !== null && i.valor > i.meta"><h3>{{ i.nome }}</h3>
+          <p>{{ i.valor === null ? 'Não informado' : (i.valor | number:'1.0-2') }} / {{ i.meta === null ? 'Sem meta' : (i.meta | number:'1.0-2') }} {{ i.unidade }}</p>
+          @if (percentual(i.valor, i.meta) !== null) { <progress [value]="min(percentual(i.valor, i.meta)!, 100)" max="100" [attr.aria-label]="i.nome + ': ' + percentual(i.valor, i.meta) + '%' "></progress><span>{{ percentual(i.valor, i.meta) }}%</span> }
+          @if (i.valor !== null && i.meta !== null && i.valor > i.meta) { <small>{{ i.valor - i.meta | number:'1.0-2' }} {{ i.unidade }} acima da meta</small> }
+        </section>
+      }</div>
+      <p class="hint">Ultrapassar a meta não bloqueia a inclusão de alimentos. Nutrientes ausentes na base são exibidos como não informados.</p>
+      @if (plano.status === 'RASCUNHO' && !editor && !editandoMetas) { <button type="button" [disabled]="salvando" (click)="abrirRefeicao()">Adicionar refeição</button> }
+      @for (r of refeicoes; track r.id) {
+        <article><div class="toolbar"><h3>{{ r.horario.slice(0, 5) }} · {{ r.nome }}</h3>
+          @if (plano.status === 'RASCUNHO' && !editor && !editandoMetas) { <div class="actions">
+            <button type="button" [disabled]="salvando" (click)="abrirRefeicao(r)">Editar</button>
+            <button type="button" [disabled]="salvando" (click)="replicando = r; destinos.clear()">Replicar</button>
+            <button type="button" [disabled]="salvando" (click)="excluir(r)">Excluir</button>
+          </div> }
+        </div><ul>@for (item of r.itens; track item.alimentoId) { <li>{{ item.nome }} — {{ item.quantidadeGramas }} gramas</li> }</ul></article>
+      } @empty { <p>Nenhuma refeição para este dia.</p> }
+      @if (editor) {
+        <form (ngSubmit)="salvarRefeicao()"><fieldset [disabled]="salvando"><legend>{{ editor.id ? 'Editar refeição' : 'Nova refeição' }} · {{ dias[dia - 1] }}</legend>
+          <div class="fields"><label>Nome<input name="nome" required maxlength="100" [(ngModel)]="editor.nome" /></label><label>Horário<input name="horario" type="time" required [(ngModel)]="editor.horario" /></label></div>
+          <label>Buscar alimento<input name="busca" maxlength="150" autocomplete="off" [ngModel]="busca" (ngModelChange)="buscar($event)" placeholder="Digite pelo menos 2 letras" /></label>
+          @if (buscando) { <p role="status">Buscando alimentos...</p> }
+          @if (erroBusca) { <p role="alert">{{ erroBusca }}</p> }
+          <ul class="resultados">@for (a of resultados; track a.id) { <li><button type="button" (click)="adicionar(a)">{{ a.nome }}</button></li> }</ul>
+          @if (!buscando && !erroBusca && busca.length >= 2 && !resultados.length) { <p>Nenhum alimento encontrado.</p> }
+          @for (item of editor.itens; track item.alimentoId; let i = $index) {
+            <div class="item"><label>{{ item.nome }} (gramas)<input type="number" [name]="'quantidade-' + i" min="0.01" max="9999.99" step="0.01" required [(ngModel)]="item.quantidadeGramas" /></label><button type="button" (click)="editor.itens.splice(i, 1)">Remover</button></div>
+          }
+          <div class="actions"><button type="submit" [disabled]="!editor.itens.length">Salvar refeição</button><button type="button" (click)="cancelarEditor()">Cancelar</button></div>
+        </fieldset></form>
+      }
+    }
+  }
+  @if (replicando) {
+    <div class="replicacao"><section aria-labelledby="replicar-title">
+      <h2 id="replicar-title">Replicar {{ replicando.nome }}</h2><p>Criar cópias independentes nos dias selecionados:</p>
+      @for (nome of dias; track nome; let i = $index) { @if (i + 1 !== replicando.diaSemana) {
+        <label class="check"><input type="checkbox" [checked]="destinos.has(i + 1)" [disabled]="salvando" (change)="escolherDestino(i + 1)" />{{ nome }}</label>
+      } }
+      <div class="actions"><button type="button" [disabled]="salvando || !destinos.size" (click)="replicar()">Replicar</button><button type="button" [disabled]="salvando" (click)="replicando = null">Cancelar</button></div>
+      @if (erro) { <p role="alert">{{ erro }}</p> }
+    </section></div>
+  }
+</main>

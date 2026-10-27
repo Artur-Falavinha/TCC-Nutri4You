@@ -23,15 +23,20 @@ import java.util.stream.Collectors;
 public class ConsultaService {
     private static final Set<String> STATUS = Set.of(
             "AGUARDANDO_CONFIRMACAO", "CONFIRMADA", "REALIZADA", "CANCELADA");
+    private final JanelaConsulta janela;
+    private final com.nutri4you.backend.repository.NutricionistaRepository nutricionistas;
     private final GestaoPacienteService pacientes;
     private final ConsultaRepository consultas;
     private final AvaliacaoAntropometricaRepository avaliacoes;
 
     public ConsultaService(GestaoPacienteService pacientes, ConsultaRepository consultas,
-                           AvaliacaoAntropometricaRepository avaliacoes) {
+                           AvaliacaoAntropometricaRepository avaliacoes, JanelaConsulta janela,
+                           com.nutri4you.backend.repository.NutricionistaRepository nutricionistas) {
         this.pacientes = pacientes;
         this.consultas = consultas;
         this.avaliacoes = avaliacoes;
+        this.janela = janela;
+        this.nutricionistas = nutricionistas;
     }
 
     @Transactional(readOnly = true)
@@ -56,14 +61,67 @@ public class ConsultaService {
 
     @Transactional
     public ConsultaResponse criar(Nutricionista nutricionista, Integer pacienteId, ConsultaRequest request) {
-        Paciente paciente = pacientes.exigirAcesso(nutricionista, pacienteId);
-        validar(request);
-        Consulta consulta = new Consulta(paciente, nutricionista, request.dataHora());
-        consulta.atualizar(request.dataHora(), request.status(), observacao(request));
-        consultas.save(consulta);
-        AvaliacaoAntropometrica avaliacao = salvarMedidas(consulta, request.avaliacao(), null);
+        pacientes.exigirAcesso(nutricionista, pacienteId);
+        throw new IllegalArgumentException("Solicite um agendamento e use Iniciar Consulta no horário permitido.");
+    }
+
+    @Transactional
+    public ConsultaResponse iniciar(Nutricionista nutricionista, Integer pacienteId, Integer id, Long versao) {
+        pacientes.exigirAcesso(nutricionista, pacienteId);
+        Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
+        exigirVersao(consulta, versao);
+        if (!"CONFIRMADA".equals(consulta.getStatus()) || consulta.getIniciadaEm() != null) {
+            throw new IllegalArgumentException("Somente consultas confirmadas e ainda não iniciadas podem começar.");
+        }
+        if (!janela.permite(consulta.getDataHora())) {
+            throw new IllegalArgumentException("A consulta está fora da janela permitida para início.");
+        }
+        consulta.iniciar(janela.agora());
         consultas.flush();
-        return resposta(consulta, avaliacao);
+        return resposta(consulta, avaliacoes.findByConsulta_Id(id).orElse(null));
+    }
+
+    @Transactional
+    public ConsultaResponse confirmar(Nutricionista nutricionista, Integer pacienteId, Integer id, Long versao) {
+        pacientes.exigirAcesso(nutricionista, pacienteId);
+        Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
+        exigirVersao(consulta, versao);
+        if (!"AGUARDANDO_CONFIRMACAO".equals(consulta.getStatus()) || !consulta.getDataHora().isAfter(janela.agora())) {
+            throw new IllegalArgumentException("Somente solicitações futuras pendentes podem ser confirmadas.");
+        }
+        exigirSemConflito(consulta);
+        consulta.atualizar(consulta.getDataHora(), "CONFIRMADA", consulta.getObservacao());
+        consultas.flush();
+        return resposta(consulta, null);
+    }
+
+    @Transactional
+    public ConsultaResponse cancelar(Nutricionista nutricionista, Integer pacienteId, Integer id, Long versao) {
+        pacientes.exigirAcesso(nutricionista, pacienteId);
+        Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
+        exigirVersao(consulta, versao);
+        if (!("AGUARDANDO_CONFIRMACAO".equals(consulta.getStatus()) || "CONFIRMADA".equals(consulta.getStatus()))
+                || consulta.getIniciadaEm() != null) {
+            throw new IllegalArgumentException("Somente consultas pendentes ou confirmadas ainda não iniciadas podem ser canceladas.");
+        }
+        consulta.cancelar();
+        consultas.flush();
+        return resposta(consulta, null);
+    }
+
+    private void exigirVersao(Consulta c, Long versao) {
+        if (versao == null) throw new IllegalArgumentException("Versão da consulta obrigatória.");
+        if (versao != c.getVersao()) throw new ConsultaConflitoException();
+    }
+
+    private void exigirSemConflito(Consulta c) {
+        nutricionistas.findByIdForUpdate(c.getNutricionista().getId()).orElseThrow();
+        var proximas = consultas.findByNutricionista_IdAndStatusNotAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
+                c.getNutricionista().getId(), "CANCELADA", c.getDataHora().minusMinutes(45), c.getDataHora().plusMinutes(45));
+        if (proximas.stream().anyMatch(outra -> !outra.getId().equals(c.getId())
+                && outra.getDataHora().plusMinutes(45).isAfter(c.getDataHora()))) {
+            throw new ConsultaConflitoException("O horário selecionado já está ocupado.");
+        }
     }
 
     @Transactional
@@ -72,6 +130,17 @@ public class ConsultaService {
         pacientes.exigirAcesso(nutricionista, pacienteId);
         Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
         validar(request);
+        if (!request.dataHora().equals(consulta.getDataHora())) {
+            throw new IllegalArgumentException("Use o fluxo de reagendamento para alterar o horário.");
+        }
+        if (consulta.getIniciadaEm() == null && !"REALIZADA".equals(consulta.getStatus())) {
+            throw new IllegalArgumentException("Inicie a consulta antes de registrar o atendimento.");
+        }
+        if (!("CONFIRMADA".equals(request.status()) || "REALIZADA".equals(request.status()))
+                || ("REALIZADA".equals(consulta.getStatus()) && !"REALIZADA".equals(request.status()))
+                || "CANCELADA".equals(consulta.getStatus())) {
+            throw new IllegalArgumentException("Transição de status inválida. Use as ações da agenda.");
+        }
         if (request.versao() == null) throw new IllegalArgumentException("Versao da consulta obrigatoria.");
         if (!request.versao().equals(consulta.getVersao())) throw new ConsultaConflitoException();
         AvaliacaoAntropometrica existente = avaliacoes.findByConsulta_Id(id).orElse(null);
@@ -110,7 +179,7 @@ public class ConsultaService {
             throw new IllegalArgumentException("Status da consulta invalido.");
         }
         if ("REALIZADA".equals(request.status())
-                && request.dataHora().isAfter(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")))) {
+                && request.dataHora().isAfter(janela.agora())) {
             throw new IllegalArgumentException("Uma consulta futura nao pode ser concluida.");
         }
         if (request.observacao() != null && request.observacao().length() > 5000) {
@@ -136,6 +205,9 @@ public class ConsultaService {
 
     private ConsultaResponse resposta(Consulta c, AvaliacaoAntropometrica a) {
         return new ConsultaResponse(c.getId(), c.getPaciente().getId(), c.getDataHora(), c.getStatus(),
-                c.getObservacao(), c.getVersao(), a == null ? null : MedidasAntropometricas.paraResposta(a));
+                c.getObservacao(), c.getVersao(), a == null ? null : MedidasAntropometricas.paraResposta(a),
+                c.getIniciadaEm(), janela.inicio(c.getDataHora()).atZone(ZoneId.of("America/Sao_Paulo")).toOffsetDateTime(),
+                janela.fim(c.getDataHora()).atZone(ZoneId.of("America/Sao_Paulo")).toOffsetDateTime(),
+                "CONFIRMADA".equals(c.getStatus()) && c.getIniciadaEm() == null && janela.permite(c.getDataHora()));
     }
 }

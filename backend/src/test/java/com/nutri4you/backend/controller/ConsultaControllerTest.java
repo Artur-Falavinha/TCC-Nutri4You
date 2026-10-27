@@ -49,10 +49,9 @@ class ConsultaControllerTest {
     }
 
     @Test
-    void criaConsultaCompletaERecuperaAvaliacaoVinculada() throws Exception {
+    void registraConsultaIniciadaERecuperaAvaliacaoVinculada() throws Exception {
         String body = completa(80, "Exames apresentados.", "null");
-        String json = criar(body).andExpect(status().isCreated())
-                .andExpect(header().exists("Location"))
+        String json = criar(body).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.avaliacao.imc").value(24.69))
                 .andExpect(jsonPath("$.data.avaliacao.pregaSuprailiaca").value(12.5))
                 .andReturn().getResponse().getContentAsString();
@@ -82,20 +81,15 @@ class ConsultaControllerTest {
     }
 
     @Test
-    void agendaSemMedidasECancelaSemExcluir() throws Exception {
-        String json = criar("""
-                {"dataHora":"2030-06-01T10:00","status":"CONFIRMADA"}
-                """).andExpect(status().isCreated()).andExpect(jsonPath("$.data.avaliacao").isEmpty())
-                .andReturn().getResponse().getContentAsString();
-        int id = JsonPath.read(json, "$.data.id");
-        mvc.perform(put(base + "/" + id).header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                        {"dataHora":"2030-06-01T10:00","status":"CANCELADA","versao":0}
-                        """))
+    void bloqueiaCriacaoLivreECancelaSemExcluir() throws Exception {
+        mvc.perform(post(base).header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"dataHora\":\"2030-06-01T10:00\",\"status\":\"CONFIRMADA\"}"))
+                .andExpect(status().isBadRequest());
+        Consulta c = consultas.saveAndFlush(new Consulta(paciente, nutri, LocalDateTime.of(2030, 6, 1, 10, 0)));
+        mvc.perform(post(base + "/" + c.getId() + "/cancelamento").header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"versao\":0}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("CANCELADA"));
-        mvc.perform(get(base).header("Authorization", token)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.total").value(2))
-                .andExpect(jsonPath("$.data.itens[0].id").value(id));
+        assertThat(consultas.findById(c.getId())).isPresent();
     }
 
     @ParameterizedTest
@@ -111,8 +105,10 @@ class ConsultaControllerTest {
         "{\"dataHora\":\"2025-01-01T10:00\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.75,\"percentualGordura\":101}}"
     })
     void rejeitaDadosInvalidosSemPersistenciaParcial(String body) throws Exception {
+        Consulta c = consultaIniciada();
         long total = consultas.count();
-        criar(body).andExpect(status().isBadRequest());
+        mvc.perform(put(base + "/" + c.getId()).header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                .content(body)).andExpect(status().isBadRequest());
         assertThat(consultas.count()).isEqualTo(total);
         assertThat(avaliacoes.count()).isZero();
     }
@@ -166,11 +162,19 @@ class ConsultaControllerTest {
     void observacaoLongaEImcExtremoNaoEstouramColunas() throws Exception {
         criar(completa(80, "x".repeat(5001), "null")).andExpect(status().isBadRequest());
         criar(completa(500, "x".repeat(5000), "null").replace("1.80", "0.30"))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.avaliacao.imc").value(5555.56));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.avaliacao.imc").value(5555.56));
     }
 
     private ResultActions criar(String body) throws Exception {
-        return mvc.perform(post(base).header("Authorization", token).contentType(MediaType.APPLICATION_JSON).content(body));
+        Consulta c = consultaIniciada();
+        return mvc.perform(put(base + "/" + c.getId()).header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).content(body.replace("\"versao\":null", "\"versao\":" + c.getVersao())));
+    }
+    private Consulta consultaIniciada() {
+        Consulta c = new Consulta(paciente, nutri, LocalDateTime.of(2025, 1, 15, 14, 30));
+        c.atualizar(c.getDataHora(), "CONFIRMADA", null);
+        c.iniciar(c.getDataHora());
+        return consultas.saveAndFlush(c);
     }
     private String login(String email) throws Exception {
         String json = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)

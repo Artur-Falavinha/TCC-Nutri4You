@@ -1,5 +1,9 @@
 package com.nutri4you.backend.model;
 
+import jakarta.persistence.*;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -55,6 +59,38 @@ public class PlanoAlimentar {
 
     @Column(name = "meta_proteina", precision = 8, scale = 2)
     private BigDecimal metaProteina;
+
+    @Column(name = "criado_em", nullable = false)
+    private Instant criadoEm = Instant.now();
+    @Column(name = "publicado_em")
+    private Instant publicadoEm;
+    @Column(name = "atualizado_em", nullable = false)
+    private Instant atualizadoEm = Instant.now();
+    @Version
+    @Column(nullable = false)
+    private long versao;
+    @OneToMany(mappedBy = "plano", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("diaSemana ASC, horario ASC, id ASC")
+    private List<Refeicao> refeicoes = new ArrayList<>();
+
+    public PlanoAlimentar(Paciente paciente, Nutricionista nutricionista) {
+        this.paciente = paciente; this.nutricionista = nutricionista;
+    }
+    public void editar(Consulta consulta, LocalDate inicio, LocalDate fim, BigDecimal kcal,
+                       BigDecimal carboidratos, BigDecimal gordura, BigDecimal proteina) {
+        this.consulta = consulta; this.vigenciaInicio = inicio; this.vigenciaFim = fim;
+        this.metaCalorias = kcal; this.metaCarboidratos = carboidratos;
+        this.metaGordura = gordura; this.metaProteina = proteina; tocar();
+    }
+    public void publicar() { status = "PUBLICADO"; publicadoEm = Instant.now(); tocar(); }
+    public void terminarEm(LocalDate data) { vigenciaFim = data; tocar(); }
+    public void substituir() { status = "SUBSTITUIDO"; tocar(); }
+    public void tocar() { atualizadoEm = Instant.now(); }
+    public BigDecimal getMetaKcal() { return metaCalorias; }
+    public Instant getCriadoEm() { return criadoEm; }
+    public Instant getPublicadoEm() { return publicadoEm; }
+    public long getVersao() { return versao; }
+    public List<Refeicao> getRefeicoes() { return refeicoes; }
 
     protected PlanoAlimentar() {
     }

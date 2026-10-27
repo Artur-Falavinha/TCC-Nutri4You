@@ -22,6 +22,10 @@ http://localhost:8080/api/v1
 | --- | --- |
 | [Endpoints](endpoints.md) | Referência de rotas, payloads e respostas |
 | [Autenticação](autenticacao.md) | Fluxo JWT, roles, CORS e rotas públicas/protegidas |
+| [Agenda do nutricionista](agenda-nutricionista.md) | Configuração semanal |
+| [Consultas](consultas.md) | Aprovação, início e atendimento |
+| [Plano alimentar](plano-alimentar.md) | Publicação, refeições e alimentos |
+| [Exames](exames.md) | Solicitação, upload, download e parecer |
 | [Agenda do paciente](agenda-paciente.md) | Consulta de agenda, disponibilidade, solicitação, reagendamento e cancelamento |
 
 ## Convenções

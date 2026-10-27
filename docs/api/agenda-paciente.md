@@ -53,12 +53,11 @@ nutricionista informado precisa manter vínculo clínico ativo com o paciente.
 ```
 
 As respostas são envolvidas por `ApiResponse`. A disponibilidade informa
-também a duração de 45 minutos. Domingos, horários passados e intervalos que
-se sobrepõem a consultas não canceladas não são retornados.
+também a duração de 45 minutos. A lista semanal cadastrada pelo nutricionista define os dias, inclusive domingos, e horários. Dias sem configuração, horários passados e intervalos que se sobrepõem a consultas não canceladas não são retornados. Veja [configuração](agenda-nutricionista.md).
 
 ## Regras e erros
 
-- Somente consultas `CONFIRMADA` podem ser reagendadas ou canceladas pelo paciente.
+- Somente consultas `CONFIRMADA`, futuras e ainda não iniciadas podem ser reagendadas ou canceladas pelo paciente. A resposta inclui `iniciadaEm`; o card mobile oculta ações após o início.
 - Reagendamento requer nova confirmação do nutricionista.
 - `versao` é obrigatória nas alterações e protege contra edição concorrente.
 - Horário ocupado ou versão desatualizada retorna `409 CONFLITO`.
