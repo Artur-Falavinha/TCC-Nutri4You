@@ -1,5 +1,5 @@
 export interface Nutrientes { kcal: number | null; proteina: number | null; carboidratos: number | null; gordura: number | null }
-export interface Alimento extends Nutrientes { id: number; nome: string; categoria: string | null }
+export interface Alimento extends Nutrientes { id: number; nome: string; categoria: string | null; codigoTaco?: number | null }
 export interface ItemRefeicao extends Nutrientes { alimentoId: number; nome: string; quantidadeGramas: number }
 export interface Refeicao extends Nutrientes { id: number; nome: string; horario: string; diaSemana: number; itens: ItemRefeicao[] }
 export interface Plano {

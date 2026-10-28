@@ -1,5 +1,5 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, DestroyRef, HostListener, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, ElementRef, HostListener, Injector, OnInit, afterNextRender, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, CanDeactivateFn, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -18,6 +18,8 @@ import { Alimento, Plano, Refeicao, percentual, totaisDoDia } from './plano.mode
 export class PlanoComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+  private readonly injector = inject(Injector);
   readonly patientId = Number(inject(ActivatedRoute).snapshot.paramMap.get('id'));
   readonly base = `/gestao-pacientes/${this.patientId}/planos`;
   readonly dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
@@ -32,18 +34,26 @@ export class PlanoComponent implements OnInit {
     metaCarboidratos: null as number | null, metaGordura: null as number | null };
   editor: { id: number | null; nome: string; horario: string; itens: { alimentoId: number; nome: string; quantidadeGramas: number }[] } | null = null;
   busca = ''; buscando = false; resultados: Alimento[] = []; erroBusca = '';
-  private readonly termos = new Subject<string>();
+  paginaBusca = 0; temMaisAlimentos = false;
+  private readonly termos = new Subject<{ q: string; pagina: number }>();
   replicando: Refeicao | null = null;
   destinos = new Set<number>();
 
   ngOnInit() {
     // Cancel immediately on every keystroke, including while the debounce timer is running.
-    this.termos.pipe(switchMap(q => {
-      this.resultados = []; this.erroBusca = ''; this.buscando = q.trim().length >= 2;
-      return q.trim().length < 2 ? of({ itens: [] as Alimento[], erro: '' })
-        : timer(250).pipe(switchMap(() => this.api.get<Alimento[]>('/alimentos', { params: { q: q.trim() } })),
-          map(itens => ({ itens, erro: '' })), catchError(() => of({ itens: [] as Alimento[], erro: 'Não foi possível buscar alimentos. Digite novamente para tentar.' })));
-    }), takeUntilDestroyed(this.destroyRef)).subscribe(r => { this.resultados = r.itens; this.erroBusca = r.erro; this.buscando = false; });
+    this.termos.pipe(switchMap(({ q, pagina }) => {
+      if (pagina === 0) { this.resultados = []; this.temMaisAlimentos = false; }
+      this.erroBusca = ''; this.buscando = q.trim().length >= 2;
+      return q.trim().length < 2 ? of({ itens: [] as Alimento[], erro: '', pagina })
+        : timer(pagina === 0 ? 250 : 0).pipe(switchMap(() => this.api.get<Alimento[]>('/alimentos', { params: { q: q.trim(), pagina } })),
+          map(itens => ({ itens, erro: '', pagina })), catchError(() => of({ itens: [] as Alimento[], erro: 'Não foi possível buscar alimentos. Tente novamente.', pagina })));
+    }), takeUntilDestroyed(this.destroyRef)).subscribe(r => {
+      if (!r.erro) {
+        this.resultados = r.pagina === 0 ? r.itens : [...this.resultados, ...r.itens];
+        this.paginaBusca = r.pagina; this.temMaisAlimentos = r.itens.length === 30;
+      }
+      this.erroBusca = r.erro; this.buscando = false;
+    });
     this.carregar();
   }
   carregar() {
@@ -95,12 +105,20 @@ export class PlanoComponent implements OnInit {
     this.editor = r ? { id: r.id, nome: r.nome, horario: r.horario.slice(0, 5), itens: r.itens.map(i => ({ ...i })) }
       : { id: null, nome: '', horario: '08:00', itens: [] };
     this.buscar('');
+    this.focar('[name="nome"]');
   }
-  buscar(q: string) { this.busca = q; this.termos.next(q); }
+  buscar(q: string) { this.busca = q; this.paginaBusca = 0; this.termos.next({ q, pagina: 0 }); }
+  maisAlimentos() {
+    if (!this.buscando && this.temMaisAlimentos) this.termos.next({ q: this.busca, pagina: this.paginaBusca + 1 });
+  }
+  tentarBusca() {
+    if (this.temMaisAlimentos) this.maisAlimentos(); else this.buscar(this.busca);
+  }
   adicionar(a: Alimento) {
     if (!this.editor || this.editor.itens.some(i => i.alimentoId === a.id)) return;
     this.editor.itens.push({ alimentoId: a.id, nome: a.nome, quantidadeGramas: 100 });
     this.buscar('');
+    this.focar(`[data-alimento-id="${a.id}"]`);
   }
   salvarRefeicao() {
     if (!this.plano || !this.editor) return;
@@ -115,6 +133,13 @@ export class PlanoComponent implements OnInit {
     this.executar(this.api.delete<Plano>(`${this.base}/${this.plano.id}/refeicoes/${r.id}?versaoPlano=${this.plano.versao}`));
   }
   escolherDestino(dia: number) { if (this.destinos.has(dia)) this.destinos.delete(dia); else this.destinos.add(dia); }
+  abrirReplicacao(r: Refeicao) {
+    this.replicando = r; this.destinos.clear();
+    this.focar('.replicacao input');
+  }
+  private focar(seletor: string) {
+    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>(seletor)?.focus(), { injector: this.injector });
+  }
   replicar() {
     if (!this.plano || !this.replicando) return;
     this.executar(this.api.post<Plano>(`${this.base}/${this.plano.id}/refeicoes/${this.replicando.id}/replicacao`,
@@ -125,7 +150,8 @@ export class PlanoComponent implements OnInit {
     this.salvando = true; this.erro = ''; this.mensagem = '';
     pedido.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: p => { this.plano = p; this.planos = [p, ...this.planos.filter(x => x.id !== p.id)];
-        this.salvando = false; this.editor = null; this.editandoMetas = false; this.replicando = null; this.destinos.clear(); this.mensagem = 'Plano atualizado.'; },
+        this.salvando = false; this.editor = null; this.editandoMetas = false; this.replicando = null; this.destinos.clear(); this.mensagem = 'Plano atualizado.';
+        this.focar('.dias button.selected'); },
       error: (e: ApiErrorResponse) => { this.erro = e.message; this.salvando = false; }
     });
   }

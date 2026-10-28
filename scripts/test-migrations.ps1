@@ -17,6 +17,7 @@ $v9 = Get-Content (Join-Path $migrations 'V9__horarios_atendimento.sql') -Raw
 $v10 = Get-Content (Join-Path $migrations 'V10__inicio_consulta.sql') -Raw
 $v11 = Get-Content (Join-Path $migrations 'V11__refeicoes_semanais.sql') -Raw
 $v12 = Get-Content (Join-Path $migrations 'V12__exames_metadados_seguranca.sql') -Raw
+$v13 = Get-Content (Join-Path $migrations 'V13__catalogo_taco.sql') -Raw -Encoding utf8
 $v7 = Get-Content (Join-Path $migrations 'V7__registro_consultas.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
 
@@ -142,8 +143,24 @@ $v9
 $v10
 $v11
 $v12
+$v13
 DO `$`$
 BEGIN
+    IF (SELECT count(*) FROM Alimento WHERE codigo_taco IS NOT NULL) <> 597
+       OR (SELECT count(DISTINCT codigo_taco) FROM Alimento) <> 597
+       OR (SELECT count(DISTINCT categoria) FROM Alimento WHERE codigo_taco IS NOT NULL) <> 15 THEN
+        RAISE EXCEPTION 'V13 must load all 597 TACO foods in 15 categories';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 1 AND kcal_100g = 123.53 AND gordura_100g = 1.00)
+       OR NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 561 AND nome_busca = 'feijao carioca cozido')
+       OR NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 288 AND carboidratos_100g IS NULL)
+       OR NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 112 AND gordura_100g IS NULL) THEN
+        RAISE EXCEPTION 'V13 nutrient conversion or search normalization failed';
+    END IF;
+    IF (SELECT count(*) FROM Alimento WHERE codigo_taco IS NULL AND NOT disponivel_para_prescricao) <> 5
+       OR NOT EXISTS (SELECT 1 FROM Alimento WHERE id_alimento = 1 AND nome = 'Arroz branco cozido' AND kcal_100g = 128 AND gordura_100g IS NULL) THEN
+        RAISE EXCEPTION 'V13 must preserve the five legacy examples';
+    END IF;
     IF (SELECT count(*) FROM Horario_Atendimento) <> (SELECT count(*) * 48 FROM Nutricionista) THEN
         RAISE EXCEPTION 'V9 did not preserve the legacy weekly schedule';
     END IF;

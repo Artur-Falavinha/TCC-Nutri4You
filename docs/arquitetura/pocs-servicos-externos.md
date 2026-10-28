@@ -8,8 +8,8 @@ Registro de viabilidade e riscos para integrações previstas nas sprints futura
 | --- | --- |
 | **Fonte** | Tabela TACO (UNICAMP) — base nutricional de alimentos |
 | **Formato** | CSV/JSON para importação em lote na tabela `Alimento` |
-| **PoC** | Seed com 5 alimentos em `database/init.sql` comprova modelo relacional |
-| **Sprint alvo** | Sprint 4 — importação completa + busca paginada |
+| **Implementação** | V13 importa 597 alimentos da planilha oficial; `scripts/importar-taco.py` gera e confere a carga |
+| **Busca** | Paginada por nome/preparo, com normalização de acentos e pontuação |
 | **Riscos** | Qualidade dos dados, unidades (100g), alimentos composto vs simples, licenciamento de uso acadêmico |
 | **Mitigação** | Validar amostra manualmente; normalizar para `kcal_100g`, `proteina_100g`, `carboidratos_100g` |
 
@@ -50,6 +50,5 @@ Registro de viabilidade e riscos para integrações previstas nas sprints futura
 | Sprint | Ação |
 | --- | --- |
 | 2 | Serviço de e-mail (validação de conta) |
-| 4 | Script de importação TACO |
 | 6 | Upload de exames; avaliar OAuth Google Calendar apenas se sincronização automática for necessária |
 | 7 | Deploy de demonstração + rollback documentado |

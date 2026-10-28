@@ -46,7 +46,7 @@
         <article><div class="toolbar"><h3>{{ r.horario.slice(0, 5) }} · {{ r.nome }}</h3>
           @if (plano.status === 'RASCUNHO' && !editor && !editandoMetas) { <div class="actions">
             <button type="button" [disabled]="salvando" (click)="abrirRefeicao(r)">Editar</button>
-            <button type="button" [disabled]="salvando" (click)="replicando = r; destinos.clear()">Replicar</button>
+            <button type="button" [disabled]="salvando" (click)="abrirReplicacao(r)">Replicar</button>
             <button type="button" [disabled]="salvando" (click)="excluir(r)">Excluir</button>
           </div> }
         </div><ul>@for (item of r.itens; track item.alimentoId) { <li>{{ item.nome }} — {{ item.quantidadeGramas }} gramas</li> }</ul></article>
@@ -56,11 +56,16 @@
           <div class="fields"><label>Nome<input name="nome" required maxlength="100" [(ngModel)]="editor.nome" /></label><label>Horário<input name="horario" type="time" required [(ngModel)]="editor.horario" /></label></div>
           <label>Buscar alimento<input name="busca" maxlength="150" autocomplete="off" [ngModel]="busca" (ngModelChange)="buscar($event)" placeholder="Digite pelo menos 2 letras" /></label>
           @if (buscando) { <p role="status">Buscando alimentos...</p> }
-          @if (erroBusca) { <p role="alert">{{ erroBusca }}</p> }
-          <ul class="resultados">@for (a of resultados; track a.id) { <li><button type="button" (click)="adicionar(a)">{{ a.nome }}</button></li> }</ul>
+          @if (erroBusca) { <p role="alert">{{ erroBusca }}</p><button type="button" (click)="tentarBusca()">Tentar busca novamente</button> }
+          <p class="hint">Busque por nome e preparo, com ou sem acentos. Valores por 100 g de alimento.</p>
+          <ul class="resultados">@for (a of resultados; track a.id) { <li><button type="button" [attr.aria-label]="a.nome" (click)="adicionar(a)">
+            {{ a.nome }}<small class="detalhes-alimento">{{ a.categoria }} · {{ a.kcal === null ? 'Energia não informada' : (a.kcal | number:'1.0-2') + ' kcal' }}@if (a.codigoTaco) { · TACO {{ a.codigoTaco }} }</small>
+          </button></li> }</ul>
+          @if (resultados.length) { <p role="status">{{ resultados.length }} alimentos encontrados.</p> }
+          @if (temMaisAlimentos && !erroBusca) { <button type="button" [disabled]="buscando" (click)="maisAlimentos()">Carregar mais alimentos</button> }
           @if (!buscando && !erroBusca && busca.length >= 2 && !resultados.length) { <p>Nenhum alimento encontrado.</p> }
           @for (item of editor.itens; track item.alimentoId; let i = $index) {
-            <div class="item"><label>{{ item.nome }} (gramas)<input type="number" [name]="'quantidade-' + i" min="0.01" max="9999.99" step="0.01" required [(ngModel)]="item.quantidadeGramas" /></label><button type="button" (click)="editor.itens.splice(i, 1)">Remover</button></div>
+            <div class="item"><label>{{ item.nome }} (gramas)<input type="number" [name]="'quantidade-' + i" [attr.data-alimento-id]="item.alimentoId" min="0.01" max="9999.99" step="0.01" required [(ngModel)]="item.quantidadeGramas" /></label><button type="button" (click)="editor.itens.splice(i, 1)">Remover</button></div>
           }
           <div class="actions"><button type="submit" [disabled]="!editor.itens.length">Salvar refeição</button><button type="button" (click)="cancelarEditor()">Cancelar</button></div>
         </fieldset></form>

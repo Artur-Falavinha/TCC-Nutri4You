@@ -41,6 +41,23 @@ describe('PlanoComponent', () => {
     c.excluir({ id: 5, nome: 'Almoço' } as Refeicao);
     expect(api.delete).not.toHaveBeenCalled();
   });
+  it('acumula páginas e cancela uma página pendente quando muda o termo', fakeAsync(() => {
+    const fixture = TestBed.createComponent(PlanoComponent);
+    const c = fixture.componentInstance;
+    c.ngOnInit();
+    const primeira = Array.from({ length: 30 }, (_, id) => ({ id, nome: `Carne ${id}` } as Alimento));
+    const pendente = new Subject<Alimento[]>();
+    api.get.and.returnValues(of(primeira), of([{ id: 30, nome: 'Carne 30' } as Alimento]), of(primeira), pendente, of([]));
+    c.buscar('carne'); tick(250); c.maisAlimentos(); tick();
+    expect(c.resultados.length).toBe(31);
+    expect(c.temMaisAlimentos).toBeFalse();
+    expect(api.get).toHaveBeenCalledWith('/alimentos', { params: { q: 'carne', pagina: 1 } });
+    c.buscar('carne'); tick(250); c.maisAlimentos(); tick();
+    c.buscar('banana'); pendente.next(primeira); tick(250);
+    expect(c.resultados).toEqual([]);
+    expect(c.paginaBusca).toBe(0);
+    fixture.destroy();
+  }));
   it('envia a versão e mantém os dados do editor quando o servidor rejeita a gravação', () => {
     const c = TestBed.createComponent(PlanoComponent).componentInstance;
     c.plano = { id: 1, versao: 4 } as Plano;

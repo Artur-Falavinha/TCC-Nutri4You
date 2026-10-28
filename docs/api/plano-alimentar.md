@@ -10,7 +10,7 @@ Base `/api/v1`, envelope `ApiResponse`, JWT obrigatório. O nutricionista acessa
 | PUT | `/gestao-pacientes/{pacienteId}/planos/{planoId}` | Editar metadados do rascunho |
 | POST | `/gestao-pacientes/{pacienteId}/planos/{planoId}/publicacao` | Publicar com `{ "versao": 0 }` |
 | GET | `/usuarios/me/dieta-ativa` | Plano vigente; `data: null` quando ausente |
-| GET | `/alimentos?q=arroz` | Busca por nome, sem distinguir maiúsculas; 2 a 150 caracteres, até 30 resultados |
+| GET | `/alimentos?q=arroz&pagina=0` | Busca por palavras do nome, sem distinguir acentos, vírgulas, ordem ou maiúsculas; 2 a 150 caracteres, 30 resultados por página (0 a 1000) |
 
 Criação/edição:
 
@@ -56,7 +56,13 @@ Replicação: `{ "dias": [2, 4, 7], "versaoPlano": 4 }`. Cópias independentes, 
 
 Dias ISO de 1 a 7; até 140 refeições por plano e 50 alimentos distintos por refeição. Quantidades de 0,01 a 9999,99 gramas, com até duas casas decimais. O servidor calcula nutrientes usando valor por 100 g × quantidade / 100, arredondado a duas casas; não aceita totais fornecidos pelo cliente.
 
-Cada refeição/item retorna `kcal`, `proteina`, `carboidratos`, `gordura`. Nutrientes ausentes são `null`, inclusive no total, sem conversão em zero. V11 adiciona gordura sem inventar dados para o catálogo existente. O catálogo precisa ser completado com uma fonte revisada.
+Cada refeição/item retorna `kcal`, `proteina`, `carboidratos`, `gordura`. Nutrientes ausentes são `null`, inclusive no total, sem conversão em zero.
+
+V13 importa os 597 alimentos da TACO, 4ª edição revisada e ampliada (NEPA/UNICAMP, 2011), da [planilha oficial](https://nepa.unicamp.br/publicacoes/tabela-taco-excel/). A busca retorna `codigoTaco`, categoria e os quatro nutrientes por 100 g. O código identifica a fonte; não deve ser usado como `alimentoId`. As páginas têm ordem estável por nome e ID; uma página com menos de 30 itens indica o fim da busca.
+
+Os valores numéricos da planilha são arredondados em duas casas (HALF_UP). `Tr` (traços), `NA`, `*` e células vazias permanecem `null`: não representam zero. Os carboidratos negativos nos códigos 288, 322, 337 e 400 também ficam `null`, pendentes de revisão da fonte. Por isso, alguns totais podem continuar sem informação mesmo com o catálogo completo.
+
+Os cinco exemplos anteriores permanecem com os mesmos IDs e nutrientes para preservar refeições existentes, mas deixam de aparecer em novas buscas. A migration não altera alimentos de planos históricos. O gerador `scripts/importar-taco.py` verifica o SHA256 da fonte; execute com `--check` para comparar integralmente os 597 registros da migration com a planilha. Atualizações futuras devem usar nova migration, sem reescrever V13 já aplicada.
 
 A web soma apenas refeições do dia selecionado. Exceder metas não bloqueia inclusão/publicação. O percentual pode superar 100%; a barra é limitada visualmente. Esse progresso representa planejamento prescrito, não consumo. Exclusão pede confirmação; busca cancela respostas antigas durante a digitação.
 

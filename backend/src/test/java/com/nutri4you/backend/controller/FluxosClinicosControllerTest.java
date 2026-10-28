@@ -148,6 +148,29 @@ class FluxosClinicosControllerTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("ANALISADO"));
         enviar(id, "%PDF-1.7\nnovo".getBytes(), "application/pdf", 2).andExpect(status().isBadRequest());
     }
+    @Test void buscaTacoIgnoraAcentosPontuacaoEOrdemDasPalavras() throws Exception {
+        alimentos.save(new Alimento("Feijão, carioca, cozido", BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE));
+        alimentos.save(new Alimento("Feijão, carioca, cru", BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE));
+        mvc.perform(get("/api/v1/alimentos").param("q", " COZIDO  feijao ").header("Authorization", nutriToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].nome").value("Feijão, carioca, cozido"))
+                .andExpect(jsonPath("$.data[0].nomeBusca").doesNotExist());
+        mvc.perform(get("/api/v1/alimentos").param("q", "%%").header("Authorization", nutriToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(0));
+    }
+    @Test void buscaTacoPaginaSemRepetirResultadosEValidaLimites() throws Exception {
+        for (int i = 0; i < 35; i++) alimentos.save(new Alimento("Catalogo " + String.format("%02d", i), BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE));
+        mvc.perform(get("/api/v1/alimentos").param("q", "catalogo").header("Authorization", nutriToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(30))
+                .andExpect(jsonPath("$.data[29].nome").value("Catalogo 29"));
+        mvc.perform(get("/api/v1/alimentos").param("q", "catalogo").param("pagina", "1").header("Authorization", nutriToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(5))
+                .andExpect(jsonPath("$.data[0].nome").value("Catalogo 30"));
+        mvc.perform(get("/api/v1/alimentos").param("q", "catalogo").param("pagina", "-1").header("Authorization", nutriToken))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/alimentos").param("q", "a".repeat(151)).header("Authorization", nutriToken))
+                .andExpect(status().isBadRequest());
+    }
     @Test void examesRejeitamTiposTamanhoEConcorrencia() throws Exception {
         int id = solicitarExame();
         enviar(id, "<html>malicioso</html>".getBytes(), "application/pdf", 0).andExpect(status().isBadRequest());
