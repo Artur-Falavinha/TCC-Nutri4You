@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -24,6 +24,7 @@ import {
   buildWeekDays,
   fromDateKey,
   groupSlotsByPeriod,
+  isAppointmentDateSelectable,
   monthTitle,
   timeRangeLabel,
   toDateKey,
@@ -49,6 +50,14 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const weekScrollRef = useRef<ScrollView>(null);
+
+  const revealSelectedDay = useCallback(() => {
+    const index = (fromDateKey(selectedDate).getDay() + 6) % 7;
+    weekScrollRef.current?.scrollTo({ x: index * (56 + spacing.xs), animated: false });
+  }, [selectedDate]);
+
+  useEffect(revealSelectedDay, [revealSelectedDay]);
 
   useEffect(() => {
     let active = true;
@@ -142,25 +151,32 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
             </Pressable>
           </View>
           <ScrollView
+            ref={weekScrollRef}
             horizontal
+            onLayout={revealSelectedDay}
+            onContentSizeChange={revealSelectedDay}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.weekDays}
           >
             {weekDays.map((date) => {
               const dateKey = toDateKey(date);
               const active = dateKey === selectedDate;
+              const disabled = saving || !isAppointmentDateSelectable(dateKey);
               return (
                 <Pressable
                   key={dateKey}
-                  style={[styles.weekDay, active && styles.activeWeekDay]}
+                  style={[styles.weekDay, active && styles.activeWeekDay, disabled && styles.disabledDay]}
                   onPress={() => {
+                    if (active || disabled) return;
                     setLoading(true);
                     setSelectedSlot(null);
                     setError('');
                     setSelectedDate(dateKey);
                   }}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={`Selecionar dia ${dateKey}`}
+                  disabled={disabled}
+                  accessibilityState={{ selected: active, disabled }}
                 >
                   <Text style={[styles.weekdayName, active && styles.activeWeekdayText]}>
                     {weekdayShort(date)}
@@ -369,6 +385,9 @@ const styles = StyleSheet.create({
   activeWeekDay: {
     backgroundColor: colors.brand,
     ...shadows.button
+  },
+  disabledDay: {
+    opacity: 0.45
   },
   weekdayName: {
     color: colors.text,

@@ -44,8 +44,7 @@ public class AgendaPacienteService {
     @Transactional(readOnly = true)
     public List<ConsultaPacienteResponse> listar(Paciente paciente) {
         return consultas
-                .findByPaciente_IdAndStatusNotAndDataHoraGreaterThanEqualOrderByDataHoraAsc(
-                        paciente.getId(), "CANCELADA", LocalDateTime.now(FUSO_HORARIO))
+                .listarAgendaPaciente(paciente.getId(), LocalDateTime.now(FUSO_HORARIO))
                 .stream()
                 .map(this::resposta)
                 .toList();

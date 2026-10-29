@@ -104,7 +104,7 @@ export function buildWeekDays(selectedDateKey: string): Date[] {
   const daysSinceMonday = weekday === 0 ? 6 : weekday - 1;
   const monday = new Date(selected);
   monday.setDate(selected.getDate() - daysSinceMonday);
-  return Array.from({ length: 6 }, (_, index) => {
+  return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(monday);
     date.setDate(monday.getDate() + index);
     return date;
@@ -124,8 +124,7 @@ export function isPastDate(dateKey: string, today = new Date()): boolean {
 }
 
 export function isAppointmentDateSelectable(dateKey: string, today = new Date()): boolean {
-  const date = fromDateKey(dateKey);
-  return !isPastDate(dateKey, today) && date.getDay() !== 0;
+  return !isPastDate(dateKey, today);
 }
 
 export function dateKeyFromLocalDateTime(value: string): string {
