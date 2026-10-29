@@ -18,6 +18,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
@@ -163,6 +164,12 @@ class AgendaPacienteControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.horarios", hasItem(jsonDateTime(horario))));
 
+        mvc.perform(post("/api/v1/agenda/consultas")
+                        .header("Authorization", tokenPaciente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(solicitacao(horario)))
+                .andExpect(status().isCreated());
+
         Consulta pendente = consultas.save(new Consulta(
                 paciente, nutricionista, proximoDiaAtendimento(8).atTime(15, 30)));
         mvc.perform(post("/api/v1/agenda/consultas/{id}/cancelamento", pendente.getId())
@@ -170,6 +177,38 @@ class AgendaPacienteControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"versao\":" + pendente.getVersao() + "}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void pacienteENutricionistaCompartilhamBloqueioDeHorario() throws Exception {
+        LocalDate diaPaciente = proximoDiaAtendimento(12);
+        LocalDateTime horarioPaciente = diaPaciente.atTime(9, 0);
+        mvc.perform(post("/api/v1/agenda/consultas")
+                        .header("Authorization", tokenPaciente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(solicitacao(horarioPaciente)))
+                .andExpect(status().isCreated());
+
+        String consultasClinicas = "/api/v1/gestao-pacientes/" + paciente.getId() + "/consultas";
+        mvc.perform(post(consultasClinicas)
+                        .header("Authorization", tokenNutricionista)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(consultaConfirmada(horarioPaciente.plusMinutes(30))))
+                .andExpect(status().isBadRequest());
+
+        LocalDate diaNutricionista = proximoDiaAtendimento(14);
+        LocalDateTime horarioNutricionista = diaNutricionista.atTime(9, 0);
+        mvc.perform(post(consultasClinicas)
+                        .header("Authorization", tokenNutricionista)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(consultaConfirmada(horarioNutricionista)))
+                .andExpect(status().isBadRequest());
+
+        mvc.perform(post("/api/v1/agenda/consultas")
+                        .header("Authorization", tokenPaciente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(solicitacao(horarioNutricionista.plusMinutes(30))))
+                .andExpect(status().isCreated());
     }
 
     @Test
@@ -207,13 +246,83 @@ class AgendaPacienteControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void errosDeConversaoEmParametrosRetornamEnvelopeDeRequisicaoInvalida() throws Exception {
+        String path = "/api/v1/agenda/disponibilidade";
+        String nutricionistaId = nutricionista.getId().toString();
+
+        assertRequisicaoInvalida(get(path)
+                .header("Authorization", tokenPaciente)
+                .param("nutricionistaId", nutricionistaId)
+                .param("data", "not-a-date"), path);
+        assertRequisicaoInvalida(get(path)
+                .header("Authorization", tokenPaciente)
+                .param("nutricionistaId", nutricionistaId)
+                .param("data", "2026-02-30"), path);
+        assertRequisicaoInvalida(get(path)
+                .header("Authorization", tokenPaciente)
+                .param("nutricionistaId", nutricionistaId)
+                .param("data", "10000-01-01"), path);
+        assertRequisicaoInvalida(get(path)
+                .header("Authorization", tokenPaciente)
+                .param("nutricionistaId", "not-an-id")
+                .param("data", proximoDiaAtendimento(2).toString()), path);
+        assertRequisicaoInvalida(get("/api/v1/gestao-pacientes/{id}/consultas", paciente.getId())
+                .header("Authorization", tokenNutricionista)
+                .param("pagina", "not-a-page"),
+                "/api/v1/gestao-pacientes/" + paciente.getId() + "/consultas");
+        assertRequisicaoInvalida(get("/api/v1/gestao-pacientes/not-an-id/consultas")
+                .header("Authorization", tokenNutricionista),
+                "/api/v1/gestao-pacientes/not-an-id/consultas");
+    }
+
+    @Test
+    void parametrosObrigatoriosAusentesRetornamEnvelopeDeRequisicaoInvalida() throws Exception {
+        String path = "/api/v1/agenda/disponibilidade";
+
+        assertRequisicaoInvalida(get(path)
+                .header("Authorization", tokenPaciente)
+                .param("nutricionistaId", nutricionista.getId().toString()), path);
+        assertRequisicaoInvalida(get(path)
+                .header("Authorization", tokenPaciente)
+                .param("data", proximoDiaAtendimento(2).toString()), path);
+    }
+
+    @Test
+    void errosDeConversaoNaoAlteramOsStatusDeAutenticacaoEAutorizacao() throws Exception {
+        mvc.perform(get("/api/v1/agenda/disponibilidade")
+                        .param("nutricionistaId", "not-an-id")
+                        .param("data", proximoDiaAtendimento(2).toString()))
+                .andExpect(status().isUnauthorized());
+
+        mvc.perform(get("/api/v1/gestao-pacientes/{id}/consultas", paciente.getId())
+                        .header("Authorization", tokenPaciente))
+                .andExpect(status().isForbidden());
+    }
+
     private String solicitacao(LocalDateTime horario) {
         return "{\"nutricionistaId\":" + nutricionista.getId()
                 + ",\"dataHora\":\"" + horario + "\"}";
     }
 
+    private String consultaConfirmada(LocalDateTime horario) {
+        return "{\"dataHora\":\"" + horario + "\",\"status\":\"CONFIRMADA\"}";
+    }
+
     private String jsonDateTime(LocalDateTime horario) {
         return horario.format(JSON_DATE_TIME);
+    }
+
+    private void assertRequisicaoInvalida(
+            MockHttpServletRequestBuilder request,
+            String path) throws Exception {
+        mvc.perform(request)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("REQUISICAO_INVALIDA"))
+                .andExpect(jsonPath("$.message").value("Confira os parâmetros informados."))
+                .andExpect(jsonPath("$.path").value(path))
+                .andExpect(jsonPath("$.timestamp").isNotEmpty());
     }
 
     private LocalDate proximoDiaAtendimento(int dias) {

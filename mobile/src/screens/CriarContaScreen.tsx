@@ -13,13 +13,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  Alert,
   ScrollView,
   ActivityIndicator,
   Modal,
   Pressable
 } from 'react-native';
 
+import { useAppAlert } from '../components/feedback/AppAlertProvider';
 import { autocadastrarPaciente } from '../core/auth/auth.service';
 import { ApiError } from '../core/api/api-response.types';
 import { formatCpfDisplay, isCpfComplete, normalizeCpf } from '../core/utils/cpf-mask.util';
@@ -52,6 +52,7 @@ function toHtmlDateValue(date: Date): string {
 
 export default function CriarContaScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { showAlert } = useAppAlert();
   const webDateInputRef = useRef<HTMLInputElement | null>(null);
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -122,28 +123,28 @@ export default function CriarContaScreen() {
 
   const handleRegister = async () => {
     if (!nome.trim() || !email.trim() || !senha || !confirmarSenha) {
-      Alert.alert('Atenção', 'Preencha nome, e-mail e senha.');
+      showAlert('Atenção', 'Preencha nome, e-mail e senha.');
       return;
     }
 
     if (senha.length < 8) {
-      Alert.alert('Atenção', 'A senha deve ter no mínimo 8 caracteres.');
+      showAlert('Atenção', 'A senha deve ter no mínimo 8 caracteres.');
       return;
     }
 
     if (senha !== confirmarSenha) {
-      Alert.alert('Erro', 'As senhas não coincidem.');
+      showAlert('Erro', 'As senhas não coincidem.');
       return;
     }
 
     if (cpf.trim() && !isCpfComplete(cpf)) {
-      Alert.alert('Atenção', 'CPF incompleto. Use o formato 000.000.000-00.');
+      showAlert('Atenção', 'CPF incompleto. Use o formato 000.000.000-00.');
       return;
     }
 
     const isoDate = dataNascimento.trim() ? toIsoDate(dataNascimento) : undefined;
     if (dataNascimento.trim() && !isoDate) {
-      Alert.alert('Atenção', 'Data de nascimento inválida. Use DD/MM/AAAA.');
+      showAlert('Atenção', 'Data de nascimento inválida. Use DD/MM/AAAA.');
       return;
     }
 
@@ -160,7 +161,7 @@ export default function CriarContaScreen() {
         dataNascimento: isoDate
       });
 
-      Alert.alert('Sucesso', 'Conta criada com sucesso! Faça login para continuar.', [
+      showAlert('Sucesso', 'Conta criada com sucesso! Faça login para continuar.', [
         {
           text: 'OK',
           onPress: () =>
@@ -174,7 +175,7 @@ export default function CriarContaScreen() {
       ]);
     } catch (err: unknown) {
       const apiError = err instanceof ApiError ? err : null;
-      Alert.alert(
+      showAlert(
         'Erro',
         apiError?.message ??
           'Ocorreu um erro ao tentar criar a conta. Tente novamente mais tarde.'

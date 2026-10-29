@@ -31,6 +31,7 @@ public class AgendaPacienteService {
     private final RelacaoClinicaRepository relacoes;
     private final HorarioAtendimentoService horarios;
 
+
     public AgendaPacienteService(
             ConsultaRepository consultas,
             NutricionistaRepository nutricionistas,
@@ -39,6 +40,7 @@ public class AgendaPacienteService {
         this.nutricionistas = nutricionistas;
         this.relacoes = relacoes;
         this.horarios = horarios;
+
     }
 
     @Transactional(readOnly = true)
@@ -75,7 +77,7 @@ public class AgendaPacienteService {
                 nutricionista.getId(),
                 nutricionista.getNome(),
                 "Nutricionista Clínico",
-                DURACAO_MINUTOS,
+                HorarioConsultaService.DURACAO_MINUTOS,
                 data,
                 disponiveis);
     }
@@ -89,6 +91,7 @@ public class AgendaPacienteService {
         bloquearNutricionista(nutricionista.getId());
         validarHorario(nutricionista.getId(), request.dataHora());
         exigirHorarioLivre(nutricionista.getId(), request.dataHora(), null);
+
         Consulta consulta = consultas.save(new Consulta(paciente, nutricionista, request.dataHora()));
         consultas.flush();
         return resposta(consulta);
@@ -109,6 +112,7 @@ public class AgendaPacienteService {
         bloquearNutricionista(consulta.getNutricionista().getId());
         validarHorario(consulta.getNutricionista().getId(), request.dataHora());
         exigirHorarioLivre(consulta.getNutricionista().getId(), request.dataHora(), consulta.getId());
+
         consulta.reagendar(request.dataHora());
         consultas.flush();
         return resposta(consulta);
@@ -150,6 +154,7 @@ public class AgendaPacienteService {
     }
 
     private void validarHorario(Integer nutricionistaId, LocalDateTime dataHora) {
+
         if (dataHora == null) {
             throw new IllegalArgumentException("Informe a data e a hora da consulta.");
         }
@@ -187,6 +192,7 @@ public class AgendaPacienteService {
             throw new IllegalArgumentException("Consultas passadas não podem ser canceladas ou reagendadas pelo paciente.");
         }
     }
+
 
     private void validarVersao(Long versao, Consulta consulta) {
         if (versao == null) {

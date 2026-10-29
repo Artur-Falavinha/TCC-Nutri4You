@@ -215,11 +215,7 @@ export async function carregarMedidas(): Promise<AvaliacaoHistorico[]> {
 }
 
 export async function carregarConsumoProgresso(): Promise<ConsumoProgresso | null> {
-  try {
-    return await apiClient.get<ConsumoProgresso>('/usuarios/me/consumo-diario/progresso');
-  } catch {
-    return null;
-  }
+  return apiClient.get<ConsumoProgresso | null>('/usuarios/me/consumo-diario/progresso');
 }
 
 export async function carregarDashboardPaciente(): Promise<DashboardPacienteDados> {

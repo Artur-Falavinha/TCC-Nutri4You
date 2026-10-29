@@ -95,11 +95,14 @@ jobs:
       - name: Executar lint
         run: npm run lint
 
+      - name: Executar testes no Chrome Headless
+        run: npm test -- --watch=false --browsers=ChromeHeadless
+
       - name: Executar build
         run: npm run build
 
   mobile-quality:
-    name: Mobile — lint e typecheck
+    name: Mobile — lint, typecheck e testes
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -124,6 +127,9 @@ jobs:
 
       - name: Executar typecheck
         run: npm run typecheck
+
+      - name: Executar testes de regressão
+        run: npm test -- --ci --runInBand
 
   gate:
     name: Gate

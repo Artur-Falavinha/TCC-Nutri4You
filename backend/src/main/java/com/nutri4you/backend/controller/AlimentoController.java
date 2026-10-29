@@ -12,8 +12,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-@RestController
-@RequestMapping("/api/v1/alimentos")
 public class AlimentoController {
     private final AlimentoRepository alimentos;
     public AlimentoController(AlimentoRepository alimentos) { this.alimentos = alimentos; }
@@ -26,7 +24,7 @@ public class AlimentoController {
         if (pagina < 0 || pagina > 1000) throw new IllegalArgumentException("Página deve estar entre 0 e 1000.");
         String normalizado = Alimento.normalizarBusca(termo);
         if (normalizado.length() < 2) return ApiResponse.ok(List.of(), "Alimentos encontrados.");
-        Specification<Alimento> filtro = (root, query, cb) -> cb.isTrue(root.get("disponivelParaPrescricao"));
+        Specification<Alimento> filtro = (root, query, cb) -> cb.isTrue(root.get("disponivelPrescricao"));
         for (String palavra : normalizado.split(" +")) {
             filtro = filtro.and((root, query, cb) -> cb.like(root.get("nomeBusca"), "%" + palavra + "%"));
         }

@@ -4,6 +4,7 @@ import { ActivityIndicator, Text } from 'react-native';
 import { AvailableSlotsScreen } from '../../../screens/appointments/AvailableSlotsScreen';
 import { getAppointmentAvailability, scheduleAppointment } from '../appointments.service';
 import { AppointmentAvailability } from '../appointments.models';
+import { AppAlertProvider } from '../../../components/feedback/AppAlertProvider';
 
 jest.mock('../appointments.service', () => ({
   getAppointmentAvailability: jest.fn(), scheduleAppointment: jest.fn(), rescheduleAppointment: jest.fn()
@@ -22,9 +23,12 @@ describe('Horários disponíveis', () => {
   afterEach(async () => { if (tree) await act(async () => tree.unmount()); });
   async function abrir() {
     await act(async () => {
-      tree = renderer.create(<AvailableSlotsScreen
-        navigation={{ navigate: jest.fn(), goBack: jest.fn() } as never}
-        route={{ params: { nutricionistaId: 1, data: '2030-01-06' } } as never} />);
+      tree = renderer.create(
+        <AppAlertProvider>
+          <AvailableSlotsScreen
+            navigation={{ navigate: jest.fn(), goBack: jest.fn() } as never}
+            route={{ params: { nutricionistaId: 1, data: '2030-01-06' } } as never} />
+        </AppAlertProvider>);
     });
   }
   function dia(data: string) {

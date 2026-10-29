@@ -166,11 +166,23 @@ describe('evolucao.service', () => {
       expect(dados).toEqual(fakeMedidas);
     });
 
-    it('carregarConsumoProgresso retorna null quando ocorre erro', async () => {
-      (apiClient.get as jest.Mock).mockRejectedValueOnce(new Error('Falha de rede'));
+    it('carregarConsumoProgresso retorna null quando nao ha registros', async () => {
+      (apiClient.get as jest.Mock).mockResolvedValueOnce(null);
 
       const resultado = await carregarConsumoProgresso();
       expect(resultado).toBeNull();
+    });
+
+    it('carregarConsumoProgresso propaga falhas de rede', async () => {
+      (apiClient.get as jest.Mock).mockRejectedValueOnce(new Error('Falha de rede'));
+
+      await expect(carregarConsumoProgresso()).rejects.toThrow('Falha de rede');
+    });
+
+    it('carregarConsumoProgresso propaga erros do servidor', async () => {
+      (apiClient.get as jest.Mock).mockRejectedValueOnce(new Error('HTTP 500'));
+
+      await expect(carregarConsumoProgresso()).rejects.toThrow('HTTP 500');
     });
 
     it('carregarConsumoProgresso retorna dados quando disponivel', async () => {

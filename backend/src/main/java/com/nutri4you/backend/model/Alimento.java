@@ -1,41 +1,138 @@
 package com.nutri4you.backend.model;
 
-import jakarta.persistence.*;
+import com.nutri4you.backend.dto.PrescricaoDTO.AlimentoDTO;
+import com.nutri4you.backend.dto.PrescricaoDTO.Nutrientes;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.util.Locale;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "Alimento")
 public class Alimento {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) @Column(name = "id_alimento")
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_alimento")
     private Integer id;
-    @Column(nullable = false, length = 150) private String nome;
-    @Column(length = 100) private String categoria;
-    @Column(name = "kcal_100g", precision = 6, scale = 2) private BigDecimal kcal;
-    @Column(name = "proteina_100g", precision = 6, scale = 2) private BigDecimal proteina;
-    @Column(name = "carboidratos_100g", precision = 6, scale = 2) private BigDecimal carboidratos;
-    @Column(name = "gordura_100g", precision = 6, scale = 2) private BigDecimal gordura;
-    @Column(name = "codigo_taco", unique = true) private Integer codigoTaco;
-    @JsonIgnore @Column(name = "nome_busca", nullable = false, length = 150) private String nomeBusca;
-    @JsonIgnore @Column(name = "disponivel_para_prescricao", nullable = false) private boolean disponivelParaPrescricao = true;
-    @PrePersist @PreUpdate
-    private void atualizarBusca() { nomeBusca = normalizarBusca(nome); }
-    public static String normalizarBusca(String texto) {
-        return Normalizer.normalize(texto.toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
-                .replaceAll("\\p{M}+", "").replaceAll("[^a-z0-9]+", " ").trim();
-    }
+
+    @Column(name = "codigo_taco", unique = true)
+    private Integer codigoTaco;
+
+    @Column(nullable = false, length = 150)
+    private String nome;
+
+    @Column(length = 100)
+    private String categoria;
+
+    @Column(name = "nome_busca", length = 150)
+    private String nomeBusca;
+
+    @Column(name = "kcal_100g", precision = 12, scale = 6)
+    private BigDecimal kcal100g;
+
+    @Column(name = "proteina_100g", precision = 12, scale = 6)
+    private BigDecimal proteina100g;
+
+    @Column(name = "carboidratos_100g", precision = 12, scale = 6)
+    private BigDecimal carboidratos100g;
+
+    @Column(name = "gordura_100g", precision = 12, scale = 6)
+    private BigDecimal gordura100g;
+
+    @Column(name = "fibra_100g", precision = 12, scale = 6)
+    private BigDecimal fibra100g;
+
+    @Column(length = 240)
+    private String fonte;
+
+    @Column(name = "versao_fonte", length = 40)
+    private String versaoFonte;
+
+    @Column(name = "observacao_fonte", length = 500)
+    private String observacaoFonte;
+
+    @Column(name = "disponivel_prescricao", nullable = false)
+    private boolean disponivelPrescricao;
+
+    @Column(name = "catalogo_ativo")
+    private boolean catalogoAtivo;
+
     protected Alimento() {}
-    public Alimento(String nome, BigDecimal kcal, BigDecimal proteina, BigDecimal carboidratos, BigDecimal gordura) {
-        this.nome = nome; this.kcal = kcal; this.proteina = proteina; this.carboidratos = carboidratos; this.gordura = gordura;
+
+    public Alimento(String nome, BigDecimal kcal, BigDecimal proteina,
+                    BigDecimal carboidratos, BigDecimal gordura) {
+        this.nome = nome;
+        this.nomeBusca = normalizarBusca(nome);
+        this.kcal100g = kcal;
+        this.proteina100g = proteina;
+        this.carboidratos100g = carboidratos;
+        this.gordura100g = gordura;
+        this.disponivelPrescricao = true;
+        this.catalogoAtivo = true;
     }
-    public Integer getId() { return id; }
-    public String getNome() { return nome; }
-    public String getCategoria() { return categoria; }
-    public BigDecimal getKcal() { return kcal; }
-    public BigDecimal getProteina() { return proteina; }
-    public BigDecimal getCarboidratos() { return carboidratos; }
-    public BigDecimal getGordura() { return gordura; }
+
+    public Integer getId() {
+        return id;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public String getCategoria() {
+        return categoria;
+    }
+
+    public BigDecimal getKcal() { return kcal100g; }
+    public BigDecimal getProteina() { return proteina100g; }
+    public BigDecimal getCarboidratos() { return carboidratos100g; }
+    public BigDecimal getGordura() { return gordura100g; }
     public Integer getCodigoTaco() { return codigoTaco; }
+    public String getNomeBusca() { return nomeBusca; }
+    public boolean isDisponivelParaPrescricao() { return disponivelPrescricao; }
+
+    public static String normalizarBusca(String valor) {
+        if (valor == null) return "";
+        String semAcentos = Normalizer.normalize(valor, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
+        return semAcentos.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", " ").trim();
+    }
+
+    public boolean calculavel() {
+        return catalogoAtivo
+                && disponivelPrescricao
+                && kcal100g != null
+                && proteina100g != null
+                && carboidratos100g != null
+                && gordura100g != null;
+    }
+
+    public Nutrientes nutrientes() {
+        return new Nutrientes(kcal100g, proteina100g, carboidratos100g, gordura100g, fibra100g);
+    }
+
+    public AlimentoDTO paraResposta() {
+        return new AlimentoDTO(
+                id,
+                codigoTaco,
+                nome,
+                categoria,
+                kcal100g,
+                proteina100g,
+                carboidratos100g,
+                gordura100g,
+                fibra100g,
+                fonte,
+                versaoFonte,
+                observacaoFonte,
+                calculavel());
+    }
 }

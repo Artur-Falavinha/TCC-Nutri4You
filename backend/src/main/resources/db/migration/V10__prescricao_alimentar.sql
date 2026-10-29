@@ -1,0 +1,22 @@
+ALTER TABLE Plano_Alimentar ADD COLUMN titulo VARCHAR(150) NOT NULL DEFAULT 'Plano alimentar';
+ALTER TABLE Plano_Alimentar ADD COLUMN orientacoes VARCHAR(4000);
+ALTER TABLE Plano_Alimentar ADD COLUMN revisado_em TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE Plano_Alimentar ALTER COLUMN vet_meta_kcal TYPE DECIMAL(8,2);
+ALTER TABLE Plano_Alimentar ALTER COLUMN meta_carboidratos TYPE DECIMAL(8,2);
+ALTER TABLE Plano_Alimentar ALTER COLUMN meta_gordura TYPE DECIMAL(8,2);
+ALTER TABLE Plano_Alimentar ALTER COLUMN meta_proteina TYPE DECIMAL(8,2);
+ALTER TABLE Item_Refeicao ALTER COLUMN quantidade_gramas TYPE DECIMAL(8,2);
+ALTER TABLE Item_Refeicao ADD COLUMN kcal_100g DECIMAL(12,6);
+ALTER TABLE Item_Refeicao ADD COLUMN proteina_100g DECIMAL(12,6);
+ALTER TABLE Item_Refeicao ADD COLUMN carboidratos_100g DECIMAL(12,6);
+ALTER TABLE Item_Refeicao ADD COLUMN gordura_100g DECIMAL(12,6);
+UPDATE Item_Refeicao i SET kcal_100g = a.kcal_100g, proteina_100g = a.proteina_100g,
+    carboidratos_100g = a.carboidratos_100g, gordura_100g = a.gordura_100g FROM Alimento a WHERE a.id_alimento = i.id_alimento;
+ALTER TABLE Item_Refeicao ADD CONSTRAINT chk_item_gramas CHECK (quantidade_gramas > 0 AND quantidade_gramas <= 10000);
+ALTER TABLE Lista_Compras DROP CONSTRAINT lista_compras_id_plano_key;
+ALTER TABLE Lista_Compras ADD COLUMN dias INT NOT NULL DEFAULT 7;
+ALTER TABLE Lista_Compras ADD CONSTRAINT chk_lista_dias CHECK (dias BETWEEN 1 AND 30);
+ALTER TABLE Lista_Compras ADD CONSTRAINT uq_lista_plano_dias UNIQUE (id_plano, dias);
+ALTER TABLE Item_Lista_Compras ADD COLUMN id_alimento INT REFERENCES Alimento(id_alimento);
+ALTER TABLE Item_Lista_Compras ADD CONSTRAINT uq_item_lista_alimento UNIQUE (id_lista, id_alimento);
+CREATE INDEX idx_plano_autoria ON Plano_Alimentar (id_paciente, id_nutricionista, id_plano);

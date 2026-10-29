@@ -92,6 +92,59 @@ class ConsultaControllerTest {
         assertThat(consultas.findById(c.getId())).isPresent();
     }
 
+    @Test
+    void criarRejeitaSobreposicaoEPermiteHorarioAposDuracaoDaConsulta() throws Exception {
+        LocalDateTime horario = LocalDateTime.of(2030, 6, 1, 10, 0);
+        Consulta existente = new Consulta(paciente, nutri, horario);
+        existente.atualizar(horario, "CONFIRMADA", null);
+        consultas.saveAndFlush(existente);
+
+        criar(consultaConfirmada(horario.plusMinutes(44))).andExpect(status().isBadRequest());
+        criar(consultaConfirmada(horario.plusMinutes(45))).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void atualizarIgnoraPropriaConsultaMasRejeitaConflitoComOutra() throws Exception {
+        LocalDateTime horario = LocalDateTime.of(2030, 6, 1, 10, 0);
+        Consulta consulta = new Consulta(paciente, nutri, horario);
+        consulta.atualizar(horario, "CONFIRMADA", null);
+        consultas.saveAndFlush(consulta);
+        LocalDateTime horarioVizinho = horario.plusHours(1);
+        Consulta vizinha = new Consulta(paciente, nutri, horarioVizinho);
+        vizinha.atualizar(horarioVizinho, "CONFIRMADA", null);
+        consultas.saveAndFlush(vizinha);
+
+        mvc.perform(put(base + "/" + consulta.getId()).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(consultaConfirmada(horario, consulta.getVersao())))
+                .andExpect(status().isBadRequest());
+
+        mvc.perform(put(base + "/" + consulta.getId()).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(consultaConfirmada(horario.plusMinutes(30), consulta.getVersao())))
+                .andExpect(status().isBadRequest());
+        assertThat(consultas.findById(consulta.getId()).orElseThrow().getDataHora()).isEqualTo(horario);
+    }
+
+    @Test
+    void consultaCanceladaNaoBloqueiaHorarioEOutraNutricionistaPodeUsarMesmoHorario() throws Exception {
+        LocalDateTime horario = LocalDateTime.of(2030, 6, 1, 10, 0);
+        Consulta cancelada = new Consulta(paciente, nutri, horario);
+        cancelada.cancelar();
+        consultas.saveAndFlush(cancelada);
+
+        criar(consultaConfirmada(horario)).andExpect(status().isBadRequest());
+
+        Nutricionista outraNutricionista = nutricionistas.save(new Nutricionista(
+                "Outra Nutricionista", "outra@teste.com", encoder.encode("senha123"), "CRN8-22222"));
+        LocalDateTime outroHorario = horario.plusDays(1);
+        Consulta consultaDeOutraNutri = new Consulta(paciente, outraNutricionista, outroHorario);
+        consultaDeOutraNutri.atualizar(outroHorario, "CONFIRMADA", null);
+        consultas.saveAndFlush(consultaDeOutraNutri);
+
+        criar(consultaConfirmada(outroHorario)).andExpect(status().isBadRequest());
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {
         "{}",
@@ -160,8 +213,14 @@ class ConsultaControllerTest {
 
     @Test
     void observacaoLongaEImcExtremoNaoEstouramColunas() throws Exception {
-        criar(completa(80, "x".repeat(5001), "null")).andExpect(status().isBadRequest());
-        criar(completa(500, "x".repeat(5000), "null").replace("1.80", "0.30"))
+        Consulta consulta = consultaIniciada();
+        String url = base + "/" + consulta.getId();
+        mvc.perform(put(url).header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                        .content(completa(80, "x".repeat(5001), String.valueOf(consulta.getVersao()))))
+                .andExpect(status().isBadRequest());
+        mvc.perform(put(url).header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                        .content(completa(500, "x".repeat(5000), String.valueOf(consulta.getVersao()))
+                                .replace("1.80", "0.30")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.avaliacao.imc").value(5555.56));
     }
 
@@ -175,6 +234,13 @@ class ConsultaControllerTest {
         c.atualizar(c.getDataHora(), "CONFIRMADA", null);
         c.iniciar(c.getDataHora());
         return consultas.saveAndFlush(c);
+    }
+    private String consultaConfirmada(LocalDateTime dataHora) {
+        return consultaConfirmada(dataHora, null);
+    }
+    private String consultaConfirmada(LocalDateTime dataHora, Long versao) {
+        return "{\"dataHora\":\"" + dataHora + "\",\"status\":\"CONFIRMADA\""
+                + (versao == null ? "" : ",\"versao\":" + versao) + "}";
     }
     private String login(String email) throws Exception {
         String json = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)

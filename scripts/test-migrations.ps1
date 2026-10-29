@@ -12,13 +12,15 @@ $v3 = Get-Content (Join-Path $migrations 'V3__anamnese_fuso_horario.sql') -Raw
 $v4 = Get-Content (Join-Path $migrations 'V4__token_email_titular.sql') -Raw
 $v5 = Get-Content (Join-Path $migrations 'V5__remover_medidas_da_anamnese.sql') -Raw
 $v6 = Get-Content (Join-Path $migrations 'V6__ciclo_plano_alimentar.sql') -Raw
-$v8 = Get-Content (Join-Path $migrations 'V8__macronutrientes_consumo_diario.sql') -Raw
-$v9 = Get-Content (Join-Path $migrations 'V9__horarios_atendimento.sql') -Raw
-$v10 = Get-Content (Join-Path $migrations 'V10__inicio_consulta.sql') -Raw
-$v11 = Get-Content (Join-Path $migrations 'V11__refeicoes_semanais.sql') -Raw
-$v12 = Get-Content (Join-Path $migrations 'V12__exames_metadados_seguranca.sql') -Raw
-$v13 = Get-Content (Join-Path $migrations 'V13__catalogo_taco.sql') -Raw -Encoding utf8
 $v7 = Get-Content (Join-Path $migrations 'V7__registro_consultas.sql') -Raw
+$v8 = Get-Content (Join-Path $migrations 'V8__macronutrientes_consumo_diario.sql') -Raw
+$v9 = Get-Content (Join-Path $migrations 'V9__catalogo_taco.sql') -Raw
+$v10 = Get-Content (Join-Path $migrations 'V10__prescricao_alimentar.sql') -Raw
+$v11 = Get-Content (Join-Path $migrations 'V11__fibras_e_substitutos_prescritos.sql') -Raw
+$v12 = Get-Content (Join-Path $migrations 'V12__horarios_atendimento.sql') -Raw
+$v13 = Get-Content (Join-Path $migrations 'V13__inicio_consulta.sql') -Raw
+$v14 = Get-Content (Join-Path $migrations 'V14__refeicoes_semanais.sql') -Raw
+$v15 = Get-Content (Join-Path $migrations 'V15__exames_metadados_seguranca.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
 
 # Every scenario uses a new schema inside a transaction, rolled back even on
@@ -86,13 +88,54 @@ try {
     if (!$ready) { throw 'Isolated PostgreSQL did not become ready' }
 
     foreach ($timezone in @('UTC', 'America/Sao_Paulo')) {
-        foreach ($scenario in @('fresh', 'legacy-missing-token', 'initialized', 'mixed-types')) {
+        foreach ($scenario in @('fresh', 'legacy-missing-token', 'initialized', 'mixed-types', 'upgrade-v10')) {
             $schema = 'migration_test_' + [Guid]::NewGuid().ToString('N')
             $base = if ($scenario -eq 'initialized') { $init } else { $v1 }
             $legacy = if ($scenario -eq 'legacy-missing-token') { 'DROP TABLE Token_Email;' } else { '' }
             $mixed = if ($scenario -eq 'mixed-types') {
                 "ALTER TABLE Anamnese ALTER COLUMN finalizada_em TYPE TIMESTAMPTZ USING finalizada_em AT TIME ZONE 'UTC';"
             } else { '' }
+            $upgradeBefore = if ($scenario -eq 'upgrade-v10') { @'
+INSERT INTO Plano_Alimentar (id_plano, id_paciente, id_nutricionista, titulo)
+VALUES (900001, 1, 1, 'Plano anterior à V11');
+INSERT INTO Refeicao (id_refeicao, id_plano, nome, horario)
+VALUES (900001, 900001, 'Refeição anterior à V11', '12:00');
+INSERT INTO Item_Refeicao (id_refeicao, id_alimento, quantidade_gramas, kcal_100g, proteina_100g, carboidratos_100g, gordura_100g)
+SELECT 900001, id_alimento, 42.50, 42.123456, proteina_100g, carboidratos_100g, gordura_100g
+FROM Alimento WHERE codigo_taco = 3;
+CREATE TEMP TABLE snapshot_v10 AS SELECT * FROM Item_Refeicao;
+'@ } else { '' }
+            $upgradeAfter = if ($scenario -eq 'upgrade-v10') { @'
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM snapshot_v10 antigo JOIN Item_Refeicao atual USING (id_refeicao, id_alimento)
+        WHERE antigo.quantidade_gramas IS DISTINCT FROM atual.quantidade_gramas
+           OR antigo.kcal_100g IS DISTINCT FROM atual.kcal_100g
+           OR antigo.proteina_100g IS DISTINCT FROM atual.proteina_100g
+           OR antigo.carboidratos_100g IS DISTINCT FROM atual.carboidratos_100g
+           OR antigo.gordura_100g IS DISTINCT FROM atual.gordura_100g) THEN
+        RAISE EXCEPTION 'V11 changed existing primary prescription snapshots';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM Item_Refeicao WHERE id_refeicao = 900001 AND fibra_100g = 1.561000) THEN
+        RAISE EXCEPTION 'V11 did not populate known fiber on existing items';
+    END IF;
+END;
+$$;
+INSERT INTO Substituto_Item_Refeicao (id_refeicao, id_alimento_principal, id_alimento_substituto,
+    quantidade_gramas, kcal_100g, proteina_100g, carboidratos_100g, gordura_100g, fibra_100g)
+SELECT 900001, principal.id_alimento, substituto.id_alimento, 50,
+    substituto.kcal_100g, substituto.proteina_100g, substituto.carboidratos_100g, substituto.gordura_100g, substituto.fibra_100g
+FROM Alimento principal CROSS JOIN Alimento substituto
+WHERE principal.codigo_taco = 3 AND substituto.codigo_taco = 1;
+DELETE FROM Item_Refeicao WHERE id_refeicao = 900001;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM Substituto_Item_Refeicao WHERE id_refeicao = 900001) THEN
+        RAISE EXCEPTION 'V11 must cascade primary item deletion to alternatives';
+    END IF;
+END;
+$$;
+'@ } else { '' }
             # Explicit +00 is honored by TIMESTAMPTZ and ignored by naive timestamps;
             # both represent the same UTC wall-clock value expected by legacy V3.
             $sql = @"
@@ -114,9 +157,91 @@ $v4
 $v4
 $assertions
 $v5
-$v6
 UPDATE Consulta SET observacao = 'Registro legado' WHERE id_consulta = 1;
 $v7
+$v6
+$v8
+$v9
+$v10
+DO `$`$
+BEGIN
+    IF (SELECT count(*) FROM Alimento WHERE catalogo_ativo) <> 597
+       OR (SELECT count(DISTINCT categoria) FROM Alimento WHERE catalogo_ativo) <> 15
+       OR (SELECT count(*) FROM Alimento WHERE catalogo_ativo AND disponivel_prescricao) <> 592 THEN
+        RAISE EXCEPTION 'V9 must import the complete validated TACO catalog';
+    END IF;
+    IF (SELECT count(*) FROM Alimento WHERE codigo_taco IS NULL AND NOT catalogo_ativo) <> 5 THEN
+        RAISE EXCEPTION 'V9 must preserve the five legacy food records';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 3
+                   AND kcal_100g = 128.258486 AND proteina_100g = 2.520817
+                   AND carboidratos_100g = 28.059850 AND gordura_100g = 0.227000) THEN
+        RAISE EXCEPTION 'V9 changed the reference food composition';
+    END IF;
+    IF EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco IN (450, 457, 458, 591)
+                AND (disponivel_prescricao OR kcal_100g IS NOT NULL)) THEN
+        RAISE EXCEPTION 'V9 must not invent values under scientific reassessment';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 259
+                   AND proteina_100g = 0 AND carboidratos_100g = 0
+                   AND observacao_fonte LIKE '%NA%') THEN
+        RAISE EXCEPTION 'V9 must retain non-applicable source qualifiers';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 288
+                   AND carboidratos_100g = 0 AND observacao_fonte IS NOT NULL) THEN
+        RAISE EXCEPTION 'V9 must record normalization of the source rounding residual';
+    END IF;
+    IF EXISTS (SELECT 1 FROM Item_Refeicao i JOIN Alimento a ON a.id_alimento = i.id_alimento
+                WHERE i.kcal_100g IS DISTINCT FROM a.kcal_100g
+                   OR i.proteina_100g IS DISTINCT FROM a.proteina_100g
+                   OR i.carboidratos_100g IS DISTINCT FROM a.carboidratos_100g) THEN
+        RAISE EXCEPTION 'V10 must preserve legacy food compositions in item snapshots';
+    END IF;
+END;
+`$`$;
+$upgradeBefore
+$v11
+$upgradeAfter
+DO `$`$
+BEGIN
+    IF (SELECT count(*) FROM Alimento WHERE catalogo_ativo AND fibra_100g IS NULL) <> 14
+       OR (SELECT count(*) FROM Alimento WHERE catalogo_ativo AND fibra_100g IS NOT NULL) <> 583 THEN
+        RAISE EXCEPTION 'V11 must preserve missing and reassessed fiber values';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 3 AND fibra_100g = 1.561000)
+       OR NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 1 AND fibra_100g = 2.749333) THEN
+        RAISE EXCEPTION 'V11 changed the official fiber reference values';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 259 AND fibra_100g = 0
+                   AND observacao_fonte LIKE '%Fibra alimentar: NA%')
+       OR NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 209 AND fibra_100g = 0
+                   AND observacao_fonte LIKE '%Fibra alimentar: Tr%') THEN
+        RAISE EXCEPTION 'V11 must retain non-applicable and trace fiber qualifiers';
+    END IF;
+    IF EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco IN (280, 330, 450, 537) AND fibra_100g IS NOT NULL)
+       OR EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco IS NULL AND fibra_100g IS NOT NULL) THEN
+        RAISE EXCEPTION 'V11 must not manufacture unknown or legacy fiber';
+    END IF;
+END;
+`$`$;
+DO `$`$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM Plano_Alimentar p
+        JOIN Consulta c ON c.id_consulta = p.id_consulta
+        WHERE p.id_paciente IS DISTINCT FROM c.id_paciente
+           OR p.id_nutricionista IS DISTINCT FROM c.id_nutricionista
+           OR p.status <> 'RASCUNHO'
+    ) THEN
+        RAISE EXCEPTION 'V6 must preserve plan ownership when applied after V7';
+    END IF;
+    IF (SELECT count(*) FROM information_schema.columns
+        WHERE table_schema = current_schema() AND table_name = 'consumo_diario'
+          AND column_name IN ('proteinas_consumidas', 'carboidratos_consumidos', 'gorduras_consumidas')) <> 3 THEN
+        RAISE EXCEPTION 'V8 must add all daily macronutrients';
+    END IF;
+END;
+`$`$;
 DO `$`$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM Consulta WHERE id_consulta = 1
@@ -138,37 +263,20 @@ BEGIN
     END;
 END;
 `$`$;
-$v8
-$v9
-$v10
-$v11
 $v12
 $v13
+$v14
+$v15
 DO `$`$
 BEGIN
-    IF (SELECT count(*) FROM Alimento WHERE codigo_taco IS NOT NULL) <> 597
-       OR (SELECT count(DISTINCT codigo_taco) FROM Alimento) <> 597
-       OR (SELECT count(DISTINCT categoria) FROM Alimento WHERE codigo_taco IS NOT NULL) <> 15 THEN
-        RAISE EXCEPTION 'V13 must load all 597 TACO foods in 15 categories';
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 1 AND kcal_100g = 123.53 AND gordura_100g = 1.00)
-       OR NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 561 AND nome_busca = 'feijao carioca cozido')
-       OR NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 288 AND carboidratos_100g IS NULL)
-       OR NOT EXISTS (SELECT 1 FROM Alimento WHERE codigo_taco = 112 AND gordura_100g IS NULL) THEN
-        RAISE EXCEPTION 'V13 nutrient conversion or search normalization failed';
-    END IF;
-    IF (SELECT count(*) FROM Alimento WHERE codigo_taco IS NULL AND NOT disponivel_para_prescricao) <> 5
-       OR NOT EXISTS (SELECT 1 FROM Alimento WHERE id_alimento = 1 AND nome = 'Arroz branco cozido' AND kcal_100g = 128 AND gordura_100g IS NULL) THEN
-        RAISE EXCEPTION 'V13 must preserve the five legacy examples';
-    END IF;
     IF (SELECT count(*) FROM Horario_Atendimento) <> (SELECT count(*) * 48 FROM Nutricionista) THEN
-        RAISE EXCEPTION 'V9 did not preserve the legacy weekly schedule';
+        RAISE EXCEPTION 'V12 did not preserve the legacy weekly schedule';
     END IF;
     IF EXISTS (SELECT 1 FROM Plano_Alimentar WHERE id_paciente IS NULL OR id_nutricionista IS NULL) THEN
         RAISE EXCEPTION 'V6 lost plan ownership';
     END IF;
     IF NOT EXISTS (SELECT 1 FROM Consulta WHERE id_consulta = 1 AND iniciada_em IS NULL) THEN
-        RAISE EXCEPTION 'V10 lost legacy consultation';
+        RAISE EXCEPTION 'V13 lost legacy consultation';
     END IF;
     BEGIN
         INSERT INTO Horario_Atendimento (id_nutricionista, dia_semana, horario) VALUES (1, 8, '10:00');
@@ -182,7 +290,7 @@ VALUES (1, 1, 'Teste isolado', decode('255044462d', 'hex'), 'application/pdf', 5
 DO `$`$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM Exame WHERE nome_exame = 'Teste isolado' AND octet_length(arquivo) = 5 AND versao = 0) THEN
-        RAISE EXCEPTION 'V12 binary storage or version failed';
+        RAISE EXCEPTION 'V15 binary storage or version failed';
     END IF;
 END;
 `$`$;

@@ -45,8 +45,15 @@ export class PlanoComponent implements OnInit {
       if (pagina === 0) { this.resultados = []; this.temMaisAlimentos = false; }
       this.erroBusca = ''; this.buscando = q.trim().length >= 2;
       return q.trim().length < 2 ? of({ itens: [] as Alimento[], erro: '', pagina })
-        : timer(pagina === 0 ? 250 : 0).pipe(switchMap(() => this.api.get<Alimento[]>('/alimentos', { params: { q: q.trim(), pagina } })),
-          map(itens => ({ itens, erro: '', pagina })), catchError(() => of({ itens: [] as Alimento[], erro: 'Não foi possível buscar alimentos. Tente novamente.', pagina })));
+        : timer(pagina === 0 ? 250 : 0).pipe(switchMap(() => this.api.get<(Alimento & {
+            kcal100g?: number | null; proteina100g?: number | null;
+            carboidratos100g?: number | null; gordura100g?: number | null;
+          })[]>('/alimentos', { params: { q: q.trim(), pagina } })),
+          map(itens => ({ itens: itens.map(a => ({ ...a, kcal: a.kcal ?? a.kcal100g ?? null,
+            proteina: a.proteina ?? a.proteina100g ?? null,
+            carboidratos: a.carboidratos ?? a.carboidratos100g ?? null,
+            gordura: a.gordura ?? a.gordura100g ?? null })), erro: '', pagina })),
+          catchError(() => of({ itens: [] as Alimento[], erro: 'Não foi possível buscar alimentos. Tente novamente.', pagina })));
     }), takeUntilDestroyed(this.destroyRef)).subscribe(r => {
       if (!r.erro) {
         this.resultados = r.pagina === 0 ? r.itens : [...this.resultados, ...r.itens];

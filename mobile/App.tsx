@@ -9,6 +9,7 @@ import {
 } from '@expo-google-fonts/manrope';
 import { View, ActivityIndicator } from 'react-native';
 
+import { AppAlertProvider } from './src/components/feedback/AppAlertProvider';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 export default function App() {
@@ -29,7 +30,9 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <RootNavigator />
+      <AppAlertProvider>
+        <RootNavigator />
+      </AppAlertProvider>
       <StatusBar style="auto" />
     </SafeAreaProvider>
   );

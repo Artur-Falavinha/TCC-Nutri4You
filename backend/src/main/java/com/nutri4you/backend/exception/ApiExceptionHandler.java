@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -43,6 +45,15 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleCorpoInvalido(HttpServletRequest request) {
         return ResponseEntity.badRequest().body(ApiErrorResponse.of(
                 400, "REQUISICAO_INVALIDA", "Confira os formatos de datas e valores informados.", request.getRequestURI()));
+    }
+
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class})
+    public ResponseEntity<ApiErrorResponse> handleParametroInvalido(HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of(
+                HttpStatus.BAD_REQUEST.value(),
+                "REQUISICAO_INVALIDA",
+                "Confira os parâmetros informados.",
+                request.getRequestURI()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -94,11 +105,17 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(413).body(ApiErrorResponse.of(413, "ARQUIVO_MUITO_GRANDE", "Envie um arquivo de até 5 MiB.", request.getRequestURI()));
     }
 
-    @ExceptionHandler({org.springframework.web.bind.MissingServletRequestParameterException.class,
-            org.springframework.web.multipart.support.MissingServletRequestPartException.class,
-            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})
-    public ResponseEntity<ApiErrorResponse> handleParametroInvalido(HttpServletRequest request) {
-        return ResponseEntity.badRequest().body(ApiErrorResponse.of(400, "REQUISICAO_INVALIDA", "Confira os parâmetros obrigatórios e seus formatos.", request.getRequestURI()));
+    @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException.class)
+    public ResponseEntity<ApiErrorResponse> handleParteAusente(HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of(
+                400, "REQUISICAO_INVALIDA",
+                "Confira os parâmetros obrigatórios e seus formatos.", request.getRequestURI()));
+    }
+
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleRecursoNaoEncontrado(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiErrorResponse.of(
+                404, "NAO_ENCONTRADO", "Recurso não encontrado.", request.getRequestURI()));
     }
 
     @ExceptionHandler(Exception.class)

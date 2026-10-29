@@ -2,7 +2,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import ArrowLeftIcon from '../../assets/appointments/arrow-left.svg';
 import CheckCircleIcon from '../../assets/appointments/check-circle.svg';
 import InfoIcon from '../../assets/appointments/info.svg';
+import { useAppAlert } from '../../components/feedback/AppAlertProvider';
 import { ApiError } from '../../core/api/api-response.types';
 import {
   getAppointmentAvailability,
@@ -43,6 +43,7 @@ function errorMessage(error: unknown): string {
 }
 
 export function AvailableSlotsScreen({ navigation, route }: Props) {
+  const { showAlert } = useAppAlert();
   const { nutricionistaId, consultaId, versao } = route.params;
   const [selectedDate, setSelectedDate] = useState(route.params.data);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -98,13 +99,13 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
     try {
       if (consultaId !== undefined && versao !== undefined) {
         await rescheduleAppointment(consultaId, { dataHora: selectedSlot, versao });
-        Alert.alert(
+        showAlert(
           'Reagendamento solicitado',
           'O novo horário aguarda confirmação. Se a consulta estava no Google Agenda, atualize o evento manualmente.'
         );
       } else {
         await scheduleAppointment({ nutricionistaId, dataHora: selectedSlot });
-        Alert.alert('Horário solicitado', 'Sua consulta está aguardando confirmação.');
+        showAlert('Horário solicitado', 'Sua consulta está aguardando confirmação.');
       }
       navigation.navigate('Agenda');
     } catch (failure) {

@@ -120,7 +120,7 @@ O roadmap organiza o desenvolvimento do Nutri4You em entregas quinzenais baseada
 **Entregáveis:** 
 
 * Implementar autocadastro do paciente, validação de e-mail, login, validação de token, recuperação e redefinição de senha, expiração e perfis NUTRICIONISTA e PACIENTE.  
-* Implementar /usuarios/me e os endpoints de pacientes para listar, buscar, cadastrar e editar *(“inativar/reativar” reinterpretado: encerrar relação clínica, não bloquear login — ver Q11)*.  
+* Implementar /usuarios/me e a gestão de pacientes para listar, buscar, consultar, vincular e encerrar relação clínica. O paciente faz autocadastro e edita os próprios dados; edição cadastral pelo nutricionista fica fora do escopo *(decisão de 22/10/2026; encerrar relação não bloqueia login — ver Q11 e Q18)*.
 * Construir no Angular as telas de autocadastro, validação de e-mail, login, recuperação de senha e gestão de pacientes, incluindo filtros e estados de vazio, erro e confirmação.  
 * Construir no React Native login, recuperação de senha e edição dos dados pessoais permitidos.  
 * Padronizar validações, mensagens genéricas de autenticação e tratamento de usuário inativo, token expirado e acesso proibido.
@@ -128,7 +128,7 @@ O roadmap organiza o desenvolvimento do Nutri4You em entregas quinzenais baseada
 **Critérios de aceite:** 
 
 * Paciente conclui o autocadastro, valida o e-mail e acessa a conta com o perfil correto. Credenciais inválidas, usuário inativo e token expirado são rejeitados conforme a regra definida.  
-* Nutricionista executa cadastro, busca e edição de paciente *(sem inativar conta do paciente)*.  
+* Nutricionista busca, consulta e vincula o paciente autocadastrado, podendo encerrar a relação clínica sem inativar a conta.
 * Paciente altera somente os próprios dados permitidos e não acessa rotas exclusivas do nutricionista.  
 * Testes automatizados cobrem autocadastro, validação de e-mail, autenticação, perfis, validações e principais códigos HTTP.  
 * Logs e respostas não expõem senha, hash, token temporário ou dados sensíveis desnecessários.
@@ -330,7 +330,7 @@ O roadmap organiza o desenvolvimento do Nutri4You em entregas quinzenais baseada
 
 **Fluxos obrigatórios para o aceite final:** 
 
-* Paciente realiza o autocadastro, valida o e-mail e acessa a conta. O nutricionista cadastra o paciente, registra anamnese e medidas, publica a dieta e acompanha o histórico. No mobile, o paciente consulta a dieta, registra consumo e hidratação e visualiza sua evolução.  
+* Paciente realiza o autocadastro, valida o e-mail e acessa a conta. O nutricionista localiza e vincula o paciente, registra anamnese e medidas, publica a dieta e acompanha o histórico. No mobile, o paciente consulta a dieta, registra consumo e hidratação e visualiza sua evolução.
 * Paciente solicita consulta; nutricionista visualiza, confirma ou cancela; a sincronização externa funciona ou falha sem perda do dado interno.  
 * Nutricionista solicita exame; paciente envia arquivo válido; ambos visualizam o andamento respeitando as permissões.  
 * Ambiente implantado, documentação e apresentação reproduzem os mesmos fluxos e registram limitações reais.

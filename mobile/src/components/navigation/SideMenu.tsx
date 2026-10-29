@@ -1,5 +1,5 @@
 import { ComponentType } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import CalendarIcon from '../../assets/appointments/nav-calendar.svg';
@@ -83,7 +83,11 @@ export function SideMenu({
             </Text>
           </View>
 
-          <View style={styles.navigation}>
+          <ScrollView
+            style={styles.navigation}
+            contentContainerStyle={styles.navigationContent}
+            showsVerticalScrollIndicator={false}
+          >
             {menuItems.map((item) => (
               <MenuItem
                 key={item.destination}
@@ -93,7 +97,7 @@ export function SideMenu({
                 onPress={() => onNavigate(item.destination)}
               />
             ))}
-          </View>
+          </ScrollView>
 
           <View style={styles.footer}>
             <MenuItem
@@ -157,6 +161,9 @@ const styles = StyleSheet.create({
   },
   navigation: {
     flex: 1,
+    minHeight: 0
+  },
+  navigationContent: {
     gap: spacing.xs
   },
   item: {
