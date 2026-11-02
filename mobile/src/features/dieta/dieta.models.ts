@@ -39,6 +39,7 @@ export interface Meal {
   id: number;
   nome: string;
   horario: string;
+  diaSemana?: string | null;
   itens: MealPlanItem[];
   totais: Nutrients;
 }

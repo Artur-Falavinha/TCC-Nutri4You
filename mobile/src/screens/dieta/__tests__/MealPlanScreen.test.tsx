@@ -1,6 +1,7 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { Text } from 'react-native';
+import * as RN from 'react-native';
+import { ScrollView, Text } from 'react-native';
 
 import { getActiveMealPlan } from '../../../features/dieta/dieta.service';
 import { Food, MealPlan, MealPlanItem, Nutrients } from '../../../features/dieta/dieta.models';
@@ -151,5 +152,53 @@ describe('MealPlanScreen', () => {
     expect(output).not.toContain('Substituto informativo');
 
     act(() => tree.unmount());
+  });
+
+  it('renderiza cards individuais por refeição, seletor de dias e barras de progresso das metas diárias', async () => {
+    const plan = mealPlan();
+    plan.totais = { kcal: 220, proteinas: 8, carboidratos: 25, gorduras: 4, fibras: 28 };
+    const tree = await renderPlan(plan);
+    const output = renderedText(tree);
+
+    expect(tree.root.findByProps({ testID: 'meal-plan-day-selector' })).toBeTruthy();
+    expect(tree.root.findByProps({ testID: 'meal-card-6' })).toBeTruthy();
+    expect(tree.root.findByProps({ testID: 'nutrient-progress-bar-kcal' })).toBeTruthy();
+    expect(tree.root.findByProps({ testID: 'nutrient-progress-exceeded-kcal' })).toBeTruthy();
+    expect(output).toContain('Acima da meta diária (referência)');
+    expect(output).toContain('300 KCAL');
+    expect(output).toContain('10G PROTEÍNA');
+
+    const swapButton = tree.root.findByProps({ testID: 'meal-swap-button-6' });
+    await act(async () => {
+      swapButton.props.onPress();
+    });
+
+    expect(renderedText(tree)).toContain('Trocar Refeição');
+    expect(renderedText(tree)).toContain('Confirmar Troca');
+
+    const confirmBtn = tree.root.findByProps({ testID: 'meal-swap-confirm-button' });
+    await act(async () => {
+      confirmBtn.props.onPress();
+    });
+
+    act(() => tree.unmount());
+  });
+
+  it('adapta o layout responsivamente entre telas compactas (390px) e largas (768px)', async () => {
+    const spy = jest.spyOn(RN.Dimensions, 'get');
+
+    spy.mockReturnValue({ width: 390, height: 844, scale: 2, fontScale: 1 });
+    const compactTree = await renderPlan(mealPlan());
+    const compactScroll = compactTree.root.findAllByType(ScrollView)[0];
+    expect(JSON.stringify(compactScroll.props.contentContainerStyle)).toContain('"maxWidth":560');
+    act(() => compactTree.unmount());
+
+    spy.mockReturnValue({ width: 768, height: 1024, scale: 2, fontScale: 1 });
+    const wideTree = await renderPlan(mealPlan());
+    const wideScroll = wideTree.root.findAllByType(ScrollView)[0];
+    expect(JSON.stringify(wideScroll.props.contentContainerStyle)).toContain('"maxWidth":760');
+    act(() => wideTree.unmount());
+
+    spy.mockRestore();
   });
 });

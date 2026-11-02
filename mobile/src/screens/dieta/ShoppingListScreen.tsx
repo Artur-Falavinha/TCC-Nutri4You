@@ -47,7 +47,6 @@ export function ShoppingListScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [savingFoodId, setSavingFoodId] = useState<number | null>(null);
   const [error, setError] = useState('');
-  const [menuNotice, setMenuNotice] = useState('');
   const [list, setList] = useState<ShoppingList | null>(null);
   const requestId = useRef(0);
   const itemGroups = list ? groupShoppingItemsByCategory(list.itens) : [];
@@ -182,7 +181,8 @@ export function ShoppingListScreen({ navigation }: Props) {
         await signOut();
         return;
       case 'exams':
-        setMenuNotice('Este módulo ainda não está disponível nesta etapa.');
+        navigation.navigate('Exames');
+        return;
     }
   };
 
@@ -215,11 +215,6 @@ export function ShoppingListScreen({ navigation }: Props) {
           />
         }
       >
-        {menuNotice ? (
-          <View style={styles.noticeBox} accessibilityRole="alert">
-            <Text style={styles.noticeText}>{menuNotice}</Text>
-          </View>
-        ) : null}
         <View style={styles.heading}>
           <View style={styles.headingText}>
             <Text style={styles.title} accessibilityRole="header">

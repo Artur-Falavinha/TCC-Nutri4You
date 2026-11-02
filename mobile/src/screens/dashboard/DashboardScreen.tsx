@@ -139,6 +139,9 @@ export function DashboardScreen({ navigation }: Props) {
       case 'shopping':
         navigation.navigate('Compras');
         break;
+      case 'exams':
+        navigation.navigate('Exames');
+        break;
       case 'password':
         navigation.navigate('TrocarSenha');
         break;
