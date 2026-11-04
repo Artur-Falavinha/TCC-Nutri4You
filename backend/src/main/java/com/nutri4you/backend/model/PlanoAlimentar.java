@@ -98,7 +98,7 @@ public class PlanoAlimentar {
 
     public void editar(
             String titulo, String orientacoes, LocalDate inicio, LocalDate fim, Nutrientes metas) {
-        this.revisadoEm = Instant.now();
+        tocar();
         this.titulo = titulo;
         this.orientacoes = orientacoes;
         this.vigenciaInicio = inicio;
@@ -117,14 +117,19 @@ public class PlanoAlimentar {
                 new Nutrientes(kcal, proteina, carboidratos, gordura, null));
     }
 
+    public void vincularConsulta(Consulta consulta) { this.consulta = consulta; }
+
     public void publicar() {
         status = "PUBLICADO";
         publicadoEm = Instant.now();
     }
 
-    public void terminarEm(LocalDate fim) { this.vigenciaFim = fim; this.revisadoEm = Instant.now(); }
-    public void substituir() { this.status = "SUBSTITUIDO"; this.revisadoEm = Instant.now(); }
-    public void tocar() { this.revisadoEm = Instant.now(); }
+    public void terminarEm(LocalDate fim) { this.vigenciaFim = fim; tocar(); }
+    public void substituir() { this.status = "SUBSTITUIDO"; tocar(); }
+    public void tocar() {
+        Instant agora = Instant.now();
+        revisadoEm = agora.isAfter(revisadoEm.plusMillis(1)) ? agora : revisadoEm.plusMillis(1);
+    }
 
     public Long getVersao() {
         return versao;

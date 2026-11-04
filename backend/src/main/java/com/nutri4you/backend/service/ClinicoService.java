@@ -49,18 +49,20 @@ public class ClinicoService {
     private final ConsultaRepository consultaRepository;
     private final ConsumoDiarioRepository consumoDiarioRepository;
     private final PlanoAlimentarRepository planoAlimentarRepository;
+    private final ConsumoRefeicaoService consumoRefeicoes;
 
     public ClinicoService(
             GestaoPacienteService gestaoPacienteService,
             AvaliacaoAntropometricaRepository avaliacaoRepository,
             ConsultaRepository consultaRepository,
             ConsumoDiarioRepository consumoDiarioRepository,
-            PlanoAlimentarRepository planoAlimentarRepository) {
+            PlanoAlimentarRepository planoAlimentarRepository, ConsumoRefeicaoService consumoRefeicoes) {
         this.gestaoPacienteService = gestaoPacienteService;
         this.avaliacaoRepository = avaliacaoRepository;
         this.consultaRepository = consultaRepository;
         this.consumoDiarioRepository = consumoDiarioRepository;
         this.planoAlimentarRepository = planoAlimentarRepository;
+        this.consumoRefeicoes = consumoRefeicoes;
     }
 
     @Transactional
@@ -121,15 +123,16 @@ public class ClinicoService {
         }
 
         ConsumoDiario registro = consumo.orElse(null);
+        var totais = consumoRefeicoes.consultar(paciente, null).totais();
         return new ConsumoProgressoDTO(
                 "Hoje",
-                numero(registro == null ? null : registro.getKcalConsumidas()),
+                numero(registro == null ? null : registro.getKcalConsumidas()) + numero(totais.kcal()),
                 metas == null ? null : metas.calorias(),
-                numero(registro == null ? null : registro.getProteinasConsumidas()),
+                numero(registro == null ? null : registro.getProteinasConsumidas()) + numero(totais.proteinas()),
                 metas == null ? null : metas.proteinas(),
-                numero(registro == null ? null : registro.getCarboidratosConsumidos()),
+                numero(registro == null ? null : registro.getCarboidratosConsumidos()) + numero(totais.carboidratos()),
                 metas == null ? null : metas.carboidratos(),
-                numero(registro == null ? null : registro.getGordurasConsumidas()),
+                numero(registro == null ? null : registro.getGordurasConsumidas()) + numero(totais.gorduras()),
                 metas == null ? null : metas.gorduras());
     }
 

@@ -36,8 +36,8 @@ public class Refeicao {
     @Column(nullable = false)
     private LocalTime horario;
 
-    @Column(name = "dia_semana", nullable = false)
-    private Integer diaSemana = 1;
+    @Column(name = "dia_semana")
+    private Integer diaSemana;
 
     @OneToMany(mappedBy = "refeicao", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("alimento.id")
@@ -78,6 +78,12 @@ public class Refeicao {
     }
 
     public Integer getDiaSemana() { return diaSemana; }
+
+    public void definirDiaSemana(Integer diaSemana) { this.diaSemana = diaSemana; }
+
+    public boolean previstaEm(java.time.LocalDate data) {
+        return diaSemana == null || diaSemana == data.getDayOfWeek().getValue();
+    }
 
     public void editar(String nome, LocalTime horario, Integer diaSemana, List<ItemRefeicao> itens) {
         this.nome = nome;

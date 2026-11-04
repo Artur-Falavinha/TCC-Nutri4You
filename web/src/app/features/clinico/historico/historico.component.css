@@ -357,7 +357,7 @@
 }
 
 .vazio__arte {
-  width: min(16rem, 70%);
+  width: min(420px, 85%);
   height: auto;
   margin-bottom: 8px;
 }

@@ -1,3 +1,4 @@
+import { DailyMealsCard } from './components/DailyMealsCard';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
@@ -139,6 +140,9 @@ export function DashboardScreen({ navigation }: Props) {
       case 'shopping':
         navigation.navigate('Compras');
         break;
+      case 'exams':
+        navigation.navigate('Exames');
+        break;
       case 'password':
         navigation.navigate('TrocarSenha');
         break;
@@ -235,6 +239,7 @@ export function DashboardScreen({ navigation }: Props) {
             </Text>
           </View>
 
+          <DailyMealsCard onChanged={handleRefresh} />
           {/* Card: Consumo Diário */}
           <View style={styles.consumoCard} testID="dashboard-consumo-card">
             <View style={styles.consumoTopRow}>

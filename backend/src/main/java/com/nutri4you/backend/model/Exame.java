@@ -14,7 +14,7 @@ public class Exame {
     @Column(name = "data_solicitacao") private LocalDate dataSolicitacao;
     @Column(name = "data_envio") private LocalDate dataEnvio;
     @Column(length = 30) private String status = "PENDENTE";
-    @Column private byte[] arquivo;
+    @Column(columnDefinition = "bytea") private byte[] arquivo;
     @Column(name = "arquivo_nome", length = 150) private String arquivoNome;
     @Column(name = "arquivo_tipo", length = 100) private String arquivoTipo;
     @Column(name = "arquivo_tamanho") private Long arquivoTamanho;
@@ -29,6 +29,10 @@ public class Exame {
     public void enviar(byte[] arquivo, String nome, String tipo, LocalDate data) {
         this.arquivo = arquivo; this.arquivoNome = nome; this.arquivoTipo = tipo;
         this.arquivoTamanho = (long) arquivo.length; this.dataEnvio = data; this.status = "ENVIADO";
+    }
+    public void removerArquivo() {
+        arquivo = null; arquivoNome = null; arquivoTipo = null; arquivoTamanho = null;
+        dataEnvio = null; status = "PENDENTE";
     }
     public void analisar(String parecer, Instant agora) { this.parecer = parecer; this.analisadoEm = agora; this.status = "ANALISADO"; }
     public Integer getId() { return id; }

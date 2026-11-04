@@ -70,6 +70,16 @@ public class ExameService {
         return ExameResponse.from(e);
     }
     @Transactional
+    public ExameResponse remover(Paciente p, Integer id, Long versao) {
+        Exame e = exames.findByIdAndPaciente_Id(id, p.getId()).orElseThrow(ExameNaoEncontradoException::new);
+        versao(e, versao);
+        if (!"ENVIADO".equals(e.getStatus()))
+            throw new IllegalArgumentException("Somente arquivos enviados e ainda não analisados podem ser removidos.");
+        e.removerArquivo();
+        exames.flush();
+        return ExameResponse.from(e);
+    }
+    @Transactional
     public ExameResponse analisar(Nutricionista n, Integer pacienteId, Integer id, Analise r) {
         Exame e = exigir(n, pacienteId, id);
         if (r == null || r.parecer() == null || r.parecer().isBlank() || r.parecer().length() > 5000) {

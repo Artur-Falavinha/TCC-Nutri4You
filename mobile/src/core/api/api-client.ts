@@ -19,11 +19,19 @@ class ApiClient {
     return this.request<T>(path, { method: 'GET' });
   }
 
+  async getBlob(path: string): Promise<Blob> {
+    return this.request<Blob>(path, { method: 'GET' }, true);
+  }
+
   async post<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>(path, {
       method: 'POST',
       body: body === undefined ? undefined : JSON.stringify(body)
     });
+  }
+
+  async postForm<T>(path: string, body: FormData): Promise<T> {
+    return this.request<T>(path, { method: 'POST', body });
   }
 
   async put<T>(path: string, body: unknown): Promise<T> {
@@ -37,7 +45,7 @@ class ApiClient {
     return this.request<T>(path, { method: 'DELETE' });
   }
 
-  private async request<T>(path: string, init: RequestInit): Promise<T> {
+  private async request<T>(path: string, init: RequestInit, binary = false): Promise<T> {
     const url = this.buildUrl(path);
     const token = await getToken();
 
@@ -46,7 +54,7 @@ class ApiClient {
       response = await fetch(url, {
         ...init,
         headers: {
-          'Content-Type': 'application/json',
+          ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...init.headers
         }
@@ -81,6 +89,8 @@ class ApiClient {
     if (response.status === 204) {
       return undefined as T;
     }
+
+    if (binary) return await response.blob() as T;
 
     const envelope = await this.safeParseJson<ApiResponse<T>>(response);
     return envelope?.data as T;

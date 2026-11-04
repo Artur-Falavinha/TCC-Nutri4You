@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, HostListener, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, CanDeactivateFn } from '@angular/router';
+import { ActivatedRoute, CanDeactivateFn, RouterLink } from '@angular/router';
 import { EMPTY, Subject, catchError, forkJoin, switchMap } from 'rxjs';
 
 import { ApiErrorResponse } from '../../core/models/api-response.model';
@@ -38,7 +38,7 @@ const MAXIMO_SUBSTITUTOS = 10;
 
 @Component({
   selector: 'app-dieta',
-  imports: [DatePipe, FormsModule, PatientTabsComponent, FormAlertComponent, UiButtonComponent, BuscaAlimentosComponent],
+  imports: [DatePipe, FormsModule, RouterLink, PatientTabsComponent, FormAlertComponent, UiButtonComponent, BuscaAlimentosComponent],
   templateUrl: './dieta.component.html',
   styleUrl: './dieta.component.css'
 })
@@ -54,6 +54,28 @@ export class DietaComponent implements OnInit {
   planoSelecionado: Plano | null = null;
   planoEmEdicaoId: number | null = null;
   tela: TelaDieta = 'lista';
+  readonly dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+  dia = 1;
+  get refeicoesEdicao(): RefeicaoEdicao[] {
+    return this.form.refeicoes.filter(r => r.diaSemana == null || r.diaSemana === this.dia);
+  }
+  get refeicoesDetalhe() {
+    return this.planoSelecionado?.refeicoes.filter(r => r.diaSemana == null || r.diaSemana === this.dia) ?? [];
+  }
+  get indicadores() {
+    const totais = this.tela === 'editor' ? this.totaisPrevistos : this.totaisDetalhe;
+    const metas = this.tela === 'editor' ? this.form.metas : this.planoSelecionado?.metas;
+    return ([['kcal', 'Energia', 'kcal'], ['proteinas', 'Proteínas', 'g'], ['carboidratos', 'Carboidratos', 'g'], ['gorduras', 'Gorduras', 'g']] as const)
+      .map(([chave, nome, unidade]) => {
+        const meta = metas ? this.numero(metas[chave]) : null;
+        const valor = totais[chave];
+        const percentual = meta && meta > 0 ? Math.round(valor / meta * 100) : null;
+        return { nome, unidade, valor, meta, percentual, barra: Math.min(percentual ?? 0, 100), excesso: meta !== null && valor > meta };
+      });
+  }
+  get totaisDetalhe(): Nutrientes {
+    return this.refeicoesDetalhe.reduce((total, r) => this.somar(total, r.totais), { ...NUTRIENTES_VAZIOS });
+  }
   form = this.novoFormulario();
   carregando = true;
   carregado = false;
@@ -99,7 +121,7 @@ export class DietaComponent implements OnInit {
   private substitutoSelecionado: { refeicaoChave: number; itemChave: number } | null = null;
 
   get podeColarRefeicao(): boolean {
-    return this.refeicaoCopiada !== null && this.form.refeicoes.length < 20;
+    return this.refeicaoCopiada !== null && this.form.refeicoes.length < 140;
   }
 
   get periodoListaComprasValido(): boolean {
@@ -204,11 +226,11 @@ export class DietaComponent implements OnInit {
   }
 
   adicionarRefeicao(): void {
-    if (this.form.refeicoes.length >= 20) {
-      this.erro = 'Um plano pode conter até 20 refeições.';
+    if (this.form.refeicoes.length >= 140) {
+      this.erro = 'Um plano pode conter até 140 refeições.';
       return;
     }
-    this.form.refeicoes.push({ chave: this.proximaChave(), nome: '', horario: '', itens: [] });
+    this.form.refeicoes.push({ chave: this.proximaChave(), nome: '', horario: '', diaSemana: this.dia, itens: [] });
     this.erro = '';
   }
 
@@ -230,13 +252,14 @@ export class DietaComponent implements OnInit {
 
   colarRefeicao(): void {
     if (!this.refeicaoCopiada) return;
-    if (this.form.refeicoes.length >= 20) {
-      this.erro = 'Um plano pode conter até 20 refeições.';
+    if (this.form.refeicoes.length >= 140) {
+      this.erro = 'Um plano pode conter até 140 refeições.';
       return;
     }
 
     this.form.refeicoes.push({
       chave: this.proximaChave(),
+      diaSemana: this.dia,
       nome: this.refeicaoCopiada.nome,
       horario: this.refeicaoCopiada.horario,
       itens: this.refeicaoCopiada.itens.map(item => ({
@@ -255,6 +278,7 @@ export class DietaComponent implements OnInit {
   }
 
   removerRefeicao(refeicao: RefeicaoEdicao): void {
+    if (!window.confirm(`Excluir a refeição “${refeicao.nome || 'sem nome'}”?`)) return;
     this.form.refeicoes = this.form.refeicoes.filter(item => item.chave !== refeicao.chave);
   }
 
@@ -464,7 +488,7 @@ export class DietaComponent implements OnInit {
   }
 
   get totaisPrevistos(): Nutrientes {
-    return this.form.refeicoes.reduce((total, refeicao) => this.somar(total, this.totaisRefeicaoPrevistos(refeicao)), { ...NUTRIENTES_VAZIOS });
+    return this.refeicoesEdicao.reduce((total, refeicao) => this.somar(total, this.totaisRefeicaoPrevistos(refeicao)), { ...NUTRIENTES_VAZIOS });
   }
 
   totaisRefeicaoPrevistos(refeicao: RefeicaoEdicao): Nutrientes {
@@ -633,7 +657,7 @@ export class DietaComponent implements OnInit {
       errors['vigenciaFim'] = 'O fim deve ser igual ou posterior ao início.';
     }
     this.validarMetas(errors);
-    if (this.form.refeicoes.length > 20) errors['refeicoes'] = 'Um plano pode conter até 20 refeições.';
+    if (this.form.refeicoes.length > 140) errors['refeicoes'] = 'Um plano pode conter até 140 refeições.';
     for (const [indice, refeicao] of this.form.refeicoes.entries()) {
       const prefixo = `refeicao-${refeicao.chave}`;
       const nome = refeicao.nome.trim();
@@ -680,7 +704,7 @@ export class DietaComponent implements OnInit {
           }
         }
       }
-      if (indice >= 20) break;
+      if (indice >= 140) break;
     }
     return errors;
   }
@@ -733,6 +757,7 @@ export class DietaComponent implements OnInit {
       } : null,
       ...(this.planoEmEdicaoId === null ? {} : { versao: this.planoSelecionado?.versao }),
       refeicoes: this.form.refeicoes.map(refeicao => ({
+        diaSemana: refeicao.diaSemana ?? null,
         nome: refeicao.nome.trim(),
         horario: refeicao.horario,
         itens: refeicao.itens.map(item => ({
@@ -769,6 +794,7 @@ export class DietaComponent implements OnInit {
       } : { kcal: '', proteinas: '', carboidratos: '', gorduras: '' },
       refeicoes: plano.refeicoes.map(refeicao => ({
         chave: this.proximaChave(),
+        diaSemana: refeicao.diaSemana ?? null,
         nome: refeicao.nome,
         horario: refeicao.horario.slice(0, 5),
         itens: refeicao.itens.map(item => ({

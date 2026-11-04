@@ -20,6 +20,7 @@ $v11 = Get-Content (Join-Path $migrations 'V11__fibras_e_substitutos_prescritos.
 $v12 = Get-Content (Join-Path $migrations 'V12__horarios_atendimento.sql') -Raw
 $v13 = Get-Content (Join-Path $migrations 'V13__inicio_consulta.sql') -Raw
 $v14 = Get-Content (Join-Path $migrations 'V14__refeicoes_semanais.sql') -Raw
+$v16 = Get-Content (Join-Path $migrations 'V16__consumo_por_refeicao.sql') -Raw
 $v15 = Get-Content (Join-Path $migrations 'V15__exames_metadados_seguranca.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
 
@@ -267,8 +268,15 @@ $v12
 $v13
 $v14
 $v15
+$v16
 DO `$`$
 BEGIN
+    IF EXISTS (SELECT 1 FROM Refeicao WHERE dia_semana IS NOT NULL) THEN
+        RAISE EXCEPTION 'V14 changed the daily repetition of legacy meals';
+    END IF;
+    IF to_regclass('consumo_refeicao') IS NULL THEN
+        RAISE EXCEPTION 'V16 did not create meal consumption history';
+    END IF;
     IF (SELECT count(*) FROM Horario_Atendimento) <> (SELECT count(*) * 48 FROM Nutricionista) THEN
         RAISE EXCEPTION 'V12 did not preserve the legacy weekly schedule';
     END IF;

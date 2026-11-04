@@ -26,17 +26,6 @@ export const routes: Routes = [
         title: 'Dashboard — Nutri4You'
       },
       {
-        path: 'agenda',
-        component: FeatureUnavailableComponent,
-        title: 'Agenda — Nutri4You',
-        data: {
-          titulo: 'Agenda',
-          descricao: 'A agenda completa ainda não está disponível. Consulte e gerencie os atendimentos no perfil de cada paciente.',
-          destino: '/pacientes',
-          acao: 'Ver pacientes'
-        }
-      },
-      {
         path: 'configuracoes',
         component: FeatureUnavailableComponent,
         title: 'Configurações — Nutri4You',

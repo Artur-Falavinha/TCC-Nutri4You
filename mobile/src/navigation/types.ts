@@ -13,6 +13,7 @@ export type RootStackParamList = {
   Evolucao: undefined;
   Dieta: undefined;
   Compras: undefined;
+  Exames: undefined;
   Agenda: undefined;
   HorariosDisponiveis: {
     nutricionistaId: number;

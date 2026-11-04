@@ -160,6 +160,8 @@ public class PrescricaoService {
                         .flatMap(r -> r.getItens().stream())
                         .map(ItemRefeicao::getAlimento)
                         .filter(a -> a.getId().equals(alimentoId))
+                        .filter(a -> respostaCompras(plano, request.dias(), Map.of()).itens().stream()
+                                .anyMatch(i -> i.alimentoId().equals(alimentoId)))
                         .findFirst()
                         .orElseThrow(
                                 () ->
@@ -171,6 +173,65 @@ public class PrescricaoService {
         lista.marcar(alimento, request.comprado());
         listas.saveAndFlush(lista);
         return respostaCompras(plano, request.dias());
+    }
+
+    @Transactional
+    public PlanoDTO salvarRefeicao(Nutricionista autor, Integer pacienteId, Integer planoId, Integer refeicaoId,
+            RefeicaoRequest request, Long versao) {
+        bloquearPaciente(autor, pacienteId);
+        PlanoAlimentar plano = exigirAutoria(autor, pacienteId, planoId);
+        exigirRascunho(plano, versao);
+        Refeicao nova = montarRefeicao(plano, request);
+        if (refeicaoId == null) {
+            if (plano.getRefeicoes().size() >= 140) throw new IllegalArgumentException("Limite de 140 refeições por plano.");
+            plano.getRefeicoes().add(nova);
+        } else {
+            Refeicao existente = encontrarRefeicao(plano, refeicaoId);
+            existente.getItens().clear();
+            entityManager.flush();
+            existente.editar(nova.getNome(), nova.getHorario(), nova.getDiaSemana(), List.copyOf(nova.getItens()));
+        }
+        plano.tocar();
+        return resposta(planos.saveAndFlush(plano));
+    }
+
+    @Transactional
+    public PlanoDTO excluirRefeicao(Nutricionista autor, Integer pacienteId, Integer planoId, Integer refeicaoId, Long versao) {
+        bloquearPaciente(autor, pacienteId);
+        PlanoAlimentar plano = exigirAutoria(autor, pacienteId, planoId);
+        exigirRascunho(plano, versao);
+        plano.getRefeicoes().remove(encontrarRefeicao(plano, refeicaoId));
+        plano.tocar();
+        return resposta(planos.saveAndFlush(plano));
+    }
+
+    @Transactional
+    public PlanoDTO replicarRefeicao(Nutricionista autor, Integer pacienteId, Integer planoId, Integer refeicaoId,
+            List<Integer> dias, Long versao) {
+        bloquearPaciente(autor, pacienteId);
+        PlanoAlimentar plano = exigirAutoria(autor, pacienteId, planoId);
+        exigirRascunho(plano, versao);
+        Refeicao origem = encontrarRefeicao(plano, refeicaoId);
+        if (dias == null || dias.isEmpty() || dias.size() > 6 || new HashSet<>(dias).size() != dias.size()
+                || dias.contains(origem.getDiaSemana()) || plano.getRefeicoes().size() + dias.size() > 140
+                || dias.stream().anyMatch(d -> d == null || d < 1 || d > 7))
+            throw new IllegalArgumentException("Escolha de 1 a 6 dias distintos do dia de origem.");
+        for (Integer dia : dias) {
+            Refeicao copia = new Refeicao(plano, origem.getNome(), origem.getHorario());
+            copia.definirDiaSemana(dia);
+            for (ItemRefeicao item : origem.getItens()) {
+                ItemRefeicao novo = copia.adicionar(item.getAlimento(), item.getQuantidadeGramas());
+                item.getSubstitutos().forEach(s -> novo.adicionarSubstituto(s.getAlimento(), s.getQuantidadeGramas()));
+            }
+            plano.getRefeicoes().add(copia);
+        }
+        plano.tocar();
+        return resposta(planos.saveAndFlush(plano));
+    }
+
+    private Refeicao encontrarRefeicao(PlanoAlimentar plano, Integer id) {
+        return plano.getRefeicoes().stream().filter(r -> r.getId().equals(id)).findFirst()
+                .orElseThrow(PlanoNaoEncontradoException::new);
     }
 
     private void bloquearPaciente(Nutricionista autor, Integer pacienteId) {
@@ -210,8 +271,17 @@ public class PrescricaoService {
                     "O fim da vigência deve ser igual ou posterior ao início.");
         }
         validarMetas(request.metas());
-        if (request.refeicoes() == null || request.refeicoes().size() > 20)
-            throw new IllegalArgumentException("Informe de 0 a 20 refeições.");
+        if (request.consultaId() != null) {
+            var consulta = entityManager.find(com.nutri4you.backend.model.Consulta.class, request.consultaId());
+            if (consulta == null || !consulta.getPaciente().getId().equals(plano.getPaciente().getId())
+                    || !consulta.getNutricionista().getId().equals(plano.getNutricionista().getId()))
+                throw new IllegalArgumentException("Consulta não pertence a este atendimento.");
+            if (planos.existsByConsulta_IdAndIdNot(consulta.getId(), plano.getId() == null ? -1 : plano.getId()))
+                throw new PlanoConflitoException("Consulta já possui um plano alimentar.");
+            plano.vincularConsulta(consulta);
+        }
+        if (request.refeicoes() == null || request.refeicoes().size() > 140)
+            throw new IllegalArgumentException("Informe de 0 a 140 refeições.");
         List<Refeicao> novas =
                 request.refeicoes().stream().map(r -> montarRefeicao(plano, r)).toList();
         plano.editar(
@@ -224,9 +294,11 @@ public class PrescricaoService {
         plano.getRefeicoes().addAll(novas);
     }
 
-    private Refeicao montarRefeicao(PlanoAlimentar plano, RefeicaoRequest request) {
+    Refeicao montarRefeicao(PlanoAlimentar plano, RefeicaoRequest request) {
         if (request == null) throw new IllegalArgumentException("Refeição inválida.");
         validarTexto(request.nome(), 100, "Nome da refeição");
+        if (request.diaSemana() != null && (request.diaSemana() < 1 || request.diaSemana() > 7))
+            throw new IllegalArgumentException("Dia da semana deve estar entre 1 e 7.");
         if (request.horario() == null
                 || request.horario().getSecond() != 0
                 || request.horario().getNano() != 0) {
@@ -235,6 +307,7 @@ public class PrescricaoService {
         if (request.itens() == null || request.itens().size() > 100)
             throw new IllegalArgumentException("Informe de 0 a 100 alimentos por refeição.");
         Refeicao refeicao = new Refeicao(plano, request.nome().trim(), request.horario());
+        refeicao.definirDiaSemana(request.diaSemana());
         Set<Integer> ids = new HashSet<>();
         for (ItemRequest item : request.itens()) {
             if (item == null || item.alimentoId() == null || !ids.add(item.alimentoId()))
@@ -297,7 +370,7 @@ public class PrescricaoService {
         }
     }
 
-    private void validarPublicacao(PlanoAlimentar plano) {
+    void validarPublicacao(PlanoAlimentar plano) {
         if (plano.getVigenciaInicio() == null || plano.getVigenciaFim() == null)
             throw new IllegalArgumentException(
                     "Publicação exige início e fim da vigência explícitos.");
@@ -324,6 +397,11 @@ public class PrescricaoService {
         return planos.sobrepostos(paciente.getId(), hoje, hoje).stream().findFirst().orElse(null);
     }
 
+    private boolean dentroDaVigencia(PlanoAlimentar plano, LocalDate data) {
+        return (plano.getVigenciaInicio() == null || !data.isBefore(plano.getVigenciaInicio()))
+                && (plano.getVigenciaFim() == null || !data.isAfter(plano.getVigenciaFim()));
+    }
+
     private void validarDias(int dias) {
         if (dias < 1 || dias > 30)
             throw new IllegalArgumentException(
@@ -341,14 +419,16 @@ public class PrescricaoService {
         List<RefeicaoDTO> refeicoes =
                 plano.getRefeicoes().stream()
                         .sorted(
-                                Comparator.comparing(Refeicao::getHorario)
-                                        .thenComparing(Refeicao::getId))
+                                Comparator.comparing(Refeicao::getDiaSemana, Comparator.nullsFirst(Comparator.naturalOrder()))
+                                        .thenComparing(Refeicao::getHorario)
+                                        .thenComparing(Refeicao::getId, Comparator.nullsLast(Comparator.naturalOrder())))
                         .map(
                                 r ->
                                         new RefeicaoDTO(
                                                 r.getId(),
                                                 r.getNome(),
                                                 r.getHorario(),
+                                                r.getDiaSemana(),
                                                 r.getItens().stream()
                                                         .map(
                                                                 i ->
@@ -371,6 +451,7 @@ public class PrescricaoService {
                         .toList();
         Nutrientes totais =
                 plano.getRefeicoes().stream()
+                        .filter(r -> r.previstaEm(LocalDate.now(FUSO)))
                         .map(this::totalRefeicao)
                         .reduce(Nutrientes.zero(), Nutrientes::somar)
                         .arredondar();
@@ -396,7 +477,8 @@ public class PrescricaoService {
                 plano.getPublicadoEm(),
                 metas,
                 totais,
-                refeicoes);
+                refeicoes,
+                plano.getConsulta() == null ? null : plano.getConsulta().getId());
     }
 
     private ListaComprasDTO respostaCompras(PlanoAlimentar plano, int dias) {
@@ -417,12 +499,16 @@ public class PrescricaoService {
     private ListaComprasDTO respostaCompras(PlanoAlimentar plano, int dias, Map<Integer, Boolean> marcacoes) {
         Map<Integer, BigDecimal> gramas = new LinkedHashMap<>();
         Map<Integer, Alimento> catalogo = new HashMap<>();
+        LocalDate hoje = LocalDate.now(FUSO);
         plano.getRefeicoes()
                 .forEach(
                         r ->
                                 r.getItens()
                                         .forEach(
                                                 i -> {
+                                                    long ocorrencias = hoje.datesUntil(hoje.plusDays(dias))
+                                                            .filter(data -> dentroDaVigencia(plano, data) && r.previstaEm(data)).count();
+                                                    if (ocorrencias == 0) return;
                                                     Integer id = i.getAlimento().getId();
                                                     catalogo.put(id, i.getAlimento());
                                                     gramas.merge(
@@ -430,7 +516,7 @@ public class PrescricaoService {
                                                             i.getQuantidadeGramas()
                                                                     .multiply(
                                                                             BigDecimal.valueOf(
-                                                                                    dias)),
+                                                                                    ocorrencias)),
                                                             BigDecimal::add);
                                                 }));
         List<ItemCompraDTO> itens =

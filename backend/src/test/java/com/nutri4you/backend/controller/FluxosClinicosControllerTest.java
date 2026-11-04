@@ -94,12 +94,12 @@ class FluxosClinicosControllerTest {
     }
     @Test void refeicoesCalculamPorcaoPermitemExcessoEReplicamComIndependencia() throws Exception {
         PlanoAlimentar plano = rascunho();
-        Alimento alimento = alimentos.save(new Alimento("Arroz teste", new BigDecimal("100"), new BigDecimal("10"), new BigDecimal("20"), null));
+        Alimento alimento = alimentos.save(new Alimento("Arroz teste", new BigDecimal("100"), new BigDecimal("10"), new BigDecimal("20"), BigDecimal.ONE));
         String path = base + "/planos/" + plano.getId() + "/refeicoes";
         String json = mvc.perform(post(path).header("Authorization", nutriToken).contentType(MediaType.APPLICATION_JSON)
                 .content(refeicao(alimento, 250, 1, plano.getVersao()))).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.refeicoes[0].kcal").value(250))
-                .andExpect(jsonPath("$.data.refeicoes[0].gordura").isEmpty()).andReturn().getResponse().getContentAsString();
+                .andExpect(jsonPath("$.data.refeicoes[0].totais.kcal").value(250))
+                .andExpect(jsonPath("$.data.refeicoes[0].totais.fibras").isEmpty()).andReturn().getResponse().getContentAsString();
         int id = JsonPath.read(json, "$.data.refeicoes[0].id");
         long versao = ((Number) JsonPath.read(json, "$.data.versao")).longValue();
         mvc.perform(post(path + "/" + id + "/replicacao").header("Authorization", nutriToken).contentType(MediaType.APPLICATION_JSON)

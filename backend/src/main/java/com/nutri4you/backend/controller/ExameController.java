@@ -41,6 +41,10 @@ public class ExameController {
             @RequestParam Long versao, @RequestParam MultipartFile arquivo) {
         return ApiResponse.ok(service.enviar(paciente(a), id, versao, arquivo), "Arquivo enviado.");
     }
+    @DeleteMapping("/api/v1/usuarios/me/exames/{id}/arquivo")
+    public ApiResponse<ExameResponse> remover(Authentication a, @PathVariable Integer id, @RequestParam Long versao) {
+        return ApiResponse.ok(service.remover(paciente(a), id, versao), "Arquivo removido.");
+    }
     @GetMapping("/api/v1/usuarios/me/exames/{id}/arquivo")
     public ResponseEntity<byte[]> baixarPaciente(Authentication a, @PathVariable Integer id) {
         return download(service.arquivo(paciente(a), id));
