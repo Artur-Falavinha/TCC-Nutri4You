@@ -14,7 +14,7 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 import { AppHeader } from '../../components/layout/AppHeader';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
@@ -115,22 +115,14 @@ function MealCategoryIcon({ mealName }: { mealName: string }) {
   );
 }
 
-interface SwapOption {
+interface SubstitutoInformativo {
   id: string;
   title: string;
   subtitle: string;
 }
 
-function buildMealSwapOptions(meal: Meal): SwapOption[] {
-  const defaultTitle =
-    meal.itens.map((item) => item.alimento.nome).join(', ') || meal.nome;
-  const options: SwapOption[] = [
-    {
-      id: `prescribed-${meal.id}`,
-      title: defaultTitle,
-      subtitle: `${Math.round(meal.totais.kcal)} kcal • Prescrito`
-    }
-  ];
+function listarSubstitutos(meal: Meal): SubstitutoInformativo[] {
+  const options: SubstitutoInformativo[] = [];
 
   meal.itens.forEach((item) => {
     item.substitutos?.forEach((sub, idx) => {
@@ -157,8 +149,6 @@ export function MealPlanScreen({ navigation }: Props) {
   const week = semanaAtual(new Date());
   const [swapModalMeal, setSwapModalMeal] = useState<Meal | null>(null);
   const [swapSearch, setSwapSearch] = useState('');
-  const [selectedOptionByMeal, setSelectedOptionByMeal] = useState<Record<number, string>>({});
-  const [pendingSwapOptionId, setPendingSwapOptionId] = useState<string>('');
   const [hydration, setHydration] = useState<HydrationProgress | null>(null);
   const [hydrationError, setHydrationError] = useState('');
   const [savingWater, setSavingWater] = useState(false);
@@ -242,34 +232,30 @@ export function MealPlanScreen({ navigation }: Props) {
 
   const openShoppingList = () => navigation.navigate('Compras');
 
-  const visibleMeals = (plan?.refeicoes ?? []).filter(
-    (meal) => meal.diaSemana == null || meal.diaSemana === (selectedDay || 7)
-  );
+  const selectedDate = week[selectedDay].data;
+  const dateKey = [
+    selectedDate.getFullYear(),
+    String(selectedDate.getMonth() + 1).padStart(2, '0'),
+    String(selectedDate.getDate()).padStart(2, '0')
+  ].join('-');
+  const dentroDaVigencia = plan != null
+    && (!plan.vigenciaInicio || dateKey >= plan.vigenciaInicio)
+    && (!plan.vigenciaFim || dateKey <= plan.vigenciaFim);
+  const visibleMeals = dentroDaVigencia
+    ? plan.refeicoes.filter(meal => meal.diaSemana == null || meal.diaSemana === (selectedDay || 7))
+    : [];
   const dailyTotals = totaisRefeicoes(visibleMeals);
 
   const openSwapModal = (meal: Meal) => {
-    const options = buildMealSwapOptions(meal);
-    const currentSelected = selectedOptionByMeal[meal.id] ?? options[0]?.id ?? '';
-    setPendingSwapOptionId(currentSelected);
     setSwapSearch('');
     setSwapModalMeal(meal);
-  };
-
-  const confirmSwapSelection = () => {
-    if (swapModalMeal && pendingSwapOptionId) {
-      setSelectedOptionByMeal((prev) => ({
-        ...prev,
-        [swapModalMeal.id]: pendingSwapOptionId
-      }));
-    }
-    setSwapModalMeal(null);
   };
 
   const swapOptions = useMemo(() => {
     if (!swapModalMeal) {
       return [];
     }
-    const all = buildMealSwapOptions(swapModalMeal);
+    const all = listarSubstitutos(swapModalMeal);
     const query = swapSearch.trim().toLowerCase();
     if (!query) {
       return all;
@@ -326,7 +312,7 @@ export function MealPlanScreen({ navigation }: Props) {
 
         <View style={styles.daySelectorSection} testID="meal-plan-day-selector">
           <View style={styles.daySelectorHeader}>
-            <Text style={styles.daySelectorMonthTitle}>{week[selectedDay].data.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</Text>
+            <Text style={styles.daySelectorMonthTitle}>{selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</Text>
             <Svg width={18} height={20} viewBox="0 0 18 20" fill="none">
               <Path
                 d="M15 2h-1V0h-2v2H6V0H4v2H3C1.89 2 1 2.9 1 4v14a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2zm0 16H3V7h12v11z"
@@ -430,30 +416,32 @@ export function MealPlanScreen({ navigation }: Props) {
               ) : null}
             </View>
 
-            <View style={[styles.summaryGrid, wide && styles.summaryGridWide]}>
-              {plan.metas ? (
+            {dentroDaVigencia ? (
+              <View style={[styles.summaryGrid, wide && styles.summaryGridWide]}>
+                {plan.metas ? (
+                  <View style={styles.summaryColumn}>
+                    <NutrientSummaryCard
+                      title="Metas diárias"
+                      subtitle="Metas nutricionais de referência diária"
+                      nutrients={plan.metas}
+                    />
+                  </View>
+                ) : (
+                  <View style={[styles.summaryColumn, styles.missingGoal]}>
+                    <Text style={styles.sectionTitle}>Metas diárias</Text>
+                    <Text style={styles.bodyText}>A nutricionista não informou metas para este plano.</Text>
+                  </View>
+                )}
                 <View style={styles.summaryColumn}>
                   <NutrientSummaryCard
-                    title="Metas diárias"
-                    subtitle="Metas nutricionais de referência diária"
-                    nutrients={plan.metas}
+                    title="Totais diários"
+                    subtitle="Progresso diário em relação às metas prescritas"
+                    nutrients={dailyTotals}
+                    goals={plan.metas}
                   />
                 </View>
-              ) : (
-                <View style={[styles.summaryColumn, styles.missingGoal]}>
-                  <Text style={styles.sectionTitle}>Metas diárias</Text>
-                  <Text style={styles.bodyText}>A nutricionista não informou metas para este plano.</Text>
-                </View>
-              )}
-              <View style={styles.summaryColumn}>
-                <NutrientSummaryCard
-                  title="Totais diários"
-                  subtitle="Progresso diário em relação às metas prescritas"
-                  nutrients={dailyTotals}
-                  goals={plan.metas}
-                />
               </View>
-            </View>
+            ) : null}
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -461,17 +449,13 @@ export function MealPlanScreen({ navigation }: Props) {
               </Text>
               {visibleMeals.length === 0 ? (
                 <View style={styles.stateCard}>
-                  <Text style={styles.bodyText}>Nenhuma refeição prevista para este dia.</Text>
+                  <Text style={styles.bodyText}>{dentroDaVigencia ? 'Nenhuma refeição prevista para este dia.' : 'Data fora da vigência do plano.'}</Text>
                 </View>
               ) : (
                 <View style={styles.mealCardsList}>
                   {visibleMeals.map((meal) => {
-                    const swapOpts = buildMealSwapOptions(meal);
-                    const chosenId = selectedOptionByMeal[meal.id];
-                    const chosenOption = swapOpts.find((o) => o.id === chosenId);
                     const mealSummaryHeadline =
-                      chosenOption?.title ??
-                      (meal.itens.map((i) => i.alimento.nome).join(', ') || meal.nome);
+                      meal.itens.map((item) => item.alimento.nome).join(', ') || meal.nome;
 
                     return (
                       <View
@@ -508,23 +492,25 @@ export function MealPlanScreen({ navigation }: Props) {
                             </View>
                           </View>
 
-                          <Pressable
-                            style={styles.mealActionBtn}
-                            onPress={() => openSwapModal(meal)}
-                            accessibilityRole="button"
-                            accessibilityLabel={`Opções da refeição ${meal.nome}`}
-                            testID={`meal-swap-button-${meal.id}`}
-                          >
-                            <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
-                              <Path
-                                d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-                                stroke={colors.brandDeep}
-                                strokeWidth={2.2}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </Svg>
-                          </Pressable>
+                          {meal.itens.some(item => item.substitutos?.length) ? (
+                            <Pressable
+                              style={styles.mealActionBtn}
+                              onPress={() => openSwapModal(meal)}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Ver substitutos de ${meal.nome}`}
+                              testID={`meal-swap-button-${meal.id}`}
+                            >
+                              <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
+                                <Path
+                                  d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                                  stroke={colors.brandDeep}
+                                  strokeWidth={2.2}
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </Svg>
+                            </Pressable>
+                          ) : null}
                         </View>
 
                         <View style={styles.mealItemsDivider} />
@@ -654,12 +640,12 @@ export function MealPlanScreen({ navigation }: Props) {
         <View style={styles.modalBackdrop} testID="meal-swap-modal">
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Trocar Refeição</Text>
+              <Text style={styles.modalTitle}>Substitutos informativos</Text>
               <Pressable
                 style={styles.modalCloseBtn}
                 onPress={() => setSwapModalMeal(null)}
                 accessibilityRole="button"
-                accessibilityLabel="Fechar modal de troca de refeição"
+                accessibilityLabel="Fechar substitutos informativos"
                 testID="meal-swap-close-button"
               >
                 <Text style={styles.modalCloseText}>✕</Text>
@@ -669,7 +655,7 @@ export function MealPlanScreen({ navigation }: Props) {
             <View style={styles.modalSearchWrap}>
               <TextInput
                 style={styles.modalSearchInput}
-                placeholder="Buscar outra opção..."
+                placeholder="Buscar substituto..."
                 placeholderTextColor="rgba(111,122,108,0.6)"
                 value={swapSearch}
                 onChangeText={setSwapSearch}
@@ -678,74 +664,12 @@ export function MealPlanScreen({ navigation }: Props) {
             </View>
 
             <View style={styles.modalOptionsList}>
-              {swapOptions.map((option) => {
-                const isSelected = option.id === pendingSwapOptionId;
-                return (
-                  <Pressable
-                    key={option.id}
-                    style={[styles.modalOptionCard, isSelected && styles.modalOptionCardSelected]}
-                    onPress={() => setPendingSwapOptionId(option.id)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                    testID={`meal-swap-option-${option.id}`}
-                  >
-                    <View style={styles.modalOptionTextWrap}>
-                      <Text
-                        style={[
-                          styles.modalOptionTitle,
-                          isSelected && styles.modalOptionTitleSelected
-                        ]}
-                      >
-                        {option.title}
-                      </Text>
-                      <Text style={styles.modalOptionSubtitle}>{option.subtitle}</Text>
-                    </View>
-                    <View style={styles.modalOptionCheckWrap}>
-                      {isSelected ? (
-                        <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
-                          <Circle cx={10} cy={10} r={10} fill="#005414" />
-                          <Path
-                            d="M6 10.2l2.6 2.6L14 7.4"
-                            stroke="#ffffff"
-                            strokeWidth={2}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </Svg>
-                      ) : (
-                        <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
-                          <Circle
-                            cx={10}
-                            cy={10}
-                            r={9}
-                            stroke="#bfc9bb"
-                            strokeWidth={1.8}
-                          />
-                        </Svg>
-                      )}
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <View style={styles.modalActions}>
-              <Pressable
-                style={styles.modalPrimaryButton}
-                onPress={confirmSwapSelection}
-                accessibilityRole="button"
-                testID="meal-swap-confirm-button"
-              >
-                <Text style={styles.modalPrimaryButtonText}>Confirmar Troca</Text>
-              </Pressable>
-              <Pressable
-                style={styles.modalSecondaryButton}
-                onPress={() => setSwapModalMeal(null)}
-                accessibilityRole="button"
-                testID="meal-swap-cancel-button"
-              >
-                <Text style={styles.modalSecondaryButtonText}>Cancelar</Text>
-              </Pressable>
+              {swapOptions.map((option) => (
+                <View key={option.id} style={styles.modalOptionCard}>
+                  <Text style={styles.modalOptionTitle}>{option.title}</Text>
+                  <Text style={styles.modalOptionSubtitle}>{option.subtitle}</Text>
+                </View>
+              ))}
             </View>
           </View>
         </View>
@@ -1038,28 +962,17 @@ const styles = StyleSheet.create({
     fontSize: 14
   },
   modalOptionsList: {
-    paddingHorizontal: 24,
+    padding: 24,
     paddingTop: 16,
     gap: 8
   },
   modalOptionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 16,
+    gap: 4,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#d1fae5',
     backgroundColor: colors.white
-  },
-  modalOptionCardSelected: {
-    backgroundColor: '#ecfdf5',
-    borderColor: '#d1fae5'
-  },
-  modalOptionTextWrap: {
-    flex: 1,
-    gap: 2
   },
   modalOptionTitle: {
     color: '#1a1c1c',
@@ -1067,47 +980,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20
   },
-  modalOptionTitleSelected: {
-    color: '#064e3b'
-  },
   modalOptionSubtitle: {
     color: '#6f7a6c',
     fontFamily: fontFamily.regular,
     fontSize: 12,
     lineHeight: 16
-  },
-  modalOptionCheckWrap: {
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  modalActions: {
-    padding: 24,
-    gap: 12
-  },
-  modalPrimaryButton: {
-    backgroundColor: '#005414',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  modalPrimaryButtonText: {
-    color: colors.white,
-    fontFamily: fontFamily.bold,
-    fontSize: 16,
-    letterSpacing: -0.4
-  },
-  modalSecondaryButton: {
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  modalSecondaryButtonText: {
-    color: '#6f7a6c',
-    fontFamily: fontFamily.semibold,
-    fontSize: 14
   },
   stateCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, alignItems: 'center', gap: spacing.sm },
   stateTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 17, textAlign: 'center' },
