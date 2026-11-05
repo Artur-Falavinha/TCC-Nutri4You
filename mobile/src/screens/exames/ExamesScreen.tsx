@@ -1,5 +1,6 @@
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { DragEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -426,37 +427,32 @@ export function ExamesScreen({ navigation }: Props) {
     }
   };
 
-  const webDropProps =
-    Platform.OS === 'web'
-      ? ({
-          onDragOver: (event: { preventDefault?: () => void }) => {
-            event.preventDefault?.();
-            setIsDraggingOver(true);
-          },
-          onDragLeave: (event: { preventDefault?: () => void }) => {
-            event.preventDefault?.();
-            setIsDraggingOver(false);
-          },
-          onDrop: async (event: {
-            preventDefault?: () => void;
-            dataTransfer?: { files?: FileList };
-          }) => {
-            event.preventDefault?.();
-            setIsDraggingOver(false);
-            const droppedFile = event.dataTransfer?.files?.[0];
-            if (!droppedFile) {
-              return;
-            }
-            try {
-              aplicarArquivoEscolhido(prepararArquivoWeb(droppedFile));
-            } catch (failure) {
-              setUploadError(
-                extractErrorMessage(failure, 'Não foi possível ler o arquivo arrastado.')
-              );
-            }
-          }
-        } as Record<string, unknown>)
-      : {};
+  const soltarArquivo = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingOver(false);
+    const arquivo = event.dataTransfer.files[0];
+    if (arquivo && !uploading) {
+      aplicarArquivoEscolhido(prepararArquivoWeb(arquivo));
+    }
+  };
+
+  const uploadArea = (
+    <Pressable
+      style={[styles.uploadDropArea, isDraggingOver && styles.uploadDropAreaDragging]}
+      onPress={() => void selecionarArquivo()}
+      accessibilityRole="button"
+      accessibilityLabel="Clique para selecionar arquivo PDF ou imagem do exame"
+      testID="exame-upload-select-area"
+    >
+      <View style={styles.uploadIconCircle}>
+        <CloudUploadIcon />
+      </View>
+      <Text style={styles.uploadPromptText}>Clique para selecionar</Text>
+      <Text style={styles.uploadFormatHint}>
+        Formatos aceitos: PDF, PNG ou JPEG (máx. 5 MiB)
+      </Text>
+    </Pressable>
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
@@ -657,25 +653,18 @@ export function ExamesScreen({ navigation }: Props) {
               </View>
             ) : null}
 
-            <Pressable
-              style={[
-                styles.uploadDropArea,
-                isDraggingOver && styles.uploadDropAreaDragging
-              ]}
-              onPress={() => void selecionarArquivo()}
-              accessibilityRole="button"
-              accessibilityLabel="Clique para selecionar arquivo PDF ou imagem do exame"
-              testID="exame-upload-select-area"
-              {...webDropProps}
-            >
-              <View style={styles.uploadIconCircle}>
-                <CloudUploadIcon />
-              </View>
-              <Text style={styles.uploadPromptText}>Clique para selecionar</Text>
-              <Text style={styles.uploadFormatHint}>
-                Formatos aceitos: PDF, PNG ou JPEG (máx. 5 MiB)
-              </Text>
-            </Pressable>
+            {Platform.OS === 'web' ? (
+              <div
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setIsDraggingOver(!uploading);
+                }}
+                onDragLeave={() => setIsDraggingOver(false)}
+                onDrop={soltarArquivo}
+              >
+                {uploadArea}
+              </div>
+            ) : uploadArea}
 
             {selectedFile ? (
               <View style={styles.selectedFileCard} testID="exame-selected-file-pill">
