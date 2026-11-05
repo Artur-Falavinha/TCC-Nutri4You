@@ -14,7 +14,7 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 import { AppHeader } from '../../components/layout/AppHeader';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
@@ -29,70 +29,43 @@ import {
   formatTime,
   nutrientEntries
 } from '../../features/dieta/dieta.formatters';
-import {
-  FoodSubstitute,
-  HydrationProgress,
-  Meal,
-  MealPlan,
-  MealPlanItem,
-  Nutrients
-} from '../../features/dieta/dieta.models';
-import {
-  loadMealSwapPreferences,
-  saveMealSwapPreferences
-} from '../../features/dieta/dieta-preferences';
-import {
-  addWater,
-  getActiveMealPlan,
-  getHydrationProgress
-} from '../../features/dieta/dieta.service';
+import { HydrationProgress, Meal, MealPlan, Nutrients } from '../../features/dieta/dieta.models';
+import { addWater, getActiveMealPlan, getHydrationProgress } from '../../features/dieta/dieta.service';
 import { RootStackParamList } from '../../navigation/types';
 import { colors, fontFamily, radius, shadows, spacing } from '../../theme/tokens';
 import { NutrientSummaryCard } from './components/NutrientSummaryCard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dieta'>;
 
-interface DayPillItem {
-  key: string;
-  shortLabel: string;
-  dayNumber: string;
-  date: Date;
-}
+const DAYS = [
+  { key: 'DOM', label: 'DOM' },
+  { key: 'SEG', label: 'SEG' },
+  { key: 'TER', label: 'TER' },
+  { key: 'QUA', label: 'QUA' },
+  { key: 'QUI', label: 'QUI' },
+  { key: 'SEX', label: 'SEX' },
+  { key: 'SAB', label: 'SÁB' }
+];
 
-const DAY_CONFIG = [
-  { key: 'DOM', shortLabel: 'DOM' },
-  { key: 'SEG', shortLabel: 'SEG' },
-  { key: 'TER', shortLabel: 'TER' },
-  { key: 'QUA', shortLabel: 'QUA' },
-  { key: 'QUI', shortLabel: 'QUI' },
-  { key: 'SEX', shortLabel: 'SEX' },
-  { key: 'SAB', shortLabel: 'SÁB' }
-] as const;
-
-function buildCurrentWeek(reference = new Date()): DayPillItem[] {
-  const start = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate());
-  start.setDate(start.getDate() - start.getDay());
-  return DAY_CONFIG.map((day, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    return { ...day, dayNumber: String(date.getDate()), date };
+function semanaAtual(hoje: Date) {
+  return DAYS.map((dia, indice) => {
+    const data = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - hoje.getDay() + indice);
+    return { ...dia, data };
   });
 }
 
-function sumNutrients(items: { nutrientes: Nutrients }[]): Nutrients {
-  return items.reduce<Nutrients>(
-    (total, item) => {
-      total.kcal += item.nutrientes.kcal;
-      total.proteinas += item.nutrientes.proteinas;
-      total.carboidratos += item.nutrientes.carboidratos;
-      total.gorduras += item.nutrientes.gorduras;
-      total.fibras = total.fibras == null || item.nutrientes.fibras == null
-        ? null
-        : total.fibras + item.nutrientes.fibras;
-      return total;
-    },
-    { kcal: 0, proteinas: 0, carboidratos: 0, gorduras: 0, fibras: 0 }
-  );
+function totaisRefeicoes(refeicoes: Meal[]): Nutrients {
+  return refeicoes.reduce<Nutrients>((total, { totais }) => ({
+    kcal: total.kcal + totais.kcal,
+    proteinas: total.proteinas + totais.proteinas,
+    carboidratos: total.carboidratos + totais.carboidratos,
+    gorduras: total.gorduras + totais.gorduras,
+    fibras: total.fibras == null || totais.fibras == null ? null : total.fibras + totais.fibras
+  }), { kcal: 0, proteinas: 0, carboidratos: 0, gorduras: 0, fibras: 0 });
+}
+
+function carregarDieta() {
+  return Promise.allSettled([getActiveMealPlan(), getHydrationProgress()]);
 }
 
 function errorMessage(error: unknown): string {
@@ -142,33 +115,21 @@ function MealCategoryIcon({ mealName }: { mealName: string }) {
   );
 }
 
-interface SwapOption {
+interface SubstitutoInformativo {
   id: string;
   title: string;
   subtitle: string;
-  itemId?: number;
-  substitute?: FoodSubstitute;
 }
 
-function buildMealSwapOptions(meal: Meal): SwapOption[] {
-  const defaultTitle =
-    meal.itens.map((item) => item.alimento.nome).join(', ') || meal.nome;
-  const options: SwapOption[] = [
-    {
-      id: `prescribed-${meal.id}`,
-      title: defaultTitle,
-      subtitle: `${Math.round(meal.totais.kcal)} kcal • Prescrito`
-    }
-  ];
+function listarSubstitutos(meal: Meal): SubstitutoInformativo[] {
+  const options: SubstitutoInformativo[] = [];
 
   meal.itens.forEach((item) => {
     item.substitutos?.forEach((sub, idx) => {
       options.push({
         id: `sub-${meal.id}-${item.alimento.id}-${sub.alimento.id}-${idx}`,
         title: `${sub.alimento.nome} (${formatGrams(sub.quantidadeGramas)} g)`,
-        subtitle: `${Math.round(sub.nutrientes.kcal)} kcal • Substituto de ${item.alimento.nome}`,
-        itemId: item.alimento.id,
-        substitute: sub
+        subtitle: `${Math.round(sub.nutrientes.kcal)} kcal • Substituto de ${item.alimento.nome}`
       });
     });
   });
@@ -176,81 +137,61 @@ function buildMealSwapOptions(meal: Meal): SwapOption[] {
   return options;
 }
 
-function applyMealSwap(meal: Meal, optionId?: string): Meal {
-  const option = buildMealSwapOptions(meal).find((candidate) => candidate.id === optionId);
-  if (!option?.substitute || option.itemId == null) return meal;
-  const itens: MealPlanItem[] = meal.itens.map((item) =>
-    item.alimento.id === option.itemId
-      ? {
-          alimento: option.substitute!.alimento,
-          quantidadeGramas: option.substitute!.quantidadeGramas,
-          nutrientes: option.substitute!.nutrientes,
-          substitutos: []
-        }
-      : item
-  );
-  return { ...meal, itens, totais: sumNutrients(itens) };
-}
-
 export function MealPlanScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const wide = width >= 640;
-  const weekDays = useMemo(() => buildCurrentWeek(), []);
   const [menuVisible, setMenuVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [plan, setPlan] = useState<MealPlan | null>(null);
-  const [selectedDay, setSelectedDay] = useState<string>(DAY_CONFIG[new Date().getDay()].key);
+  const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
+  const week = semanaAtual(new Date());
   const [swapModalMeal, setSwapModalMeal] = useState<Meal | null>(null);
   const [swapSearch, setSwapSearch] = useState('');
-  const [pendingSwapOptionId, setPendingSwapOptionId] = useState<string>('');
-  const [selectedOptionByMeal, setSelectedOptionByMeal] = useState<Record<number, string>>({});
-  const [hydration, setHydration] = useState<HydrationProgress>({
-    data: '',
-    consumidoMl: 0,
-    metaMl: 2500
-  });
-  const [hydrationSaving, setHydrationSaving] = useState(false);
+  const [hydration, setHydration] = useState<HydrationProgress | null>(null);
+  const [hydrationError, setHydrationError] = useState('');
+  const [savingWater, setSavingWater] = useState(false);
   const requestId = useRef(0);
 
-  const loadPlan = useCallback(async (refresh = false) => {
-    const currentRequest = ++requestId.current;
-    if (refresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-    setError('');
-    try {
-      const [response, hydrationResponse] = await Promise.all([
-        getActiveMealPlan(),
-        getHydrationProgress()
-      ]);
-      const preferences = response ? await loadMealSwapPreferences(response.id) : {};
-      if (currentRequest === requestId.current) {
-        setPlan(response);
-        setHydration(hydrationResponse);
-        setSelectedOptionByMeal(preferences);
-      }
-    } catch (failure) {
-      if (currentRequest === requestId.current) {
-        setError(errorMessage(failure));
-      }
-    } finally {
-      if (currentRequest === requestId.current) {
-        setLoading(false);
-        setRefreshing(false);
-      }
-    }
+  const atualizarDieta = useCallback((
+    [plano, agua]: Awaited<ReturnType<typeof carregarDieta>>,
+    currentRequest: number
+  ) => {
+    if (currentRequest !== requestId.current) return;
+    if (plano.status === 'fulfilled') setPlan(plano.value);
+    setError(plano.status === 'rejected' ? errorMessage(plano.reason) : '');
+    if (agua.status === 'fulfilled') setHydration(agua.value);
+    setHydrationError(agua.status === 'rejected' ? 'Não foi possível consultar a hidratação.' : '');
+    setLoading(false);
+    setRefreshing(false);
   }, []);
 
   useEffect(() => {
-    void Promise.resolve().then(() => loadPlan());
-    return () => {
-      requestId.current += 1;
-    };
-  }, [loadPlan]);
+    const currentRequest = ++requestId.current;
+    void carregarDieta().then(resultado => atualizarDieta(resultado, currentRequest));
+    return () => { requestId.current += 1; };
+  }, [atualizarDieta]);
+
+  const recarregarPlano = (refresh = false) => {
+    if (refresh) setRefreshing(true);
+    else setLoading(true);
+    const currentRequest = ++requestId.current;
+    void carregarDieta().then(resultado => atualizarDieta(resultado, currentRequest));
+  };
+
+  const registrarAgua = async () => {
+    if (!hydration || savingWater) return;
+    setSavingWater(true);
+    setHydrationError('');
+    try {
+      setHydration(await addWater());
+    } catch (failure) {
+      setHydrationError(failure instanceof ApiError ? failure.message : 'Não foi possível registrar a água.');
+    } finally {
+      setSavingWater(false);
+    }
+  };
 
   const signOut = async () => {
     await logout();
@@ -291,57 +232,30 @@ export function MealPlanScreen({ navigation }: Props) {
 
   const openShoppingList = () => navigation.navigate('Compras');
 
-  const visibleMeals = useMemo(() => {
-    if (!plan) {
-      return [];
-    }
-    const hasDaySegmentation = plan.refeicoes.some((meal) => meal.diaSemana != null);
-    if (!hasDaySegmentation) {
-      return plan.refeicoes;
-    }
-    const activeDayConfig = weekDays.find((d) => d.key === selectedDay);
-    const nativeDay = activeDayConfig?.date.getDay() ?? 0;
-    const isoDay = nativeDay === 0 ? 7 : nativeDay;
-    return plan.refeicoes.filter(
-      (meal) => meal.diaSemana == null || meal.diaSemana === isoDay
-    );
-  }, [plan, selectedDay, weekDays]);
-
-  const effectiveMeals = useMemo(
-    () => visibleMeals.map((meal) => applyMealSwap(meal, selectedOptionByMeal[meal.id])),
-    [selectedOptionByMeal, visibleMeals]
-  );
-
-  const dailyTotals = useMemo(
-    () => sumNutrients(effectiveMeals.map((meal) => ({ nutrientes: meal.totais }))),
-    [effectiveMeals]
-  );
+  const selectedDate = week[selectedDay].data;
+  const dateKey = [
+    selectedDate.getFullYear(),
+    String(selectedDate.getMonth() + 1).padStart(2, '0'),
+    String(selectedDate.getDate()).padStart(2, '0')
+  ].join('-');
+  const dentroDaVigencia = plan != null
+    && (!plan.vigenciaInicio || dateKey >= plan.vigenciaInicio)
+    && (!plan.vigenciaFim || dateKey <= plan.vigenciaFim);
+  const visibleMeals = dentroDaVigencia
+    ? plan.refeicoes.filter(meal => meal.diaSemana == null || meal.diaSemana === (selectedDay || 7))
+    : [];
+  const dailyTotals = totaisRefeicoes(visibleMeals);
 
   const openSwapModal = (meal: Meal) => {
-    const prescribedMeal = plan?.refeicoes.find((candidate) => candidate.id === meal.id) ?? meal;
-    const options = buildMealSwapOptions(prescribedMeal);
-    const currentSelected = selectedOptionByMeal[prescribedMeal.id] ?? options[0]?.id ?? '';
-    setPendingSwapOptionId(currentSelected);
     setSwapSearch('');
-    setSwapModalMeal(prescribedMeal);
-  };
-
-  const confirmSwapSelection = () => {
-    if (swapModalMeal && pendingSwapOptionId) {
-      setSelectedOptionByMeal((prev) => {
-        const next = { ...prev, [swapModalMeal.id]: pendingSwapOptionId };
-        if (plan) void saveMealSwapPreferences(plan.id, next);
-        return next;
-      });
-    }
-    setSwapModalMeal(null);
+    setSwapModalMeal(meal);
   };
 
   const swapOptions = useMemo(() => {
     if (!swapModalMeal) {
       return [];
     }
-    const all = buildMealSwapOptions(swapModalMeal);
+    const all = listarSubstitutos(swapModalMeal);
     const query = swapSearch.trim().toLowerCase();
     if (!query) {
       return all;
@@ -353,28 +267,9 @@ export function MealPlanScreen({ navigation }: Props) {
     );
   }, [swapModalMeal, swapSearch]);
 
-  const selectedDate = weekDays.find((day) => day.key === selectedDay)?.date ?? new Date();
-  const monthTitle = new Intl.DateTimeFormat('pt-BR', {
-    month: 'long',
-    year: 'numeric'
-  }).format(selectedDate);
-  const waterLiters = hydration.consumidoMl / 1000;
-  const waterGoalLiters = hydration.metaMl / 1000;
-  const waterProgressRatio = hydration.metaMl > 0
+  const waterProgressRatio = hydration && hydration.metaMl > 0
     ? Math.min(hydration.consumidoMl / hydration.metaMl, 1)
     : 0;
-
-  const handleAddWater = async () => {
-    if (hydrationSaving) return;
-    setHydrationSaving(true);
-    try {
-      setHydration(await addWater(250));
-    } catch (failure) {
-      setError(errorMessage(failure));
-    } finally {
-      setHydrationSaving(false);
-    }
-  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
@@ -393,7 +288,7 @@ export function MealPlanScreen({ navigation }: Props) {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => void loadPlan(true)}
+            onRefresh={() => recarregarPlano(true)}
             tintColor={colors.brand}
           />
         }
@@ -417,7 +312,7 @@ export function MealPlanScreen({ navigation }: Props) {
 
         <View style={styles.daySelectorSection} testID="meal-plan-day-selector">
           <View style={styles.daySelectorHeader}>
-            <Text style={styles.daySelectorMonthTitle}>{monthTitle}</Text>
+            <Text style={styles.daySelectorMonthTitle}>{selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</Text>
             <Svg width={18} height={20} viewBox="0 0 18 20" fill="none">
               <Path
                 d="M15 2h-1V0h-2v2H6V0H4v2H3C1.89 2 1 2.9 1 4v14a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2zm0 16H3V7h12v11z"
@@ -430,23 +325,23 @@ export function MealPlanScreen({ navigation }: Props) {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.dayPillsRow}
           >
-            {weekDays.map((day) => {
-              const isSelected = day.key === selectedDay;
+            {week.map((day, index) => {
+              const isSelected = index === selectedDay;
               return (
                 <Pressable
                   key={day.key}
                   style={[styles.dayPill, isSelected && styles.dayPillActive]}
-                  onPress={() => setSelectedDay(day.key)}
+                  onPress={() => setSelectedDay(index)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isSelected }}
-                  accessibilityLabel={`Dia ${day.shortLabel} ${day.dayNumber}`}
+                  accessibilityLabel={`Dia ${day.label} ${day.data.getDate()}`}
                   testID={`day-selector-pill-${day.key}`}
                 >
                   <Text style={[styles.dayPillLabel, isSelected && styles.dayPillLabelActive]}>
-                    {day.shortLabel}
+                    {day.label}
                   </Text>
                   <Text style={[styles.dayPillNumber, isSelected && styles.dayPillNumberActive]}>
-                    {day.dayNumber}
+                    {day.data.getDate()}
                   </Text>
                   {isSelected ? <View style={styles.dayPillDot} /> : null}
                 </Pressable>
@@ -461,7 +356,7 @@ export function MealPlanScreen({ navigation }: Props) {
             <Text style={styles.errorText}>{error}</Text>
             <Pressable
               style={styles.primaryButton}
-              onPress={() => void loadPlan()}
+              onPress={() => recarregarPlano()}
               accessibilityRole="button"
               accessibilityLabel="Tentar carregar a dieta novamente"
             >
@@ -521,44 +416,46 @@ export function MealPlanScreen({ navigation }: Props) {
               ) : null}
             </View>
 
-            <View style={[styles.summaryGrid, wide && styles.summaryGridWide]}>
-              {plan.metas ? (
+            {dentroDaVigencia ? (
+              <View style={[styles.summaryGrid, wide && styles.summaryGridWide]}>
+                {plan.metas ? (
+                  <View style={styles.summaryColumn}>
+                    <NutrientSummaryCard
+                      title="Metas diárias"
+                      subtitle="Metas nutricionais de referência diária"
+                      nutrients={plan.metas}
+                    />
+                  </View>
+                ) : (
+                  <View style={[styles.summaryColumn, styles.missingGoal]}>
+                    <Text style={styles.sectionTitle}>Metas diárias</Text>
+                    <Text style={styles.bodyText}>A nutricionista não informou metas para este plano.</Text>
+                  </View>
+                )}
                 <View style={styles.summaryColumn}>
                   <NutrientSummaryCard
-                    title="Metas diárias"
-                    subtitle="Metas nutricionais de referência diária"
-                    nutrients={plan.metas}
+                    title="Totais diários"
+                    subtitle="Progresso diário em relação às metas prescritas"
+                    nutrients={dailyTotals}
+                    goals={plan.metas}
                   />
                 </View>
-              ) : (
-                <View style={[styles.summaryColumn, styles.missingGoal]}>
-                  <Text style={styles.sectionTitle}>Metas diárias</Text>
-                  <Text style={styles.bodyText}>A nutricionista não informou metas para este plano.</Text>
-                </View>
-              )}
-              <View style={styles.summaryColumn}>
-                <NutrientSummaryCard
-                  title="Totais diários"
-                  subtitle="Progresso diário em relação às metas prescritas"
-                  nutrients={dailyTotals}
-                  goals={plan.metas}
-                />
               </View>
-            </View>
+            ) : null}
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle} accessibilityRole="header">
                 Refeições do dia
               </Text>
-              {effectiveMeals.length === 0 ? (
+              {visibleMeals.length === 0 ? (
                 <View style={styles.stateCard}>
-                  <Text style={styles.bodyText}>Este plano ainda não contém refeições.</Text>
+                  <Text style={styles.bodyText}>{dentroDaVigencia ? 'Nenhuma refeição prevista para este dia.' : 'Data fora da vigência do plano.'}</Text>
                 </View>
               ) : (
                 <View style={styles.mealCardsList}>
-                  {effectiveMeals.map((meal) => {
+                  {visibleMeals.map((meal) => {
                     const mealSummaryHeadline =
-                      meal.itens.map((i) => i.alimento.nome).join(', ') || meal.nome;
+                      meal.itens.map((item) => item.alimento.nome).join(', ') || meal.nome;
 
                     return (
                       <View
@@ -595,23 +492,25 @@ export function MealPlanScreen({ navigation }: Props) {
                             </View>
                           </View>
 
-                          <Pressable
-                            style={styles.mealActionBtn}
-                            onPress={() => openSwapModal(meal)}
-                            accessibilityRole="button"
-                            accessibilityLabel={`Opções da refeição ${meal.nome}`}
-                            testID={`meal-swap-button-${meal.id}`}
-                          >
-                            <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
-                              <Path
-                                d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-                                stroke={colors.brandDeep}
-                                strokeWidth={2.2}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </Svg>
-                          </Pressable>
+                          {meal.itens.some(item => item.substitutos?.length) ? (
+                            <Pressable
+                              style={styles.mealActionBtn}
+                              onPress={() => openSwapModal(meal)}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Ver substitutos de ${meal.nome}`}
+                              testID={`meal-swap-button-${meal.id}`}
+                            >
+                              <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
+                                <Path
+                                  d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                                  stroke={colors.brandDeep}
+                                  strokeWidth={2.2}
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </Svg>
+                            </Pressable>
+                          ) : null}
                         </View>
 
                         <View style={styles.mealItemsDivider} />
@@ -620,10 +519,7 @@ export function MealPlanScreen({ navigation }: Props) {
                           <View key={item.alimento.id} style={styles.foodItem}>
                             <View style={styles.foodRow}>
                               <View style={styles.foodDetails}>
-                                <Text
-                                  style={styles.foodName}
-                                  testID={`meal-food-${meal.id}-${item.alimento.id}`}
-                                >
+                                <Text style={styles.foodName} testID={`meal-food-${meal.id}-${item.alimento.id}`}>
                                   {item.alimento.nome}
                                 </Text>
                                 <Text style={styles.foodMeta}>
@@ -704,10 +600,15 @@ export function MealPlanScreen({ navigation }: Props) {
                 <View style={styles.hydrationHeaderCopy}>
                   <Text style={styles.hydrationTitle}>Hidratação</Text>
                   <Text style={styles.hydrationSubtitle}>
-                    {waterLiters.toFixed(1)}L de {waterGoalLiters.toFixed(1)}L atingidos
+                    {hydration
+                      ? `${(hydration.consumidoMl / 1000).toFixed(1)}L de ${(hydration.metaMl / 1000).toFixed(1)}L atingidos`
+                      : 'Registro de hidratação indisponível'}
                   </Text>
                 </View>
               </View>
+              {hydrationError ? (
+                <Text style={styles.hydrationSubtitle} accessibilityRole="alert">{hydrationError}</Text>
+              ) : null}
               <View style={styles.hydrationProgressTrack}>
                 <View
                   style={[
@@ -717,15 +618,16 @@ export function MealPlanScreen({ navigation }: Props) {
                 />
               </View>
               <Pressable
-                style={[styles.hydrationButton, hydrationSaving && styles.hydrationButtonDisabled]}
-                onPress={() => void handleAddWater()}
-                disabled={hydrationSaving}
+                style={[styles.hydrationButton, savingWater && styles.hydrationButtonDisabled]}
+                onPress={() => void registrarAgua()}
+                disabled={!hydration || savingWater}
+                aria-disabled={!hydration || savingWater}
                 accessibilityRole="button"
                 accessibilityLabel="Adicionar Água"
                 testID="hydration-add-button"
               >
-                {hydrationSaving ? (
-                  <ActivityIndicator color="#ffffff" />
+                {savingWater ? (
+                  <ActivityIndicator color={colors.white} />
                 ) : (
                   <Text style={styles.hydrationButtonText}>+ Adicionar Água</Text>
                 )}
@@ -759,7 +661,7 @@ export function MealPlanScreen({ navigation }: Props) {
             <View style={styles.modalSearchWrap}>
               <TextInput
                 style={styles.modalSearchInput}
-                placeholder="Buscar outra opção..."
+                placeholder="Buscar substituto..."
                 placeholderTextColor="rgba(111,122,108,0.6)"
                 value={swapSearch}
                 onChangeText={setSwapSearch}
@@ -768,74 +670,12 @@ export function MealPlanScreen({ navigation }: Props) {
             </View>
 
             <View style={styles.modalOptionsList}>
-              {swapOptions.map((option) => {
-                const isSelected = option.id === pendingSwapOptionId;
-                return (
-                  <Pressable
-                    key={option.id}
-                    style={[styles.modalOptionCard, isSelected && styles.modalOptionCardSelected]}
-                    onPress={() => setPendingSwapOptionId(option.id)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                    testID={`meal-swap-option-${option.id}`}
-                  >
-                    <View style={styles.modalOptionTextWrap}>
-                      <Text
-                        style={[
-                          styles.modalOptionTitle,
-                          isSelected && styles.modalOptionTitleSelected
-                        ]}
-                      >
-                        {option.title}
-                      </Text>
-                      <Text style={styles.modalOptionSubtitle}>{option.subtitle}</Text>
-                    </View>
-                    <View style={styles.modalOptionCheckWrap}>
-                      {isSelected ? (
-                        <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
-                          <Circle cx={10} cy={10} r={10} fill="#005414" />
-                          <Path
-                            d="M6 10.2l2.6 2.6L14 7.4"
-                            stroke="#ffffff"
-                            strokeWidth={2}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </Svg>
-                      ) : (
-                        <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
-                          <Circle
-                            cx={10}
-                            cy={10}
-                            r={9}
-                            stroke="#bfc9bb"
-                            strokeWidth={1.8}
-                          />
-                        </Svg>
-                      )}
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <View style={styles.modalActions}>
-              <Pressable
-                style={styles.modalPrimaryButton}
-                onPress={confirmSwapSelection}
-                accessibilityRole="button"
-                testID="meal-swap-confirm-button"
-              >
-                <Text style={styles.modalPrimaryButtonText}>Fechar</Text>
-              </Pressable>
-              <Pressable
-                style={styles.modalSecondaryButton}
-                onPress={() => setSwapModalMeal(null)}
-                accessibilityRole="button"
-                testID="meal-swap-cancel-button"
-              >
-                <Text style={styles.modalSecondaryButtonText}>Cancelar</Text>
-              </Pressable>
+              {swapOptions.map((option) => (
+                <View key={option.id} style={styles.modalOptionCard}>
+                  <Text style={styles.modalOptionTitle}>{option.title}</Text>
+                  <Text style={styles.modalOptionSubtitle}>{option.subtitle}</Text>
+                </View>
+              ))}
             </View>
           </View>
         </View>
@@ -1069,9 +909,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  hydrationButtonDisabled: {
-    opacity: 0.65
-  },
+  hydrationButtonDisabled: { opacity: 0.65 },
   hydrationButtonText: {
     color: colors.white,
     fontFamily: fontFamily.bold,
@@ -1131,28 +969,17 @@ const styles = StyleSheet.create({
     fontSize: 14
   },
   modalOptionsList: {
-    paddingHorizontal: 24,
+    padding: 24,
     paddingTop: 16,
     gap: 8
   },
   modalOptionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 16,
+    gap: 4,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#d1fae5',
     backgroundColor: colors.white
-  },
-  modalOptionCardSelected: {
-    backgroundColor: '#ecfdf5',
-    borderColor: '#d1fae5'
-  },
-  modalOptionTextWrap: {
-    flex: 1,
-    gap: 2
   },
   modalOptionTitle: {
     color: '#1a1c1c',
@@ -1160,47 +987,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20
   },
-  modalOptionTitleSelected: {
-    color: '#064e3b'
-  },
   modalOptionSubtitle: {
     color: '#6f7a6c',
     fontFamily: fontFamily.regular,
     fontSize: 12,
     lineHeight: 16
-  },
-  modalOptionCheckWrap: {
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  modalActions: {
-    padding: 24,
-    gap: 12
-  },
-  modalPrimaryButton: {
-    backgroundColor: '#005414',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  modalPrimaryButtonText: {
-    color: colors.white,
-    fontFamily: fontFamily.bold,
-    fontSize: 16,
-    letterSpacing: -0.4
-  },
-  modalSecondaryButton: {
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  modalSecondaryButtonText: {
-    color: '#6f7a6c',
-    fontFamily: fontFamily.semibold,
-    fontSize: 14
   },
   stateCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, alignItems: 'center', gap: spacing.sm },
   stateTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 17, textAlign: 'center' },
