@@ -4,6 +4,8 @@ import com.nutri4you.backend.dto.HidratacaoDTO;
 import com.nutri4you.backend.model.ConsumoDiario;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.repository.ConsumoDiarioRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,8 +19,11 @@ public class HidratacaoService {
     private static final int META_ML = 2500;
     private final ConsumoDiarioRepository consumos;
 
-    public HidratacaoService(ConsumoDiarioRepository consumos) {
+    private final EntityManager entityManager;
+
+    public HidratacaoService(ConsumoDiarioRepository consumos, EntityManager entityManager) {
         this.consumos = consumos;
+        this.entityManager = entityManager;
     }
 
     @Transactional(readOnly = true)
@@ -35,9 +40,10 @@ public class HidratacaoService {
             throw new IllegalArgumentException("Informe uma quantidade de água entre 1 e 1000 ml.");
         }
         LocalDate hoje = LocalDate.now(FUSO_HORARIO);
-        ConsumoDiario consumo = consumos.findByPaciente_IdAndDataRegistro(paciente.getId(), hoje)
+        Paciente titular = entityManager.find(Paciente.class, paciente.getId(), LockModeType.PESSIMISTIC_WRITE);
+        ConsumoDiario consumo = consumos.findByPaciente_IdAndDataRegistro(titular.getId(), hoje)
                 .orElseGet(() -> new ConsumoDiario(
-                        paciente, hoje, BigDecimal.ZERO, BigDecimal.ZERO,
+                        titular, hoje, BigDecimal.ZERO, BigDecimal.ZERO,
                         BigDecimal.ZERO, BigDecimal.ZERO, 0));
         consumo.adicionarAgua(quantidadeMl);
         ConsumoDiario salvo = consumos.save(consumo);

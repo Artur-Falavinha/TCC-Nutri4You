@@ -103,13 +103,13 @@ public class ConsumoDiario {
         return gordurasConsumidas;
     }
     public Integer getAguaMlConsumida() {
-        return aguaMlConsumida;
+        return aguaMlConsumida == null ? 0 : aguaMlConsumida;
     }
 
     public void adicionarAgua(int quantidadeMl) {
         if (quantidadeMl <= 0) {
             throw new IllegalArgumentException("A quantidade de água deve ser positiva.");
         }
-        this.aguaMlConsumida = Math.min(10000, this.aguaMlConsumida + quantidadeMl);
+        this.aguaMlConsumida = Math.min(10000, getAguaMlConsumida() + quantidadeMl);
     }
 }
