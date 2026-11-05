@@ -194,10 +194,9 @@ describe('ExamesScreen', () => {
     expect(renderedText(tree)).toContain('Clique para selecionar');
 
     const confirmButton = tree.root.findByProps({ testID: 'exame-upload-confirm-button' });
-    await act(async () => {
-      await confirmButton.props.onPress();
-    });
-    expect(renderedText(tree)).toContain('Selecione um arquivo antes de confirmar o envio.');
+    expect(confirmButton.props.disabled).toBe(true);
+    expect(confirmButton.props.accessibilityState.disabled).toBe(true);
+    expect(enviarResultadoExame).not.toHaveBeenCalled();
 
     // Tenta selecionar um arquivo inválido (.txt)
     (selecionarArquivoDispositivo as jest.Mock).mockResolvedValueOnce({
@@ -239,6 +238,8 @@ describe('ExamesScreen', () => {
 
     expect(renderedText(tree)).not.toContain('resultado-hemograma-completo.pdf');
 
+    expect(confirmButton.props.disabled).toBe(true);
+
     // Seleciona novamente e confirma o envio
     (selecionarArquivoDispositivo as jest.Mock).mockResolvedValueOnce({
       nome: 'resultado-hemograma-completo.pdf',
@@ -251,6 +252,7 @@ describe('ExamesScreen', () => {
       await selectArea.props.onPress();
     });
 
+    expect(confirmButton.props.disabled).toBe(false);
     await act(async () => {
       await confirmButton.props.onPress();
     });

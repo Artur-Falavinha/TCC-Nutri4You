@@ -374,6 +374,19 @@
     (fechar)="fecharBuscaAlimentos()" />
 }
 
+@if (planoParaPublicar; as plano) {
+  <app-paciente-dialog
+    title="Publicar plano alimentar"
+    [description]="'Publicar “' + plano.titulo + '”, versão ' + plano.versao + ', para ' + formatarPeriodo(plano) + '?'"
+    (fechar)="cancelarPublicacao()"
+  >
+    <app-ui-button id="cancelar-publicacao" dialogActions label="Cancelar" variant="outline" type="button"
+      [fullWidth]="false" (click)="cancelarPublicacao()" />
+    <app-ui-button dialogActions label="Confirmar publicação" type="button"
+      [fullWidth]="false" (click)="confirmarPublicacao()" />
+  </app-paciente-dialog>
+}
+
 @if (modalListaCompras && planoSelecionado) {
   <div class="shopping-preview-backdrop">
     <section class="shopping-preview" role="dialog" aria-modal="true" aria-labelledby="shopping-preview-title" aria-describedby="shopping-preview-help">

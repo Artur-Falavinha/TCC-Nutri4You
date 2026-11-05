@@ -436,6 +436,7 @@ export function ExamesScreen({ navigation }: Props) {
     }
   };
 
+  const envioDesabilitado = !selectedFile || uploading;
   const uploadArea = (
     <Pressable
       style={[styles.uploadDropArea, isDraggingOver && styles.uploadDropAreaDragging]}
@@ -708,11 +709,12 @@ export function ExamesScreen({ navigation }: Props) {
               <Pressable
                 style={[
                   styles.confirmButton,
-                  (!selectedFile || uploading) && styles.buttonDisabled
+                  envioDesabilitado && styles.buttonDisabled
                 ]}
                 onPress={() => void confirmarEnvio()}
-                disabled={uploading}
+                disabled={envioDesabilitado}
                 accessibilityRole="button"
+                accessibilityState={{ disabled: envioDesabilitado, busy: uploading }}
                 accessibilityLabel="Confirmar Envio"
                 testID="exame-upload-confirm-button"
               >
