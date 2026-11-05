@@ -8,7 +8,7 @@
   <app-form-alert [message]="mensagem" type="success" />
 
   @if (tela !== 'lista' && carregado) {
-    <nav class="week-days" aria-label="Dia da semana">
+    <nav class="actions week-days" aria-label="Dia da semana">
       @for (nome of dias; track nome; let i = $index) {
         <button type="button" class="action secondary" [attr.aria-pressed]="dia === i + 1"
           (click)="dia = i + 1">{{ nome }}</button>
