@@ -13,7 +13,8 @@
     <article><div class="heading"><h3>{{ exame.nome }}</h3><strong>{{ exame.status }}</strong></div>
       <p>Solicitado em {{ exame.dataSolicitacao | date:'dd/MM/yyyy' }}</p>
       @if (exame.descricao) { <p>{{ exame.descricao }}</p> }
-      @if (exame.arquivoNome) { <p>{{ exame.arquivoNome }}</p><button type="button" (click)="baixar(exame)">Baixar resultado</button> }
+      @if (exame.arquivoNome) { <p>{{ exame.arquivoNome }}</p> }
+      @if (exame.possuiArquivo) { <button type="button" (click)="baixar(exame)">Baixar resultado</button> }
       @if (exame.parecer) { <h4>Parecer</h4><p>{{ exame.parecer }}</p> }
       @if (exame.status === 'ENVIADO' && selecionado?.id !== exame.id) {
         <button type="button" (click)="selecionado = exame; parecer = ''" [disabled]="salvando">Analisar exame</button>

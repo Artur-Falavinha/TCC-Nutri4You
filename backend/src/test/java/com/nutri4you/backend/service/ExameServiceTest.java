@@ -3,6 +3,7 @@ package com.nutri4you.backend.service;
 import com.nutri4you.backend.exception.*;
 import com.nutri4you.backend.support.ClinicalServiceTestSupport;
 import com.nutri4you.backend.dto.ExameResponse;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockMultipartFile;
@@ -10,6 +11,7 @@ import static org.assertj.core.api.Assertions.*;
 
 class ExameServiceTest extends ClinicalServiceTestSupport {
     @Autowired ExameService service;
+    @Autowired EntityManager entityManager;
     private MockMultipartFile pdf(int size) {
         byte[] bytes = new byte[size]; System.arraycopy("%PDF-1.4".getBytes(java.nio.charset.StandardCharsets.US_ASCII), 0, bytes, 0, 8);
         return new MockMultipartFile("arquivo", "resultado.pdf", "application/pdf", bytes);
@@ -39,6 +41,24 @@ class ExameServiceTest extends ClinicalServiceTestSupport {
         assertThatThrownBy(() -> service.enviar(paciente, e.id(), analisado.versao(), pdf(30))).isInstanceOf(IllegalArgumentException.class);
         assertThat(service.listar(paciente, 0).itens().getFirst().parecer()).isEqualTo("Revisado");
     }
+    @Test
+    void listaEEntregaArquivoLegadoSemMetadados() throws java.io.IOException {
+        var exame = pedido();
+        service.enviar(paciente, exame.id(), exame.versao(), pdf(20));
+        entityManager.createNativeQuery("""
+                update exame set arquivo_nome = null, arquivo_tipo = null, arquivo_tamanho = null
+                where id_exame = :id
+                """).setParameter("id", exame.id()).executeUpdate();
+        entityManager.clear();
+
+        var listado = service.listar(paciente, 0).itens().getFirst();
+        assertThat(listado.possuiArquivo()).isTrue();
+        assertThat(listado.arquivoNome()).isNull();
+        var arquivo = service.arquivo(paciente, exame.id());
+        assertThat(arquivo.tipo()).isEqualTo("application/octet-stream");
+        assertThat(arquivo.dados()).containsExactly(pdf(20).getBytes());
+    }
+
     @Test void arquivoDeOutroPacienteNaoPodeSerLidoOuAlterado() {
         var e = pedido();
         var outro = pacientes.save(com.nutri4you.backend.support.TestDataFactory.outroPaciente(encoder));

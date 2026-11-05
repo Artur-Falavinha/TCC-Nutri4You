@@ -6,7 +6,7 @@ import { ApiResponse } from '../../core/models/api-response.model';
 
 export interface Exame {
   id: number; nome: string; descricao: string | null; status: 'PENDENTE' | 'ENVIADO' | 'ANALISADO';
-  dataSolicitacao: string; dataEnvio: string | null; arquivoNome: string | null; parecer: string | null; versao: number;
+  dataSolicitacao: string; dataEnvio: string | null; arquivoNome: string | null; parecer: string | null; versao: number; possuiArquivo: boolean;
 }
 export interface PaginaExames { itens: Exame[]; pagina: number; totalPaginas: number; total: number }
 @Injectable({ providedIn: 'root' })

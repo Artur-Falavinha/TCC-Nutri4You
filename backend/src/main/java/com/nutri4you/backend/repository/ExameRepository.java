@@ -13,7 +13,8 @@ public interface ExameRepository extends JpaRepository<Exame, Integer> {
     // Projection deliberately excludes binary data from paginated reads.
     @Query("""
         select new com.nutri4you.backend.dto.ExameResponse(e.id, e.paciente.id, e.nutricionista.id, e.nome, e.descricao,
-        e.dataSolicitacao, e.dataEnvio, e.status, e.arquivoNome, e.arquivoTipo, e.arquivoTamanho, e.parecer, e.analisadoEm, e.versao)
+        e.dataSolicitacao, e.dataEnvio, e.status, e.arquivoNome, e.arquivoTipo, e.arquivoTamanho, e.parecer, e.analisadoEm, e.versao,
+        case when e.arquivo is not null then true else false end)
         from Exame e where e.paciente.id = :pacienteId and (:nutriId is null or e.nutricionista.id = :nutriId)
         """)
     Page<ExameResponse> listar(@Param("pacienteId") Integer pacienteId, @Param("nutriId") Integer nutriId, Pageable page);
