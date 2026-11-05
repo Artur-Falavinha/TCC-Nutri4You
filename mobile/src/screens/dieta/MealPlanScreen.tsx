@@ -29,8 +29,23 @@ import {
   formatTime,
   nutrientEntries
 } from '../../features/dieta/dieta.formatters';
-import { Meal, MealPlan } from '../../features/dieta/dieta.models';
-import { getActiveMealPlan } from '../../features/dieta/dieta.service';
+import {
+  FoodSubstitute,
+  HydrationProgress,
+  Meal,
+  MealPlan,
+  MealPlanItem,
+  Nutrients
+} from '../../features/dieta/dieta.models';
+import {
+  loadMealSwapPreferences,
+  saveMealSwapPreferences
+} from '../../features/dieta/dieta-preferences';
+import {
+  addWater,
+  getActiveMealPlan,
+  getHydrationProgress
+} from '../../features/dieta/dieta.service';
 import { RootStackParamList } from '../../navigation/types';
 import { colors, fontFamily, radius, shadows, spacing } from '../../theme/tokens';
 import { NutrientSummaryCard } from './components/NutrientSummaryCard';
@@ -41,14 +56,44 @@ interface DayPillItem {
   key: string;
   shortLabel: string;
   dayNumber: string;
-  aliases: string[];
+  date: Date;
 }
 
-const WEEK_DAYS: DayPillItem[] = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'].map((key, i) => {
-  const data = new Date();
-  data.setDate(data.getDate() - data.getDay() + i);
-  return { key, shortLabel: key === 'SAB' ? 'SÁB' : key, dayNumber: String(data.getDate()), aliases: [] };
-});
+const DAY_CONFIG = [
+  { key: 'DOM', shortLabel: 'DOM' },
+  { key: 'SEG', shortLabel: 'SEG' },
+  { key: 'TER', shortLabel: 'TER' },
+  { key: 'QUA', shortLabel: 'QUA' },
+  { key: 'QUI', shortLabel: 'QUI' },
+  { key: 'SEX', shortLabel: 'SEX' },
+  { key: 'SAB', shortLabel: 'SÁB' }
+] as const;
+
+function buildCurrentWeek(reference = new Date()): DayPillItem[] {
+  const start = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate());
+  start.setDate(start.getDate() - start.getDay());
+  return DAY_CONFIG.map((day, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return { ...day, dayNumber: String(date.getDate()), date };
+  });
+}
+
+function sumNutrients(items: { nutrientes: Nutrients }[]): Nutrients {
+  return items.reduce<Nutrients>(
+    (total, item) => {
+      total.kcal += item.nutrientes.kcal;
+      total.proteinas += item.nutrientes.proteinas;
+      total.carboidratos += item.nutrientes.carboidratos;
+      total.gorduras += item.nutrientes.gorduras;
+      total.fibras = total.fibras == null || item.nutrientes.fibras == null
+        ? null
+        : total.fibras + item.nutrientes.fibras;
+      return total;
+    },
+    { kcal: 0, proteinas: 0, carboidratos: 0, gorduras: 0, fibras: 0 }
+  );
+}
 
 function errorMessage(error: unknown): string {
   return error instanceof ApiError
@@ -101,6 +146,8 @@ interface SwapOption {
   id: string;
   title: string;
   subtitle: string;
+  itemId?: number;
+  substitute?: FoodSubstitute;
 }
 
 function buildMealSwapOptions(meal: Meal): SwapOption[] {
@@ -119,7 +166,9 @@ function buildMealSwapOptions(meal: Meal): SwapOption[] {
       options.push({
         id: `sub-${meal.id}-${item.alimento.id}-${sub.alimento.id}-${idx}`,
         title: `${sub.alimento.nome} (${formatGrams(sub.quantidadeGramas)} g)`,
-        subtitle: `${Math.round(sub.nutrientes.kcal)} kcal • Substituto de ${item.alimento.nome}`
+        subtitle: `${Math.round(sub.nutrientes.kcal)} kcal • Substituto de ${item.alimento.nome}`,
+        itemId: item.alimento.id,
+        substitute: sub
       });
     });
   });
@@ -127,18 +176,42 @@ function buildMealSwapOptions(meal: Meal): SwapOption[] {
   return options;
 }
 
+function applyMealSwap(meal: Meal, optionId?: string): Meal {
+  const option = buildMealSwapOptions(meal).find((candidate) => candidate.id === optionId);
+  if (!option?.substitute || option.itemId == null) return meal;
+  const itens: MealPlanItem[] = meal.itens.map((item) =>
+    item.alimento.id === option.itemId
+      ? {
+          alimento: option.substitute!.alimento,
+          quantidadeGramas: option.substitute!.quantidadeGramas,
+          nutrientes: option.substitute!.nutrientes,
+          substitutos: []
+        }
+      : item
+  );
+  return { ...meal, itens, totais: sumNutrients(itens) };
+}
+
 export function MealPlanScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const wide = width >= 640;
+  const weekDays = useMemo(() => buildCurrentWeek(), []);
   const [menuVisible, setMenuVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [plan, setPlan] = useState<MealPlan | null>(null);
-  const [selectedDay, setSelectedDay] = useState<string>(WEEK_DAYS[new Date().getDay()].key);
+  const [selectedDay, setSelectedDay] = useState<string>(DAY_CONFIG[new Date().getDay()].key);
   const [swapModalMeal, setSwapModalMeal] = useState<Meal | null>(null);
   const [swapSearch, setSwapSearch] = useState('');
   const [pendingSwapOptionId, setPendingSwapOptionId] = useState<string>('');
+  const [selectedOptionByMeal, setSelectedOptionByMeal] = useState<Record<number, string>>({});
+  const [hydration, setHydration] = useState<HydrationProgress>({
+    data: '',
+    consumidoMl: 0,
+    metaMl: 2500
+  });
+  const [hydrationSaving, setHydrationSaving] = useState(false);
   const requestId = useRef(0);
 
   const loadPlan = useCallback(async (refresh = false) => {
@@ -150,9 +223,15 @@ export function MealPlanScreen({ navigation }: Props) {
     }
     setError('');
     try {
-      const response = await getActiveMealPlan();
+      const [response, hydrationResponse] = await Promise.all([
+        getActiveMealPlan(),
+        getHydrationProgress()
+      ]);
+      const preferences = response ? await loadMealSwapPreferences(response.id) : {};
       if (currentRequest === requestId.current) {
         setPlan(response);
+        setHydration(hydrationResponse);
+        setSelectedOptionByMeal(preferences);
       }
     } catch (failure) {
       if (currentRequest === requestId.current) {
@@ -167,33 +246,11 @@ export function MealPlanScreen({ navigation }: Props) {
   }, []);
 
   useEffect(() => {
-    let active = true;
-    const currentRequest = ++requestId.current;
-
-    void getActiveMealPlan()
-      .then((response) => {
-        if (active && currentRequest === requestId.current) {
-          setPlan(response);
-        }
-      })
-      .catch((failure: unknown) => {
-        if (active && currentRequest === requestId.current) {
-          setError(errorMessage(failure));
-        }
-      })
-      .finally(() => {
-        if (active && currentRequest === requestId.current) {
-          setLoading(false);
-        }
-      });
-
+    void Promise.resolve().then(() => loadPlan());
     return () => {
-      active = false;
-      if (currentRequest === requestId.current) {
-        requestId.current += 1;
-      }
+      requestId.current += 1;
     };
-  }, []);
+  }, [loadPlan]);
 
   const signOut = async () => {
     await logout();
@@ -238,20 +295,47 @@ export function MealPlanScreen({ navigation }: Props) {
     if (!plan) {
       return [];
     }
-    const indice = WEEK_DAYS.findIndex(d => d.key === selectedDay);
-    const dia = indice === 0 ? 7 : indice;
-    return plan.refeicoes.filter(meal => meal.diaSemana == null || meal.diaSemana === dia);
-  }, [plan, selectedDay]);
+    const hasDaySegmentation = plan.refeicoes.some((meal) => meal.diaSemana != null);
+    if (!hasDaySegmentation) {
+      return plan.refeicoes;
+    }
+    const activeDayConfig = weekDays.find((d) => d.key === selectedDay);
+    const nativeDay = activeDayConfig?.date.getDay() ?? 0;
+    const isoDay = nativeDay === 0 ? 7 : nativeDay;
+    return plan.refeicoes.filter(
+      (meal) => meal.diaSemana == null || meal.diaSemana === isoDay
+    );
+  }, [plan, selectedDay, weekDays]);
+
+  const effectiveMeals = useMemo(
+    () => visibleMeals.map((meal) => applyMealSwap(meal, selectedOptionByMeal[meal.id])),
+    [selectedOptionByMeal, visibleMeals]
+  );
+
+  const dailyTotals = useMemo(
+    () => sumNutrients(effectiveMeals.map((meal) => ({ nutrientes: meal.totais }))),
+    [effectiveMeals]
+  );
 
   const openSwapModal = (meal: Meal) => {
-    const options = buildMealSwapOptions(meal);
-    const currentSelected = options[0]?.id ?? '';
+    const prescribedMeal = plan?.refeicoes.find((candidate) => candidate.id === meal.id) ?? meal;
+    const options = buildMealSwapOptions(prescribedMeal);
+    const currentSelected = selectedOptionByMeal[prescribedMeal.id] ?? options[0]?.id ?? '';
     setPendingSwapOptionId(currentSelected);
     setSwapSearch('');
-    setSwapModalMeal(meal);
+    setSwapModalMeal(prescribedMeal);
   };
 
-  const confirmSwapSelection = () => setSwapModalMeal(null);
+  const confirmSwapSelection = () => {
+    if (swapModalMeal && pendingSwapOptionId) {
+      setSelectedOptionByMeal((prev) => {
+        const next = { ...prev, [swapModalMeal.id]: pendingSwapOptionId };
+        if (plan) void saveMealSwapPreferences(plan.id, next);
+        return next;
+      });
+    }
+    setSwapModalMeal(null);
+  };
 
   const swapOptions = useMemo(() => {
     if (!swapModalMeal) {
@@ -269,13 +353,28 @@ export function MealPlanScreen({ navigation }: Props) {
     );
   }, [swapModalMeal, swapSearch]);
 
-  const dailyTotals = visibleMeals.reduce((total, meal) => ({
-    kcal: total.kcal + meal.totais.kcal,
-    proteinas: total.proteinas + meal.totais.proteinas,
-    carboidratos: total.carboidratos + meal.totais.carboidratos,
-    gorduras: total.gorduras + meal.totais.gorduras,
-    fibras: total.fibras === null || meal.totais.fibras === null ? null : total.fibras + meal.totais.fibras
-  }), { kcal: 0, proteinas: 0, carboidratos: 0, gorduras: 0, fibras: 0 as number | null });
+  const selectedDate = weekDays.find((day) => day.key === selectedDay)?.date ?? new Date();
+  const monthTitle = new Intl.DateTimeFormat('pt-BR', {
+    month: 'long',
+    year: 'numeric'
+  }).format(selectedDate);
+  const waterLiters = hydration.consumidoMl / 1000;
+  const waterGoalLiters = hydration.metaMl / 1000;
+  const waterProgressRatio = hydration.metaMl > 0
+    ? Math.min(hydration.consumidoMl / hydration.metaMl, 1)
+    : 0;
+
+  const handleAddWater = async () => {
+    if (hydrationSaving) return;
+    setHydrationSaving(true);
+    try {
+      setHydration(await addWater(250));
+    } catch (failure) {
+      setError(errorMessage(failure));
+    } finally {
+      setHydrationSaving(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
@@ -318,7 +417,7 @@ export function MealPlanScreen({ navigation }: Props) {
 
         <View style={styles.daySelectorSection} testID="meal-plan-day-selector">
           <View style={styles.daySelectorHeader}>
-            <Text style={styles.daySelectorMonthTitle}>{new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</Text>
+            <Text style={styles.daySelectorMonthTitle}>{monthTitle}</Text>
             <Svg width={18} height={20} viewBox="0 0 18 20" fill="none">
               <Path
                 d="M15 2h-1V0h-2v2H6V0H4v2H3C1.89 2 1 2.9 1 4v14a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2zm0 16H3V7h12v11z"
@@ -331,7 +430,7 @@ export function MealPlanScreen({ navigation }: Props) {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.dayPillsRow}
           >
-            {WEEK_DAYS.map((day) => {
+            {weekDays.map((day) => {
               const isSelected = day.key === selectedDay;
               return (
                 <Pressable
@@ -440,7 +539,7 @@ export function MealPlanScreen({ navigation }: Props) {
               <View style={styles.summaryColumn}>
                 <NutrientSummaryCard
                   title="Totais diários"
-                  subtitle="Planejamento do dia em relação às metas prescritas"
+                  subtitle="Progresso diário em relação às metas prescritas"
                   nutrients={dailyTotals}
                   goals={plan.metas}
                 />
@@ -451,14 +550,15 @@ export function MealPlanScreen({ navigation }: Props) {
               <Text style={styles.sectionTitle} accessibilityRole="header">
                 Refeições do dia
               </Text>
-              {visibleMeals.length === 0 ? (
+              {effectiveMeals.length === 0 ? (
                 <View style={styles.stateCard}>
                   <Text style={styles.bodyText}>Este plano ainda não contém refeições.</Text>
                 </View>
               ) : (
                 <View style={styles.mealCardsList}>
-                  {visibleMeals.map((meal) => {
-                    const mealSummaryHeadline = meal.itens.map(i => i.alimento.nome).join(', ') || meal.nome;
+                  {effectiveMeals.map((meal) => {
+                    const mealSummaryHeadline =
+                      meal.itens.map((i) => i.alimento.nome).join(', ') || meal.nome;
 
                     return (
                       <View
@@ -520,7 +620,12 @@ export function MealPlanScreen({ navigation }: Props) {
                           <View key={item.alimento.id} style={styles.foodItem}>
                             <View style={styles.foodRow}>
                               <View style={styles.foodDetails}>
-                                <Text style={styles.foodName}>{item.alimento.nome}</Text>
+                                <Text
+                                  style={styles.foodName}
+                                  testID={`meal-food-${meal.id}-${item.alimento.id}`}
+                                >
+                                  {item.alimento.nome}
+                                </Text>
                                 <Text style={styles.foodMeta}>
                                   {formatNutrient(item.nutrientes.kcal)} kcal · Fibras{' '}
                                   {formatNutrientAmount(item.nutrientes.fibras)}
@@ -586,7 +691,46 @@ export function MealPlanScreen({ navigation }: Props) {
               )}
             </View>
 
-
+            <View style={styles.hydrationCard} testID="hydration-tracker-card">
+              <View style={styles.hydrationTopRow}>
+                <View style={styles.hydrationIconCircle}>
+                  <Svg width={16} height={20} viewBox="0 0 16 20" fill="none">
+                    <Path
+                      d="M8 0C8 0 0 8.5 0 13.5C0 17.09 3.58 20 8 20C12.42 20 16 17.09 16 13.5C16 8.5 8 0 8 0Z"
+                      fill="#5df975"
+                    />
+                  </Svg>
+                </View>
+                <View style={styles.hydrationHeaderCopy}>
+                  <Text style={styles.hydrationTitle}>Hidratação</Text>
+                  <Text style={styles.hydrationSubtitle}>
+                    {waterLiters.toFixed(1)}L de {waterGoalLiters.toFixed(1)}L atingidos
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.hydrationProgressTrack}>
+                <View
+                  style={[
+                    styles.hydrationProgressFill,
+                    { width: `${Math.round(waterProgressRatio * 100)}%` }
+                  ]}
+                />
+              </View>
+              <Pressable
+                style={[styles.hydrationButton, hydrationSaving && styles.hydrationButtonDisabled]}
+                onPress={() => void handleAddWater()}
+                disabled={hydrationSaving}
+                accessibilityRole="button"
+                accessibilityLabel="Adicionar Água"
+                testID="hydration-add-button"
+              >
+                {hydrationSaving ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <Text style={styles.hydrationButtonText}>+ Adicionar Água</Text>
+                )}
+              </Pressable>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -924,6 +1068,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  hydrationButtonDisabled: {
+    opacity: 0.65
   },
   hydrationButtonText: {
     color: colors.white,

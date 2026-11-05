@@ -3,12 +3,23 @@ import renderer, { act } from 'react-test-renderer';
 import * as RN from 'react-native';
 import { ScrollView, Text } from 'react-native';
 
-import { getActiveMealPlan } from '../../../features/dieta/dieta.service';
+import {
+  addWater,
+  getActiveMealPlan,
+  getHydrationProgress
+} from '../../../features/dieta/dieta.service';
 import { Food, MealPlan, MealPlanItem, Nutrients } from '../../../features/dieta/dieta.models';
 import { MealPlanScreen } from '../MealPlanScreen';
 
 jest.mock('../../../features/dieta/dieta.service', () => ({
-  getActiveMealPlan: jest.fn()
+  getActiveMealPlan: jest.fn(),
+  getHydrationProgress: jest.fn(),
+  addWater: jest.fn()
+}));
+
+jest.mock('../../../features/dieta/dieta-preferences', () => ({
+  loadMealSwapPreferences: jest.fn().mockResolvedValue({}),
+  saveMealSwapPreferences: jest.fn().mockResolvedValue(undefined)
 }));
 
 jest.mock('../../../core/auth/auth.service', () => ({ logout: jest.fn() }));
@@ -79,6 +90,11 @@ function mealPlan(): MealPlan {
 
 async function renderPlan(plan: MealPlan): Promise<renderer.ReactTestRenderer> {
   (getActiveMealPlan as jest.Mock).mockResolvedValueOnce(plan);
+  (getHydrationProgress as jest.Mock).mockResolvedValueOnce({
+    data: '2026-11-04',
+    consumidoMl: 0,
+    metaMl: 2500
+  });
   const navigation = { navigate: jest.fn(), dispatch: jest.fn() };
   let tree!: renderer.ReactTestRenderer;
 
@@ -89,6 +105,7 @@ async function renderPlan(plan: MealPlan): Promise<renderer.ReactTestRenderer> {
         route={{ key: 'Dieta', name: 'Dieta', params: undefined } as never}
       />
     );
+    await new Promise((resolve) => setTimeout(resolve, 10));
     await Promise.resolve();
   });
 
@@ -108,6 +125,11 @@ function renderedText(tree: renderer.ReactTestRenderer): string {
 describe('MealPlanScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (addWater as jest.Mock).mockResolvedValue({
+      data: '2026-11-04',
+      consumidoMl: 250,
+      metaMl: 2500
+    });
   });
 
   it('exibe fibras e substitutos informativos sem alterar o plano prescrito', async () => {
@@ -176,10 +198,58 @@ describe('MealPlanScreen', () => {
     expect(renderedText(tree)).toContain('Substitutos informativos');
     expect(renderedText(tree)).toContain('Fechar');
 
+    const substituteOption = tree.root.findByProps({ testID: 'meal-swap-option-sub-6-1-2-0' });
+    await act(async () => {
+      substituteOption.props.onPress();
+    });
+
     const confirmBtn = tree.root.findByProps({ testID: 'meal-swap-confirm-button' });
     await act(async () => {
       confirmBtn.props.onPress();
     });
+
+    expect(tree.root.findByProps({ testID: 'meal-food-6-2' }).props.children).toBe('Granola');
+    expect(tree.root.findAllByProps({ testID: 'meal-food-6-1' })).toHaveLength(0);
+
+    await act(async () => {
+      tree.root.findByProps({ testID: 'meal-swap-button-6' }).props.onPress();
+    });
+    await act(async () => {
+      tree.root.findByProps({ testID: 'meal-swap-option-prescribed-6' }).props.onPress();
+    });
+    await act(async () => {
+      tree.root.findByProps({ testID: 'meal-swap-confirm-button' }).props.onPress();
+    });
+    expect(tree.root.findByProps({ testID: 'meal-food-6-1' }).props.children).toBe('Aveia');
+
+    act(() => tree.unmount());
+  });
+
+  it('filtra refeições pelo dia selecionado e persiste hidratação retornada pela API', async () => {
+    const plan = mealPlan();
+    plan.refeicoes = [
+      { ...plan.refeicoes[0], id: 6, diaSemana: 1 },
+      { ...plan.refeicoes[0], id: 7, nome: 'Jantar', diaSemana: 2 }
+    ];
+    const tree = await renderPlan(plan);
+
+    await act(async () => {
+      tree.root.findByProps({ testID: 'day-selector-pill-SEG' }).props.onPress();
+    });
+    expect(tree.root.findByProps({ testID: 'meal-card-6' })).toBeTruthy();
+    expect(tree.root.findAllByProps({ testID: 'meal-card-7' })).toHaveLength(0);
+
+    await act(async () => {
+      tree.root.findByProps({ testID: 'day-selector-pill-TER' }).props.onPress();
+    });
+    expect(tree.root.findAllByProps({ testID: 'meal-card-6' })).toHaveLength(0);
+    expect(tree.root.findByProps({ testID: 'meal-card-7' })).toBeTruthy();
+
+    await act(async () => {
+      await tree.root.findByProps({ testID: 'hydration-add-button' }).props.onPress();
+    });
+    expect(addWater).toHaveBeenCalledWith(250);
+    expect(renderedText(tree)).toContain('0.3L de 2.5L atingidos');
 
     act(() => tree.unmount());
   });

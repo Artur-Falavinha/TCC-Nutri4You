@@ -29,6 +29,7 @@ import {
   enviarResultadoExame,
   inferMimeTypeFromFileName,
   listarMeusExames,
+  prepararArquivoWeb,
   removerResultadoExame,
   selecionarArquivoDispositivo,
   validarArquivoExame
@@ -390,7 +391,11 @@ export function ExamesScreen({ navigation }: Props) {
     try {
       const atualizado = await enviarResultadoExame(selectedExame.id, {
         versao: selectedExame.versao,
-        arquivo: selectedFile
+        arquivo: {
+          ...selectedFile,
+          nome: selectedFile.nome.trim(),
+          tipo: selectedFile.tipo || inferMimeTypeFromFileName(selectedFile.nome)
+        }
       });
 
       setExames((prev) =>
@@ -432,7 +437,7 @@ export function ExamesScreen({ navigation }: Props) {
             event.preventDefault?.();
             setIsDraggingOver(false);
           },
-          onDrop: (event: {
+          onDrop: async (event: {
             preventDefault?: () => void;
             dataTransfer?: { files?: FileList };
           }) => {
@@ -442,13 +447,13 @@ export function ExamesScreen({ navigation }: Props) {
             if (!droppedFile) {
               return;
             }
-            aplicarArquivoEscolhido({
-              nome: droppedFile.name,
-              tipo:
-                droppedFile.type || inferMimeTypeFromFileName(droppedFile.name),
-              tamanhoBytes: droppedFile.size,
-              file: droppedFile
-            });
+            try {
+              aplicarArquivoEscolhido(prepararArquivoWeb(droppedFile));
+            } catch (failure) {
+              setUploadError(
+                extractErrorMessage(failure, 'Não foi possível ler o arquivo arrastado.')
+              );
+            }
           }
         } as Record<string, unknown>)
       : {};

@@ -131,7 +131,7 @@ describe('ExamesScreen', () => {
       validarArquivoExame({
         nome: 'laudo-pesado.pdf',
         tipo: 'application/pdf',
-        tamanhoBytes: 15 * 1024 * 1024
+        tamanhoBytes: 6 * 1024 * 1024
       })
     ).toContain('até 5 MiB');
   });

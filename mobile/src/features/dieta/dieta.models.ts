@@ -84,3 +84,9 @@ export interface ShoppingItemUpdate {
   dias: number;
   comprado: boolean;
 }
+
+export interface HydrationProgress {
+  data: string;
+  consumidoMl: number;
+  metaMl: number;
+}

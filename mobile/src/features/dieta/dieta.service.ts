@@ -1,5 +1,5 @@
 import { apiClient } from '../../core/api/api-client';
-import { MealPlan, ShoppingItemUpdate, ShoppingList } from './dieta.models';
+import { HydrationProgress, MealPlan, ShoppingItemUpdate, ShoppingList } from './dieta.models';
 
 export const DEFAULT_SHOPPING_DAYS = 7;
 export const MIN_SHOPPING_DAYS = 1;
@@ -7,6 +7,17 @@ export const MAX_SHOPPING_DAYS = 30;
 
 export function getActiveMealPlan(): Promise<MealPlan | null> {
   return apiClient.get<MealPlan | null>('/me/plano-alimentar');
+}
+
+export function getHydrationProgress(): Promise<HydrationProgress> {
+  return apiClient.get<HydrationProgress>('/usuarios/me/hidratacao');
+}
+
+export function addWater(quantidadeMl = 250): Promise<HydrationProgress> {
+  if (!Number.isInteger(quantidadeMl) || quantidadeMl <= 0 || quantidadeMl > 1000) {
+    throw new Error('A quantidade de água deve ficar entre 1 e 1000 ml.');
+  }
+  return apiClient.post<HydrationProgress>('/usuarios/me/hidratacao', { quantidadeMl });
 }
 
 export async function getShoppingList(days = DEFAULT_SHOPPING_DAYS): Promise<ShoppingList | null> {
