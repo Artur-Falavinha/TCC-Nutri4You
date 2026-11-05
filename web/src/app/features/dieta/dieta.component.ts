@@ -11,6 +11,7 @@ import { PacientesService } from '../../core/services/pacientes.service';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
 import { PatientTabsComponent } from '../../shared/components/patient-tabs/patient-tabs.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
+import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog/paciente-dialog.component';
 import { BuscaAlimentosComponent } from './busca-alimentos.component';
 import {
   Alimento,
@@ -38,7 +39,7 @@ const MAXIMO_SUBSTITUTOS = 10;
 
 @Component({
   selector: 'app-dieta',
-  imports: [DatePipe, FormsModule, RouterLink, PatientTabsComponent, FormAlertComponent, UiButtonComponent, BuscaAlimentosComponent],
+  imports: [DatePipe, FormsModule, RouterLink, PatientTabsComponent, FormAlertComponent, UiButtonComponent, BuscaAlimentosComponent, PacienteDialogComponent],
   templateUrl: './dieta.component.html',
   styleUrl: './dieta.component.css'
 })
@@ -81,6 +82,7 @@ export class DietaComponent implements OnInit {
   carregado = false;
   salvando = false;
   publicando = false;
+  planoParaPublicar: Plano | null = null;
   excluindo = false;
   erro = '';
   mensagem = '';
@@ -118,6 +120,7 @@ export class DietaComponent implements OnInit {
   private readonly buscasListaCompras$ = new Subject<PedidoListaCompras>();
   private elementoAtivoAntesDaBusca: HTMLElement | null = null;
   private elementoAtivoAntesDaListaCompras: HTMLElement | null = null;
+  private elementoAtivoAntesDaPublicacao: HTMLElement | null = null;
   private substitutoSelecionado: { refeicaoChave: number; itemChave: number } | null = null;
 
   get podeColarRefeicao(): boolean {
@@ -431,14 +434,28 @@ export class DietaComponent implements OnInit {
 
   publicar(): void {
     const plano = this.planoSelecionado;
-    if (!plano || plano.status !== 'RASCUNHO' || this.publicando) return;
+    if (!plano || plano.status !== 'RASCUNHO' || this.publicando || this.planoParaPublicar) return;
     const problema = this.validarPublicacao(plano);
     if (problema) {
       this.erro = problema;
       this.mensagem = '';
       return;
     }
-    if (!window.confirm(`Publicar “${plano.titulo}”, versão ${plano.versao}, para ${this.formatarPeriodo(plano)}?`)) return;
+    this.elementoAtivoAntesDaPublicacao = document.activeElement as HTMLElement | null;
+    this.planoParaPublicar = plano;
+    setTimeout(() => document.querySelector<HTMLButtonElement>('#cancelar-publicacao button')?.focus());
+  }
+
+  cancelarPublicacao(): void {
+    this.planoParaPublicar = null;
+    this.elementoAtivoAntesDaPublicacao?.focus();
+    this.elementoAtivoAntesDaPublicacao = null;
+  }
+
+  confirmarPublicacao(): void {
+    const plano = this.planoParaPublicar;
+    if (!plano || this.publicando) return;
+    this.cancelarPublicacao();
     this.publicando = true;
     this.erro = '';
     this.mensagem = '';

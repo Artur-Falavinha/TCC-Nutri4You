@@ -387,6 +387,39 @@ describe('DietaComponent', () => {
     component.form.refeicoes[1].itens[0].quantidadeGramas = 200;
     expect(segunda.itens[0].quantidadeGramas).toBe(100);
   });
+  it('publica somente após a confirmação no modal padrão', () => {
+    const rascunho = { ...planoSalvo, vigenciaInicio: '2026-11-05', vigenciaFim: '2026-11-12' };
+    dieta.publicarPlano.and.returnValue(of({ ...rascunho, status: 'PUBLICADO', versao: 1 }));
+    component.planoSelecionado = rascunho;
+    component.tela = 'detalhe';
+    fixture.detectChanges();
+
+    const raiz = fixture.nativeElement as HTMLElement;
+    const publicar = Array.from(raiz.querySelectorAll('button'))
+      .find(botao => botao.textContent?.trim() === 'Publicar')!;
+    publicar.click();
+    fixture.detectChanges();
+
+    const modal = raiz.querySelector('app-paciente-dialog [role="dialog"]')!;
+    expect(modal.textContent).toContain(rascunho.titulo);
+    expect(dieta.publicarPlano).not.toHaveBeenCalled();
+
+    modal.querySelector<HTMLButtonElement>('#cancelar-publicacao button')!.click();
+    fixture.detectChanges();
+    expect(raiz.querySelector('app-paciente-dialog')).toBeNull();
+    expect(dieta.publicarPlano).not.toHaveBeenCalled();
+
+    publicar.click();
+    fixture.detectChanges();
+    const confirmar = Array.from(raiz.querySelectorAll<HTMLButtonElement>('app-paciente-dialog button'))
+      .find(botao => botao.textContent?.trim() === 'Confirmar publicação')!;
+    confirmar.click();
+    fixture.detectChanges();
+
+    expect(dieta.publicarPlano).toHaveBeenCalledOnceWith(paciente.id, rascunho.id, rascunho.versao);
+    expect(raiz.querySelector('app-paciente-dialog')).toBeNull();
+  });
+
   it('exige confirmação para excluir refeições', () => {
     component.abrirNovoRascunho(); component.adicionarRefeicao();
     spyOn(window, 'confirm').and.returnValue(false);
