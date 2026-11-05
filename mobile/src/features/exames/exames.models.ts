@@ -4,6 +4,8 @@ export interface ExamePedido {
   id: number;
   nome: string;
   status: ExameStatus;
+  versao: number;
+  parecer?: string | null;
   descricao?: string | null;
   observacoes?: string | null;
   dataSolicitacao?: string | null;
@@ -17,13 +19,11 @@ export interface ArquivoExameSelecionado {
   nome: string;
   tipo: string;
   tamanhoBytes?: number;
-  conteudoBase64?: string;
+  file?: File;
   uri?: string;
 }
 
 export interface EnviarResultadoExamePayload {
-  arquivoNome: string;
-  arquivoTipo?: string;
-  arquivoConteudoBase64?: string;
-  observacoes?: string;
+  versao: number;
+  arquivo: ArquivoExameSelecionado;
 }

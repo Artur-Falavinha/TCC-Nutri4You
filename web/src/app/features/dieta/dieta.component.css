@@ -118,3 +118,6 @@ fieldset { min-width: 0; padding: 0; border: 0; }
   .food-editor-row > .icon-action { grid-column: 2; grid-row: 1; }
   .grams-field, .food-preview { grid-column: 1 / -1; grid-row: auto; }
 }
+
+.week-days { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 12px; }
+.week-days [aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: -2px; }

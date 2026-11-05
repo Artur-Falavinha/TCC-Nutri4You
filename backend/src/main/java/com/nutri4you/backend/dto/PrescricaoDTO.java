@@ -86,7 +86,11 @@ public final class PrescricaoDTO {
         }
     }
 
-    public record RefeicaoRequest(String nome, LocalTime horario, List<ItemRequest> itens) {}
+    public record RefeicaoRequest(String nome, LocalTime horario, Integer diaSemana, List<ItemRequest> itens) {
+        public RefeicaoRequest(String nome, LocalTime horario, List<ItemRequest> itens) {
+            this(nome, horario, null, itens);
+        }
+    }
 
     public record PlanoRequest(
             String titulo,
@@ -111,6 +115,7 @@ public final class PrescricaoDTO {
             Integer id,
             String nome,
             LocalTime horario,
+            Integer diaSemana,
             List<ItemRefeicaoDTO> itens,
             Nutrientes totais) {}
 

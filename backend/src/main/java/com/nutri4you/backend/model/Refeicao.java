@@ -14,6 +14,7 @@ import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +36,9 @@ public class Refeicao {
 
     @Column(nullable = false)
     private LocalTime horario;
+
+    @Column(name = "dia_semana")
+    private Integer diaSemana;
 
     @OneToMany(mappedBy = "refeicao", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("alimento.id")
@@ -64,6 +68,18 @@ public class Refeicao {
 
     public LocalTime getHorario() {
         return horario;
+    }
+
+    public Integer getDiaSemana() {
+        return diaSemana;
+    }
+
+    public void definirDiaSemana(Integer diaSemana) {
+        this.diaSemana = diaSemana;
+    }
+
+    public boolean previstaEm(LocalDate data) {
+        return diaSemana == null || diaSemana == data.getDayOfWeek().getValue();
     }
 
     public List<ItemRefeicao> getItens() {

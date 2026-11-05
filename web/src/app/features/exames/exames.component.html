@@ -1,0 +1,33 @@
+<header class="page-header"><h1>{{ nomePaciente || 'Paciente' }}</h1><app-patient-tabs [patientId]="patientId" /></header>
+<main class="canvas" [attr.aria-busy]="carregando || salvando">
+  <h2>Exames do paciente</h2>
+  @if (erro) { <p role="alert" class="error">{{ erro }}</p><button type="button" (click)="carregar()" [disabled]="salvando">Recarregar exames</button> }
+  @if (mensagem) { <p role="status">{{ mensagem }}</p> }
+  <form (ngSubmit)="solicitar()"><fieldset [disabled]="salvando || carregando"><legend>Solicitar exame</legend>
+    <label>Nome do exame<input name="nome" [(ngModel)]="nome" required maxlength="150" /></label>
+    <label>Descrição e orientações<textarea name="descricao" [(ngModel)]="descricao" maxlength="5000"></textarea></label>
+    <button type="submit" [disabled]="!nome.trim()">Solicitar exame</button>
+  </fieldset></form>
+  @if (carregando) { <p role="status">Carregando exames...</p> }
+  @for (exame of dados?.itens; track exame.id) {
+    <article><div class="heading"><h3>{{ exame.nome }}</h3><strong>{{ exame.status }}</strong></div>
+      <p>Solicitado em {{ exame.dataSolicitacao | date:'dd/MM/yyyy' }}</p>
+      @if (exame.descricao) { <p>{{ exame.descricao }}</p> }
+      @if (exame.arquivoNome) { <p>{{ exame.arquivoNome }}</p><button type="button" (click)="baixar(exame)">Baixar resultado</button> }
+      @if (exame.parecer) { <h4>Parecer</h4><p>{{ exame.parecer }}</p> }
+      @if (exame.status === 'ENVIADO' && selecionado?.id !== exame.id) {
+        <button type="button" (click)="selecionado = exame; parecer = ''" [disabled]="salvando">Analisar exame</button>
+      }
+      @if (selecionado?.id === exame.id) {
+        <form (ngSubmit)="analisar()"><label>Parecer da análise<textarea name="parecer" [(ngModel)]="parecer" required maxlength="5000" [disabled]="salvando"></textarea></label>
+          <button type="submit" [disabled]="salvando || !parecer.trim()">Registrar análise</button>
+          <button type="button" (click)="selecionado = null" [disabled]="salvando">Cancelar</button>
+        </form>
+      }
+    </article>
+  } @empty { @if (dados && !carregando) { <p>Nenhum exame solicitado.</p> } }
+  @if (dados && dados.totalPaginas > 1) {
+    <nav aria-label="Páginas de exames"><button type="button" (click)="carregar(pagina - 1)" [disabled]="pagina === 0 || carregando">Anterior</button>
+      <span>Página {{ pagina + 1 }} de {{ dados.totalPaginas }}</span><button type="button" (click)="carregar(pagina + 1)" [disabled]="pagina + 1 >= dados.totalPaginas || carregando">Próxima</button></nav>
+  }
+</main>

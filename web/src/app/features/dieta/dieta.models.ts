@@ -54,6 +54,7 @@ export interface Refeicao {
   id: number;
   nome: string;
   horario: string;
+  diaSemana?: number | null;
   itens: ItemRefeicao[];
   totais: Nutrientes;
 }
@@ -87,6 +88,7 @@ export interface PlanoRequest {
   refeicoes: {
     nome: string;
     horario: string;
+    diaSemana?: number | null;
     itens: {
       alimentoId: number;
       quantidadeGramas: number;
@@ -99,6 +101,7 @@ export interface RefeicaoEdicao {
   chave: number;
   nome: string;
   horario: string;
+  diaSemana?: number | null;
   itens: ItemEdicao[];
 }
 

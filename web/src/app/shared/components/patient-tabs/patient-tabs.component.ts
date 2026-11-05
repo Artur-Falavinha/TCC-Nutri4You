@@ -15,6 +15,7 @@ export class PatientTabsComponent {
     { path: 'anamnese', label: 'Anamnese' },
     { path: 'historico', label: 'Histórico' },
     { path: 'consultas', label: 'Consultas' },
-    { path: 'dieta', label: 'Dieta' }
+    { path: 'dieta', label: 'Dieta' },
+    { path: 'exames', label: 'Exames' }
   ];
 }

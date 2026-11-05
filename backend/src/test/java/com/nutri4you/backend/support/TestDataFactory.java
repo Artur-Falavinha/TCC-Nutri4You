@@ -6,8 +6,10 @@ import com.nutri4you.backend.model.Paciente;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 public final class TestDataFactory {
+    private static final ZoneId FUSO_HORARIO = ZoneId.of("America/Sao_Paulo");
 
     private TestDataFactory() {
     }
@@ -47,6 +49,6 @@ public final class TestDataFactory {
     }
 
     public static Consulta consulta(Paciente paciente, Nutricionista nutricionista) {
-        return new Consulta(paciente, nutricionista, LocalDateTime.now());
+        return new Consulta(paciente, nutricionista, LocalDateTime.now(FUSO_HORARIO));
     }
 }

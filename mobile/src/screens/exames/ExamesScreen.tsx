@@ -1,5 +1,6 @@
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { DragEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,9 +26,11 @@ import {
   ExamePedido
 } from '../../features/exames/exames.models';
 import {
+  baixarResultadoExame,
   enviarResultadoExame,
   inferMimeTypeFromFileName,
   listarMeusExames,
+  prepararArquivoWeb,
   removerResultadoExame,
   selecionarArquivoDispositivo,
   validarArquivoExame
@@ -310,6 +313,20 @@ export function ExamesScreen({ navigation }: Props) {
     setUploadError('');
   };
 
+  const baixarExame = async (exame: ExamePedido) => {
+    try {
+      const blob = await baixarResultadoExame(exame.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = exame.arquivoNome || `exame-${exame.id}`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (failure) {
+      setError(extractErrorMessage(failure, 'Não foi possível baixar o resultado.'));
+    }
+  };
+
   const handleRemoverExameEnviado = async (exame: ExamePedido) => {
     if (removingId !== null || uploading) {
       return;
@@ -317,7 +334,7 @@ export function ExamesScreen({ navigation }: Props) {
     setRemovingId(exame.id);
     setUploadError('');
     try {
-      const atualizado = await removerResultadoExame(exame.id);
+      const atualizado = await removerResultadoExame(exame.id, exame.versao);
       setExames((prev) =>
         prev.map((item) =>
           item.id === exame.id
@@ -374,10 +391,12 @@ export function ExamesScreen({ navigation }: Props) {
     setUploadError('');
     try {
       const atualizado = await enviarResultadoExame(selectedExame.id, {
-        arquivoNome: selectedFile.nome.trim(),
-        arquivoTipo:
-          selectedFile.tipo || inferMimeTypeFromFileName(selectedFile.nome),
-        arquivoConteudoBase64: selectedFile.conteudoBase64
+        versao: selectedExame.versao,
+        arquivo: {
+          ...selectedFile,
+          nome: selectedFile.nome.trim(),
+          tipo: selectedFile.tipo || inferMimeTypeFromFileName(selectedFile.nome)
+        }
       });
 
       setExames((prev) =>
@@ -408,36 +427,32 @@ export function ExamesScreen({ navigation }: Props) {
     }
   };
 
-  const webDropProps =
-    Platform.OS === 'web'
-      ? ({
-          onDragOver: (event: { preventDefault?: () => void }) => {
-            event.preventDefault?.();
-            setIsDraggingOver(true);
-          },
-          onDragLeave: (event: { preventDefault?: () => void }) => {
-            event.preventDefault?.();
-            setIsDraggingOver(false);
-          },
-          onDrop: (event: {
-            preventDefault?: () => void;
-            dataTransfer?: { files?: FileList };
-          }) => {
-            event.preventDefault?.();
-            setIsDraggingOver(false);
-            const droppedFile = event.dataTransfer?.files?.[0];
-            if (!droppedFile) {
-              return;
-            }
-            aplicarArquivoEscolhido({
-              nome: droppedFile.name,
-              tipo:
-                droppedFile.type || inferMimeTypeFromFileName(droppedFile.name),
-              tamanhoBytes: droppedFile.size
-            });
-          }
-        } as Record<string, unknown>)
-      : {};
+  const soltarArquivo = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingOver(false);
+    const arquivo = event.dataTransfer.files[0];
+    if (arquivo && !uploading) {
+      aplicarArquivoEscolhido(prepararArquivoWeb(arquivo));
+    }
+  };
+
+  const uploadArea = (
+    <Pressable
+      style={[styles.uploadDropArea, isDraggingOver && styles.uploadDropAreaDragging]}
+      onPress={() => void selecionarArquivo()}
+      accessibilityRole="button"
+      accessibilityLabel="Clique para selecionar arquivo PDF ou imagem do exame"
+      testID="exame-upload-select-area"
+    >
+      <View style={styles.uploadIconCircle}>
+        <CloudUploadIcon />
+      </View>
+      <Text style={styles.uploadPromptText}>Clique para selecionar</Text>
+      <Text style={styles.uploadFormatHint}>
+        Formatos aceitos: PDF, PNG ou JPEG (máx. 5 MiB)
+      </Text>
+    </Pressable>
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
@@ -501,7 +516,7 @@ export function ExamesScreen({ navigation }: Props) {
             <ActivityIndicator color={colors.brand} />
             <Text style={styles.stateBodyText}>Carregando pedidos de exames...</Text>
           </View>
-        ) : !error && exames.length === 0 ? (
+        ) : error && exames.length === 0 ? null : exames.length === 0 ? (
           <View style={styles.stateCard} testID="exames-empty">
             <Text style={styles.stateTitle}>Nenhum pedido de exame</Text>
             <Text style={styles.stateBodyText}>
@@ -512,7 +527,7 @@ export function ExamesScreen({ navigation }: Props) {
           <View style={styles.cardsList} testID="exames-cards-list">
             {exames.map((exame, index) => {
               const isPending = exame.status === 'PENDENTE';
-              const statusLabel = isPending ? 'PENDENTE' : 'ENVIADO';
+              const statusLabel = exame.status;
               const isRemovingThis = removingId === exame.id;
 
               return (
@@ -542,6 +557,7 @@ export function ExamesScreen({ navigation }: Props) {
                         {statusLabel}
                       </Text>
                     </View>
+                    {exame.parecer ? <Text style={styles.fileCaption}>Parecer: {exame.parecer}</Text> : null}
                     {exame.arquivoNome ? (
                       <Text style={styles.fileCaption} numberOfLines={1}>
                         Arquivo: {exame.arquivoNome}
@@ -550,7 +566,13 @@ export function ExamesScreen({ navigation }: Props) {
                   </View>
 
                   <View style={styles.cardActionsRow}>
-                    {!isPending ? (
+                    {Platform.OS === 'web' && exame.arquivoNome ? (
+                      <Pressable onPress={() => void baixarExame(exame)} accessibilityRole="button"
+                        accessibilityLabel={`Baixar resultado de ${exame.nome}`}>
+                        <Text style={styles.fileCaption}>Baixar resultado</Text>
+                      </Pressable>
+                    ) : null}
+                    {exame.status === 'ENVIADO' ? (
                       <Pressable
                         style={styles.cardRemoveButton}
                         onPress={() => void handleRemoverExameEnviado(exame)}
@@ -572,10 +594,11 @@ export function ExamesScreen({ navigation }: Props) {
                         styles.cardActionButton,
                         isPending ? styles.cardActionButtonPending : styles.cardActionButtonSent
                       ]}
+                      disabled={exame.status !== 'PENDENTE' && exame.status !== 'ENVIADO'}
                       onPress={() => abrirModalEnvio(exame)}
                       accessibilityRole="button"
                       accessibilityLabel={
-                        isPending
+                        exame.status === 'ANALISADO' ? `Resultado analisado de ${exame.nome}` : isPending
                           ? `Enviar resultado de ${exame.nome}`
                           : `Substituir ou gerenciar resultado de ${exame.nome}`
                       }
@@ -630,25 +653,18 @@ export function ExamesScreen({ navigation }: Props) {
               </View>
             ) : null}
 
-            <Pressable
-              style={[
-                styles.uploadDropArea,
-                isDraggingOver && styles.uploadDropAreaDragging
-              ]}
-              onPress={() => void selecionarArquivo()}
-              accessibilityRole="button"
-              accessibilityLabel="Clique para selecionar arquivo PDF ou imagem do exame"
-              testID="exame-upload-select-area"
-              {...webDropProps}
-            >
-              <View style={styles.uploadIconCircle}>
-                <CloudUploadIcon />
-              </View>
-              <Text style={styles.uploadPromptText}>Clique para selecionar</Text>
-              <Text style={styles.uploadFormatHint}>
-                Formatos aceitos: PDF, PNG, JPG ou WEBP (máx. 10 MB)
-              </Text>
-            </Pressable>
+            {Platform.OS === 'web' ? (
+              <div
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setIsDraggingOver(!uploading);
+                }}
+                onDragLeave={() => setIsDraggingOver(false)}
+                onDrop={soltarArquivo}
+              >
+                {uploadArea}
+              </div>
+            ) : uploadArea}
 
             {selectedFile ? (
               <View style={styles.selectedFileCard} testID="exame-selected-file-pill">

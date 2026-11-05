@@ -65,23 +65,23 @@ function sampleExames(): ExamePedido[] {
     {
       id: 1,
       nome: 'Hemograma Completo',
-      status: 'PENDENTE'
+      versao: 0, status: 'PENDENTE'
     },
     {
       id: 2,
       nome: 'Perfil Lipídico',
-      status: 'ENVIADO',
+      versao: 1, status: 'ENVIADO',
       arquivoNome: 'resultado-perfil-lipidico.pdf'
     },
     {
       id: 3,
       nome: 'Glicemia de Jejum',
-      status: 'PENDENTE'
+      versao: 0, status: 'PENDENTE'
     },
     {
       id: 4,
       nome: 'Vitamina D & B12',
-      status: 'ENVIADO',
+      versao: 1, status: 'ENVIADO',
       arquivoNome: 'resultado-vitamina-d.pdf'
     }
   ];
@@ -102,7 +102,7 @@ describe('ExamesScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('valida formatos permitidos (PDF e imagens até 10 MB) em validarArquivoExame', () => {
+  it('valida formatos permitidos (PDF, PNG e JPEG até 5 MiB) em validarArquivoExame', () => {
     expect(
       validarArquivoExame({
         nome: 'laudo-hemograma.pdf',
@@ -131,9 +131,9 @@ describe('ExamesScreen', () => {
       validarArquivoExame({
         nome: 'laudo-pesado.pdf',
         tipo: 'application/pdf',
-        tamanhoBytes: 15 * 1024 * 1024
+        tamanhoBytes: 6 * 1024 * 1024
       })
-    ).toContain('excede o limite máximo de 10 MB');
+    ).toContain('até 5 MiB');
   });
 
   it('exibe a lista de pedidos de exames com status PENDENTE e ENVIADO conforme o Figma', async () => {
@@ -169,7 +169,7 @@ describe('ExamesScreen', () => {
     (enviarResultadoExame as jest.Mock).mockResolvedValueOnce({
       id: 1,
       nome: 'Hemograma Completo',
-      status: 'ENVIADO',
+      versao: 1, status: 'ENVIADO',
       arquivoNome: 'resultado-hemograma-completo.pdf'
     });
     const navigation = { navigate: jest.fn(), dispatch: jest.fn() };
@@ -212,7 +212,7 @@ describe('ExamesScreen', () => {
     });
 
     expect(renderedText(tree)).toContain(
-      'Formato inválido. Selecione apenas arquivos PDF ou imagem (PNG, JPG, JPEG, WEBP).'
+      'Formato inválido. Selecione PDF, PNG ou JPEG.'
     );
 
     // Seleciona um PDF válido do dispositivo
@@ -220,7 +220,7 @@ describe('ExamesScreen', () => {
       nome: 'resultado-hemograma-completo.pdf',
       tipo: 'application/pdf',
       tamanhoBytes: 245760,
-      conteudoBase64: 'JVBERi0xLjQK'
+      uri: 'file:///resultado.pdf'
     });
 
     await act(async () => {
@@ -244,7 +244,7 @@ describe('ExamesScreen', () => {
       nome: 'resultado-hemograma-completo.pdf',
       tipo: 'application/pdf',
       tamanhoBytes: 245760,
-      conteudoBase64: 'JVBERi0xLjQK'
+      uri: 'file:///resultado.pdf'
     });
 
     await act(async () => {
@@ -256,9 +256,8 @@ describe('ExamesScreen', () => {
     });
 
     expect(enviarResultadoExame).toHaveBeenCalledWith(1, {
-      arquivoNome: 'resultado-hemograma-completo.pdf',
-      arquivoTipo: 'application/pdf',
-      arquivoConteudoBase64: 'JVBERi0xLjQK'
+      versao: 0,
+      arquivo: { nome: 'resultado-hemograma-completo.pdf', tipo: 'application/pdf', tamanhoBytes: 245760, uri: 'file:///resultado.pdf' }
     });
     expect(renderedText(tree)).toContain(
       'Resultado de "Hemograma Completo" enviado com sucesso.'
@@ -275,7 +274,7 @@ describe('ExamesScreen', () => {
     (removerResultadoExame as jest.Mock).mockResolvedValueOnce({
       id: 2,
       nome: 'Perfil Lipídico',
-      status: 'PENDENTE',
+      versao: 0, status: 'PENDENTE',
       arquivoNome: null
     });
     const navigation = { navigate: jest.fn(), dispatch: jest.fn() };
@@ -296,7 +295,7 @@ describe('ExamesScreen', () => {
       await removeBtn.props.onPress();
     });
 
-    expect(removerResultadoExame).toHaveBeenCalledWith(2);
+    expect(removerResultadoExame).toHaveBeenCalledWith(2, 1);
     expect(renderedText(tree)).toContain(
       'Envio de "Perfil Lipídico" removido. O exame voltou para PENDENTE.'
     );

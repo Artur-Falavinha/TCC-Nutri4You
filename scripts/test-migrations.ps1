@@ -17,6 +17,8 @@ $v8 = Get-Content (Join-Path $migrations 'V8__macronutrientes_consumo_diario.sql
 $v9 = Get-Content (Join-Path $migrations 'V9__catalogo_taco.sql') -Raw
 $v10 = Get-Content (Join-Path $migrations 'V10__prescricao_alimentar.sql') -Raw
 $v11 = Get-Content (Join-Path $migrations 'V11__fibras_e_substitutos_prescritos.sql') -Raw
+$v14 = Get-Content (Join-Path $migrations 'V14__refeicoes_semanais.sql') -Raw
+$v15 = Get-Content (Join-Path $migrations 'V15__exames_metadados_seguranca.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
 
 # Every scenario uses a new schema inside a transaction, rolled back even on
@@ -104,6 +106,9 @@ CREATE TEMP TABLE snapshot_v10 AS SELECT * FROM Item_Refeicao;
             $upgradeAfter = if ($scenario -eq 'upgrade-v10') { @'
 DO $$
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM Refeicao WHERE id_refeicao = 900001 AND dia_semana IS NULL) THEN
+        RAISE EXCEPTION 'Refeicao legada deve permanecer diaria';
+    END IF;
     IF EXISTS (SELECT 1 FROM snapshot_v10 antigo JOIN Item_Refeicao atual USING (id_refeicao, id_alimento)
         WHERE antigo.quantidade_gramas IS DISTINCT FROM atual.quantidade_gramas
            OR antigo.kcal_100g IS DISTINCT FROM atual.kcal_100g
@@ -197,6 +202,8 @@ END;
 `$`$;
 $upgradeBefore
 $v11
+$v14
+$v15
 $upgradeAfter
 DO `$`$
 BEGIN

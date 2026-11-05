@@ -8,7 +8,8 @@ import { Food, MealPlan, MealPlanItem, Nutrients } from '../../../features/dieta
 import { MealPlanScreen } from '../MealPlanScreen';
 
 jest.mock('../../../features/dieta/dieta.service', () => ({
-  getActiveMealPlan: jest.fn()
+  getActiveMealPlan: jest.fn(),
+  getHydrationProgress: jest.fn().mockResolvedValue({ data: '2026-11-05', consumidoMl: 0, metaMl: 2500 })
 }));
 
 jest.mock('../../../core/auth/auth.service', () => ({ logout: jest.fn() }));
@@ -118,7 +119,6 @@ describe('MealPlanScreen', () => {
 
     expect(output).toContain('Fibras');
     expect(output).toContain('30,00 g');
-    expect(output).toContain('28,00 g');
     expect(output).toContain('7,50 g');
     expect(output).toContain('Aveia');
     expect(output).toContain('4,20 g');
@@ -156,7 +156,6 @@ describe('MealPlanScreen', () => {
 
   it('renderiza cards individuais por refeição, seletor de dias e barras de progresso das metas diárias', async () => {
     const plan = mealPlan();
-    plan.totais = { kcal: 220, proteinas: 8, carboidratos: 25, gorduras: 4, fibras: 28 };
     const tree = await renderPlan(plan);
     const output = renderedText(tree);
 

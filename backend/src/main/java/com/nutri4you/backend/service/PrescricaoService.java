@@ -155,8 +155,10 @@ public class PrescricaoService {
         PlanoAlimentar plano = planoAtivo(titular);
         if (plano == null || !plano.getId().equals(request.planoId()))
             throw new PlanoNaoEncontradoException();
+        LocalDate hoje = LocalDate.now(FUSO);
         Alimento alimento =
                 plano.getRefeicoes().stream()
+                        .filter(refeicao -> ocorrencias(plano, refeicao, hoje, request.dias()) > 0)
                         .flatMap(r -> r.getItens().stream())
                         .map(ItemRefeicao::getAlimento)
                         .filter(a -> a.getId().equals(alimentoId))
@@ -210,8 +212,8 @@ public class PrescricaoService {
                     "O fim da vigência deve ser igual ou posterior ao início.");
         }
         validarMetas(request.metas());
-        if (request.refeicoes() == null || request.refeicoes().size() > 20)
-            throw new IllegalArgumentException("Informe de 0 a 20 refeições.");
+        if (request.refeicoes() == null || request.refeicoes().size() > 140)
+            throw new IllegalArgumentException("Informe de 0 a 140 refeições.");
         List<Refeicao> novas =
                 request.refeicoes().stream().map(r -> montarRefeicao(plano, r)).toList();
         plano.editar(
@@ -227,6 +229,9 @@ public class PrescricaoService {
     private Refeicao montarRefeicao(PlanoAlimentar plano, RefeicaoRequest request) {
         if (request == null) throw new IllegalArgumentException("Refeição inválida.");
         validarTexto(request.nome(), 100, "Nome da refeição");
+        if (request.diaSemana() != null && (request.diaSemana() < 1 || request.diaSemana() > 7)) {
+            throw new IllegalArgumentException("Dia da semana deve estar entre 1 e 7.");
+        }
         if (request.horario() == null
                 || request.horario().getSecond() != 0
                 || request.horario().getNano() != 0) {
@@ -235,6 +240,7 @@ public class PrescricaoService {
         if (request.itens() == null || request.itens().size() > 100)
             throw new IllegalArgumentException("Informe de 0 a 100 alimentos por refeição.");
         Refeicao refeicao = new Refeicao(plano, request.nome().trim(), request.horario());
+        refeicao.definirDiaSemana(request.diaSemana());
         Set<Integer> ids = new HashSet<>();
         for (ItemRequest item : request.itens()) {
             if (item == null || item.alimentoId() == null || !ids.add(item.alimentoId()))
@@ -324,6 +330,14 @@ public class PrescricaoService {
         return planos.sobrepostos(paciente.getId(), hoje, hoje).stream().findFirst().orElse(null);
     }
 
+    private long ocorrencias(PlanoAlimentar plano, Refeicao refeicao, LocalDate inicio, int dias) {
+        return inicio.datesUntil(inicio.plusDays(dias))
+                .filter(data -> plano.getVigenciaInicio() == null || !data.isBefore(plano.getVigenciaInicio()))
+                .filter(data -> plano.getVigenciaFim() == null || !data.isAfter(plano.getVigenciaFim()))
+                .filter(refeicao::previstaEm)
+                .count();
+    }
+
     private void validarDias(int dias) {
         if (dias < 1 || dias > 30)
             throw new IllegalArgumentException(
@@ -349,6 +363,7 @@ public class PrescricaoService {
                                                 r.getId(),
                                                 r.getNome(),
                                                 r.getHorario(),
+                                                r.getDiaSemana(),
                                                 r.getItens().stream()
                                                         .map(
                                                                 i ->
@@ -369,8 +384,10 @@ public class PrescricaoService {
                                                         .toList(),
                                                 totalRefeicao(r).arredondar()))
                         .toList();
+        LocalDate hoje = LocalDate.now(FUSO);
         Nutrientes totais =
                 plano.getRefeicoes().stream()
+                        .filter(refeicao -> refeicao.previstaEm(hoje))
                         .map(this::totalRefeicao)
                         .reduce(Nutrientes.zero(), Nutrientes::somar)
                         .arredondar();
@@ -417,22 +434,19 @@ public class PrescricaoService {
     private ListaComprasDTO respostaCompras(PlanoAlimentar plano, int dias, Map<Integer, Boolean> marcacoes) {
         Map<Integer, BigDecimal> gramas = new LinkedHashMap<>();
         Map<Integer, Alimento> catalogo = new HashMap<>();
-        plano.getRefeicoes()
-                .forEach(
-                        r ->
-                                r.getItens()
-                                        .forEach(
-                                                i -> {
-                                                    Integer id = i.getAlimento().getId();
-                                                    catalogo.put(id, i.getAlimento());
-                                                    gramas.merge(
-                                                            id,
-                                                            i.getQuantidadeGramas()
-                                                                    .multiply(
-                                                                            BigDecimal.valueOf(
-                                                                                    dias)),
-                                                            BigDecimal::add);
-                                                }));
+        LocalDate hoje = LocalDate.now(FUSO);
+        for (Refeicao refeicao : plano.getRefeicoes()) {
+            long diasPrevistos = ocorrencias(plano, refeicao, hoje, dias);
+            if (diasPrevistos == 0) continue;
+
+            for (ItemRefeicao item : refeicao.getItens()) {
+                Alimento alimento = item.getAlimento();
+                catalogo.put(alimento.getId(), alimento);
+                gramas.merge(alimento.getId(),
+                        item.getQuantidadeGramas().multiply(BigDecimal.valueOf(diasPrevistos)),
+                        BigDecimal::add);
+            }
+        }
         List<ItemCompraDTO> itens =
                 gramas.entrySet().stream()
                         .map(
