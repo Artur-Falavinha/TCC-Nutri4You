@@ -247,7 +247,7 @@
         </section>
 
         <section class="form-section" aria-labelledby="meals-form-title">
-          <div class="section-heading"><div><h3 id="meals-form-title">Refeições diárias</h3><p class="section-help">Esta lista se repete diariamente durante a vigência.</p></div>
+          <div class="section-heading"><div><h3 id="meals-form-title">Refeições de {{ dias[dia - 1] }}</h3><p class="section-help">Refeições de planos diários anteriores aparecem em todos os dias.</p></div>
             <div class="actions">
               <button type="button" class="action secondary" (click)="colarRefeicao()" [disabled]="!podeColarRefeicao"><i class="ph ph-copy" aria-hidden="true"></i>Colar refeição</button>
               <button type="button" class="action secondary" (click)="adicionarRefeicao()" [disabled]="form.refeicoes.length >= 140"><i class="ph ph-plus" aria-hidden="true"></i>Adicionar refeição</button>
@@ -384,7 +384,7 @@
         </div>
         <button type="button" class="icon-action" aria-label="Fechar prévia da lista de compras" (click)="fecharPreviaListaCompras()"><i class="ph ph-x" aria-hidden="true"></i></button>
       </header>
-      <p id="shopping-preview-help" class="section-help">A lista usa somente os alimentos principais. As quantidades diárias são multiplicadas pelos dias escolhidos; substitutos são informativos e não entram neste cálculo. Esta visualização não altera as marcações do paciente.</p>
+      <p id="shopping-preview-help" class="section-help">A lista usa somente os alimentos principais. As quantidades consideram as refeições previstas nas datas escolhidas dentro da vigência; substitutos são informativos e não entram neste cálculo. Esta visualização não altera as marcações do paciente.</p>
       <div class="shopping-preview__controls">
         <label class="field" for="dias-lista-compras"><span>Período da prévia</span>
           <span class="input-unit"><input id="dias-lista-compras" name="dias-lista-compras" type="number" min="1" max="30" step="1" inputmode="numeric" [ngModelOptions]="{ standalone: true }" [(ngModel)]="diasListaCompras" [attr.aria-invalid]="!periodoListaComprasValido" /><span>dias</span></span>
