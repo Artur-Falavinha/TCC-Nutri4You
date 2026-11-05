@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import com.nutri4you.backend.dto.ExameResponse;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockMultipartFile;
@@ -22,6 +23,7 @@ import static org.assertj.core.api.Assertions.*;
 @Transactional
 class ExameServiceTest {
     @Autowired ExameService service;
+    @Autowired EntityManager entityManager;
     @Autowired NutricionistaRepository nutricionistas;
     @Autowired PacienteRepository pacientes;
     @Autowired RelacaoClinicaRepository relacoes;
@@ -64,6 +66,24 @@ class ExameServiceTest {
         assertThatThrownBy(() -> service.enviar(paciente, e.id(), analisado.versao(), pdf(30))).isInstanceOf(IllegalArgumentException.class);
         assertThat(service.listar(paciente, 0).itens().getFirst().parecer()).isEqualTo("Revisado");
     }
+    @Test
+    void listaEEntregaArquivoLegadoSemMetadados() throws java.io.IOException {
+        var exame = pedido();
+        service.enviar(paciente, exame.id(), exame.versao(), pdf(20));
+        entityManager.createNativeQuery("""
+                update exame set arquivo_nome = null, arquivo_tipo = null, arquivo_tamanho = null
+                where id_exame = :id
+                """).setParameter("id", exame.id()).executeUpdate();
+        entityManager.clear();
+
+        var listado = service.listar(paciente, 0).itens().getFirst();
+        assertThat(listado.possuiArquivo()).isTrue();
+        assertThat(listado.arquivoNome()).isNull();
+        var arquivo = service.arquivo(paciente, exame.id());
+        assertThat(arquivo.tipo()).isEqualTo("application/octet-stream");
+        assertThat(arquivo.dados()).containsExactly(pdf(20).getBytes());
+    }
+
     @Test void arquivoDeOutroPacienteNaoPodeSerLidoOuAlterado() {
         var e = pedido();
         var outro = pacientes.save(TestDataFactory.outroPaciente(encoder));

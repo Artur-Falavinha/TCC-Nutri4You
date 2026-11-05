@@ -10,6 +10,7 @@ export interface ExamePedido {
   observacoes?: string | null;
   dataSolicitacao?: string | null;
   dataEnvio?: string | null;
+  possuiArquivo: boolean;
   arquivoNome?: string | null;
   arquivoUrl?: string | null;
   nutricionistaNome?: string | null;

@@ -566,7 +566,7 @@ export function ExamesScreen({ navigation }: Props) {
                   </View>
 
                   <View style={styles.cardActionsRow}>
-                    {Platform.OS === 'web' && exame.arquivoNome ? (
+                    {Platform.OS === 'web' && exame.possuiArquivo ? (
                       <Pressable onPress={() => void baixarExame(exame)} accessibilityRole="button"
                         accessibilityLabel={`Baixar resultado de ${exame.nome}`}>
                         <Text style={styles.fileCaption}>Baixar resultado</Text>

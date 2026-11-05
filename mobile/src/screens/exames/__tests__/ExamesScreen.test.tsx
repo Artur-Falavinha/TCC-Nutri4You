@@ -65,23 +65,23 @@ function sampleExames(): ExamePedido[] {
     {
       id: 1,
       nome: 'Hemograma Completo',
-      versao: 0, status: 'PENDENTE'
+      versao: 0, status: 'PENDENTE', possuiArquivo: false
     },
     {
       id: 2,
       nome: 'Perfil Lipídico',
-      versao: 1, status: 'ENVIADO',
+      versao: 1, status: 'ENVIADO', possuiArquivo: true,
       arquivoNome: 'resultado-perfil-lipidico.pdf'
     },
     {
       id: 3,
       nome: 'Glicemia de Jejum',
-      versao: 0, status: 'PENDENTE'
+      versao: 0, status: 'PENDENTE', possuiArquivo: false
     },
     {
       id: 4,
       nome: 'Vitamina D & B12',
-      versao: 1, status: 'ENVIADO',
+      versao: 1, status: 'ENVIADO', possuiArquivo: true,
       arquivoNome: 'resultado-vitamina-d.pdf'
     }
   ];
@@ -169,7 +169,7 @@ describe('ExamesScreen', () => {
     (enviarResultadoExame as jest.Mock).mockResolvedValueOnce({
       id: 1,
       nome: 'Hemograma Completo',
-      versao: 1, status: 'ENVIADO',
+      versao: 1, status: 'ENVIADO', possuiArquivo: true,
       arquivoNome: 'resultado-hemograma-completo.pdf'
     });
     const navigation = { navigate: jest.fn(), dispatch: jest.fn() };
@@ -274,7 +274,7 @@ describe('ExamesScreen', () => {
     (removerResultadoExame as jest.Mock).mockResolvedValueOnce({
       id: 2,
       nome: 'Perfil Lipídico',
-      versao: 0, status: 'PENDENTE',
+      versao: 0, status: 'PENDENTE', possuiArquivo: false,
       arquivoNome: null
     });
     const navigation = { navigate: jest.fn(), dispatch: jest.fn() };
