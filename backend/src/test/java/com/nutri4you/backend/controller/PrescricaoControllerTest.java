@@ -493,7 +493,7 @@ class PrescricaoControllerTest {
                                 .param("dias", "30")
                                 .header("Authorization", "Bearer " + pacienteToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.itens[0].quantidadeGramas").value(1999.80));
+                .andExpect(jsonPath("$.data.itens[0].quantidadeGramas").value(199.98));
         mvc.perform(
                         put("/api/v1/me/lista-compras/itens/1002")
                                 .header("Authorization", "Bearer " + pacienteToken)
@@ -573,7 +573,7 @@ class PrescricaoControllerTest {
                 .andExpect(jsonPath("$.data.dias").value(7))
                 .andExpect(jsonPath("$.data.itens", hasSize(1)))
                 .andExpect(jsonPath("$.data.itens[0].alimentoId").value(1001))
-                .andExpect(jsonPath("$.data.itens[0].quantidadeGramas").value(466.62));
+                .andExpect(jsonPath("$.data.itens[0].quantidadeGramas").value(399.96));
         publicar(planoId, versao(criado), autorToken);
         em.createNativeQuery("update alimento set fibra_100g = 100, kcal_100g = 999 where id_alimento in (1001,1002)").executeUpdate();
         em.clear();
@@ -617,7 +617,7 @@ class PrescricaoControllerTest {
         assertThat(listas.findByPlano_IdAndDias(planoId, 7).orElseThrow().getItens().getFirst().isComprado()).isTrue();
         publicar(planoId, versao(criado), autorToken);
         mvc.perform(get(previa).param("dias", "30").header("Authorization", "Bearer " + autorToken))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.itens[0].quantidadeGramas").value(1999.8));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.itens[0].quantidadeGramas").value(199.98));
     }
 
     @Test

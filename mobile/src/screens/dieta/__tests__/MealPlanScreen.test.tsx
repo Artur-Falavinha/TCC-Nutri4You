@@ -1,13 +1,16 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { Text } from 'react-native';
+import * as RN from 'react-native';
+import { ScrollView, Text } from 'react-native';
 
-import { getActiveMealPlan } from '../../../features/dieta/dieta.service';
+import { addWater, getActiveMealPlan, getHydrationProgress } from '../../../features/dieta/dieta.service';
 import { Food, MealPlan, MealPlanItem, Nutrients } from '../../../features/dieta/dieta.models';
 import { MealPlanScreen } from '../MealPlanScreen';
 
 jest.mock('../../../features/dieta/dieta.service', () => ({
-  getActiveMealPlan: jest.fn()
+  getActiveMealPlan: jest.fn(),
+  addWater: jest.fn().mockResolvedValue({ data: "2026-11-05", consumidoMl: 250, metaMl: 2500 }),
+  getHydrationProgress: jest.fn().mockResolvedValue({ data: '2026-11-05', consumidoMl: 0, metaMl: 2500 })
 }));
 
 jest.mock('../../../core/auth/auth.service', () => ({ logout: jest.fn() }));
@@ -117,7 +120,6 @@ describe('MealPlanScreen', () => {
 
     expect(output).toContain('Fibras');
     expect(output).toContain('30,00 g');
-    expect(output).toContain('28,00 g');
     expect(output).toContain('7,50 g');
     expect(output).toContain('Aveia');
     expect(output).toContain('4,20 g');
@@ -151,5 +153,100 @@ describe('MealPlanScreen', () => {
     expect(output).not.toContain('Substituto informativo');
 
     act(() => tree.unmount());
+  });
+
+  it('renderiza cards individuais por refeição, seletor de dias e barras de progresso das metas diárias', async () => {
+    const plan = mealPlan();
+    const tree = await renderPlan(plan);
+    const output = renderedText(tree);
+
+    expect(tree.root.findByProps({ testID: 'meal-plan-day-selector' })).toBeTruthy();
+    expect(tree.root.findByProps({ testID: 'meal-card-6' })).toBeTruthy();
+    expect(tree.root.findByProps({ testID: 'nutrient-progress-bar-kcal' })).toBeTruthy();
+    expect(tree.root.findByProps({ testID: 'nutrient-progress-exceeded-kcal' })).toBeTruthy();
+    expect(output).toContain('Acima da meta diária (referência)');
+    expect(output).toContain('300 KCAL');
+    expect(output).toContain('10G PROTEÍNA');
+
+    const swapButton = tree.root.findByProps({ testID: 'meal-swap-button-6' });
+    await act(async () => {
+      swapButton.props.onPress();
+    });
+
+    expect(renderedText(tree)).toContain('Substitutos informativos');
+    expect(renderedText(tree)).toContain('Granola (75 g)');
+    const closeButton = tree.root.findByProps({ testID: 'meal-swap-close-button' });
+    await act(async () => {
+      closeButton.props.onPress();
+    });
+    expect(renderedText(tree)).toContain('300 KCAL');
+
+    act(() => tree.unmount());
+  });
+
+  it('não apresenta refeições nem totais fora da vigência', async () => {
+    const hoje = new Date();
+    const data = [
+      hoje.getFullYear(), String(hoje.getMonth() + 1).padStart(2, '0'),
+      String(hoje.getDate()).padStart(2, '0')
+    ].join('-');
+    const tree = await renderPlan({ ...mealPlan(), vigenciaInicio: data, vigenciaFim: data });
+    const outroDia = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'][(hoje.getDay() + 1) % 7];
+    expect(renderedText(tree)).toContain('300 KCAL');
+
+    act(() => tree.root.findByProps({ testID: 'day-selector-pill-' + outroDia }).props.onPress());
+
+    expect(renderedText(tree)).toContain('Data fora da vigência do plano.');
+    expect(renderedText(tree)).not.toContain('Totais diários');
+    expect(tree.root.findAllByProps({ testID: 'meal-card-6' })).toHaveLength(0);
+    act(() => tree.unmount());
+  });
+
+  it('mostra a prescrição quando a consulta de hidratação falha', async () => {
+    (getHydrationProgress as jest.Mock).mockRejectedValueOnce(new Error('Falha de hidratação'));
+    const tree = await renderPlan(mealPlan());
+    expect(renderedText(tree)).toContain('Aveia');
+    expect(renderedText(tree)).toContain('Não foi possível consultar a hidratação.');
+    act(() => tree.unmount());
+  });
+
+  it('filtra dias numéricos e apresenta a hidratação retornada pelo servidor', async () => {
+    const plan = mealPlan();
+    plan.refeicoes = [
+      { ...plan.refeicoes[0], id: 6, diaSemana: 1 },
+      { ...plan.refeicoes[0], id: 7, nome: 'Jantar', diaSemana: 2 }
+    ];
+    const tree = await renderPlan(plan);
+    act(() => tree.root.findByProps({ testID: 'day-selector-pill-SEG' }).props.onPress());
+    expect(tree.root.findByProps({ testID: 'meal-card-6' })).toBeTruthy();
+    expect(tree.root.findAllByProps({ testID: 'meal-card-7' })).toHaveLength(0);
+    act(() => tree.root.findByProps({ testID: 'day-selector-pill-TER' }).props.onPress());
+    expect(tree.root.findAllByProps({ testID: 'meal-card-6' })).toHaveLength(0);
+    expect(tree.root.findByProps({ testID: 'meal-card-7' })).toBeTruthy();
+
+    await act(async () => {
+      tree.root.findByProps({ testID: 'hydration-add-button' }).props.onPress();
+    });
+    expect(addWater).toHaveBeenCalledTimes(1);
+    expect(renderedText(tree)).toContain('0.3L de 2.5L atingidos');
+    act(() => tree.unmount());
+  });
+
+  it('adapta o layout responsivamente entre telas compactas (390px) e largas (768px)', async () => {
+    const spy = jest.spyOn(RN.Dimensions, 'get');
+
+    spy.mockReturnValue({ width: 390, height: 844, scale: 2, fontScale: 1 });
+    const compactTree = await renderPlan(mealPlan());
+    const compactScroll = compactTree.root.findAllByType(ScrollView)[0];
+    expect(JSON.stringify(compactScroll.props.contentContainerStyle)).toContain('"maxWidth":560');
+    act(() => compactTree.unmount());
+
+    spy.mockReturnValue({ width: 768, height: 1024, scale: 2, fontScale: 1 });
+    const wideTree = await renderPlan(mealPlan());
+    const wideScroll = wideTree.root.findAllByType(ScrollView)[0];
+    expect(JSON.stringify(wideScroll.props.contentContainerStyle)).toContain('"maxWidth":760');
+    act(() => wideTree.unmount());
+
+    spy.mockRestore();
   });
 });

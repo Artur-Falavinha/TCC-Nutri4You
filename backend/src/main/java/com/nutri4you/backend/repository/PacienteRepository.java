@@ -21,6 +21,10 @@ import java.util.Optional;
 
 
 public interface PacienteRepository extends JpaRepository<Paciente, Integer> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Paciente p where p.id = :id")
+    Optional<Paciente> findByIdForUpdate(@Param("id") Integer id);
+
 
 
 

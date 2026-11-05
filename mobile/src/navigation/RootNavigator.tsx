@@ -23,6 +23,7 @@ import { AppointmentsScreen } from '../screens/appointments/AppointmentsScreen';
 import { AvailableSlotsScreen } from '../screens/appointments/AvailableSlotsScreen';
 import { MealPlanScreen } from '../screens/dieta/MealPlanScreen';
 import { ShoppingListScreen } from '../screens/dieta/ShoppingListScreen';
+import { ExamesScreen } from '../screens/exames/ExamesScreen';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -44,6 +45,7 @@ const linking = {
       Evolucao: 'evolucao',
       Dieta: 'dieta',
       Compras: 'compras',
+      Exames: 'exames',
       DadosPessoais: 'dados-pessoais',
       Agenda: 'agenda',
       HorariosDisponiveis: 'agenda/horarios',
@@ -164,6 +166,11 @@ export function RootNavigator() {
         <Stack.Screen
           name="Compras"
           component={ShoppingListScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Exames"
+          component={ExamesScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

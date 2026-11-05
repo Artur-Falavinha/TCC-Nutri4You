@@ -20,16 +20,13 @@ import { logout } from '../../core/auth/auth.service';
 import { carregarPerfil } from '../../core/perfil/perfil.service';
 import {
   AvaliacaoHistorico,
-  carregarConsumoProgresso,
   carregarEvolucao,
-  ConsumoProgresso,
   formatarDataMes,
   calcularVariacao
 } from '../../core/evolucao/evolucao.service';
 import { RootStackParamList } from '../../navigation/types';
 import { ChartDataPoint, EvolucaoLineChart } from './components/EvolucaoLineChart';
 import { MedidasGridCarousel } from './components/MedidasGridCarousel';
-import { ConsumoProgressoCard } from './components/ConsumoProgressoCard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Evolucao'>;
 
@@ -41,20 +38,17 @@ export function EvolucaoScreen({ navigation }: Props) {
   const [nomePaciente, setNomePaciente] = useState('Paciente');
   const [menuVisible, setMenuVisible] = useState(false);
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoHistorico[]>([]);
-  const [consumo, setConsumo] = useState<ConsumoProgresso | null>(null);
   const [graficoAba, setGraficoAba] = useState<0 | 1>(0); // 0: Peso, 1: Gordura Corporal
   const [chartWidth, setChartWidth] = useState(Dimensions.get('window').width - 64);
   const chartScrollRef = useRef<ScrollView>(null);
 
   const buscarDados = useCallback(async () => {
-    const [historicoResp, consumoResp, perfilResp] = await Promise.all([
+    const [historicoResp, perfilResp] = await Promise.all([
       carregarEvolucao(),
-      carregarConsumoProgresso(),
       carregarPerfil().catch(() => null)
     ]);
     return {
       avaliacoes: historicoResp?.avaliacoes ?? [],
-      consumo: consumoResp,
       nome: perfilResp?.nome || 'Paciente'
     };
   }, []);
@@ -66,7 +60,6 @@ export function EvolucaoScreen({ navigation }: Props) {
       .then((dados) => {
         if (!cancelado) {
           setAvaliacoes(dados.avaliacoes);
-          setConsumo(dados.consumo);
           setNomePaciente(dados.nome);
         }
       })
@@ -92,7 +85,6 @@ export function EvolucaoScreen({ navigation }: Props) {
     try {
       const dados = await buscarDados();
       setAvaliacoes(dados.avaliacoes);
-      setConsumo(dados.consumo);
     } catch {
       setErro('Não foi possível carregar os dados de evolução.');
     } finally {
@@ -105,7 +97,6 @@ export function EvolucaoScreen({ navigation }: Props) {
     try {
       const dados = await buscarDados();
       setAvaliacoes(dados.avaliacoes);
-      setConsumo(dados.consumo);
       setErro('');
     } catch {
       setErro('Não foi possível carregar os dados de evolução.');
@@ -208,6 +199,10 @@ export function EvolucaoScreen({ navigation }: Props) {
       navigation.navigate('Compras');
       return;
     }
+    if (destino === 'exams') {
+      navigation.navigate('Exames');
+      return;
+    }
     if (destino === 'password') {
       navigation.navigate('TrocarSenha');
       return;
@@ -264,9 +259,6 @@ export function EvolucaoScreen({ navigation }: Props) {
               <Ionicons name="refresh-outline" size={18} color="#006f1e" />
               <Text style={styles.btnEmptyRefreshText}>Verificar atualizações</Text>
             </Pressable>
-
-            {/* Consumo Diário mesmo sem medidas antropométricas */}
-            <ConsumoProgressoCard consumo={consumo} />
           </View>
         ) : (
           /* Dashboard com dados */
@@ -437,9 +429,6 @@ export function EvolucaoScreen({ navigation }: Props) {
 
             {/* Carrossel 2: Medidas Antropométricas */}
             <MedidasGridCarousel avaliacoes={avaliacoes} />
-
-            {/* Consumo Diário e Macronutrientes */}
-            <ConsumoProgressoCard consumo={consumo} />
           </>
         )}
       </ScrollView>

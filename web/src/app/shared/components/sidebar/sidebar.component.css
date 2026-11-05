@@ -122,3 +122,17 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+@media (max-width: 700px) {
+  .sidebar {
+    width: 100%; height: auto; position: static; padding: 8px;
+    border-right: 0; border-bottom: 1px solid #dbdbdb;
+  }
+  .sidebar__top { gap: 0; }
+  .sidebar__brand, .sidebar__user { display: none; }
+  .sidebar__nav { flex-direction: row; gap: 4px; }
+  .sidebar__nav-item { width: auto; min-width: 0; flex: 1; padding: 10px 6px; justify-content: center; gap: 5px; font-size: 11px; }
+  .sidebar__nav-icon { width: 16px; font-size: 16px; }
+  .sidebar__footer { width: 100%; padding-top: 0; border-top: 0; align-items: flex-end; }
+  .sidebar__nav-item--logout { flex: none; height: 28px; padding: 4px 8px; }
+}

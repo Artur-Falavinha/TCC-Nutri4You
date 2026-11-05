@@ -37,9 +37,13 @@ export class ConsultaForm {
   versao: number | null = null;
   medidas = Object.fromEntries(CAMPOS_MEDIDAS.map(c => [c.key, ''])) as Record<CampoMedida, string>;
   tinhaAvaliacao = false;
+  private dataHoraOriginal = '';
+  private dataHoraExibida = '';
 
   carregar(consulta: Consulta): void {
     this.dataHora = consulta.dataHora.slice(0, 16);
+    this.dataHoraExibida = this.dataHora;
+    this.dataHoraOriginal = consulta.dataHora;
     this.status = consulta.status;
     this.observacao = consulta.observacao || '';
     this.versao = consulta.versao;
@@ -86,7 +90,7 @@ export class ConsultaForm {
       const value = numero(this.medidas[c.key]);
       return [c.key, value !== null && c.key === 'altura' ? value / 100 : value];
     })) as unknown as MedidasConsulta : null;
-    return { dataHora: this.dataHora, status: this.status, observacao: this.observacao.trim(), avaliacao, versao: this.versao };
+    return { dataHora: this.dataHora === this.dataHoraExibida ? this.dataHoraOriginal : this.dataHora, status: this.status, observacao: this.observacao.trim(), avaliacao, versao: this.versao };
   }
   assinatura(): string { return JSON.stringify([this.dataHora, this.status, this.observacao, this.medidas]); }
 }

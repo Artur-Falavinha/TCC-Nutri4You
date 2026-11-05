@@ -40,6 +40,9 @@ public class Consulta {
     @Column(name = "observacao", columnDefinition = "text")
     private String observacao;
 
+    @Column(name = "iniciada_em")
+    private LocalDateTime iniciadaEm;
+
     @Version
     @Column(name = "versao", nullable = false)
     private long versao;
@@ -91,6 +94,13 @@ public class Consulta {
     public String getObservacao() { return observacao; }
 
     public long getVersao() { return versao; }
+
+    public LocalDateTime getIniciadaEm() { return iniciadaEm; }
+
+    public void iniciar(LocalDateTime agora) {
+        this.iniciadaEm = agora;
+        this.atualizadoEm = Instant.now();
+    }
 
     public void atualizar(LocalDateTime dataHora, String status, String observacao) {
         this.dataHora = dataHora;

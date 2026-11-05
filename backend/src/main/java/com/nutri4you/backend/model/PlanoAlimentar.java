@@ -85,7 +85,7 @@ public class PlanoAlimentar {
     private Instant publicadoEm;
 
     @OneToMany(mappedBy = "plano", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("horario, id")
+    @OrderBy("diaSemana, horario, id")
     private List<Refeicao> refeicoes = new ArrayList<>();
 
     @OneToMany(mappedBy = "plano", cascade = CascadeType.REMOVE)
@@ -98,7 +98,7 @@ public class PlanoAlimentar {
 
     public void editar(
             String titulo, String orientacoes, LocalDate inicio, LocalDate fim, Nutrientes metas) {
-        this.revisadoEm = Instant.now();
+        tocar();
         this.titulo = titulo;
         this.orientacoes = orientacoes;
         this.vigenciaInicio = inicio;
@@ -109,9 +109,26 @@ public class PlanoAlimentar {
         this.metaGordura = metas == null ? null : metas.gorduras();
     }
 
+    public void editar(Consulta consulta, LocalDate inicio, LocalDate fim,
+                       BigDecimal kcal, BigDecimal carboidratos,
+                       BigDecimal gordura, BigDecimal proteina) {
+        this.consulta = consulta;
+        editar(titulo, orientacoes, inicio, fim,
+                new Nutrientes(kcal, proteina, carboidratos, gordura, null));
+    }
+
+    public void vincularConsulta(Consulta consulta) { this.consulta = consulta; }
+
     public void publicar() {
         status = "PUBLICADO";
         publicadoEm = Instant.now();
+    }
+
+    public void terminarEm(LocalDate fim) { this.vigenciaFim = fim; tocar(); }
+    public void substituir() { this.status = "SUBSTITUIDO"; tocar(); }
+    public void tocar() {
+        Instant agora = Instant.now();
+        revisadoEm = agora.isAfter(revisadoEm.plusMillis(1)) ? agora : revisadoEm.plusMillis(1);
     }
 
     public Long getVersao() {
@@ -182,6 +199,9 @@ public class PlanoAlimentar {
     public BigDecimal getMetaCalorias() {
         return metaCalorias;
     }
+
+    public BigDecimal getMetaKcal() { return metaCalorias; }
+    public Instant getCriadoEm() { return criadoEm; }
 
     public BigDecimal getMetaCarboidratos() {
         return metaCarboidratos;

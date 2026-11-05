@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
@@ -115,7 +116,7 @@ class ClinicoControllerTest {
 
     @Test
     void agendaIncluiConsultaDeHojeSemanaSexoIdadeEDozeMeses() throws Exception {
-        paciente.setDataNascimento(LocalDate.now().minusYears(25));
+        paciente.setDataNascimento(LocalDate.now(ZoneId.of("America/Sao_Paulo")).minusYears(25));
         pacienteRepository.save(paciente);
         String token = login();
 

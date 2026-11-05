@@ -157,6 +157,10 @@ export function HomeScreen({ navigation }: Props) {
       navigation.navigate('Compras');
       return;
     }
+    if (destino === 'exams') {
+      navigation.navigate('Exames');
+      return;
+    }
     if (destino === 'password') {
       navigation.navigate('TrocarSenha');
       return;

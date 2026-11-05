@@ -4,9 +4,27 @@
 </header>
 
 <main class="canvas" [attr.aria-busy]="carregando || salvando || publicando || excluindo">
+  <a class="text-action" [routerLink]="['/pacientes', patientId, 'consultas']">← Voltar às consultas</a>
   <app-form-alert [message]="erro" type="error" />
   <app-form-alert [message]="mensagem" type="success" />
 
+  @if (tela !== 'lista') {
+    <nav class="week-days" aria-label="Dia da semana">
+      @for (nome of dias; track nome; let i = $index) {
+        <button type="button" class="action secondary" [attr.aria-pressed]="dia === i + 1" (click)="dia = i + 1">{{ nome }}</button>
+      }
+    </nav>
+    <section class="daily-progress" aria-label="Planejamento em relação às metas diárias">
+      @for (indicador of indicadores; track indicador.nome) {
+        <div><strong>{{ indicador.nome }}</strong><p>{{ formatarNutriente(indicador.valor) }} / {{ indicador.meta === null ? 'Sem meta' : formatarNutriente(indicador.meta) }} {{ indicador.unidade }}</p>
+          @if (indicador.percentual !== null) {
+            <progress [value]="indicador.barra" max="100" [attr.aria-label]="indicador.nome + ': ' + indicador.percentual + '%' "></progress><span>{{ indicador.percentual }}%</span>
+          }
+          @if (indicador.excesso) { <small>Acima da meta diária (referência)</small> }
+        </div>
+      }
+    </section>
+  }
   @if (carregando) {
     <p class="state" role="status">Carregando planos alimentares...</p>
   } @else if (!carregado) {
@@ -96,7 +114,7 @@
 
     @if (plano.metas) {
       <section class="summary-card" aria-labelledby="goals-title">
-        <h3 id="goals-title">Metas informadas</h3>
+        <h3 id="goals-title">Metas diárias <span tabindex="0" title="Uma meta comum para cada dia da semana. Os totais previstos não representam consumo registrado.">ⓘ</span></h3>
         <dl class="nutrient-grid">
           <div><dt>Energia</dt><dd>{{ formatarNutriente(plano.metas.kcal) }} kcal</dd></div>
           <div><dt>Proteínas</dt><dd>{{ formatarNutriente(plano.metas.proteinas) }} g</dd></div>
@@ -107,22 +125,22 @@
     }
 
     <section class="summary-card" aria-labelledby="totals-title">
-      <h3 id="totals-title">Totais nutricionais</h3>
+      <h3 id="totals-title">Planejamento de {{ dias[dia - 1] }}</h3>
       <dl class="nutrient-grid">
-        <div><dt>Energia</dt><dd>{{ formatarNutriente(plano.totais.kcal) }} kcal</dd></div>
-        <div><dt>Proteínas</dt><dd>{{ formatarNutriente(plano.totais.proteinas) }} g</dd></div>
-        <div><dt>Carboidratos</dt><dd>{{ formatarNutriente(plano.totais.carboidratos) }} g</dd></div>
-        <div><dt>Gorduras</dt><dd>{{ formatarNutriente(plano.totais.gorduras) }} g</dd></div>
-        <div><dt>Fibras</dt><dd>{{ formatarFibra(plano.totais.fibras) }}{{ plano.totais.fibras === null ? '' : ' g' }}</dd></div>
+        <div><dt>Energia</dt><dd>{{ formatarNutriente(totaisDetalhe.kcal) }} kcal</dd></div>
+        <div><dt>Proteínas</dt><dd>{{ formatarNutriente(totaisDetalhe.proteinas) }} g</dd></div>
+        <div><dt>Carboidratos</dt><dd>{{ formatarNutriente(totaisDetalhe.carboidratos) }} g</dd></div>
+        <div><dt>Gorduras</dt><dd>{{ formatarNutriente(totaisDetalhe.gorduras) }} g</dd></div>
+        <div><dt>Fibras</dt><dd>{{ formatarFibra(totaisDetalhe.fibras) }}{{ totaisDetalhe.fibras === null ? '' : ' g' }}</dd></div>
       </dl>
     </section>
 
     <section class="meal-list" aria-labelledby="meals-title">
-      <div class="section-heading"><h3 id="meals-title">Refeições diárias</h3><span>Repetidas durante a vigência</span></div>
+      <div class="section-heading"><h3 id="meals-title">Refeições de {{ dias[dia - 1] }}</h3><span>Dentro da vigência do plano</span></div>
       @if (plano.refeicoes.length === 0) {
         <p class="empty-inline">Este plano ainda não tem refeições.</p>
       } @else {
-        @for (refeicao of plano.refeicoes; track refeicao.id) {
+        @for (refeicao of refeicoesDetalhe; track refeicao.id) {
           <article class="meal-card">
             <div class="meal-card__heading"><h4>{{ refeicao.nome }}</h4><time>{{ formatarHorario(refeicao.horario) }}</time></div>
             @if (refeicao.itens.length === 0) {
@@ -229,10 +247,10 @@
         </section>
 
         <section class="form-section" aria-labelledby="meals-form-title">
-          <div class="section-heading"><div><h3 id="meals-form-title">Refeições diárias</h3><p class="section-help">Esta lista se repete diariamente durante a vigência.</p></div>
+          <div class="section-heading"><div><h3 id="meals-form-title">Refeições de {{ dias[dia - 1] }}</h3><p class="section-help">Refeições de planos diários anteriores aparecem em todos os dias.</p></div>
             <div class="actions">
               <button type="button" class="action secondary" (click)="colarRefeicao()" [disabled]="!podeColarRefeicao"><i class="ph ph-copy" aria-hidden="true"></i>Colar refeição</button>
-              <button type="button" class="action secondary" (click)="adicionarRefeicao()" [disabled]="form.refeicoes.length >= 20"><i class="ph ph-plus" aria-hidden="true"></i>Adicionar refeição</button>
+              <button type="button" class="action secondary" (click)="adicionarRefeicao()" [disabled]="form.refeicoes.length >= 140"><i class="ph ph-plus" aria-hidden="true"></i>Adicionar refeição</button>
             </div>
           </div>
           @if (errors['refeicoes']) { <p class="field-error" role="alert">{{ errors['refeicoes'] }}</p> }
@@ -240,7 +258,7 @@
             <p class="empty-inline">Adicione refeições e depois selecione alimentos do catálogo.</p>
           } @else {
             <div class="editor-meals">
-              @for (refeicao of form.refeicoes; track refeicao.chave; let refeicaoIndex = $index) {
+              @for (refeicao of refeicoesEdicao; track refeicao.chave; let refeicaoIndex = $index) {
                 <article class="meal-card editor-meal">
                   <div class="meal-card__heading"><h4>Refeição {{ refeicaoIndex + 1 }}</h4>
                     <div class="actions">
@@ -366,7 +384,7 @@
         </div>
         <button type="button" class="icon-action" aria-label="Fechar prévia da lista de compras" (click)="fecharPreviaListaCompras()"><i class="ph ph-x" aria-hidden="true"></i></button>
       </header>
-      <p id="shopping-preview-help" class="section-help">A lista usa somente os alimentos principais. As quantidades diárias são multiplicadas pelos dias escolhidos; substitutos são informativos e não entram neste cálculo. Esta visualização não altera as marcações do paciente.</p>
+      <p id="shopping-preview-help" class="section-help">A lista usa somente os alimentos principais. As quantidades consideram as refeições previstas nas datas escolhidas dentro da vigência; substitutos são informativos e não entram neste cálculo. Esta visualização não altera as marcações do paciente.</p>
       <div class="shopping-preview__controls">
         <label class="field" for="dias-lista-compras"><span>Período da prévia</span>
           <span class="input-unit"><input id="dias-lista-compras" name="dias-lista-compras" type="number" min="1" max="30" step="1" inputmode="numeric" [ngModelOptions]="{ standalone: true }" [(ngModel)]="diasListaCompras" [attr.aria-invalid]="!periodoListaComprasValido" /><span>dias</span></span>

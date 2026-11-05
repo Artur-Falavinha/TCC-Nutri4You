@@ -168,6 +168,7 @@ describe('DietaComponent', () => {
       refeicoes: [{
         nome: 'Café da manhã',
         horario: '08:00',
+        diaSemana: 1,
         itens: [{
           alimentoId: alimento.id,
           quantidadeGramas: 125.5,
@@ -178,7 +179,7 @@ describe('DietaComponent', () => {
     expect(component.mensagem).toBe('Rascunho salvo com sucesso.');
   });
 
-  it('pastes an independent copy of a meal and enforces the daily meal limit', () => {
+  it('pastes an independent copy of a meal and enforces the weekly meal limit', () => {
     component.abrirNovoRascunho();
     component.adicionarRefeicao();
     const original = component.form.refeicoes[0];
@@ -237,11 +238,11 @@ describe('DietaComponent', () => {
     expect(segundaCopia.itens[0].substitutos).not.toBe(primeiroItemCopiado.substitutos);
     expect(segundaCopia.itens[0].substitutos[0].alimento).not.toBe(primeiroItemCopiado.substitutos[0].alimento);
 
-    while (component.form.refeicoes.length < 20) component.adicionarRefeicao();
+    while (component.form.refeicoes.length < 140) component.adicionarRefeicao();
     expect(component.podeColarRefeicao).toBeFalse();
     component.colarRefeicao();
-    expect(component.form.refeicoes).toHaveSize(20);
-    expect(component.erro).toBe('Um plano pode conter até 20 refeições.');
+    expect(component.form.refeicoes).toHaveSize(140);
+    expect(component.erro).toBe('Um plano pode conter até 140 refeições.');
   });
 
   it('loads stored alternatives into an independent editor model', () => {
@@ -372,4 +373,28 @@ describe('DietaComponent', () => {
     expect(component.listaComprasErro).toBe('Falha de prévia');
     expect(component.listaComprasCarregando).toBeFalse();
   });
+  it('filtra os totais por dia e cola refeições com substitutos no dia escolhido', () => {
+    component.abrirNovoRascunho(); component.adicionarRefeicao();
+    const segunda = component.form.refeicoes[0];
+    segunda.nome = 'Almoço'; segunda.horario = '12:00';
+    segunda.itens.push({ chave: 100, alimento, quantidadeGramas: 100, substitutos: [] });
+    component.copiarRefeicao(segunda); component.dia = 2;
+    expect(component.totaisPrevistos.kcal).toBe(0);
+    component.colarRefeicao();
+    expect(component.refeicoesEdicao.length).toBe(1);
+    expect(component.form.refeicoes[1].diaSemana).toBe(2);
+    expect(component.totaisPrevistos.kcal).toBe(120);
+    component.form.refeicoes[1].itens[0].quantidadeGramas = 200;
+    expect(segunda.itens[0].quantidadeGramas).toBe(100);
+  });
+  it('exige confirmação para excluir refeições', () => {
+    component.abrirNovoRascunho(); component.adicionarRefeicao();
+    spyOn(window, 'confirm').and.returnValue(false);
+    component.removerRefeicao(component.form.refeicoes[0]);
+    expect(component.form.refeicoes.length).toBe(1);
+    (window.confirm as jasmine.Spy).and.returnValue(true);
+    component.removerRefeicao(component.form.refeicoes[0]);
+    expect(component.form.refeicoes.length).toBe(0);
+  });
+
 });

@@ -1,3 +1,4 @@
+import { AgendaComponent, agendaPendenteGuard } from './features/agenda/agenda.component';
 import { Routes } from '@angular/router';
 
 import { authGuard } from './core/guards/auth.guard';
@@ -18,21 +19,11 @@ export const routes: Routes = [
     component: AppShellComponent,
     canActivate: [authGuard],
     children: [
+      { path: 'agenda', component: AgendaComponent, canDeactivate: [agendaPendenteGuard], title: 'Agenda — Nutri4You' },
       {
         path: 'dashboard',
         component: DashboardComponent,
         title: 'Dashboard — Nutri4You'
-      },
-      {
-        path: 'agenda',
-        component: FeatureUnavailableComponent,
-        title: 'Agenda — Nutri4You',
-        data: {
-          titulo: 'Agenda',
-          descricao: 'A agenda completa ainda não está disponível. Consulte e gerencie os atendimentos no perfil de cada paciente.',
-          destino: '/pacientes',
-          acao: 'Ver pacientes'
-        }
       },
       {
         path: 'configuracoes',

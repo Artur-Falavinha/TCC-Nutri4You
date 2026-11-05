@@ -1,0 +1,29 @@
+<main class="agenda" [attr.aria-busy]="carregando || salvando">
+  <h1>Agenda</h1>
+  <p>Configure os horários de início disponíveis a cada semana. Cada consulta dura 45 minutos, no horário de Brasília.</p>
+  <p>Consultas já solicitadas ou confirmadas são preservadas. Um dia sem horários fica fechado para novas solicitações.</p>
+  <app-form-alert [message]="erro" type="error" />
+  <app-form-alert [message]="mensagem" type="success" />
+  @if (carregando) { <p role="status">Carregando disponibilidade...</p> }
+  @else if (!carregado) { <button type="button" (click)="carregar()">Tentar novamente</button> }
+  @else {
+    <fieldset [disabled]="salvando">
+      <legend>Disponibilidade semanal</legend>
+      <form class="adicionar" (ngSubmit)="adicionar()">
+        <label>Dia da semana<select name="dia" [(ngModel)]="dia">@for (nome of dias; track nome; let i = $index) { <option [ngValue]="i + 1">{{ nome }}</option> }</select></label>
+        <label>Horário de início<input name="hora" type="time" max="23:15" required [(ngModel)]="hora" /></label>
+        <button type="submit">Adicionar horário</button>
+      </form>
+      <div class="semana">
+        @for (nome of dias; track nome; let i = $index) {
+          <section><h2>{{ nome }}</h2><div class="horarios">
+            @for (h of doDia(i + 1); track h.horario) {
+              <button type="button" class="horario" (click)="remover(h)" [attr.aria-label]="'Remover ' + nome + ' às ' + h.horario">{{ h.horario }} <span aria-hidden="true">×</span></button>
+            } @empty { <span class="fechado">Sem horários disponíveis</span> }
+          </div></section>
+        }
+      </div>
+      <button type="button" class="salvar" [disabled]="!alterado" (click)="salvar()">{{ salvando ? 'Salvando...' : 'Salvar disponibilidade' }}</button>
+    </fieldset>
+  }
+</main>

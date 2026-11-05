@@ -41,13 +41,15 @@ public class PrescricaoController {
     }
 
     @GetMapping("/alimentos")
-    public ApiResponse<PaginaAlimentos> alimentos(
+    public ApiResponse<?> alimentos(
             Authentication auth,
+            @RequestParam(required = false) String q,
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) String categoria,
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "20") int tamanho) {
         nutricionista(auth);
+        if (q != null) return ApiResponse.ok(catalogo.buscarLivre(q, pagina));
         return ApiResponse.ok(catalogo.buscar(nome, categoria, pagina, tamanho));
     }
 
@@ -57,13 +59,13 @@ public class PrescricaoController {
         return ApiResponse.ok(catalogo.categorias());
     }
 
-    @GetMapping("/gestao-pacientes/{pacienteId}/planos-alimentares")
+    @GetMapping({"/gestao-pacientes/{pacienteId}/planos-alimentares", "/gestao-pacientes/{pacienteId}/planos"})
     public ApiResponse<List<PlanoDTO>> listar(
             Authentication auth, @PathVariable Integer pacienteId) {
         return ApiResponse.ok(prescricoes.listar(nutricionista(auth), pacienteId));
     }
 
-    @PostMapping("/gestao-pacientes/{pacienteId}/planos-alimentares")
+    @PostMapping({"/gestao-pacientes/{pacienteId}/planos-alimentares", "/gestao-pacientes/{pacienteId}/planos"})
     public ResponseEntity<ApiResponse<PlanoDTO>> criar(
             Authentication auth,
             @PathVariable Integer pacienteId,
@@ -78,13 +80,13 @@ public class PrescricaoController {
                 .body(ApiResponse.ok(plano));
     }
 
-    @GetMapping("/gestao-pacientes/{pacienteId}/planos-alimentares/{id}")
+    @GetMapping({"/gestao-pacientes/{pacienteId}/planos-alimentares/{id}", "/gestao-pacientes/{pacienteId}/planos/{id}"})
     public ApiResponse<PlanoDTO> buscar(
             Authentication auth, @PathVariable Integer pacienteId, @PathVariable Integer id) {
         return ApiResponse.ok(prescricoes.buscar(nutricionista(auth), pacienteId, id));
     }
 
-    @GetMapping("/gestao-pacientes/{pacienteId}/planos-alimentares/{id}/lista-compras")
+    @GetMapping({"/gestao-pacientes/{pacienteId}/planos-alimentares/{id}/lista-compras", "/gestao-pacientes/{pacienteId}/planos/{id}/lista-compras"})
     public ApiResponse<ListaComprasDTO> previaCompras(
             Authentication auth,
             @PathVariable Integer pacienteId,
@@ -93,7 +95,7 @@ public class PrescricaoController {
         return ApiResponse.ok(prescricoes.previaCompras(nutricionista(auth), pacienteId, id, dias));
     }
 
-    @PutMapping("/gestao-pacientes/{pacienteId}/planos-alimentares/{id}")
+    @PutMapping({"/gestao-pacientes/{pacienteId}/planos-alimentares/{id}", "/gestao-pacientes/{pacienteId}/planos/{id}"})
     public ApiResponse<PlanoDTO> editar(
             Authentication auth,
             @PathVariable Integer pacienteId,
@@ -102,7 +104,7 @@ public class PrescricaoController {
         return ApiResponse.ok(prescricoes.editar(nutricionista(auth), pacienteId, id, request));
     }
 
-    @DeleteMapping("/gestao-pacientes/{pacienteId}/planos-alimentares/{id}")
+    @DeleteMapping({"/gestao-pacientes/{pacienteId}/planos-alimentares/{id}", "/gestao-pacientes/{pacienteId}/planos/{id}"})
     public ResponseEntity<Void> excluir(
             Authentication auth,
             @PathVariable Integer pacienteId,
@@ -112,7 +114,7 @@ public class PrescricaoController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/gestao-pacientes/{pacienteId}/planos-alimentares/{id}/publicacao")
+    @PostMapping({"/gestao-pacientes/{pacienteId}/planos-alimentares/{id}/publicacao", "/gestao-pacientes/{pacienteId}/planos/{id}/publicacao"})
     public ApiResponse<PlanoDTO> publicar(
             Authentication auth,
             @PathVariable Integer pacienteId,
@@ -122,7 +124,7 @@ public class PrescricaoController {
                 prescricoes.publicar(nutricionista(auth), pacienteId, id, request.versao()));
     }
 
-    @GetMapping("/me/plano-alimentar")
+    @GetMapping({"/me/plano-alimentar", "/usuarios/me/dieta-ativa"})
     public ApiResponse<PlanoDTO> ativo(Authentication auth) {
         return ApiResponse.ok(prescricoes.ativo(paciente(auth)));
     }

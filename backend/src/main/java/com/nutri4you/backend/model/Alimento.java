@@ -11,6 +11,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.text.Normalizer;
+import java.util.Locale;
 
 @Entity
 @Table(name = "Alimento")
@@ -64,6 +66,18 @@ public class Alimento {
 
     protected Alimento() {}
 
+    public Alimento(String nome, BigDecimal kcal, BigDecimal proteina,
+                    BigDecimal carboidratos, BigDecimal gordura) {
+        this.nome = nome;
+        this.nomeBusca = normalizarBusca(nome);
+        this.kcal100g = kcal;
+        this.proteina100g = proteina;
+        this.carboidratos100g = carboidratos;
+        this.gordura100g = gordura;
+        this.disponivelPrescricao = true;
+        this.catalogoAtivo = true;
+    }
+
     public Integer getId() {
         return id;
     }
@@ -74,6 +88,22 @@ public class Alimento {
 
     public String getCategoria() {
         return categoria;
+    }
+
+    public BigDecimal getKcal() { return kcal100g; }
+    public BigDecimal getProteina() { return proteina100g; }
+    public BigDecimal getCarboidratos() { return carboidratos100g; }
+    public BigDecimal getGordura() { return gordura100g; }
+    public Integer getCodigoTaco() { return codigoTaco; }
+    public String getNomeBusca() { return nomeBusca; }
+    public boolean isDisponivelParaPrescricao() { return disponivelPrescricao; }
+
+    public static String normalizarBusca(String valor) {
+        if (valor == null) return "";
+        String semAcentos = Normalizer.normalize(valor, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
+        return semAcentos.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", " ").trim();
     }
 
     public boolean calculavel() {

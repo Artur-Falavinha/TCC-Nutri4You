@@ -49,25 +49,27 @@ public class ClinicoService {
     private final ConsultaRepository consultaRepository;
     private final ConsumoDiarioRepository consumoDiarioRepository;
     private final PlanoAlimentarRepository planoAlimentarRepository;
+    private final ConsumoRefeicaoService consumoRefeicoes;
 
     public ClinicoService(
             GestaoPacienteService gestaoPacienteService,
             AvaliacaoAntropometricaRepository avaliacaoRepository,
             ConsultaRepository consultaRepository,
             ConsumoDiarioRepository consumoDiarioRepository,
-            PlanoAlimentarRepository planoAlimentarRepository) {
+            PlanoAlimentarRepository planoAlimentarRepository, ConsumoRefeicaoService consumoRefeicoes) {
         this.gestaoPacienteService = gestaoPacienteService;
         this.avaliacaoRepository = avaliacaoRepository;
         this.consultaRepository = consultaRepository;
         this.consumoDiarioRepository = consumoDiarioRepository;
         this.planoAlimentarRepository = planoAlimentarRepository;
+        this.consumoRefeicoes = consumoRefeicoes;
     }
 
     @Transactional
     public AvaliacaoResponse registrarAvaliacao(Nutricionista nutricionista, Integer pacienteId, AvaliacaoRequest request) {
         Paciente paciente = gestaoPacienteService.exigirAcesso(nutricionista, pacienteId);
         validarMedidas(request);
-        AvaliacaoAntropometrica avaliacao = new AvaliacaoAntropometrica(paciente, LocalDateTime.now());
+        AvaliacaoAntropometrica avaliacao = new AvaliacaoAntropometrica(paciente, LocalDateTime.now(java.time.ZoneId.of("America/Sao_Paulo")));
         aplicar(avaliacao, request);
         return paraResposta(avaliacaoRepository.save(avaliacao));
     }
@@ -113,6 +115,7 @@ public class ClinicoService {
     public ConsumoProgressoDTO consumoDiarioProgresso(Paciente paciente) {
         Optional<ConsumoDiario> consumo = consumoDiarioRepository
                 .findByPaciente_IdAndDataRegistro(paciente.getId(), LocalDate.now(FUSO_HORARIO));
+
         MetasNutricionais metas = buscarMetasNutricionais(paciente.getId()).orElse(null);
 
         if (consumo.isEmpty() && metas == null) {
@@ -120,15 +123,16 @@ public class ClinicoService {
         }
 
         ConsumoDiario registro = consumo.orElse(null);
+        var totais = consumoRefeicoes.consultar(paciente, null).totais();
         return new ConsumoProgressoDTO(
                 "Hoje",
-                numero(registro == null ? null : registro.getKcalConsumidas()),
+                numero(registro == null ? null : registro.getKcalConsumidas()) + numero(totais.kcal()),
                 metas == null ? null : metas.calorias(),
-                numero(registro == null ? null : registro.getProteinasConsumidas()),
+                numero(registro == null ? null : registro.getProteinasConsumidas()) + numero(totais.proteinas()),
                 metas == null ? null : metas.proteinas(),
-                numero(registro == null ? null : registro.getCarboidratosConsumidos()),
+                numero(registro == null ? null : registro.getCarboidratosConsumidos()) + numero(totais.carboidratos()),
                 metas == null ? null : metas.carboidratos(),
-                numero(registro == null ? null : registro.getGordurasConsumidas()),
+                numero(registro == null ? null : registro.getGordurasConsumidas()) + numero(totais.gorduras()),
                 metas == null ? null : metas.gorduras());
     }
 
@@ -140,6 +144,7 @@ public class ClinicoService {
                 .orElse(null);
 
         LocalDateTime agora = LocalDateTime.now(FUSO_HORARIO);
+
         DashboardPacienteDTO.ProximaConsultaDTO proximaConsulta = consultaRepository
                 .findByPaciente_IdOrderByDataHoraDesc(paciente.getId())
                 .stream()
@@ -160,6 +165,7 @@ public class ClinicoService {
     private Optional<PlanoAlimentar> buscarPlanoAtivo(Integer pacienteId) {
         List<PlanoAlimentar> planos = planoAlimentarRepository.findByPaciente_IdOrderByIdDesc(pacienteId);
         LocalDate hoje = LocalDate.now(FUSO_HORARIO);
+
 
         Optional<PlanoAlimentar> publicadoVigente = planos.stream()
                 .filter(plano -> "PUBLICADO".equalsIgnoreCase(plano.getStatus()))
@@ -209,7 +215,7 @@ public class ClinicoService {
 
     @Transactional(readOnly = true)
     public AgendaResponse agenda(Nutricionista nutricionista) {
-        LocalDate hoje = LocalDate.now();
+        LocalDate hoje = LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo"));
         LocalDate segunda = hoje.with(DayOfWeek.MONDAY);
         YearMonth mesAtual = YearMonth.from(hoje);
         LocalDateTime inicio12 = mesAtual.minusMonths(11).atDay(1).atStartOfDay();

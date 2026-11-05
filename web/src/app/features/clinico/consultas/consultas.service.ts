@@ -26,6 +26,10 @@ export interface ConsultaPayload {
 export interface Consulta extends Omit<ConsultaPayload, 'avaliacao' | 'versao' | 'observacao'> {
   id: number;
   idPaciente: number;
+  iniciadaEm?: string | null;
+  inicioPermitidoDe?: string;
+  inicioPermitidoAte?: string;
+  podeIniciar?: boolean;
   observacao: string | null;
   versao: number;
   avaliacao: (MedidasConsulta & { id: number; imc: number }) | null;
@@ -48,6 +52,9 @@ export class ConsultasService {
   }
   buscar(pacienteId: number, id: number) {
     return this.api.get<Consulta>(`${this.path(pacienteId)}/${id}`);
+  }
+  acao(pacienteId: number, c: Consulta, acao: 'inicio' | 'confirmacao' | 'cancelamento') {
+    return this.api.post<Consulta>(`${this.path(pacienteId)}/${c.id}/${acao}`, { versao: c.versao });
   }
   salvar(pacienteId: number, id: number | null, payload: ConsultaPayload) {
     return id === null ? this.api.post<Consulta>(this.path(pacienteId), payload)

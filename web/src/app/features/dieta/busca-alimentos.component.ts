@@ -1,3 +1,5 @@
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject, debounceTime } from 'rxjs';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
@@ -27,6 +29,22 @@ export class BuscaAlimentosComponent {
   @Output() recarregarCategorias = new EventEmitter<void>();
   @Output() adicionarAlimento = new EventEmitter<Alimento>();
   @Output() fechar = new EventEmitter<void>();
+
+  private readonly alteracoesBusca = new Subject<void>();
+
+  constructor() {
+    this.alteracoesBusca.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => this.buscar.emit(0));
+  }
+
+  alterarBusca(valor: string): void {
+    this.buscaAlimentoChange.emit(valor);
+    this.alteracoesBusca.next();
+  }
+
+  alterarCategoria(valor: string): void {
+    this.categoriaSelecionadaChange.emit(valor);
+    this.buscar.emit(0);
+  }
 
   formatarNutriente(valor: number | null | undefined): string {
     if (valor === null || valor === undefined || !Number.isFinite(Number(valor))) return '—';

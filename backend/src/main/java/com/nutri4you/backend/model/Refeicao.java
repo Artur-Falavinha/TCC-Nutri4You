@@ -36,11 +36,18 @@ public class Refeicao {
     @Column(nullable = false)
     private LocalTime horario;
 
+    @Column(name = "dia_semana")
+    private Integer diaSemana;
+
     @OneToMany(mappedBy = "refeicao", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("alimento.id")
     private List<ItemRefeicao> itens = new ArrayList<>();
 
     protected Refeicao() {}
+
+    public Refeicao(PlanoAlimentar plano) {
+        this.plano = plano;
+    }
 
     public Refeicao(PlanoAlimentar plano, String nome, LocalTime horario) {
         this.plano = plano;
@@ -68,5 +75,22 @@ public class Refeicao {
 
     public List<ItemRefeicao> getItens() {
         return itens;
+    }
+
+    public Integer getDiaSemana() { return diaSemana; }
+
+    public void definirDiaSemana(Integer diaSemana) { this.diaSemana = diaSemana; }
+
+    public boolean previstaEm(java.time.LocalDate data) {
+        return diaSemana == null || diaSemana == data.getDayOfWeek().getValue();
+    }
+
+    public void editar(String nome, LocalTime horario, Integer diaSemana, List<ItemRefeicao> itens) {
+        this.nome = nome;
+        this.horario = horario;
+        this.diaSemana = diaSemana;
+        this.itens.clear();
+        itens.forEach(item -> item.vincular(this));
+        this.itens.addAll(itens);
     }
 }

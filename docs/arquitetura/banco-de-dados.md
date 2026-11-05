@@ -108,7 +108,7 @@ O `init.sql` inclui dados iniciais para desenvolvimento:
 | Nutricionistas | 1 | `nutri@nutri4you.com` / senha texto `password` |
 | Pacientes | 2 | `arthur@email.com`, `artur@email.com` |
 | Consultas demo | 2 | Pacientes seed ↔ nutricionista seed |
-| Alimentos (TACO) | 5 | Arroz, feijão, frango, ovo, banana |
+| Alimentos de exemplo | 5 | Preservados para histórico; substituídos na busca pelos 597 alimentos oficiais carregados pela V13 |
 | Perguntas de anamnese | 3 | Categorias Geral, Hábitos, Saúde |
 
 ## Trigger
@@ -117,8 +117,6 @@ A tabela `Resposta_Anamnese` possui trigger `trg_atualiza_timestamp_resposta` qu
 
 ## Estratégia de migrações
 
-Atualmente o projeto usa um único script DDL (`init.sql`) montado no volume Docker. Para evoluções futuras, considerar:
+O backend aplica migrations incrementais com Flyway em `backend/src/main/resources/db/migration`. O `init.sql` permanece como inicialização legada do Docker; V1.1 trata sua compatibilidade. Migrations aplicadas não devem ser reescritas.
 
-- Flyway ou Liquibase para migrações incrementais.
-- Separar DDL de seed em arquivos distintos.
-- Scripts de rollback documentados.
+A V13 adiciona o catálogo completo da TACO (NEPA/UNICAMP, 4ª edição), com `codigo_taco` único, `nome_busca` normalizado e `disponivel_para_prescricao`. Os cinco alimentos de exemplo conservam IDs e valores para não modificar refeições antigas; novos planos usam os registros oficiais encontrados pela busca. O procedimento e as regras para dados ausentes estão no [contrato de plano alimentar](../api/plano-alimentar.md).

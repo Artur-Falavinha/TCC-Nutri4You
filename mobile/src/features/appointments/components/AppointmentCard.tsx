@@ -26,7 +26,7 @@ export function AppointmentCard({
   onReschedule,
   onCancel
 }: AppointmentCardProps) {
-  const confirmed = appointment.status === 'CONFIRMADA';
+  const confirmed = appointment.status === 'CONFIRMADA' && !appointment.iniciadaEm;
   const pending = appointment.status === 'AGUARDANDO_CONFIRMACAO';
 
   return (
@@ -38,7 +38,7 @@ export function AppointmentCard({
         ]}
       >
         <Text style={[styles.statusText, pending ? styles.pendingText : styles.confirmedText]}>
-          {statusLabels[appointment.status]}
+          {appointment.iniciadaEm && appointment.status === 'CONFIRMADA' ? 'EM ATENDIMENTO' : statusLabels[appointment.status]}
         </Text>
       </View>
 

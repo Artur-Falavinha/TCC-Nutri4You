@@ -1,0 +1,1 @@
+ALTER TABLE Consulta ADD COLUMN iniciada_em TIMESTAMP;

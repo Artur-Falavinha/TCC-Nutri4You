@@ -7,7 +7,7 @@ nutricionista informado precisa manter vínculo clínico ativo com o paciente.
 
 | Método | Rota | Resultado |
 | --- | --- | --- |
-| `GET` | `/consultas` | Lista consultas futuras não canceladas em ordem cronológica |
+| `GET` | `/consultas` | Lista solicitações/consultas confirmadas futuras e consultas em andamento, em ordem cronológica |
 | `GET` | `/disponibilidade?nutricionistaId={id}&data=YYYY-MM-DD` | Lista horários livres do dia |
 | `POST` | `/consultas` | Cria solicitação com status `AGUARDANDO_CONFIRMACAO`; HTTP 201 |
 | `PUT` | `/consultas/{id}/reagendamento` | Altera uma consulta confirmada e volta o status para aguardando confirmação |
@@ -53,12 +53,12 @@ nutricionista informado precisa manter vínculo clínico ativo com o paciente.
 ```
 
 As respostas são envolvidas por `ApiResponse`. A disponibilidade informa
-também a duração de 45 minutos. Domingos, horários passados e intervalos que
-se sobrepõem a consultas não canceladas não são retornados.
+também a duração de 45 minutos. A lista semanal cadastrada pelo nutricionista define os dias, inclusive domingos, e horários. Dias sem configuração, horários passados e intervalos que se sobrepõem a consultas não canceladas não são retornados. Veja [configuração](agenda-nutricionista.md).
 
 ## Regras e erros
 
-- Somente consultas `CONFIRMADA` podem ser reagendadas ou canceladas pelo paciente.
+- Somente consultas `CONFIRMADA`, futuras e ainda não iniciadas podem ser reagendadas ou canceladas pelo paciente. A resposta inclui `iniciadaEm`; o card mobile oculta ações após o início.
+- Consultas iniciadas continuam visíveis mesmo após o horário agendado, até sua conclusão pelo nutricionista.
 - Reagendamento requer nova confirmação do nutricionista.
 - `versao` é obrigatória nas alterações e protege contra edição concorrente.
 - Horário ocupado ou versão desatualizada retorna `409 CONFLITO`.

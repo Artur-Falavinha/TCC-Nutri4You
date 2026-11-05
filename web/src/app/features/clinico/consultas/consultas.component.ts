@@ -3,7 +3,7 @@ import { Component, DestroyRef, HostListener, OnInit, inject } from '@angular/co
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, CanDeactivateFn, Router, RouterLink } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin, of, interval } from 'rxjs';
 import { ApiErrorResponse } from '../../../core/models/api-response.model';
 import { PacientesService } from '../../../core/services/pacientes.service';
 import { FormAlertComponent } from '../../../shared/components/form-alert/form-alert.component';
@@ -12,7 +12,7 @@ import { UiButtonComponent } from '../../../shared/components/ui-button/ui-butto
 import { UiInputComponent } from '../../../shared/components/ui-input/ui-input.component';
 import { UiSelectComponent } from '../../../shared/components/ui-select/ui-select.component';
 import { CAMPOS_MEDIDAS, ConsultaForm, STATUS_CONSULTA, decimal } from './consulta-form';
-import { ConsultasService, PaginaConsultas } from './consultas.service';
+import { Consulta, ConsultasService, PaginaConsultas } from './consultas.service';
 
 @Component({
   selector: 'app-consultas',
@@ -31,7 +31,9 @@ export class ConsultasComponent implements OnInit {
   readonly consultaId = this.route.snapshot.paramMap.has('consultaId')
     ? Number(this.route.snapshot.paramMap.get('consultaId')) : null;
   readonly editor = !!this.route.snapshot.data['editor'];
-  readonly statusOptions = STATUS_CONSULTA;
+  readonly statusOptions = STATUS_CONSULTA.filter(s => ['CONFIRMADA', 'REALIZADA'].includes(s.value));
+  consultaAtual: Consulta | null = null;
+  agora = Date.now();
   readonly grupos = [
     { titulo: 'Medidas antropométricas', campos: CAMPOS_MEDIDAS.slice(0, 4) },
     { titulo: 'Pregas cutâneas', campos: CAMPOS_MEDIDAS.slice(4, 8) },
@@ -54,6 +56,7 @@ export class ConsultasComponent implements OnInit {
       this.mensagem = 'Consulta salva com sucesso.';
     }
     this.carregar();
+    interval(1000).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => { this.agora = Date.now(); });
   }
 
   carregar(pagina = 0): void {
@@ -69,6 +72,7 @@ export class ConsultasComponent implements OnInit {
       next: ({ paciente, consulta, lista }) => {
         this.nome = paciente.nome;
         if (consulta) this.form.carregar(consulta);
+        this.consultaAtual = consulta;
         this.original = this.form.assinatura();
         this.lista = lista;
         this.carregado = true;
@@ -82,7 +86,7 @@ export class ConsultasComponent implements OnInit {
   }
 
   salvar(): void {
-    if (this.salvando || this.carregando || !this.carregado) return;
+    if (this.salvando || this.carregando || !this.carregado || !this.podeEditar) return;
     this.errors = this.form.validar();
     this.erro = '';
     if (Object.keys(this.errors).length) {
@@ -103,6 +107,29 @@ export class ConsultasComponent implements OnInit {
           this.salvando = false;
         }
       });
+  }
+
+  get podeEditar(): boolean {
+    return !!this.consultaAtual && (this.consultaAtual.status === 'REALIZADA'
+      || (this.consultaAtual.status === 'CONFIRMADA' && !!this.consultaAtual.iniciadaEm));
+  }
+  podeIniciar(c: Consulta): boolean {
+    // Server supplies the configured bounds with the clinic timezone offset.
+    return c.status === 'CONFIRMADA' && !c.iniciadaEm && !!c.inicioPermitidoDe && !!c.inicioPermitidoAte
+      && this.agora >= Date.parse(c.inicioPermitidoDe)
+      && this.agora <= Date.parse(c.inicioPermitidoAte);
+  }
+  acao(c: Consulta, acao: 'inicio' | 'confirmacao' | 'cancelamento'): void {
+    if (this.salvando || (acao === 'cancelamento' && !window.confirm('Cancelar esta consulta?'))) return;
+    this.salvando = true; this.erro = '';
+    this.service.acao(this.patientId, c, acao).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.salvando = false;
+        if (acao === 'inicio' && !this.editor) void this.router.navigate(['/pacientes', this.patientId, 'consultas', c.id]);
+        else this.carregar(this.lista?.pagina || 0);
+      },
+      error: (e: ApiErrorResponse) => { this.salvando = false; this.erro = e.message; }
+    });
   }
 
   statusLabel(status: string): string {

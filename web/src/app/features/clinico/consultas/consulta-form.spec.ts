@@ -43,4 +43,11 @@ describe('ConsultaForm', () => {
     form.status = 'CANCELADA'; form.medidas.peso = ''; form.medidas.altura = '';
     expect(form.validar()['peso']).toBeTruthy();
   });
+  it('preserva segundos do agendamento legado ao editar somente medidas', () => {
+    form.carregar({ id: 1, idPaciente: 1, dataHora: '2025-01-15T14:30:45',
+      status: 'CONFIRMADA', observacao: null, versao: 0, avaliacao: null });
+    expect(form.dataHora).toBe('2025-01-15T14:30');
+    expect(form.payload().dataHora).toBe('2025-01-15T14:30:45');
+  });
+
 });

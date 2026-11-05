@@ -158,6 +158,10 @@ export function AppointmentsScreen({ navigation }: Props) {
       navigation.navigate('Evolucao');
       return;
     }
+    if (destination === 'exams') {
+      navigation.navigate('Exames');
+      return;
+    }
     if (destination === 'password') {
       navigation.navigate('TrocarSenha');
       return;

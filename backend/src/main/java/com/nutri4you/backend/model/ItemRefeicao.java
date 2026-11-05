@@ -56,6 +56,14 @@ public class ItemRefeicao {
 
     protected ItemRefeicao() {}
 
+    public ItemRefeicao(Alimento alimento, BigDecimal gramas) {
+        this(null, alimento, gramas);
+    }
+
+    void vincular(Refeicao refeicao) {
+        this.refeicao = refeicao;
+    }
+
     public List<SubstitutoItemRefeicao> getSubstitutos() {
         return substitutos;
     }
@@ -83,6 +91,11 @@ public class ItemRefeicao {
     public BigDecimal getQuantidadeGramas() {
         return quantidadeGramas;
     }
+
+    public BigDecimal getKcal() { return nutrientes().kcal(); }
+    public BigDecimal getProteina() { return nutrientes().proteinas(); }
+    public BigDecimal getCarboidratos() { return nutrientes().carboidratos(); }
+    public BigDecimal getGordura() { return nutrientes().gorduras(); }
 
     public boolean calculavel() {
         return kcal100g != null

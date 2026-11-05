@@ -17,6 +17,11 @@ $v8 = Get-Content (Join-Path $migrations 'V8__macronutrientes_consumo_diario.sql
 $v9 = Get-Content (Join-Path $migrations 'V9__catalogo_taco.sql') -Raw
 $v10 = Get-Content (Join-Path $migrations 'V10__prescricao_alimentar.sql') -Raw
 $v11 = Get-Content (Join-Path $migrations 'V11__fibras_e_substitutos_prescritos.sql') -Raw
+$v12 = Get-Content (Join-Path $migrations 'V12__horarios_atendimento.sql') -Raw
+$v13 = Get-Content (Join-Path $migrations 'V13__inicio_consulta.sql') -Raw
+$v14 = Get-Content (Join-Path $migrations 'V14__refeicoes_semanais.sql') -Raw
+$v16 = Get-Content (Join-Path $migrations 'V16__consumo_por_refeicao.sql') -Raw
+$v15 = Get-Content (Join-Path $migrations 'V15__exames_metadados_seguranca.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
 
 # Every scenario uses a new schema inside a transaction, rolled back even on
@@ -257,6 +262,44 @@ BEGIN
         RAISE EXCEPTION 'Duplicate assessment accepted for consultation';
     EXCEPTION WHEN unique_violation THEN NULL;
     END;
+END;
+`$`$;
+$v12
+$v13
+$v14
+$v15
+$v16
+DO `$`$
+BEGIN
+    IF EXISTS (SELECT 1 FROM Refeicao WHERE dia_semana IS NOT NULL) THEN
+        RAISE EXCEPTION 'V14 changed the daily repetition of legacy meals';
+    END IF;
+    IF to_regclass('consumo_refeicao') IS NULL THEN
+        RAISE EXCEPTION 'V16 did not create meal consumption history';
+    END IF;
+    IF (SELECT count(*) FROM Horario_Atendimento) <> (SELECT count(*) * 48 FROM Nutricionista) THEN
+        RAISE EXCEPTION 'V12 did not preserve the legacy weekly schedule';
+    END IF;
+    IF EXISTS (SELECT 1 FROM Plano_Alimentar WHERE id_paciente IS NULL OR id_nutricionista IS NULL) THEN
+        RAISE EXCEPTION 'V6 lost plan ownership';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM Consulta WHERE id_consulta = 1 AND iniciada_em IS NULL) THEN
+        RAISE EXCEPTION 'V13 lost legacy consultation';
+    END IF;
+    BEGIN
+        INSERT INTO Horario_Atendimento (id_nutricionista, dia_semana, horario) VALUES (1, 8, '10:00');
+        RAISE EXCEPTION 'Invalid weekday accepted';
+    EXCEPTION WHEN check_violation THEN NULL;
+    END;
+END;
+`$`$;
+INSERT INTO Exame (id_paciente, id_nutricionista, nome_exame, arquivo, arquivo_tipo, arquivo_tamanho)
+VALUES (1, 1, 'Teste isolado', decode('255044462d', 'hex'), 'application/pdf', 5);
+DO `$`$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM Exame WHERE nome_exame = 'Teste isolado' AND octet_length(arquivo) = 5 AND versao = 0) THEN
+        RAISE EXCEPTION 'V15 binary storage or version failed';
+    END IF;
 END;
 `$`$;
 ROLLBACK;

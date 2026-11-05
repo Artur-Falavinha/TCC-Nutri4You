@@ -39,6 +39,7 @@ export interface Meal {
   id: number;
   nome: string;
   horario: string;
+  diaSemana?: number | null;
   itens: MealPlanItem[];
   totais: Nutrients;
 }
@@ -82,4 +83,10 @@ export interface ShoppingItemUpdate {
   planoId: number;
   dias: number;
   comprado: boolean;
+}
+
+export interface HydrationProgress {
+  data: string;
+  consumidoMl: number;
+  metaMl: number;
 }

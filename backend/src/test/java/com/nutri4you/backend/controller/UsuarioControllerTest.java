@@ -114,13 +114,13 @@ class UsuarioControllerTest {
     @Test
     void consumoDiarioProgressoRetornaDados() throws Exception {
         Consulta consulta = consultaRepository.save(TestDataFactory.consulta(paciente, nutricionista));
-        PlanoAlimentar plano = planoAlimentarRepository.save(new PlanoAlimentar(
+        publicarPlano(new PlanoAlimentar(
+
                 consulta,
                 new BigDecimal("2200.00"),
                 new BigDecimal("250.00"),
                 new BigDecimal("65.00"),
                 new BigDecimal("160.00")));
-        definirStatusEVigencia(plano, "PUBLICADO", LocalDate.now(FUSO_HORARIO), LocalDate.now(FUSO_HORARIO));
         consumoDiarioRepository.save(new ConsumoDiario(
                 paciente,
                 LocalDate.now(FUSO_HORARIO),
@@ -161,13 +161,13 @@ class UsuarioControllerTest {
         Consulta consulta = new Consulta(paciente, nutricionista, futura);
         consulta.atualizar(futura, "CONFIRMADA", "Retorno agendado");
         consulta = consultaRepository.save(consulta);
-        PlanoAlimentar plano = planoAlimentarRepository.save(new PlanoAlimentar(
+        publicarPlano(new PlanoAlimentar(
+
                 consulta,
                 new BigDecimal("2100.00"),
                 new BigDecimal("245.00"),
                 new BigDecimal("65.00"),
                 new BigDecimal("180.00")));
-        definirStatusEVigencia(plano, "PUBLICADO", LocalDate.now(FUSO_HORARIO), LocalDate.now(FUSO_HORARIO));
         consumoDiarioRepository.save(new ConsumoDiario(
                 paciente,
                 LocalDate.now(FUSO_HORARIO),
@@ -303,4 +303,11 @@ class UsuarioControllerTest {
 
         return JsonPath.read(result.getResponse().getContentAsString(), "$.data.token");
     }
+    private void publicarPlano(PlanoAlimentar p) {
+        p.editar(p.getConsulta(), LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")), null,
+                p.getMetaCalorias(), p.getMetaCarboidratos(), p.getMetaGordura(), p.getMetaProteina());
+        p.publicar();
+        planoAlimentarRepository.save(p);
+    }
+
 }

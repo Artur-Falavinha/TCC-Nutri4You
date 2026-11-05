@@ -1,9 +1,44 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
+import { Text } from 'react-native';
 import { EvolucaoLineChart } from '../components/EvolucaoLineChart';
 import { MedidasGridCarousel } from '../components/MedidasGridCarousel';
 import { ConsumoProgressoCard } from '../components/ConsumoProgressoCard';
-import { AvaliacaoHistorico } from '../../../core/evolucao/evolucao.service';
+import { EvolucaoScreen } from '../EvolucaoScreen';
+import {
+  AvaliacaoHistorico,
+  carregarEvolucao
+} from '../../../core/evolucao/evolucao.service';
+import { carregarPerfil } from '../../../core/perfil/perfil.service';
+
+jest.mock('@expo/vector-icons', () => ({
+  Ionicons: () => null
+}));
+
+jest.mock('../../../core/evolucao/evolucao.service', () => {
+  const actual = jest.requireActual('../../../core/evolucao/evolucao.service');
+  return {
+    ...actual,
+    carregarEvolucao: jest.fn(),
+    carregarConsumoProgresso: jest.fn()
+  };
+});
+
+jest.mock('../../../core/perfil/perfil.service', () => ({
+  carregarPerfil: jest.fn()
+}));
+
+jest.mock('../../../core/auth/auth.service', () => ({
+  logout: jest.fn()
+}));
+
+jest.mock('../../../components/layout/AppHeader', () => ({
+  AppHeader: () => null
+}));
+
+jest.mock('../../../components/navigation/SideMenu', () => ({
+  SideMenu: () => null
+}));
 
 describe('Evolução Components', () => {
   describe('EvolucaoLineChart', () => {
@@ -132,7 +167,64 @@ describe('Evolução Components', () => {
       expect(str).toContain('Prega Supra-ilíaca');
       expect(str).toContain('14,0 mm');
     });
+  });
 
+  describe('EvolucaoScreen', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      (carregarPerfil as jest.Mock).mockResolvedValue({
+        id: 1,
+        nome: 'Arthur',
+        email: 'arthur@email.com'
+      });
+    });
+
+    it('apresenta medidas e evolução sem exibir card de consumo de refeições como resultado clínico', async () => {
+      (carregarEvolucao as jest.Mock).mockResolvedValue({
+        consultas: [],
+        avaliacoes: [
+          {
+            id: 2,
+            dataAvaliacao: '2026-10-01T10:00:00',
+            peso: 72.5,
+            altura: 1.75,
+            imc: 23.67,
+            razaoCinturaQuadril: 0.82,
+            percentualGordura: 18.5,
+            circunferenciaCintura: 84.0,
+            circunferenciaQuadril: 102.0,
+            circunferenciaBraco: 34.0
+          }
+        ]
+      });
+
+      const navigation = { navigate: jest.fn(), dispatch: jest.fn() };
+      let tree: renderer.ReactTestRenderer | undefined;
+
+      await act(async () => {
+        tree = renderer.create(
+          <EvolucaoScreen
+            navigation={navigation as never}
+            route={{ key: 'Evolucao', name: 'Evolucao', params: undefined } as never}
+          />
+        );
+        await Promise.resolve();
+      });
+
+      const str = (tree?.root.findAllByType(Text) ?? [])
+        .map((node) => {
+          const children = node.props.children;
+          return Array.isArray(children) ? children.join('') : String(children ?? '');
+        })
+        .join('\n');
+      expect(str).toContain('Progresso Geral');
+      expect(str).toContain('Peso');
+      expect(str).toContain('Gordura Corporal (%)');
+      expect(str).toContain('Cintura');
+      expect(str).not.toContain('Consumo do dia');
+
+      act(() => tree?.unmount());
+    });
   });
 
   describe('ConsumoProgressoCard', () => {

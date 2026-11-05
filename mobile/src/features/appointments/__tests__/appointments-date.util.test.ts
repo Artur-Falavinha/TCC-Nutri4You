@@ -44,7 +44,7 @@ describe('appointments date utilities', () => {
     expect(shiftMonthKey('2027-01', -1)).toBe('2026-12');
   });
 
-  it('gera a semana de segunda a sábado para o carrossel', () => {
+  it('gera a semana de segunda a domingo para respeitar a grade configurável', () => {
     const week = buildWeekDays('2026-10-22').map(toDateKey);
 
     expect(week).toEqual([
@@ -53,7 +53,8 @@ describe('appointments date utilities', () => {
       '2026-10-21',
       '2026-10-22',
       '2026-10-23',
-      '2026-10-24'
+      '2026-10-24',
+      '2026-10-25'
     ]);
   });
 
@@ -62,7 +63,7 @@ describe('appointments date utilities', () => {
 
     expect(isAppointmentDateSelectable('2026-10-20', today)).toBe(false);
     expect(isAppointmentDateSelectable('2026-10-21', today)).toBe(true);
-    expect(isAppointmentDateSelectable('2026-10-25', today)).toBe(false);
+    expect(isAppointmentDateSelectable('2026-10-25', today)).toBe(true);
     expect(isAppointmentDateSelectable('2026-10-26', today)).toBe(true);
   });
 

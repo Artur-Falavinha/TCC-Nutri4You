@@ -8,5 +8,5 @@ public record ConsultaPacienteResponse(
         String nutricionistaNome,
         LocalDateTime dataHora,
         String status,
-        long versao) {
+        long versao, LocalDateTime iniciadaEm) {
 }

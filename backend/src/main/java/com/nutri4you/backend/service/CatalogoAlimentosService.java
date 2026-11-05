@@ -1,9 +1,13 @@
 package com.nutri4you.backend.service;
 
 import com.nutri4you.backend.dto.PrescricaoDTO.PaginaAlimentos;
+import com.nutri4you.backend.dto.PrescricaoDTO.AlimentoDTO;
+import com.nutri4you.backend.model.Alimento;
 import com.nutri4you.backend.repository.AlimentoRepository;
 
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +52,25 @@ public class CatalogoAlimentosService {
 
     public List<String> categorias() {
         return alimentos.categorias();
+    }
+
+    public List<AlimentoDTO> buscarLivre(String termo, int pagina) {
+        if (pagina < 0 || pagina > 1000) {
+            throw new IllegalArgumentException("Página deve estar entre 0 e 1000.");
+        }
+        if (termo != null && termo.length() > 150) {
+            throw new IllegalArgumentException("Busca limitada a 150 caracteres.");
+        }
+        String busca = Alimento.normalizarBusca(termo);
+        if (busca.length() < 2) return List.of();
+        Specification<Alimento> filtro = (root, query, cb) ->
+                cb.and(cb.isTrue(root.get("catalogoAtivo")), cb.isTrue(root.get("disponivelPrescricao")));
+        for (String palavra : busca.split(" +")) {
+            filtro = filtro.and((root, query, cb) ->
+                    cb.like(root.get("nomeBusca"), "%" + palavra + "%"));
+        }
+        return alimentos.findAll(filtro, PageRequest.of(pagina, 30, Sort.by("nome", "id")))
+                .map(Alimento::paraResposta).getContent();
     }
 
     public static String normalizar(String texto) {
