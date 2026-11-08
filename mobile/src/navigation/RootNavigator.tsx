@@ -24,6 +24,7 @@ import { AvailableSlotsScreen } from '../screens/appointments/AvailableSlotsScre
 import { MealPlanScreen } from '../screens/dieta/MealPlanScreen';
 import { ShoppingListScreen } from '../screens/dieta/ShoppingListScreen';
 import { ExamesScreen } from '../screens/exames/ExamesScreen';
+import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -189,6 +190,7 @@ export function RootNavigator() {
           options={{ headerShown: false }}
         />
         <Stack.Screen name="Health" component={HealthScreen} options={{ title: 'Status da API' }} />
+        <Stack.Screen name="Notificacoes" component={NotificationsScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 
 import { UiButtonComponent } from '../../../../shared/components/ui-button/ui-button.component';
@@ -20,6 +20,7 @@ type ListaState = 'loading' | 'empty' | 'loaded' | 'error';
   selector: 'app-pacientes-lista',
   imports: [
     ReactiveFormsModule,
+    RouterLink,
     UiButtonComponent,
     UiInputComponent,
     NovoPacienteModalComponent,

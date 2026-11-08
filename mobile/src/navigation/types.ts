@@ -21,5 +21,6 @@ export type RootStackParamList = {
     consultaId?: number;
     versao?: number;
   };
+  Notificacoes: undefined;
   Health: undefined;
 };

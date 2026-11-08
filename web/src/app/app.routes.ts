@@ -6,7 +6,7 @@ import { AUTH_ROUTES } from './features/auth/auth.routes';
 import { AnamneseComponent } from './features/anamnese/anamnese.component';
 import { anamneseGuard } from './features/anamnese/anamnese.guard';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
-import { FeatureUnavailableComponent } from './features/feature-unavailable/feature-unavailable.component';
+import { ConfiguracoesComponent } from './features/configuracoes/configuracoes.component';
 import { HealthComponent } from './features/health/health.component';
 import { AppShellComponent } from './layout/app-shell.component';
 import { NotFoundComponent } from './features/not-found/not-found.component';
@@ -27,14 +27,8 @@ export const routes: Routes = [
       },
       {
         path: 'configuracoes',
-        component: FeatureUnavailableComponent,
+        component: ConfiguracoesComponent,
         title: 'Configurações — Nutri4You',
-        data: {
-          titulo: 'Configurações',
-          descricao: 'As configurações da conta ainda não estão disponíveis.',
-          destino: '/dashboard',
-          acao: 'Voltar para o dashboard'
-        }
       },
       {
         path: 'anamnese',
