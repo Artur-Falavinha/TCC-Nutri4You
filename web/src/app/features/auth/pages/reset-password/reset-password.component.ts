@@ -65,7 +65,7 @@ export class ResetPasswordComponent implements OnInit {
   }
 
   submit(): void {
-    if (!this.token) {
+    if (!this.token || this.loading) {
       return;
     }
 
@@ -87,6 +87,8 @@ export class ResetPasswordComponent implements OnInit {
       .pipe(finalize(() => (this.loading = false)))
       .subscribe({
         next: (mensagem) => {
+          this.authService.logout();
+          this.token = '';
           this.successMessage = mensagem;
           setTimeout(() => void this.router.navigate(['/login']), 2000);
         },

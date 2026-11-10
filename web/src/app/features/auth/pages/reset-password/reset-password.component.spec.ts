@@ -1,5 +1,5 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter, ActivatedRoute } from '@angular/router';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { provideRouter, ActivatedRoute, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { ResetPasswordComponent } from './reset-password.component';
@@ -10,7 +10,7 @@ describe('ResetPasswordComponent', () => {
   let authService: jasmine.SpyObj<AuthService>;
 
   beforeEach(async () => {
-    authService = jasmine.createSpyObj<AuthService>('AuthService', ['redefinirSenha']);
+    authService = jasmine.createSpyObj<AuthService>('AuthService', ['redefinirSenha', 'logout']);
 
     await TestBed.configureTestingModule({
       imports: [ResetPasswordComponent],
@@ -50,9 +50,11 @@ describe('ResetPasswordComponent', () => {
     fixture.componentInstance.submit();
 
     expect(fixture.componentInstance.errorMessage).toContain('inválido');
+    expect(authService.logout).not.toHaveBeenCalled();
   });
 
-  it('submete redefinição com token da query string', () => {
+  it('redefine com o token do link e encerra a sessão local após a confirmação', fakeAsync(() => {
+    const navegar = spyOn(TestBed.inject(Router), 'navigate').and.returnValue(Promise.resolve(true));
     authService.redefinirSenha.and.returnValue(of('Senha redefinida com sucesso.'));
 
     fixture.componentInstance.form.setValue({
@@ -65,5 +67,9 @@ describe('ResetPasswordComponent', () => {
       '550e8400-e29b-41d4-a716-446655440000',
       'novaSenha123'
     );
-  });
+    expect(authService.logout).toHaveBeenCalledTimes(1);
+    expect(fixture.componentInstance.token).toBe('');
+    tick(2000);
+    expect(navegar).toHaveBeenCalledWith(['/login']);
+  }));
 });
