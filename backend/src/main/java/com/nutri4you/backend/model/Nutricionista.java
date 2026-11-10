@@ -34,6 +34,9 @@ public class Nutricionista implements UserDetails {
     @Column(nullable = false, unique = true, length = 20)
     private String crn;
 
+    @Column(name = "aceita_consultas_avulsas", nullable = false)
+    private boolean aceitaConsultasAvulsas;
+
     protected Nutricionista() {
     }
 
@@ -54,6 +57,14 @@ public class Nutricionista implements UserDetails {
 
     public String getEmail() {
         return email;
+    }
+
+    public boolean aceitaConsultasAvulsas() {
+        return aceitaConsultasAvulsas;
+    }
+
+    public void definirAceiteDeConsultasAvulsas(boolean aceita) {
+        this.aceitaConsultasAvulsas = aceita;
     }
 
     public void setSenha(String senha) {

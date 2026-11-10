@@ -37,6 +37,9 @@ public class Consulta {
     @Column(name = "status", length = 30)
     private String status;
 
+    @Column(nullable = false)
+    private boolean avulsa;
+
     @Column(name = "observacao", columnDefinition = "text")
     private String observacao;
 
@@ -54,6 +57,11 @@ public class Consulta {
     }
 
     public Consulta(Paciente paciente, Nutricionista nutricionista, LocalDateTime dataHora) {
+        this(paciente, nutricionista, dataHora, false);
+    }
+
+    public Consulta(Paciente paciente, Nutricionista nutricionista, LocalDateTime dataHora, boolean avulsa) {
+        this.avulsa = avulsa;
         this.paciente = paciente;
         this.nutricionista = nutricionista;
         this.dataHora = dataHora;
@@ -78,6 +86,10 @@ public class Consulta {
 
     public String getStatus() {
         return status;
+    }
+
+    public boolean isAvulsa() {
+        return avulsa;
     }
 
     public void cancelar() {

@@ -126,7 +126,7 @@ public class GestaoPacienteService {
                 .findByPaciente_IdAndNutricionista_IdAndStatus(
                         paciente.getId(), nutricionista.getId(), StatusRelacaoClinica.ATIVA)
                 .isPresent();
-        boolean consulta = consultaRepository.existsByPaciente_IdAndNutricionista_Id(
+        boolean consulta = consultaRepository.existeConsultaComAcessoClinico(
                 paciente.getId(), nutricionista.getId());
 
         if (!relacaoAtiva && !consulta) {
