@@ -136,3 +136,8 @@
   .sidebar__footer { width: 100%; padding-top: 0; border-top: 0; align-items: flex-end; }
   .sidebar__nav-item--logout { flex: none; height: 28px; padding: 4px 8px; }
 }
+
+@media (max-width: 380px) {
+  .sidebar__nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sidebar__nav-item { width: 100%; }
+}

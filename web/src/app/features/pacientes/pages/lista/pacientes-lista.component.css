@@ -47,6 +47,7 @@
   font-size: 1.25rem;
   cursor: pointer;
   transition: background-color var(--transition-fast);
+  text-decoration: none;
 }
 
 .pacientes-header__bell:hover {

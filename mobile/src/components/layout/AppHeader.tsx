@@ -1,14 +1,18 @@
 import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import BellIcon from '../../assets/appointments/bell.svg';
 import MenuIcon from '../../assets/appointments/menu.svg';
 import { shadows } from '../../theme/tokens';
+import { RootStackParamList } from '../../navigation/types';
 
 interface AppHeaderProps {
   onOpenMenu: () => void;
 }
 
 export function AppHeader({ onOpenMenu }: AppHeaderProps) {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   return (
     <View style={styles.header}>
       <Pressable
@@ -33,8 +37,10 @@ export function AppHeader({ onOpenMenu }: AppHeaderProps) {
 
       <Pressable
         style={styles.iconButton}
+        onPress={() => navigation.navigate('Notificacoes')}
         accessibilityRole="button"
         accessibilityLabel="Notificações"
+        hitSlop={8}
       >
         <BellIcon />
       </Pressable>
