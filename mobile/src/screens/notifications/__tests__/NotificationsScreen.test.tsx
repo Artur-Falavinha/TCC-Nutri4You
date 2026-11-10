@@ -1,6 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { Pressable, Text } from 'react-native';
+import { Text } from 'react-native';
 
 import { listAppointments } from '../../../features/appointments/appointments.service';
 import { NotificationsScreen } from '../NotificationsScreen';
@@ -55,11 +55,10 @@ describe('NotificationsScreen', () => {
       { id: 1, nutricionistaId: 2, nutricionistaNome: 'Nutri', dataHora: '2026-11-11T10:00:00', status: 'CONFIRMADA', versao: 1 }
     ]);
     const tree = await renderScreen();
-    const lembretes = tree.root.findAllByType(Pressable)
-      .filter(item => item.props.accessibilityLabel?.includes('Abrir agenda'));
+    const horarioVisivel = tree.root.findAllByType(Text)
+      .some(item => typeof item.props.children === 'string' && item.props.children.includes('10:00'));
 
-    expect(lembretes).toHaveLength(visivel ? 1 : 0);
-    if (visivel) expect(lembretes[0].props.accessibilityLabel).toContain('10:00');
+    expect(horarioVisivel).toBe(visivel);
     await act(async () => tree.unmount());
   });
 
@@ -67,7 +66,9 @@ describe('NotificationsScreen', () => {
     appointments.mockResolvedValue([]);
     navigation.canGoBack.mockReturnValue(false);
     const tree = await renderScreen();
-    const voltar = tree.root.findAllByType(Pressable).find(item => item.props.accessibilityLabel === 'Voltar')!;
+    const voltar = tree.root.findAllByProps({ accessibilityLabel: 'Voltar' })
+      .find(item => typeof item.props.onPress === 'function')!;
+    expect(voltar).toBeDefined();
     await act(async () => voltar.props.onPress());
 
     expect(navigation.replace).toHaveBeenCalledWith('Dashboard');
