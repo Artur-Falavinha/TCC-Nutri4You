@@ -47,6 +47,7 @@ const linking = {
       Dieta: 'dieta',
       Compras: 'compras',
       Exames: 'exames',
+      Notificacoes: { path: 'notificacoes', alias: ['Notificacoes'] },
       DadosPessoais: 'dados-pessoais',
       Agenda: 'agenda',
       HorariosDisponiveis: 'agenda/horarios',

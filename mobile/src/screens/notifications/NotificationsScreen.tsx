@@ -19,12 +19,28 @@ import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Notificacoes'>;
 
+const relogioDaClinica = new Intl.DateTimeFormat('en', {
+  timeZone: 'America/Sao_Paulo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23'
+});
+const formatoLembrete = new Intl.DateTimeFormat('pt-BR', {
+  dateStyle: 'long',
+  timeStyle: 'short',
+  timeZone: 'UTC'
+});
+
 export function NotificationsScreen({ navigation }: Props) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  const [agora, setAgora] = useState(0);
+  const [agoraNaClinica, setAgoraNaClinica] = useState(0);
 
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true);
@@ -32,7 +48,7 @@ export function NotificationsScreen({ navigation }: Props) {
     setError('');
     try {
       setAppointments((await listAppointments()) ?? []);
-      setAgora(Date.now());
+      setAgoraNaClinica(horarioCivilDaClinica(new Date(Date.now())));
     } catch {
       setError('Não foi possível carregar seus lembretes. Tente novamente.');
     } finally {
@@ -45,13 +61,21 @@ export function NotificationsScreen({ navigation }: Props) {
 
   const lembretes = useMemo(() => appointments
     .filter((item) => ['AGUARDANDO_CONFIRMACAO', 'CONFIRMADA'].includes(item.status)
-      && new Date(item.dataHora).getTime() >= agora)
-    .sort((a, b) => a.dataHora.localeCompare(b.dataHora)), [appointments, agora]);
+      && horarioCivilEmMilissegundos(item.dataHora) >= agoraNaClinica)
+    .sort((a, b) => a.dataHora.localeCompare(b.dataHora)), [appointments, agoraNaClinica]);
+
+  const voltar = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.replace('Dashboard');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.back}
+        <Pressable onPress={voltar} style={styles.back}
           accessibilityRole="button" accessibilityLabel="Voltar">
           <Text style={styles.backText}>‹</Text>
         </Pressable>
@@ -92,8 +116,24 @@ export function NotificationsScreen({ navigation }: Props) {
   );
 }
 
-function formatarData(value: string): string {
-  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(value));
+// A API envia horário civil da clínica sem offset. A escala UTC mantém esses campos
+// na comparação e na exibição, independentemente do fuso do dispositivo.
+function horarioCivilEmMilissegundos(dataHora: string): number {
+  return Date.parse(dataHora + 'Z');
+}
+
+function horarioCivilDaClinica(agora: Date): number {
+  const { year, month, day, hour, minute, second } = Object.fromEntries(
+    relogioDaClinica.formatToParts(agora).map(({ type, value }) => [type, value])
+  );
+  return Date.UTC(
+    Number(year), Number(month) - 1, Number(day),
+    Number(hour), Number(minute), Number(second), agora.getUTCMilliseconds()
+  );
+}
+
+function formatarData(dataHora: string): string {
+  return formatoLembrete.format(horarioCivilEmMilissegundos(dataHora));
 }
 
 const styles = StyleSheet.create({
