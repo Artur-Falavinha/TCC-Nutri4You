@@ -24,8 +24,7 @@ export const AUTH_ROUTES: Routes = [
       import('./pages/reset-password/reset-password.component').then(
         (m) => m.ResetPasswordComponent
       ),
-    title: 'Nova senha — Nutri4You',
-    canActivate: [guestGuard]
+    title: 'Nova senha — Nutri4You'
   },
   {
     path: 'cadastro',
