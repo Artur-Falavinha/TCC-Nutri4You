@@ -19,6 +19,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-12);
   height: 96px;
   padding: var(--space-32) var(--space-40);
   background-color: var(--color-surface-card);
@@ -31,13 +32,15 @@
   font-size: 2.25rem;
   font-weight: 700;
   color: var(--color-text-primary);
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .pacientes-header__bell {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: none;
   width: 2.5rem;
   height: 2.5rem;
   border: none;
@@ -148,9 +151,12 @@
   display: flex;
   gap: var(--space-16);
   flex: 1;
+  min-width: 0;
 }
 
 .filter-input {
+  flex: 1;
+  min-width: 0;
   max-width: 200px;
 }
 
@@ -167,6 +173,7 @@
 .pacientes-table__header {
   display: flex;
   align-items: center;
+  gap: var(--space-12);
   padding: var(--space-16) var(--space-24);
   background-color: var(--color-surface-page);
   border-bottom: 1px solid var(--color-border-default);
@@ -186,6 +193,7 @@
 .pacientes-table__row {
   display: flex;
   align-items: center;
+  gap: var(--space-12);
   padding: var(--space-16) var(--space-24);
   border-bottom: 1px solid var(--color-border-default);
   transition: background-color var(--transition-fast);
@@ -210,6 +218,8 @@
 .pacientes-table__col-acoes {
   display: flex;
   justify-content: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
   text-align: center;
 }
 
@@ -233,6 +243,7 @@
 
 .pacientes-table__col-acoes {
   flex: 1;
+  min-width: calc(4rem + var(--space-12));
   gap: var(--space-12);
 }
 
@@ -337,3 +348,64 @@
   font-weight: 600;
 }
 
+
+@media (max-width: 960px) {
+  .pacientes-header {
+    height: auto;
+    padding: var(--space-16);
+  }
+
+  .pacientes-header__title {
+    margin: 0;
+    font-size: 1.75rem;
+  }
+
+  .pacientes-main__toolbar {
+    flex-wrap: wrap;
+    gap: var(--space-16);
+    padding: var(--space-16);
+  }
+
+  .pacientes-main__filters {
+    display: grid;
+    flex-basis: 100%;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  }
+
+  .filter-input {
+    max-width: none;
+  }
+
+  .pacientes-table-container,
+  .pacientes-pagination {
+    margin-inline: var(--space-16);
+  }
+
+  .pacientes-table__header {
+    display: none;
+  }
+
+  .pacientes-table__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-8) var(--space-12);
+    padding: var(--space-16);
+  }
+
+  .pacientes-table__row > div {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .pacientes-table__col-nome,
+  .pacientes-table__col-email,
+  .pacientes-table__col-telefone {
+    grid-column: 1 / -1;
+  }
+
+  .pacientes-pagination {
+    flex-wrap: wrap;
+    gap: var(--space-12);
+    padding: var(--space-16);
+  }
+}
