@@ -28,19 +28,23 @@ export function AppointmentCard({
 }: AppointmentCardProps) {
   const confirmed = appointment.status === 'CONFIRMADA' && !appointment.iniciadaEm;
   const pending = appointment.status === 'AGUARDANDO_CONFIRMACAO';
+  const canceled = appointment.status === 'CANCELADA';
 
   return (
     <View style={styles.card}>
       <View
         style={[
           styles.status,
-          pending ? styles.pendingStatus : styles.confirmedStatus
+          pending ? styles.pendingStatus : styles.confirmedStatus,
+          canceled && styles.canceledStatus
         ]}
       >
-        <Text style={[styles.statusText, pending ? styles.pendingText : styles.confirmedText]}>
+        <Text style={[styles.statusText, pending ? styles.pendingText : styles.confirmedText, canceled && styles.canceledText]}>
           {appointment.iniciadaEm && appointment.status === 'CONFIRMADA' ? 'EM ATENDIMENTO' : statusLabels[appointment.status]}
         </Text>
       </View>
+
+      <Text style={styles.professionalName}>{appointment.nutricionistaNome}</Text>
 
       <View style={styles.details}>
         <View style={styles.detailItem}>
@@ -105,6 +109,12 @@ const styles = StyleSheet.create({
   pendingStatus: {
     backgroundColor: colors.pendingBackground
   },
+  canceledStatus: {
+    backgroundColor: colors.subtle
+  },
+  canceledText: {
+    color: colors.textSecondary
+  },
   statusText: {
     fontFamily: fontFamily.bold,
     fontSize: 10,
@@ -116,6 +126,11 @@ const styles = StyleSheet.create({
   },
   pendingText: {
     color: colors.pending
+  },
+  professionalName: {
+    color: colors.brandDark,
+    fontFamily: fontFamily.bold,
+    fontSize: 15
   },
   details: {
     minHeight: 44,
