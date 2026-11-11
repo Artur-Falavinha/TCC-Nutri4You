@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 
 import { AnamneseService } from '../../anamnese/anamnese.service';
@@ -67,14 +67,10 @@ describe('ConsultasComponent', () => {
     anamnese = jasmine.createSpyObj('AnamneseService', ['fields']);
     anamnese.fields.and.returnValue(of([]));
 
-    const router = {
-      navigate: jasmine.createSpy('navigate'),
-      lastSuccessfulNavigation: null
-    } as unknown as Router;
-
     await TestBed.configureTestingModule({
       imports: [ConsultasComponent],
       providers: [
+        provideRouter([]),
         {
           provide: ActivatedRoute,
           useValue: {
@@ -85,7 +81,6 @@ describe('ConsultasComponent', () => {
             }
           }
         },
-        { provide: Router, useValue: router },
         { provide: PacientesService, useValue: jasmine.createSpyObj('PacientesService', ['buscarPorId']) },
         { provide: ConsultasService, useValue: jasmine.createSpyObj('ConsultasService', ['buscar', 'listar', 'salvar', 'acao']) },
         { provide: AtendimentosService, useValue: atendimentos },
