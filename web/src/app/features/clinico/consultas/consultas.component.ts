@@ -11,15 +11,17 @@ import { PatientTabsComponent } from '../../../shared/components/patient-tabs/pa
 import { UiButtonComponent } from '../../../shared/components/ui-button/ui-button.component';
 import { UiInputComponent } from '../../../shared/components/ui-input/ui-input.component';
 import { UiSelectComponent } from '../../../shared/components/ui-select/ui-select.component';
+import { PacienteDialogComponent } from '../../pacientes/components/paciente-dialog/paciente-dialog.component';
 import { AnamneseField } from '../../anamnese/anamnese.models';
 import { AnamneseService } from '../../anamnese/anamnese.service';
+import { DietaService } from '../../dieta/dieta.service';
 import { CAMPOS_MEDIDAS, ConsultaForm, STATUS_CONSULTA, decimal } from './consulta-form';
 import { AtendimentoClinico, AtendimentosService, Consulta, ConsultasService, PaginaConsultas } from './consultas.service';
 
 @Component({
   selector: 'app-consultas',
   imports: [DatePipe, FormsModule, RouterLink, PatientTabsComponent, UiButtonComponent,
-    UiInputComponent, UiSelectComponent, FormAlertComponent],
+    UiInputComponent, UiSelectComponent, FormAlertComponent, PacienteDialogComponent],
   templateUrl: './consultas.component.html',
   styleUrl: './consultas.component.css'
 })
@@ -30,6 +32,7 @@ export class ConsultasComponent implements OnInit {
   private readonly service = inject(ConsultasService);
   private readonly atendimentos = inject(AtendimentosService);
   private readonly anamnese = inject(AnamneseService);
+  private readonly dieta = inject(DietaService);
   private readonly destroyRef = inject(DestroyRef);
   patientId = Number(this.route.snapshot.paramMap.get('id'));
   readonly atendimento = !!this.route.snapshot.data['atendimento'];
@@ -55,6 +58,7 @@ export class ConsultasComponent implements OnInit {
   salvando = false;
   erro = '';
   mensagem = '';
+  avisoConclusaoRascunhoAberto = false;
   errors: Record<string, string> = {};
   lista: PaginaConsultas | null = null;
   private original = this.form.assinatura();
@@ -116,7 +120,7 @@ export class ConsultasComponent implements OnInit {
   }
 
   salvar(): void {
-    if (this.salvando || this.carregando || !this.carregado || !this.podeEditar) return;
+    if (this.salvando || this.avisoConclusaoRascunhoAberto || this.carregando || !this.carregado || !this.podeEditar) return;
     this.errors = this.form.validar();
     this.erro = '';
     if (Object.keys(this.errors).length) {
@@ -124,23 +128,68 @@ export class ConsultasComponent implements OnInit {
       setTimeout(() => document.getElementById(Object.keys(this.errors)[0])?.focus());
       return;
     }
+
+    if (this.precisaAvisarRascunho()) {
+      this.verificarRascunhoAntesDeConcluir();
+      return;
+    }
+
+    this.salvarConsulta();
+  }
+
+  confirmarConclusaoComRascunho(): void {
+    if (this.salvando || !this.avisoConclusaoRascunhoAberto) return;
+    this.avisoConclusaoRascunhoAberto = false;
+    this.salvarConsulta();
+  }
+
+  fecharAvisoConclusaoRascunho(): void {
+    if (this.salvando) return;
+    this.avisoConclusaoRascunhoAberto = false;
+  }
+
+  private precisaAvisarRascunho(): boolean {
+    return this.atendimento && this.consultaId !== null && this.form.status === 'REALIZADA'
+      && this.consultaAtual?.status !== 'REALIZADA';
+  }
+
+  private verificarRascunhoAntesDeConcluir(): void {
     this.salvando = true;
-    const operacao = this.atendimento && this.consultaId !== null
-      ? this.atendimentos.salvar(this.consultaId, this.form.payload())
-      : this.service.salvar(this.patientId, this.consultaId, this.form.payload());
-    operacao
+    this.dieta.listarPlanos(this.patientId, this.consultaId)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-        next: () => {
-          this.original = this.form.assinatura();
-          this.salvando = false;
-          if (this.atendimento) { this.mensagem = 'Atendimento salvo com sucesso.'; this.carregar(); }
-          else void this.router.navigate(['/pacientes', this.patientId, 'consultas'], { state: { consultaSalva: true } });
+        next: planos => {
+          if (planos.some(plano => plano.status === 'RASCUNHO')) {
+            this.avisoConclusaoRascunhoAberto = true;
+            this.salvando = false;
+            return;
+          }
+          this.salvarConsulta();
         },
         error: (error: ApiErrorResponse) => {
-          this.erro = error.message || 'Não foi possível salvar. Seus campos foram mantidos.';
+          this.erro = error.message || 'Não foi possível verificar se há dieta em rascunho. Tente novamente para concluir o atendimento.';
           this.salvando = false;
         }
       });
+  }
+
+  private salvarConsulta(): void {
+    this.salvando = true;
+    this.erro = '';
+    const operacao = this.atendimento && this.consultaId !== null
+      ? this.atendimentos.salvar(this.consultaId, this.form.payload())
+      : this.service.salvar(this.patientId, this.consultaId, this.form.payload());
+    operacao.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.original = this.form.assinatura();
+        this.salvando = false;
+        if (this.atendimento) { this.mensagem = 'Atendimento salvo com sucesso.'; this.carregar(); }
+        else void this.router.navigate(['/pacientes', this.patientId, 'consultas'], { state: { consultaSalva: true } });
+      },
+      error: (error: ApiErrorResponse) => {
+        this.erro = error.message || 'Não foi possível salvar. Seus campos foram mantidos.';
+        this.salvando = false;
+      }
+    });
   }
 
   get respostasAnamnese(): { secao: string; campos: { label: string; valor: string }[] }[] {
