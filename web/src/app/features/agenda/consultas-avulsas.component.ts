@@ -1,7 +1,9 @@
 import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { finalize } from 'rxjs';
+import { finalize, interval } from 'rxjs';
+import { RouterLink } from '@angular/router';
+import { AtendimentoClinico, AtendimentosService } from '../clinico/consultas/consultas.service';
 import { ApiService } from '../../core/services/api.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
@@ -22,12 +24,13 @@ const SOLICITACOES = '/agenda-nutricionista/solicitacoes-avulsas';
 
 @Component({
   selector: 'app-consultas-avulsas',
-  imports: [DatePipe, FormAlertComponent],
+  imports: [DatePipe, FormAlertComponent, RouterLink],
   templateUrl: './consultas-avulsas.component.html',
   styleUrl: './consultas-avulsas.component.css'
 })
 export class ConsultasAvulsasComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly atendimentosService = inject(AtendimentosService);
   private readonly destroyRef = inject(DestroyRef);
 
   aceitaConsultasAvulsas: boolean | null = null;
@@ -40,9 +43,71 @@ export class ConsultasAvulsasComponent implements OnInit {
   erroSolicitacoes = '';
   mensagemSolicitacoes = '';
 
+  atendimentos: AtendimentoClinico[] = [];
+  carregandoAtendimentos = false;
+  erroAtendimentos = '';
+  mensagemAtendimentos = '';
+  atendimentoParaCancelar: number | null = null;
+  cancelando = false;
+  iniciando = false;
+  agora = Date.now();
+
   ngOnInit(): void {
+    this.carregarAtendimentos();
+    interval(1000).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => { this.agora = Date.now(); });
     this.carregarPreferencia();
     this.carregarSolicitacoes();
+  }
+
+  carregarAtendimentos(): void {
+    this.carregandoAtendimentos = true;
+    this.erroAtendimentos = '';
+    this.atendimentosService.listar().pipe(takeUntilDestroyed(this.destroyRef),
+      finalize(() => { this.carregandoAtendimentos = false; })).subscribe({
+      next: itens => { this.atendimentos = itens; },
+      error: (erro: ApiErrorResponse) => { this.erroAtendimentos = erro.message; }
+    });
+  }
+
+  podeIniciar(item: AtendimentoClinico): boolean {
+    return item.status === 'CONFIRMADA' && !item.iniciadaEm && !!item.janelaInicio && !!item.janelaFim
+      && this.agora >= Date.parse(item.janelaInicio) && this.agora <= Date.parse(item.janelaFim);
+  }
+
+  iniciar(item: AtendimentoClinico): void {
+    if (this.iniciando || this.cancelando || !this.podeIniciar(item)) return;
+    this.iniciando = true;
+    this.erroAtendimentos = '';
+    this.mensagemAtendimentos = '';
+    this.atendimentosService.iniciar(item).pipe(takeUntilDestroyed(this.destroyRef),
+      finalize(() => { this.iniciando = false; })).subscribe({
+      next: () => this.carregarAtendimentos(),
+      error: (erro: ApiErrorResponse) => { this.erroAtendimentos = erro.message; }
+    });
+  }
+
+  podeCancelar(item: AtendimentoClinico): boolean {
+    const agoraClinica = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+    }).format(new Date(this.agora)).replace(' ', 'T');
+    return item.status === 'CONFIRMADA' && !item.iniciadaEm && item.dataHora.slice(0, 19) > agoraClinica;
+  }
+
+  cancelarAtendimento(item: AtendimentoClinico): void {
+    if (this.cancelando || this.iniciando || this.atendimentoParaCancelar !== item.id || !this.podeCancelar(item)) return;
+    this.cancelando = true;
+    this.erroAtendimentos = '';
+    this.mensagemAtendimentos = '';
+    this.atendimentosService.cancelar(item).pipe(takeUntilDestroyed(this.destroyRef),
+      finalize(() => { this.cancelando = false; })).subscribe({
+      next: () => {
+        this.atendimentoParaCancelar = null;
+        this.mensagemAtendimentos = 'Atendimento cancelado.';
+        this.carregarAtendimentos();
+      },
+      error: (erro: ApiErrorResponse) => { this.erroAtendimentos = erro.message || 'Não foi possível cancelar o atendimento.'; }
+    });
   }
 
   carregarPreferencia(): void {
@@ -95,6 +160,7 @@ export class ConsultasAvulsasComponent implements OnInit {
       next: () => {
         this.solicitacoes = this.solicitacoes.filter(item => item.id !== solicitacao.id);
         this.mensagemSolicitacoes = aceitar ? 'Consulta confirmada.' : 'Consulta recusada.';
+        if (aceitar) this.carregarAtendimentos();
       },
       error: (erro: ApiErrorResponse) => { this.erroSolicitacoes = erro.message; }
     });

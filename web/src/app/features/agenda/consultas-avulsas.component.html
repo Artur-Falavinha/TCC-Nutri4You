@@ -44,4 +44,38 @@
       <p>Nenhuma solicitação avulsa pendente.</p>
     }
   }
+  <div class="linha cabecalho-pedidos">
+    <h3>Atendimentos</h3>
+    <button type="button" [disabled]="carregandoAtendimentos || iniciando || cancelando" (click)="carregarAtendimentos()">Atualizar atendimentos</button>
+  </div>
+  <app-form-alert [message]="erroAtendimentos" type="error" />
+  <p class="mensagem" role="status">{{ mensagemAtendimentos }}</p>
+  @if (carregandoAtendimentos) { <p role="status">Carregando atendimentos...</p> }
+  @else {
+    <ul>
+      @for (item of atendimentos; track item.id) {
+        <li class="linha">
+          <div><strong>{{ item.pacienteNome }}</strong><time [attr.datetime]="item.dataHora">{{ item.dataHora | date:'dd/MM/yyyy HH:mm' }}</time>
+            <span>{{ item.status === 'REALIZADA' ? 'Concluída' : item.iniciadaEm ? 'Em andamento' : 'Confirmada' }}</span></div>
+          <div class="acoes">
+            @if (!item.iniciadaEm && item.status === 'CONFIRMADA') {
+              <button type="button" class="confirmar" [disabled]="iniciando || cancelando || !podeIniciar(item)" (click)="iniciar(item)">Iniciar atendimento</button>
+              <small>Início permitido de {{ item.janelaInicio | date:'dd/MM HH:mm' }} até {{ item.janelaFim | date:'dd/MM HH:mm' }}</small>
+              @if (podeCancelar(item)) {
+                @if (atendimentoParaCancelar === item.id) {
+                  <span>Cancelar o atendimento de {{ item.pacienteNome }}?</span>
+                  <button type="button" [disabled]="cancelando" (click)="atendimentoParaCancelar = null">Manter atendimento</button>
+                  <button type="button" [disabled]="cancelando || iniciando" (click)="cancelarAtendimento(item)">Confirmar cancelamento</button>
+                } @else {
+                  <button type="button" [disabled]="iniciando || cancelando" (click)="atendimentoParaCancelar = item.id">Cancelar atendimento</button>
+                }
+              }
+            } @else {
+              <a [routerLink]="['/agenda/atendimentos', item.id]">Abrir atendimento</a>
+            }
+          </div>
+        </li>
+      } @empty { @if (!erroAtendimentos) { <li>Nenhum atendimento confirmado.</li> } }
+    </ul>
+  }
 </section>

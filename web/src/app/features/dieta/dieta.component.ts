@@ -3,7 +3,7 @@ import { Component, DestroyRef, HostListener, OnInit, inject } from '@angular/co
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, CanDeactivateFn, RouterLink } from '@angular/router';
-import { EMPTY, Subject, catchError, forkJoin, switchMap } from 'rxjs';
+import { EMPTY, Subject, catchError, forkJoin, switchMap, throwError } from 'rxjs';
 
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { Paciente } from '../../core/models/paciente.models';
@@ -28,6 +28,7 @@ import {
   RefeicaoEdicao,
   SubstitutoEdicao
 } from './dieta.models';
+import { AtendimentosService } from '../clinico/consultas/consultas.service';
 import { DietaService } from './dieta.service';
 
 type TelaDieta = 'lista' | 'detalhe' | 'editor';
@@ -47,10 +48,13 @@ export class DietaComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly pacientes = inject(PacientesService);
   private readonly dieta = inject(DietaService);
+  private readonly atendimentos = inject(AtendimentosService);
   private readonly destroyRef = inject(DestroyRef);
   readonly patientId = Number(this.route.snapshot.paramMap.get('id'));
 
-  paciente: Paciente | null = null;
+  readonly atendimentoId = this.route.snapshot.queryParamMap.has('atendimentoId') ? Number(this.route.snapshot.queryParamMap.get('atendimentoId')) : null;
+  podeEditarAtendimento = false;
+  paciente: Pick<Paciente, 'nome'> | null = null;
   planos: Plano[] = [];
   planoSelecionado: Plano | null = null;
   planoEmEdicaoId: number | null = null;
@@ -148,9 +152,15 @@ export class DietaComponent implements OnInit {
     }
     this.carregando = true;
     this.erro = '';
+    const dadosPaciente = this.atendimentoId === null ? this.pacientes.buscarPorId(this.patientId)
+      : this.atendimentos.buscar(this.atendimentoId).pipe(switchMap(a => {
+        if (a.pacienteId !== this.patientId || !a.iniciadaEm) return throwError(() => new Error('Atendimento indisponível.'));
+        this.podeEditarAtendimento = a.status === 'CONFIRMADA';
+        return [{ nome: a.pacienteNome }];
+      }));
     forkJoin({
-      paciente: this.pacientes.buscarPorId(this.patientId),
-      planos: this.dieta.listarPlanos(this.patientId)
+      paciente: dadosPaciente,
+      planos: this.dieta.listarPlanos(this.patientId, this.atendimentoId)
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ paciente, planos }) => {
         this.paciente = paciente;
@@ -167,6 +177,7 @@ export class DietaComponent implements OnInit {
   }
 
   abrirNovoRascunho(): void {
+    if (this.atendimentoId !== null && !this.podeEditarAtendimento) return;
     if (!this.podeTrocarTela()) return;
     this.tela = 'editor';
     this.planoEmEdicaoId = null;
@@ -180,7 +191,7 @@ export class DietaComponent implements OnInit {
     if (!this.podeTrocarTela()) return;
     this.erro = '';
     this.mensagem = '';
-    this.dieta.buscarPlano(this.patientId, plano.id)
+    this.dieta.buscarPlano(this.patientId, plano.id, this.atendimentoId)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: detalhe => {
           this.planoSelecionado = detalhe;
@@ -193,6 +204,7 @@ export class DietaComponent implements OnInit {
   }
 
   abrirEdicao(): void {
+    if (this.atendimentoId !== null && !this.podeEditarAtendimento) return;
     const plano = this.planoSelecionado;
     if (!plano || plano.status !== 'RASCUNHO') return;
     this.planoEmEdicaoId = plano.id;
@@ -203,6 +215,7 @@ export class DietaComponent implements OnInit {
   }
 
   duplicarPlano(): void {
+    if (this.atendimentoId !== null && !this.podeEditarAtendimento) return;
     const plano = this.planoSelecionado;
     if (!plano || plano.status === 'RASCUNHO' || !this.podeTrocarTela()) return;
     this.planoEmEdicaoId = null;
@@ -412,8 +425,8 @@ export class DietaComponent implements OnInit {
     const request = this.payload();
     this.salvando = true;
     const operacao = this.planoEmEdicaoId === null
-      ? this.dieta.criarPlano(this.patientId, request)
-      : this.dieta.atualizarPlano(this.patientId, this.planoEmEdicaoId, request);
+      ? this.dieta.criarPlano(this.patientId, request, this.atendimentoId)
+      : this.dieta.atualizarPlano(this.patientId, this.planoEmEdicaoId, request, this.atendimentoId);
     operacao.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: plano => {
         this.planoSelecionado = plano;
@@ -459,7 +472,7 @@ export class DietaComponent implements OnInit {
     this.publicando = true;
     this.erro = '';
     this.mensagem = '';
-    this.dieta.publicarPlano(this.patientId, plano.id, plano.versao)
+    this.dieta.publicarPlano(this.patientId, plano.id, plano.versao, this.atendimentoId)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: publicado => {
           this.planoSelecionado = publicado;
@@ -480,7 +493,7 @@ export class DietaComponent implements OnInit {
     if (!window.confirm(`Excluir o rascunho “${plano.titulo}”? Esta ação não pode ser desfeita.`)) return;
     this.excluindo = true;
     this.erro = '';
-    this.dieta.excluirRascunho(this.patientId, plano.id, plano.versao)
+    this.dieta.excluirRascunho(this.patientId, plano.id, plano.versao, this.atendimentoId)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
           this.planos = this.planos.filter(item => item.id !== plano.id);
@@ -616,7 +629,7 @@ export class DietaComponent implements OnInit {
     this.buscasListaCompras$.pipe(
       switchMap(pedido => {
         if (pedido === null) return EMPTY;
-        return this.dieta.previsualizarListaCompras(this.patientId, pedido.planoId, pedido.dias).pipe(
+        return this.dieta.previsualizarListaCompras(this.patientId, pedido.planoId, pedido.dias, this.atendimentoId).pipe(
           catchError((error: ApiErrorResponse) => {
             this.listaComprasErro = error.message || 'Não foi possível carregar a prévia da lista de compras.';
             this.listaComprasCarregando = false;

@@ -5,6 +5,7 @@ import { finalize } from 'rxjs';
 
 import { UiButtonComponent } from '../../../../shared/components/ui-button/ui-button.component';
 import { UiInputComponent } from '../../../../shared/components/ui-input/ui-input.component';
+import { FormAlertComponent } from '../../../../shared/components/form-alert/form-alert.component';
 import { NovoPacienteModalComponent } from '../../components/novo-paciente-modal/novo-paciente-modal.component';
 import {
   AcaoRelacao,
@@ -23,6 +24,7 @@ type ListaState = 'loading' | 'empty' | 'loaded' | 'error';
     RouterLink,
     UiButtonComponent,
     UiInputComponent,
+    FormAlertComponent,
     NovoPacienteModalComponent,
     RelacaoPacienteModalComponent
   ],
@@ -39,6 +41,7 @@ export class PacientesListaComponent implements OnInit {
   state: ListaState = 'loading';
   pacientes: Paciente[] = [];
   errorMessage = '';
+  mensagemRelacao = '';
   modalAberto = false;
   pageIndex = 0;
 
@@ -150,10 +153,14 @@ export class PacientesListaComponent implements OnInit {
 
   onPacienteVinculado(): void {
     this.modalAberto = false;
+    this.mensagemRelacao = 'Solicitação enviada. O vínculo fica ativo após o aceite do paciente no aplicativo.';
     this.carregarPacientes();
   }
 
   onRelacaoAlterada(): void {
+    this.mensagemRelacao = this.acaoRelacao === 'vincular'
+      ? 'Solicitação enviada. O vínculo fica ativo após o aceite do paciente no aplicativo.'
+      : 'Vínculo encerrado.';
     this.fecharModalRelacao();
     this.carregarPacientes();
   }

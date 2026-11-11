@@ -80,7 +80,7 @@ export class NovoPacienteModalComponent {
       .subscribe({
         next: () => this.vinculado.emit(),
         error: (error: ApiErrorResponse) => {
-          this.errorMessage = error.message ?? 'Não foi possível vincular o paciente.';
+          this.errorMessage = error.message ?? 'Não foi possível enviar a solicitação de vínculo.';
         }
       });
   }

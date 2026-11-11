@@ -11,8 +11,10 @@ import { PatientTabsComponent } from '../../../shared/components/patient-tabs/pa
 import { UiButtonComponent } from '../../../shared/components/ui-button/ui-button.component';
 import { UiInputComponent } from '../../../shared/components/ui-input/ui-input.component';
 import { UiSelectComponent } from '../../../shared/components/ui-select/ui-select.component';
+import { AnamneseField } from '../../anamnese/anamnese.models';
+import { AnamneseService } from '../../anamnese/anamnese.service';
 import { CAMPOS_MEDIDAS, ConsultaForm, STATUS_CONSULTA, decimal } from './consulta-form';
-import { Consulta, ConsultasService, PaginaConsultas } from './consultas.service';
+import { AtendimentoClinico, AtendimentosService, Consulta, ConsultasService, PaginaConsultas } from './consultas.service';
 
 @Component({
   selector: 'app-consultas',
@@ -26,8 +28,14 @@ export class ConsultasComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly pacientes = inject(PacientesService);
   private readonly service = inject(ConsultasService);
+  private readonly atendimentos = inject(AtendimentosService);
+  private readonly anamnese = inject(AnamneseService);
   private readonly destroyRef = inject(DestroyRef);
-  readonly patientId = Number(this.route.snapshot.paramMap.get('id'));
+  patientId = Number(this.route.snapshot.paramMap.get('id'));
+  readonly atendimento = !!this.route.snapshot.data['atendimento'];
+  contextoClinico: AtendimentoClinico['contextoClinico'] = null;
+  camposAnamnese: AnamneseField[] = [];
+  erroCamposAnamnese = '';
   readonly consultaId = this.route.snapshot.paramMap.has('consultaId')
     ? Number(this.route.snapshot.paramMap.get('consultaId')) : null;
   readonly editor = !!this.route.snapshot.data['editor'];
@@ -52,6 +60,12 @@ export class ConsultasComponent implements OnInit {
   private original = this.form.assinatura();
 
   ngOnInit(): void {
+    if (this.atendimento) {
+      this.anamnese.fields().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: campos => { this.camposAnamnese = campos; },
+        error: () => { this.erroCamposAnamnese = 'Não foi possível carregar os campos da anamnese.'; }
+      });
+    }
     if (this.router.lastSuccessfulNavigation?.extras.state?.['consultaSalva']) {
       this.mensagem = 'Consulta salva com sucesso.';
     }
@@ -63,6 +77,22 @@ export class ConsultasComponent implements OnInit {
     if (this.salvando) return;
     this.carregando = true;
     this.erro = '';
+    if (this.atendimento && this.consultaId !== null) {
+      this.atendimentos.buscar(this.consultaId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: consulta => {
+          this.patientId = consulta.pacienteId ?? 0;
+          this.nome = consulta.pacienteNome;
+          this.contextoClinico = consulta.contextoClinico;
+          this.consultaAtual = consulta;
+          this.form.carregar(consulta);
+          this.original = this.form.assinatura();
+          this.carregado = true;
+          this.carregando = false;
+        },
+        error: (error: ApiErrorResponse) => { this.erro = error.message || 'Não foi possível carregar o atendimento.'; this.carregando = false; }
+      });
+      return;
+    }
     forkJoin({
       paciente: this.pacientes.buscarPorId(this.patientId),
       consulta: this.editor && this.consultaId !== null
@@ -95,12 +125,16 @@ export class ConsultasComponent implements OnInit {
       return;
     }
     this.salvando = true;
-    this.service.salvar(this.patientId, this.consultaId, this.form.payload())
+    const operacao = this.atendimento && this.consultaId !== null
+      ? this.atendimentos.salvar(this.consultaId, this.form.payload())
+      : this.service.salvar(this.patientId, this.consultaId, this.form.payload());
+    operacao
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
           this.original = this.form.assinatura();
           this.salvando = false;
-          void this.router.navigate(['/pacientes', this.patientId, 'consultas'], { state: { consultaSalva: true } });
+          if (this.atendimento) { this.mensagem = 'Atendimento salvo com sucesso.'; this.carregar(); }
+          else void this.router.navigate(['/pacientes', this.patientId, 'consultas'], { state: { consultaSalva: true } });
         },
         error: (error: ApiErrorResponse) => {
           this.erro = error.message || 'Não foi possível salvar. Seus campos foram mantidos.';
@@ -109,8 +143,24 @@ export class ConsultasComponent implements OnInit {
       });
   }
 
+  get respostasAnamnese(): { secao: string; campos: { label: string; valor: string }[] }[] {
+    const respostas = this.contextoClinico?.anamneseFinalizada;
+    if (!respostas) return [];
+    const secoes: { secao: string; campos: { label: string; valor: string }[] }[] = [];
+    for (const campo of this.camposAnamnese) {
+      const valor = respostas[campo.key];
+      const texto = Array.isArray(valor) ? valor.filter(item => typeof item === 'string' || typeof item === 'number').join(', ')
+        : typeof valor === 'string' || typeof valor === 'number' ? String(valor) : '';
+      if (!texto.trim()) continue;
+      let secao = secoes.find(item => item.secao === campo.section);
+      if (!secao) { secao = { secao: campo.section, campos: [] }; secoes.push(secao); }
+      secao.campos.push({ label: campo.label, valor: texto });
+    }
+    return secoes;
+  }
+
   get podeEditar(): boolean {
-    return !!this.consultaAtual && (this.consultaAtual.status === 'REALIZADA'
+    return !!this.consultaAtual && (!this.atendimento || this.consultaAtual.status !== 'REALIZADA') && (this.consultaAtual.status === 'REALIZADA'
       || (this.consultaAtual.status === 'CONFIRMADA' && !!this.consultaAtual.iniciadaEm));
   }
   podeIniciar(c: Consulta): boolean {
