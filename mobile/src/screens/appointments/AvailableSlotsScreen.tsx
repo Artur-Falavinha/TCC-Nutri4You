@@ -62,7 +62,7 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     let active = true;
-    void getAppointmentAvailability(nutricionistaId, selectedDate)
+    void getAppointmentAvailability(nutricionistaId, selectedDate, consultaId)
       .then((data) => {
         if (active) {
           setAvailability(data);
@@ -82,7 +82,7 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
     return () => {
       active = false;
     };
-  }, [nutricionistaId, selectedDate]);
+  }, [nutricionistaId, selectedDate, consultaId]);
 
   const weekDays = useMemo(() => buildWeekDays(selectedDate), [selectedDate]);
   const groupedSlots = useMemo(

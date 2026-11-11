@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -90,13 +91,7 @@ public class ConsultaService {
     public ConsultaResponse confirmar(Nutricionista nutricionista, Integer pacienteId, Integer id, Long versao) {
         pacientes.exigirAcesso(nutricionista, pacienteId);
         Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
-        exigirVersao(consulta, versao);
-        if (!"AGUARDANDO_CONFIRMACAO".equals(consulta.getStatus()) || !consulta.getDataHora().isAfter(janela.agora())) {
-            throw new IllegalArgumentException("Somente solicitações futuras pendentes podem ser confirmadas.");
-        }
-        exigirSemConflito(consulta);
-        consulta.atualizar(consulta.getDataHora(), "CONFIRMADA", consulta.getObservacao());
-        consultas.flush();
+        decidirSolicitacao(consulta, versao, true);
         return resposta(consulta, null);
     }
 
@@ -112,6 +107,35 @@ public class ConsultaService {
         consulta.cancelar();
         consultas.flush();
         return resposta(consulta, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SolicitacaoAvulsaDTO> listarAvulsasPendentes(Nutricionista nutricionista) {
+        return consultas.listarAvulsasPendentes(nutricionista.getId(), janela.agora());
+    }
+
+    @Transactional
+    public void decidirAvulsa(Nutricionista nutricionista, Integer id, DecisaoConsultaRequest decisao) {
+        if (decisao == null || decisao.aceitar() == null) {
+            throw new IllegalArgumentException("Informe se deseja confirmar ou recusar a consulta.");
+        }
+        Consulta consulta = consultas.findByIdAndNutricionista_IdAndAvulsaTrue(id, nutricionista.getId())
+                .orElseThrow(ConsultaNaoEncontradaException::new);
+        decidirSolicitacao(consulta, decisao.versao(), decisao.aceitar());
+    }
+
+    private void decidirSolicitacao(Consulta consulta, Long versao, boolean aceitar) {
+        exigirVersao(consulta, versao);
+        if (!"AGUARDANDO_CONFIRMACAO".equals(consulta.getStatus()) || !consulta.getDataHora().isAfter(janela.agora())) {
+            throw new IllegalArgumentException("Somente solicitações futuras pendentes podem ser decididas.");
+        }
+        if (aceitar) {
+            exigirSemConflito(consulta);
+            consulta.atualizar(consulta.getDataHora(), "CONFIRMADA", consulta.getObservacao());
+        } else {
+            consulta.cancelar();
+        }
+        consultas.flush();
     }
 
     private void exigirVersao(Consulta c, Long versao) {

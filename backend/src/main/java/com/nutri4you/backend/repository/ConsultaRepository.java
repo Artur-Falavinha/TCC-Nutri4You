@@ -1,5 +1,6 @@
 package com.nutri4you.backend.repository;
 
+import com.nutri4you.backend.dto.SolicitacaoAvulsaDTO;
 import com.nutri4you.backend.model.Consulta;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -14,7 +15,8 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Integer> {
 
     @Query("""
             select c from Consulta c where c.paciente.id = :pacienteId
-            and c.status in ('AGUARDANDO_CONFIRMACAO', 'CONFIRMADA')
+            and (c.status in ('AGUARDANDO_CONFIRMACAO', 'CONFIRMADA')
+                or (c.avulsa = true and c.status = 'CANCELADA'))
             and (c.dataHora >= :agora or (c.status = 'CONFIRMADA' and c.iniciadaEm is not null))
             order by c.dataHora, c.id
             """)
@@ -26,7 +28,23 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Integer> {
     Page<Consulta> findByPaciente_IdAndNutricionista_Id(
             Integer pacienteId, Integer nutricionistaId, Pageable pageable);
 
-    boolean existsByPaciente_IdAndNutricionista_Id(Integer pacienteId, Integer nutricionistaId);
+    @Query("""
+            select count(c) > 0 from Consulta c
+            where c.paciente.id = :pacienteId and c.nutricionista.id = :nutricionistaId
+            and (c.avulsa = false or c.status in ('CONFIRMADA', 'REALIZADA'))
+            """)
+    boolean existeConsultaComAcessoClinico(Integer pacienteId, Integer nutricionistaId);
+
+    @Query("""
+            select new com.nutri4you.backend.dto.SolicitacaoAvulsaDTO(c.id, p.nome, c.dataHora, c.versao)
+            from Consulta c join c.paciente p
+            where c.nutricionista.id = :nutricionistaId and c.avulsa = true
+            and c.status = 'AGUARDANDO_CONFIRMACAO' and c.dataHora > :agora
+            order by c.dataHora, c.id
+            """)
+    List<SolicitacaoAvulsaDTO> listarAvulsasPendentes(Integer nutricionistaId, LocalDateTime agora);
+
+    Optional<Consulta> findByIdAndNutricionista_IdAndAvulsaTrue(Integer id, Integer nutricionistaId);
 
     List<Consulta> findByPaciente_IdAndNutricionista_IdOrderByDataHoraDesc(
             Integer pacienteId, Integer nutricionistaId);

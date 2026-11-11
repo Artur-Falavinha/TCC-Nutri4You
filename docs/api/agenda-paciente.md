@@ -1,14 +1,16 @@
 # Agenda do paciente
 
-Base: `/api/v1/agenda`. Todas as rotas exigem JWT de paciente. O
-nutricionista informado precisa manter vínculo clínico ativo com o paciente.
+Base `/api/v1/agenda`. Todas as rotas exigem JWT de paciente. O paciente pode
+agendar com profissionais vinculados ou escolher um nutricionista que tenha
+aberto a agenda para consultas avulsas.
 
 ## Rotas
 
 | Método | Rota | Resultado |
 | --- | --- | --- |
-| `GET` | `/consultas` | Lista solicitações/consultas confirmadas futuras e consultas em andamento, em ordem cronológica |
-| `GET` | `/disponibilidade?nutricionistaId={id}&data=YYYY-MM-DD` | Lista horários livres do dia |
+| `GET` | `/nutricionistas` | Retorna `id`, `nome` e `vinculado` de profissionais vinculados e dos que aceitam avulsas com horários cadastrados |
+| `GET` | `/consultas` | Lista pedidos e consultas futuras, consultas em andamento e cancelamentos avulsos até o horário marcado |
+| `GET` | `/disponibilidade?nutricionistaId={id}&data=YYYY-MM-DD` | Lista horários livres do dia. Aceita `consultaId` no reagendamento de uma consulta própria |
 | `POST` | `/consultas` | Cria solicitação com status `AGUARDANDO_CONFIRMACAO`; HTTP 201 |
 | `PUT` | `/consultas/{id}/reagendamento` | Altera uma consulta confirmada e volta o status para aguardando confirmação |
 | `POST` | `/consultas/{id}/cancelamento` | Cancela uma consulta confirmada e libera o horário |
@@ -59,11 +61,12 @@ também a duração de 45 minutos. A lista semanal cadastrada pelo nutricionista
 
 - Somente consultas `CONFIRMADA`, futuras e ainda não iniciadas podem ser reagendadas ou canceladas pelo paciente. A resposta inclui `iniciadaEm`; o card mobile oculta ações após o início.
 - Consultas iniciadas continuam visíveis mesmo após o horário agendado, até sua conclusão pelo nutricionista.
-- Reagendamento requer nova confirmação do nutricionista.
+- Uma solicitação sem vínculo nasce como consulta avulsa pendente. A confirmação pelo nutricionista não cria acompanhamento recorrente.
+- Reagendamento requer nova confirmação do nutricionista. Uma avulsa já confirmada pode ser reagendada mesmo quando o profissional deixa de aceitar novos pedidos.
 - `versao` é obrigatória nas alterações e protege contra edição concorrente.
 - Horário ocupado ou versão desatualizada retorna `409 CONFLITO`.
 - A criação usa bloqueio pessimista do nutricionista para impedir dupla reserva concorrente.
-- Dados inválidos, horário passado ou vínculo inativo retornam `400`.
+- Dados inválidos, horário passado ou profissional indisponível para novas consultas retornam `400`.
 - Consulta inexistente ou pertencente a outro paciente retorna `404`.
 
 ## Google Agenda

@@ -4,6 +4,7 @@ import com.nutri4you.backend.dto.ApiResponse;
 import com.nutri4you.backend.dto.CancelarConsultaRequest;
 import com.nutri4you.backend.dto.ConsultaPacienteResponse;
 import com.nutri4you.backend.dto.DisponibilidadeConsultaResponse;
+import com.nutri4you.backend.dto.NutricionistaAgendaDTO;
 import com.nutri4you.backend.dto.ReagendarConsultaRequest;
 import com.nutri4you.backend.dto.SolicitarConsultaRequest;
 import com.nutri4you.backend.exception.AcessoNegadoException;
@@ -40,14 +41,22 @@ public class AgendaPacienteController {
         return ApiResponse.ok(service.listar(paciente(authentication)), "Consultas carregadas.");
     }
 
+    @GetMapping("/nutricionistas")
+    public ApiResponse<List<NutricionistaAgendaDTO>> listarNutricionistas(Authentication authentication) {
+        return ApiResponse.ok(service.listarNutricionistas(paciente(authentication)), "Nutricionistas carregados.");
+    }
+
     @GetMapping("/disponibilidade")
     public ApiResponse<DisponibilidadeConsultaResponse> disponibilidade(
             Authentication authentication,
             @RequestParam Integer nutricionistaId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {
-        return ApiResponse.ok(
-                service.disponibilidade(paciente(authentication), nutricionistaId, data),
-                "Horários disponíveis carregados.");
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data,
+            @RequestParam(required = false) Integer consultaId) {
+        Paciente paciente = paciente(authentication);
+        DisponibilidadeConsultaResponse disponibilidade = consultaId == null
+                ? service.disponibilidade(paciente, nutricionistaId, data)
+                : service.disponibilidadeParaReagendar(paciente, consultaId, nutricionistaId, data);
+        return ApiResponse.ok(disponibilidade, "Horários disponíveis carregados.");
     }
 
     @PostMapping("/consultas")

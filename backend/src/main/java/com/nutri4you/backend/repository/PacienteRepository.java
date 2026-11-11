@@ -83,6 +83,7 @@ public interface PacienteRepository extends JpaRepository<Paciente, Integer> {
                 WHERE c.paciente = p
 
                   AND c.nutricionista.id = :nutricionistaId
+                  AND (c.avulsa = false OR c.status IN ('CONFIRMADA', 'REALIZADA'))
 
             )
 

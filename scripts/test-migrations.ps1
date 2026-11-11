@@ -22,6 +22,7 @@ $v13 = Get-Content (Join-Path $migrations 'V13__inicio_consulta.sql') -Raw
 $v14 = Get-Content (Join-Path $migrations 'V14__refeicoes_semanais.sql') -Raw
 $v16 = Get-Content (Join-Path $migrations 'V16__consumo_por_refeicao.sql') -Raw
 $v15 = Get-Content (Join-Path $migrations 'V15__exames_metadados_seguranca.sql') -Raw
+$v17 = Get-Content (Join-Path $migrations 'V17__consultas_avulsas.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
 
 # Every scenario uses a new schema inside a transaction, rolled back even on
@@ -269,8 +270,13 @@ $v13
 $v14
 $v15
 $v16
+$v17
 DO `$`$
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM Nutricionista WHERE id_nutricionista = 1 AND aceita_consultas_avulsas = FALSE)
+        OR NOT EXISTS (SELECT 1 FROM Consulta WHERE id_consulta = 1 AND avulsa = FALSE) THEN
+        RAISE EXCEPTION 'V17 changed the visibility or type of legacy appointments';
+    END IF;
     IF EXISTS (SELECT 1 FROM Refeicao WHERE dia_semana IS NOT NULL) THEN
         RAISE EXCEPTION 'V14 changed the daily repetition of legacy meals';
     END IF;

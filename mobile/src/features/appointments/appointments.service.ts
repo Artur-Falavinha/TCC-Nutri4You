@@ -1,5 +1,6 @@
 import { apiClient } from '../../core/api/api-client';
 import {
+  AgendaNutritionist,
   Appointment,
   AppointmentAvailability,
   RescheduleAppointmentPayload,
@@ -10,11 +11,17 @@ export function listAppointments(): Promise<Appointment[]> {
   return apiClient.get<Appointment[]>('/agenda/consultas');
 }
 
+export function listAgendaNutritionists(): Promise<AgendaNutritionist[]> {
+  return apiClient.get<AgendaNutritionist[]>('/agenda/nutricionistas');
+}
+
 export function getAppointmentAvailability(
   nutricionistaId: number,
-  data: string
+  data: string,
+  consultaId?: number
 ): Promise<AppointmentAvailability> {
   const params = new URLSearchParams({ nutricionistaId: String(nutricionistaId), data });
+  if (consultaId !== undefined) params.set('consultaId', String(consultaId));
   return apiClient.get<AppointmentAvailability>(`/agenda/disponibilidade?${params.toString()}`);
 }
 

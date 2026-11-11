@@ -1,0 +1,5 @@
+ALTER TABLE Nutricionista
+    ADD COLUMN aceita_consultas_avulsas BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE Consulta
+    ADD COLUMN avulsa BOOLEAN NOT NULL DEFAULT FALSE;
