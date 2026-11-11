@@ -71,6 +71,7 @@ public class ConsultaService {
 
     @Transactional
     public ConsultaResponse iniciar(Nutricionista nutricionista, Integer pacienteId, Integer id, Long versao) {
+        bloquearAgenda(nutricionista.getId());
         pacientes.exigirAcesso(nutricionista, pacienteId);
         Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
         iniciarConsulta(consulta, versao);
@@ -91,6 +92,8 @@ public class ConsultaService {
 
     @Transactional
     public ConsultaResponse confirmar(Nutricionista nutricionista, Integer pacienteId, Integer id, Long versao) {
+        bloquearAgenda(nutricionista.getId());
+        pacientes.exigirAcesso(nutricionista, pacienteId);
         Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
         decidirSolicitacao(consulta, versao, true);
         return resposta(consulta, null);
@@ -123,6 +126,9 @@ public class ConsultaService {
         if (decisao == null || decisao.aceitar() == null) {
             throw new IllegalArgumentException("Informe se deseja confirmar ou recusar a consulta.");
         }
+        if (decisao.aceitar()) {
+            bloquearAgenda(nutricionista.getId());
+        }
         Consulta consulta = consultas.findByIdAndNutricionista_IdAndAvulsaTrue(id, nutricionista.getId())
                 .orElseThrow(ConsultaNaoEncontradaException::new);
         decidirSolicitacao(consulta, decisao.versao(), decisao.aceitar());
@@ -147,8 +153,11 @@ public class ConsultaService {
         if (versao != c.getVersao()) throw new ConsultaConflitoException();
     }
 
+    private void bloquearAgenda(Integer nutricionistaId) {
+        nutricionistas.findByIdForUpdate(nutricionistaId).orElseThrow();
+    }
+
     private void exigirSemConflito(Consulta c) {
-        nutricionistas.findByIdForUpdate(c.getNutricionista().getId()).orElseThrow();
         var proximas = consultas.findByNutricionista_IdAndStatusNotAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
                 c.getNutricionista().getId(), "CANCELADA", c.getDataHora().minusMinutes(45), c.getDataHora().plusMinutes(45));
         if (proximas.stream().anyMatch(outra -> !outra.getId().equals(c.getId())

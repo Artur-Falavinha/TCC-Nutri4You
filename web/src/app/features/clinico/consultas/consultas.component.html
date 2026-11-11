@@ -98,7 +98,7 @@
             [attr.aria-disabled]="salvando"><i class="ph ph-arrow-left" aria-hidden="true"></i>{{ alterado ? 'Cancelar' : 'Voltar' }}</a>
         </div>
       </div>
-      <fieldset [disabled]="salvando || !podeEditar">
+      <fieldset [disabled]="salvando || avisoConclusaoRascunhoAberto || !podeEditar">
         <section class="form-section" aria-labelledby="dados-title">
           <h3 id="dados-title">Dados da consulta</h3>
           <div class="fields">
@@ -140,3 +140,25 @@
     </form>
   }
 </main>
+
+@if (avisoConclusaoRascunhoAberto) {
+  <app-paciente-dialog
+    title="Dieta em rascunho"
+    description="Há uma dieta em rascunho vinculada a este atendimento. Ao concluir, o rascunho será preservado sem publicação e ficará somente para leitura."
+    (fechar)="fecharAvisoConclusaoRascunho()"
+  >
+    <app-ui-button
+      dialogActions
+      label="Voltar ao atendimento"
+      variant="outline"
+      [fullWidth]="false"
+      (click)="fecharAvisoConclusaoRascunho()"
+    />
+    <app-ui-button
+      dialogActions
+      label="Concluir e manter rascunho"
+      [fullWidth]="false"
+      (click)="confirmarConclusaoComRascunho()"
+    />
+  </app-paciente-dialog>
+}
