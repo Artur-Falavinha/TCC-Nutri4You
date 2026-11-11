@@ -12,15 +12,21 @@ import java.io.IOException;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class ExameService {
     public static final long LIMITE_BYTES = 5 * 1024 * 1024;
     private final ExameRepository exames;
     private final GestaoPacienteService gestao;
+    private final AtendimentoClinicoService atendimentos;
     private final Clock clock;
-    public ExameService(ExameRepository exames, GestaoPacienteService gestao, Clock clock) {
-        this.exames = exames; this.gestao = gestao; this.clock = clock;
+    public ExameService(ExameRepository exames, GestaoPacienteService gestao,
+            AtendimentoClinicoService atendimentos, Clock clock) {
+        this.exames = exames;
+        this.gestao = gestao;
+        this.atendimentos = atendimentos;
+        this.clock = clock;
     }
     public record Solicitacao(String nome, String descricao) {}
     public record Analise(String parecer, Long versao) {}
@@ -28,24 +34,27 @@ public class ExameService {
     public record Arquivo(byte[] dados, String nome, String tipo) {}
 
     @Transactional
-    public ExameResponse solicitar(Nutricionista n, Integer pacienteId, Solicitacao r) {
-        Paciente p = gestao.exigirAcesso(n, pacienteId);
+    public ExameResponse solicitar(Nutricionista n, Integer pacienteId, Integer atendimentoId, Solicitacao r) {
+        Consulta consulta = atendimentoId == null ? null : atendimentos.exigirEmAndamento(n, atendimentoId, pacienteId);
+        Paciente p = consulta == null ? gestao.exigirAcesso(n, pacienteId) : consulta.getPaciente();
         if (r == null || r.nome() == null || r.nome().isBlank() || r.nome().trim().length() > 150
                 || (r.descricao() != null && r.descricao().length() > 5000)) {
             throw new IllegalArgumentException("Informe nome de até 150 caracteres e descrição de até 5000 caracteres.");
         }
-        return ExameResponse.from(exames.saveAndFlush(new Exame(p, n, r.nome().trim(), r.descricao(), LocalDate.now(clock))));
+        Exame exame = new Exame(p, n, consulta, r.nome().trim(), r.descricao(), LocalDate.now(clock));
+        return ExameResponse.from(exames.saveAndFlush(exame));
     }
     @Transactional(readOnly = true)
-    public Pagina listar(Nutricionista n, Integer pacienteId, int pagina) {
-        gestao.exigirAcesso(n, pacienteId);
-        return pagina(pacienteId, n.getId(), pagina);
+    public Pagina listar(Nutricionista n, Integer pacienteId, Integer atendimentoId, int pagina) {
+        exigirAcessoAoEscopo(n, pacienteId, atendimentoId);
+        return pagina(pacienteId, n.getId(), atendimentoId, pagina);
     }
     @Transactional(readOnly = true)
-    public Pagina listar(Paciente p, int pagina) { return pagina(p.getId(), null, pagina); }
-    private Pagina pagina(Integer pacienteId, Integer nutriId, int numero) {
+    public Pagina listar(Paciente p, int pagina) { return pagina(p.getId(), null, null, pagina); }
+    private Pagina pagina(Integer pacienteId, Integer nutriId, Integer atendimentoId, int numero) {
         if (numero < 0 || numero > 100000) throw new IllegalArgumentException("Página inválida.");
-        var p = exames.listar(pacienteId, nutriId, PageRequest.of(numero, 20, Sort.by(Sort.Direction.DESC, "id")));
+        var p = exames.listar(pacienteId, nutriId, atendimentoId,
+                PageRequest.of(numero, 20, Sort.by(Sort.Direction.DESC, "id")));
         return new Pagina(p.getContent(), numero, p.getTotalPages(), p.getTotalElements());
     }
     @Transactional
@@ -80,8 +89,8 @@ public class ExameService {
         return ExameResponse.from(e);
     }
     @Transactional
-    public ExameResponse analisar(Nutricionista n, Integer pacienteId, Integer id, Analise r) {
-        Exame e = exigir(n, pacienteId, id);
+    public ExameResponse analisar(Nutricionista n, Integer pacienteId, Integer atendimentoId, Integer id, Analise r) {
+        Exame e = exigir(n, pacienteId, atendimentoId, id);
         if (r == null || r.parecer() == null || r.parecer().isBlank() || r.parecer().length() > 5000) {
             throw new IllegalArgumentException("Informe parecer de até 5000 caracteres.");
         }
@@ -91,14 +100,25 @@ public class ExameService {
         return ExameResponse.from(e);
     }
     @Transactional(readOnly = true)
-    public Arquivo arquivo(Nutricionista n, Integer pacienteId, Integer id) { return arquivo(exigir(n, pacienteId, id)); }
+    public Arquivo arquivo(Nutricionista n, Integer pacienteId, Integer atendimentoId, Integer id) {
+        return arquivo(exigir(n, pacienteId, atendimentoId, id));
+    }
     @Transactional(readOnly = true)
     public Arquivo arquivo(Paciente p, Integer id) {
         return arquivo(exames.findByIdAndPaciente_Id(id, p.getId()).orElseThrow(ExameNaoEncontradoException::new));
     }
-    private Exame exigir(Nutricionista n, Integer pacienteId, Integer id) {
-        gestao.exigirAcesso(n, pacienteId);
-        return exames.findByIdAndPaciente_IdAndNutricionista_Id(id, pacienteId, n.getId()).orElseThrow(ExameNaoEncontradoException::new);
+    private void exigirAcessoAoEscopo(Nutricionista n, Integer pacienteId, Integer atendimentoId) {
+        if (atendimentoId == null) {
+            gestao.exigirAcesso(n, pacienteId);
+        } else {
+            atendimentos.exigirComRegistro(n, atendimentoId, pacienteId);
+        }
+    }
+    private Exame exigir(Nutricionista n, Integer pacienteId, Integer atendimentoId, Integer id) {
+        exigirAcessoAoEscopo(n, pacienteId, atendimentoId);
+        return exames.findByIdAndPaciente_IdAndNutricionista_Id(id, pacienteId, n.getId())
+                .filter(e -> Objects.equals(e.getConsulta() == null ? null : e.getConsulta().getId(), atendimentoId))
+                .orElseThrow(ExameNaoEncontradoException::new);
     }
     private Arquivo arquivo(Exame e) {
         if (e.getArquivo() == null) throw new ExameNaoEncontradoException();

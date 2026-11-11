@@ -197,7 +197,9 @@ class FluxosClinicosControllerTest {
     }
     private PlanoAlimentar rascunho() {
         PlanoAlimentar plano = new PlanoAlimentar(p, n);
-        plano.editar(null, LocalDate.now(ZoneId.of("America/Sao_Paulo")), null, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.TEN);
+        plano.editar(plano.getTitulo(), null, LocalDate.now(ZoneId.of("America/Sao_Paulo")), null,
+                new com.nutri4you.backend.dto.PrescricaoDTO.Nutrientes(
+                        BigDecimal.TEN, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.TEN));
         return planos.saveAndFlush(plano);
     }
     private String refeicao(Alimento a, int gramas, int dia, long versao) {

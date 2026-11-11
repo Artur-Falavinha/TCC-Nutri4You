@@ -20,20 +20,24 @@ public class RefeicaoController {
     }
     public record Replicacao(List<Integer> dias, Long versaoPlano) {}
     @PostMapping
-    public ApiResponse<PlanoDTO> criar(Authentication auth, @PathVariable Integer pacienteId, @PathVariable Integer planoId, @RequestBody Edicao r) {
-        return ApiResponse.ok(service.salvarRefeicao(nutri(auth), pacienteId, planoId, null, r.refeicao(), r.versaoPlano()));
+    public ApiResponse<PlanoDTO> criar(Authentication auth, @PathVariable Integer pacienteId, @PathVariable Integer planoId,
+            @RequestParam(required = false) Integer atendimentoId, @RequestBody Edicao r) {
+        return ApiResponse.ok(service.salvarRefeicao(nutri(auth), pacienteId, atendimentoId, planoId, null, r.refeicao(), r.versaoPlano()));
     }
     @PutMapping("/{id}")
-    public ApiResponse<PlanoDTO> editar(Authentication auth, @PathVariable Integer pacienteId, @PathVariable Integer planoId, @PathVariable Integer id, @RequestBody Edicao r) {
-        return ApiResponse.ok(service.salvarRefeicao(nutri(auth), pacienteId, planoId, id, r.refeicao(), r.versaoPlano()));
+    public ApiResponse<PlanoDTO> editar(Authentication auth, @PathVariable Integer pacienteId, @PathVariable Integer planoId,
+            @PathVariable Integer id, @RequestParam(required = false) Integer atendimentoId, @RequestBody Edicao r) {
+        return ApiResponse.ok(service.salvarRefeicao(nutri(auth), pacienteId, atendimentoId, planoId, id, r.refeicao(), r.versaoPlano()));
     }
     @DeleteMapping("/{id}")
-    public ApiResponse<PlanoDTO> excluir(Authentication auth, @PathVariable Integer pacienteId, @PathVariable Integer planoId, @PathVariable Integer id, @RequestParam Long versaoPlano) {
-        return ApiResponse.ok(service.excluirRefeicao(nutri(auth), pacienteId, planoId, id, versaoPlano));
+    public ApiResponse<PlanoDTO> excluir(Authentication auth, @PathVariable Integer pacienteId, @PathVariable Integer planoId,
+            @PathVariable Integer id, @RequestParam(required = false) Integer atendimentoId, @RequestParam Long versaoPlano) {
+        return ApiResponse.ok(service.excluirRefeicao(nutri(auth), pacienteId, atendimentoId, planoId, id, versaoPlano));
     }
     @PostMapping("/{id}/replicacao")
-    public ApiResponse<PlanoDTO> replicar(Authentication auth, @PathVariable Integer pacienteId, @PathVariable Integer planoId, @PathVariable Integer id, @RequestBody Replicacao r) {
-        return ApiResponse.ok(service.replicarRefeicao(nutri(auth), pacienteId, planoId, id, r.dias(), r.versaoPlano()));
+    public ApiResponse<PlanoDTO> replicar(Authentication auth, @PathVariable Integer pacienteId, @PathVariable Integer planoId,
+            @PathVariable Integer id, @RequestParam(required = false) Integer atendimentoId, @RequestBody Replicacao r) {
+        return ApiResponse.ok(service.replicarRefeicao(nutri(auth), pacienteId, atendimentoId, planoId, id, r.dias(), r.versaoPlano()));
     }
     private Nutricionista nutri(Authentication auth) {
         if (auth == null || !(auth.getPrincipal() instanceof Nutricionista n)) throw new AcessoNegadoException("Acesso restrito a nutricionistas.");

@@ -22,6 +22,7 @@ public class JanelaConsulta {
     public LocalDateTime agora() { return LocalDateTime.now(clock); }
     public LocalDateTime inicio(LocalDateTime horario) { return horario.minusMinutes(antes); }
     public LocalDateTime fim(LocalDateTime horario) { return horario.plusMinutes(depois); }
+    public LocalDateTime primeiroHorarioIniciavel() { return agora().minusMinutes(depois); }
     public boolean permite(LocalDateTime horario) {
         var agora = agora();
         return !agora.isBefore(inicio(horario)) && !agora.isAfter(fim(horario));

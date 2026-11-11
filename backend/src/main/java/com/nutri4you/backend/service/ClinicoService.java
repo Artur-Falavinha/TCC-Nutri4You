@@ -77,7 +77,13 @@ public class ClinicoService {
     @Transactional(readOnly = true)
     public List<AvaliacaoResponse> listarAvaliacoes(Nutricionista nutricionista, Integer pacienteId) {
         gestaoPacienteService.exigirAcesso(nutricionista, pacienteId);
-        return listarAvaliacoes(pacienteId);
+        return listarAvaliacoesLongitudinais(pacienteId);
+    }
+
+    private List<AvaliacaoResponse> listarAvaliacoesLongitudinais(Integer pacienteId) {
+        return avaliacaoRepository.listarAvaliacoesLongitudinais(pacienteId).stream()
+                .map(MedidasAntropometricas::paraResposta)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -92,12 +98,12 @@ public class ClinicoService {
     public HistoricoResponse historico(Nutricionista nutricionista, Integer pacienteId) {
         Paciente paciente = gestaoPacienteService.exigirAcesso(nutricionista, pacienteId);
         List<ConsultaResumoDTO> consultas = consultaRepository
-                .findByPaciente_IdAndNutricionista_IdOrderByDataHoraDesc(paciente.getId(), nutricionista.getId())
+                .findByPaciente_IdAndNutricionista_IdAndAvulsaFalseOrderByDataHoraDesc(paciente.getId(), nutricionista.getId())
                 .stream()
                 .filter(this::naoCancelada)
                 .map(this::paraConsulta)
                 .toList();
-        return new HistoricoResponse(consultas, listarAvaliacoes(pacienteId));
+        return new HistoricoResponse(consultas, listarAvaliacoesLongitudinais(pacienteId));
     }
 
     @Transactional(readOnly = true)

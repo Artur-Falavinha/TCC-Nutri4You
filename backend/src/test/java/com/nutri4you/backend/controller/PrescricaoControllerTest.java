@@ -11,10 +11,12 @@ import com.nutri4you.backend.model.ListaCompras;
 import com.nutri4you.backend.model.PlanoAlimentar;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
+import com.nutri4you.backend.model.RelacaoClinica;
 import com.nutri4you.backend.repository.ConsultaRepository;
 import com.nutri4you.backend.repository.ListaComprasRepository;
 import com.nutri4you.backend.repository.NutricionistaRepository;
 import com.nutri4you.backend.repository.PacienteRepository;
+import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import com.nutri4you.backend.security.TokenService;
 import com.nutri4you.backend.support.TestDataFactory;
 
@@ -42,6 +44,7 @@ class PrescricaoControllerTest {
     @Autowired PacienteRepository pacientes;
     @Autowired NutricionistaRepository nutricionistas;
     @Autowired ConsultaRepository consultas;
+    @Autowired RelacaoClinicaRepository relacoes;
     @Autowired PasswordEncoder encoder;
     @Autowired TokenService tokens;
     @Autowired EntityManager em;
@@ -71,6 +74,8 @@ class PrescricaoControllerTest {
         outro = pacientes.save(TestDataFactory.outroPaciente(encoder));
         consultas.save(TestDataFactory.consulta(paciente, nutri));
         consultas.save(TestDataFactory.consulta(paciente, segundo));
+        relacoes.save(RelacaoClinica.criar(paciente, nutri));
+        relacoes.save(RelacaoClinica.criar(paciente, segundo));
         autorToken = tokens.gerarToken(nutri.getEmail());
         pacienteToken = tokens.gerarToken(paciente.getEmail());
         outroToken = tokens.gerarToken(outro.getEmail());

@@ -46,9 +46,9 @@ public class ConsultaService {
 
     @Transactional(readOnly = true)
     public ConsultasResponse listar(Nutricionista nutricionista, Integer pacienteId, int pagina) {
-        pacientes.exigirAcesso(nutricionista, pacienteId);
+        pacientes.exigirAcessoAoHistoricoDeConsultas(nutricionista, pacienteId);
         if (pagina < 0 || pagina > 100000) throw new IllegalArgumentException("Pagina invalida.");
-        var page = consultas.findByPaciente_IdAndNutricionista_Id(pacienteId, nutricionista.getId(),
+        var page = consultas.findByPaciente_IdAndNutricionista_IdAndAvulsaFalse(pacienteId, nutricionista.getId(),
                 PageRequest.of(pagina, 10, Sort.by(Sort.Direction.DESC, "dataHora", "id")));
         Map<Integer, AvaliacaoAntropometrica> medidas = page.isEmpty() ? Map.of()
                 : avaliacoes.findByConsulta_IdIn(page.stream().map(Consulta::getId).toList()).stream()
@@ -59,9 +59,8 @@ public class ConsultaService {
 
     @Transactional(readOnly = true)
     public ConsultaResponse buscar(Nutricionista nutricionista, Integer pacienteId, Integer id) {
-        pacientes.exigirAcesso(nutricionista, pacienteId);
-        Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
-        return resposta(consulta, avaliacoes.findByConsulta_Id(id).orElse(null));
+        pacientes.exigirAcessoAoHistoricoDeConsultas(nutricionista, pacienteId);
+        return respostaComMedidas(exigirConsulta(nutricionista, pacienteId, id));
     }
 
     @Transactional
@@ -74,6 +73,11 @@ public class ConsultaService {
     public ConsultaResponse iniciar(Nutricionista nutricionista, Integer pacienteId, Integer id, Long versao) {
         pacientes.exigirAcesso(nutricionista, pacienteId);
         Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
+        iniciarConsulta(consulta, versao);
+        return respostaComMedidas(consulta);
+    }
+
+    void iniciarConsulta(Consulta consulta, Long versao) {
         exigirVersao(consulta, versao);
         if (!"CONFIRMADA".equals(consulta.getStatus()) || consulta.getIniciadaEm() != null) {
             throw new IllegalArgumentException("Somente consultas confirmadas e ainda não iniciadas podem começar.");
@@ -82,14 +86,11 @@ public class ConsultaService {
             throw new IllegalArgumentException("A consulta está fora da janela permitida para início.");
         }
         consulta.iniciar(janela.agora());
-
         consultas.flush();
-        return resposta(consulta, avaliacoes.findByConsulta_Id(id).orElse(null));
     }
 
     @Transactional
     public ConsultaResponse confirmar(Nutricionista nutricionista, Integer pacienteId, Integer id, Long versao) {
-        pacientes.exigirAcesso(nutricionista, pacienteId);
         Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
         decidirSolicitacao(consulta, versao, true);
         return resposta(consulta, null);
@@ -97,8 +98,12 @@ public class ConsultaService {
 
     @Transactional
     public ConsultaResponse cancelar(Nutricionista nutricionista, Integer pacienteId, Integer id, Long versao) {
-        pacientes.exigirAcesso(nutricionista, pacienteId);
         Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
+        cancelarConsulta(consulta, versao);
+        return resposta(consulta, null);
+    }
+
+    void cancelarConsulta(Consulta consulta, Long versao) {
         exigirVersao(consulta, versao);
         if (!("AGUARDANDO_CONFIRMACAO".equals(consulta.getStatus()) || "CONFIRMADA".equals(consulta.getStatus()))
                 || consulta.getIniciadaEm() != null) {
@@ -106,7 +111,6 @@ public class ConsultaService {
         }
         consulta.cancelar();
         consultas.flush();
-        return resposta(consulta, null);
     }
 
     @Transactional(readOnly = true)
@@ -157,7 +161,10 @@ public class ConsultaService {
     public ConsultaResponse atualizar(Nutricionista nutricionista, Integer pacienteId, Integer id,
                                       ConsultaRequest request) {
         pacientes.exigirAcesso(nutricionista, pacienteId);
-        Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
+        return atualizarConsulta(exigirConsulta(nutricionista, pacienteId, id), request);
+    }
+
+    ConsultaResponse atualizarConsulta(Consulta consulta, ConsultaRequest request) {
         validar(request);
         if (!request.dataHora().equals(consulta.getDataHora())) {
             throw new IllegalArgumentException("Use o fluxo de reagendamento para alterar o horário.");
@@ -170,9 +177,8 @@ public class ConsultaService {
                 || "CANCELADA".equals(consulta.getStatus())) {
             throw new IllegalArgumentException("Transição de status inválida. Use as ações da agenda.");
         }
-        if (request.versao() == null) throw new IllegalArgumentException("Versao da consulta obrigatoria.");
-        if (!request.versao().equals(consulta.getVersao())) throw new ConsultaConflitoException();
-        AvaliacaoAntropometrica existente = avaliacoes.findByConsulta_Id(id).orElse(null);
+        exigirVersao(consulta, request.versao());
+        AvaliacaoAntropometrica existente = avaliacoes.findByConsulta_Id(consulta.getId()).orElse(null);
         if (existente != null && request.avaliacao() == null) {
             throw new IllegalArgumentException("Mantenha peso e altura da avaliacao ja registrada.");
         }
@@ -184,7 +190,7 @@ public class ConsultaService {
     }
 
     private Consulta exigirConsulta(Nutricionista nutricionista, Integer pacienteId, Integer id) {
-        return consultas.findByIdAndPaciente_IdAndNutricionista_Id(id, pacienteId, nutricionista.getId())
+        return consultas.findByIdAndPaciente_IdAndNutricionista_IdAndAvulsaFalse(id, pacienteId, nutricionista.getId())
                 .orElseThrow(ConsultaNaoEncontradaException::new);
     }
 
@@ -239,7 +245,11 @@ public class ConsultaService {
         }
     }
 
-    private ConsultaResponse resposta(Consulta c, AvaliacaoAntropometrica a) {
+    ConsultaResponse respostaComMedidas(Consulta consulta) {
+        return resposta(consulta, avaliacoes.findByConsulta_Id(consulta.getId()).orElse(null));
+    }
+
+    ConsultaResponse resposta(Consulta c, AvaliacaoAntropometrica a) {
         return new ConsultaResponse(c.getId(), c.getPaciente().getId(), c.getDataHora(), c.getStatus(),
                 c.getObservacao(), c.getVersao(), a == null ? null : MedidasAntropometricas.paraResposta(a),
                 c.getIniciadaEm(), janela.inicio(c.getDataHora()).atZone(ZoneId.of("America/Sao_Paulo")).toOffsetDateTime(),

@@ -4,9 +4,11 @@ import com.jayway.jsonpath.JsonPath;
 import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
+import com.nutri4you.backend.model.RelacaoClinica;
 import com.nutri4you.backend.repository.ConsultaRepository;
 import com.nutri4you.backend.repository.NutricionistaRepository;
 import com.nutri4you.backend.repository.PacienteRepository;
+import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import com.nutri4you.backend.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +45,8 @@ class ClinicoControllerTest {
     @Autowired
     private ConsultaRepository consultaRepository;
     @Autowired
+    private RelacaoClinicaRepository relacoes;
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private Paciente paciente;
@@ -55,6 +59,7 @@ class ClinicoControllerTest {
         paciente = pacienteRepository.save(TestDataFactory.pacienteConfirmado(passwordEncoder));
         oculto = pacienteRepository.save(TestDataFactory.outroPaciente(passwordEncoder));
         consulta = consultaRepository.save(TestDataFactory.consulta(paciente, nutricionista));
+        relacoes.save(RelacaoClinica.criar(paciente, nutricionista));
     }
 
     @Test
