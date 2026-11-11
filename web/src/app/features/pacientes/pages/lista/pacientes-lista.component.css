@@ -12,6 +12,10 @@
   container-type: inline-size;
 }
 
+.pacientes-main__mensagem {
+  padding: var(--space-16);
+}
+
 /* ─── Cabeçalho ─────────────────────────────────────── */
 .pacientes-header {
   position: sticky;

@@ -4,6 +4,7 @@ import { of, Subject, throwError } from 'rxjs';
 
 import { Paciente } from '../../core/models/paciente.models';
 import { PacientesService } from '../../core/services/pacientes.service';
+import { AtendimentosService } from '../clinico/consultas/consultas.service';
 import { DietaComponent } from './dieta.component';
 import { DietaService } from './dieta.service';
 import { Alimento, ItemEdicao, Nutrientes, PaginaAlimentos, Plano } from './dieta.models';
@@ -117,9 +118,10 @@ describe('DietaComponent', () => {
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap({ id: String(paciente.id) }) } }
+          useValue: { snapshot: { paramMap: convertToParamMap({ id: String(paciente.id) }), queryParamMap: convertToParamMap({}) } }
         },
         { provide: PacientesService, useValue: pacientes },
+        { provide: AtendimentosService, useValue: jasmine.createSpyObj('AtendimentosService', ['buscar']) },
         { provide: DietaService, useValue: dieta }
       ]
     }).compileComponents();
@@ -175,7 +177,7 @@ describe('DietaComponent', () => {
           substitutos: [{ alimentoId: alimentoAlternativo.id, quantidadeGramas: 90 }]
         }]
       }]
-    }));
+    }), null);
     expect(component.mensagem).toBe('Rascunho salvo com sucesso.');
   });
 
@@ -352,7 +354,7 @@ describe('DietaComponent', () => {
     component.abrirPreviaListaCompras();
     fixture.detectChanges();
 
-    expect(dieta.previsualizarListaCompras).toHaveBeenCalledWith(paciente.id, planoSalvo.id, 7);
+    expect(dieta.previsualizarListaCompras).toHaveBeenCalledWith(paciente.id, planoSalvo.id, 7, null);
     expect(fixture.nativeElement.querySelector('.shopping-preview').textContent).toContain('somente os alimentos principais');
     expect(fixture.nativeElement.querySelector('.shopping-category').textContent).toContain('875,00 g');
     expect(fixture.nativeElement.querySelector('.shopping-preview input[type="checkbox"]')).toBeNull();
@@ -416,7 +418,7 @@ describe('DietaComponent', () => {
     confirmar.click();
     fixture.detectChanges();
 
-    expect(dieta.publicarPlano).toHaveBeenCalledOnceWith(paciente.id, rascunho.id, rascunho.versao);
+    expect(dieta.publicarPlano).toHaveBeenCalledOnceWith(paciente.id, rascunho.id, rascunho.versao, null);
     expect(raiz.querySelector('app-paciente-dialog')).toBeNull();
   });
 

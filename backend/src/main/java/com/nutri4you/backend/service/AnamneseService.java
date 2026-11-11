@@ -19,6 +19,10 @@ import java.util.stream.Collectors;
 
 @Service
 public class AnamneseService {
+    private static final Set<String> CAMPOS_ATENDIMENTO = Set.of(
+        "foodPreferences", "typicalDay", "diet", "dietOther", "supplement", "supplementDetails",
+        "diagnoses", "diagnosisOther", "medication", "medicationDetails", "allergy", "allergyDetails",
+        "recentExams", "exam", "examOther", "digestiveHealth", "physicalActivity", "activities", "activityOther");
     private final GestaoPacienteService patients;
     private final AnamneseRepository records;
     private final PerguntaAnamneseRepository questions;
@@ -119,15 +123,30 @@ public class AnamneseService {
         answers.flush();
     }
 
-    private AnamneseResponse response(PacienteResponseDTO patient, Anamnese record) {
-        Map<String, Object> published = new LinkedHashMap<>();
-        Set<String> currentFields = catalog.fields().stream()
+    Map<String, Object> respostasFinalizadas(Integer patientId) {
+        return records.findById(patientId).filter(record -> record.finalizadaEm != null)
+            .map(record -> respostasPublicadas(patientId, CAMPOS_ATENDIMENTO))
+            .orElseGet(Map::of);
+    }
+
+    private Set<String> camposAtuais() {
+        return catalog.fields().stream()
             .map(AnamneseCatalog.Field::key)
             .collect(Collectors.toSet());
-        for (var answer : answers.findByPacienteId(patient.id())) {
+    }
+
+    private Map<String, Object> respostasPublicadas(Integer patientId, Set<String> currentFields) {
+        Map<String, Object> published = new LinkedHashMap<>();
+        for (var answer : answers.findByPacienteId(patientId)) {
             if (answer.pergunta.codigo != null && currentFields.contains(answer.pergunta.codigo))
                 published.put(answer.pergunta.codigo, mapper.readValue(answer.texto, Object.class));
         }
+        return published;
+    }
+
+    private AnamneseResponse response(PacienteResponseDTO patient, Anamnese record) {
+        Set<String> currentFields = camposAtuais();
+        Map<String, Object> published = respostasPublicadas(patient.id(), currentFields);
         Map<String, Object> draft = record == null || record.rascunho == null ? null :
             mapper.readValue(record.rascunho, new TypeReference<Map<String, Object>>() {});
         if (draft != null) draft.keySet().removeIf(key -> !currentFields.contains(key));

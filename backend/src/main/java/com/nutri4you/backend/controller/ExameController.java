@@ -15,22 +15,26 @@ public class ExameController {
     private final ExameService service;
     public ExameController(ExameService service) { this.service = service; }
     @GetMapping("/api/v1/gestao-pacientes/{pacienteId}/exames")
-    public ApiResponse<ExameService.Pagina> listar(Authentication a, @PathVariable Integer pacienteId, @RequestParam(defaultValue = "0") int pagina) {
-        return ApiResponse.ok(service.listar(nutri(a), pacienteId, pagina), "Exames carregados.");
+    public ApiResponse<ExameService.Pagina> listar(Authentication a, @PathVariable Integer pacienteId,
+            @RequestParam(required = false) Integer atendimentoId, @RequestParam(defaultValue = "0") int pagina) {
+        return ApiResponse.ok(service.listar(nutri(a), pacienteId, atendimentoId, pagina), "Exames carregados.");
     }
     @PostMapping("/api/v1/gestao-pacientes/{pacienteId}/exames")
-    public ResponseEntity<ApiResponse<ExameResponse>> solicitar(Authentication a, @PathVariable Integer pacienteId, @RequestBody ExameService.Solicitacao r) {
-        var e = service.solicitar(nutri(a), pacienteId, r);
+    public ResponseEntity<ApiResponse<ExameResponse>> solicitar(Authentication a, @PathVariable Integer pacienteId,
+            @RequestParam(required = false) Integer atendimentoId, @RequestBody ExameService.Solicitacao r) {
+        var e = service.solicitar(nutri(a), pacienteId, atendimentoId, r);
         return ResponseEntity.created(URI.create("/api/v1/gestao-pacientes/" + pacienteId + "/exames/" + e.id()))
                 .body(ApiResponse.ok(e, "Exame solicitado."));
     }
     @PostMapping("/api/v1/gestao-pacientes/{pacienteId}/exames/{id}/analise")
-    public ApiResponse<ExameResponse> analisar(Authentication a, @PathVariable Integer pacienteId, @PathVariable Integer id, @RequestBody ExameService.Analise r) {
-        return ApiResponse.ok(service.analisar(nutri(a), pacienteId, id, r), "Análise registrada.");
+    public ApiResponse<ExameResponse> analisar(Authentication a, @PathVariable Integer pacienteId, @PathVariable Integer id,
+            @RequestParam(required = false) Integer atendimentoId, @RequestBody ExameService.Analise r) {
+        return ApiResponse.ok(service.analisar(nutri(a), pacienteId, atendimentoId, id, r), "Análise registrada.");
     }
     @GetMapping("/api/v1/gestao-pacientes/{pacienteId}/exames/{id}/arquivo")
-    public ResponseEntity<byte[]> baixarNutri(Authentication a, @PathVariable Integer pacienteId, @PathVariable Integer id) {
-        return download(service.arquivo(nutri(a), pacienteId, id));
+    public ResponseEntity<byte[]> baixarNutri(Authentication a, @PathVariable Integer pacienteId, @PathVariable Integer id,
+            @RequestParam(required = false) Integer atendimentoId) {
+        return download(service.arquivo(nutri(a), pacienteId, atendimentoId, id));
     }
     @GetMapping("/api/v1/usuarios/me/exames")
     public ApiResponse<ExameService.Pagina> meus(Authentication a, @RequestParam(defaultValue = "0") int pagina) {

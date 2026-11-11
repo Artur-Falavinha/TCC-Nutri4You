@@ -6,6 +6,7 @@ import com.nutri4you.backend.dto.PacienteResumoDTO;
 import com.nutri4you.backend.dto.PacienteResponseDTO;
 import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.model.Nutricionista;
+import com.nutri4you.backend.model.StatusRelacaoClinica;
 import com.nutri4you.backend.service.GestaoPacienteService;
 import com.nutri4you.backend.service.PacienteNaoEncontradoException;
 import org.springframework.http.ResponseEntity;
@@ -77,10 +78,11 @@ public class GestaoPacienteController {
             @PathVariable Integer id) {
         Nutricionista nutricionista = extrairNutricionista(authentication);
         try {
-            gestaoPacienteService.vincular(nutricionista, id);
-            return ResponseEntity.ok(ApiResponse.ok(
-                    new MensagemResponse("Paciente vinculado com sucesso."),
-                    "Paciente vinculado com sucesso."));
+            StatusRelacaoClinica status = gestaoPacienteService.vincular(nutricionista, id);
+            String mensagem = status == StatusRelacaoClinica.ATIVA
+                    ? "Já existe vínculo ativo com este paciente."
+                    : "Solicitação enviada. Aguarde o aceite do paciente.";
+            return ResponseEntity.ok(ApiResponse.ok(new MensagemResponse(mensagem), mensagem));
         } catch (PacienteNaoEncontradoException exception) {
             return ResponseEntity.notFound().build();
         }

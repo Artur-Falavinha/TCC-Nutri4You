@@ -15,6 +15,7 @@ import com.nutri4you.backend.dto.PrescricaoDTO.RefeicaoRequest;
 import com.nutri4you.backend.exception.PlanoConflitoException;
 import com.nutri4you.backend.exception.PlanoNaoEncontradoException;
 import com.nutri4you.backend.model.Alimento;
+import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.ItemRefeicao;
 import com.nutri4you.backend.model.ListaCompras;
 import com.nutri4you.backend.model.Nutricionista;
@@ -48,6 +49,7 @@ import java.util.Set;
 public class PrescricaoService {
     private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
     private final GestaoPacienteService acesso;
+    private final AtendimentoClinicoService atendimentos;
     private final PlanoAlimentarRepository planos;
     private final AlimentoRepository alimentos;
     private final ListaComprasRepository listas;
@@ -55,63 +57,77 @@ public class PrescricaoService {
 
     public PrescricaoService(
             GestaoPacienteService acesso,
+            AtendimentoClinicoService atendimentos,
             PlanoAlimentarRepository planos,
             AlimentoRepository alimentos,
             ListaComprasRepository listas,
             EntityManager entityManager) {
         this.acesso = acesso;
+        this.atendimentos = atendimentos;
         this.planos = planos;
         this.alimentos = alimentos;
         this.listas = listas;
         this.entityManager = entityManager;
     }
 
-    public List<PlanoDTO> listar(Nutricionista autor, Integer pacienteId) {
-        acesso.exigirAcesso(autor, pacienteId);
+    public List<PlanoDTO> listar(Nutricionista autor, Integer pacienteId, Integer atendimentoId) {
+        exigirLeitura(autor, pacienteId, atendimentoId);
         return planos
-                .findByPaciente_IdAndNutricionista_IdOrderByIdDesc(pacienteId, autor.getId())
+                .listarPorAutor(pacienteId, autor.getId(), atendimentoId)
                 .stream()
                 .map(this::resposta)
                 .toList();
     }
 
-    public PlanoDTO buscar(Nutricionista autor, Integer pacienteId, Integer id) {
-        acesso.exigirAcesso(autor, pacienteId);
-        return resposta(exigirAutoria(autor, pacienteId, id));
+    public PlanoDTO buscar(Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer id) {
+        exigirLeitura(autor, pacienteId, atendimentoId);
+        return resposta(exigirPlanoNoEscopo(autor, pacienteId, atendimentoId, id));
     }
 
     @Transactional
-    public PlanoDTO criar(Nutricionista autor, Integer pacienteId, PlanoRequest request) {
-        PlanoAlimentar plano = new PlanoAlimentar(acesso.exigirAcesso(autor, pacienteId), autor);
+    public PlanoDTO criar(Nutricionista autor, Integer pacienteId, Integer atendimentoId, PlanoRequest request) {
+        Consulta consulta;
+        Paciente paciente;
+        Integer consultaId = request == null ? null : request.consultaId();
+        if (atendimentoId == null) {
+            paciente = acesso.exigirAcesso(autor, pacienteId);
+            consulta = consultaLongitudinal(autor, pacienteId, consultaId);
+        } else {
+            consulta = atendimentos.exigirEmAndamento(autor, atendimentoId, pacienteId);
+            validarConsultaDoPlano(consulta, consultaId);
+            paciente = consulta.getPaciente();
+        }
+        if (consulta != null && planos.existsByConsulta_Id(consulta.getId())) {
+            throw new PlanoConflitoException("Consulta já possui um plano alimentar.");
+        }
+        PlanoAlimentar plano = new PlanoAlimentar(paciente, autor, consulta);
         aplicar(plano, request);
         return resposta(planos.saveAndFlush(plano));
     }
 
     @Transactional
     public PlanoDTO editar(
-            Nutricionista autor, Integer pacienteId, Integer id, PlanoRequest request) {
-        bloquearPaciente(autor, pacienteId);
-        PlanoAlimentar plano = exigirAutoria(autor, pacienteId, id);
+            Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer id, PlanoRequest request) {
+        PlanoAlimentar plano = bloquearPlanoParaEdicao(autor, pacienteId, atendimentoId, id);
         exigirRascunho(plano, request == null ? null : request.versao());
+        validarConsultaDoPlano(plano.getConsulta(), request.consultaId());
         aplicar(plano, request);
         return resposta(planos.saveAndFlush(plano));
     }
 
     @Transactional
-    public void excluir(Nutricionista autor, Integer pacienteId, Integer id, Long versao) {
-        bloquearPaciente(autor, pacienteId);
-        PlanoAlimentar plano = exigirAutoria(autor, pacienteId, id);
+    public void excluir(Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer id, Long versao) {
+        PlanoAlimentar plano = bloquearPlanoParaEdicao(autor, pacienteId, atendimentoId, id);
         exigirRascunho(plano, versao);
         planos.delete(plano);
         planos.flush();
     }
 
     @Transactional
-    public PlanoDTO publicar(Nutricionista autor, Integer pacienteId, Integer id, Long versao) {
+    public PlanoDTO publicar(Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer id, Long versao) {
         // O paciente é o recurso comum a todos os autores e deve ser bloqueado antes de consultar a
         // vigência.
-        bloquearPaciente(autor, pacienteId);
-        PlanoAlimentar plano = exigirAutoria(autor, pacienteId, id);
+        PlanoAlimentar plano = bloquearPlanoParaEdicao(autor, pacienteId, atendimentoId, id);
         exigirRascunho(plano, versao);
         validarPublicacao(plano);
         if (!planos.sobrepostos(pacienteId, plano.getVigenciaInicio(), plano.getVigenciaFim())
@@ -134,10 +150,10 @@ public class PrescricaoService {
         return plano == null ? null : respostaCompras(plano, dias);
     }
 
-    public ListaComprasDTO previaCompras(Nutricionista autor, Integer pacienteId, Integer id, int dias) {
+    public ListaComprasDTO previaCompras(Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer id, int dias) {
         validarDias(dias);
-        acesso.exigirAcesso(autor, pacienteId);
-        return respostaCompras(exigirAutoria(autor, pacienteId, id), dias, Map.of());
+        exigirLeitura(autor, pacienteId, atendimentoId);
+        return respostaCompras(exigirPlanoNoEscopo(autor, pacienteId, atendimentoId, id), dias, Map.of());
     }
 
     @Transactional
@@ -176,10 +192,9 @@ public class PrescricaoService {
     }
 
     @Transactional
-    public PlanoDTO salvarRefeicao(Nutricionista autor, Integer pacienteId, Integer planoId, Integer refeicaoId,
+    public PlanoDTO salvarRefeicao(Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer planoId, Integer refeicaoId,
             RefeicaoRequest request, Long versao) {
-        bloquearPaciente(autor, pacienteId);
-        PlanoAlimentar plano = exigirAutoria(autor, pacienteId, planoId);
+        PlanoAlimentar plano = bloquearPlanoParaEdicao(autor, pacienteId, atendimentoId, planoId);
         exigirRascunho(plano, versao);
         Refeicao nova = montarRefeicao(plano, request);
         if (refeicaoId == null) {
@@ -196,9 +211,9 @@ public class PrescricaoService {
     }
 
     @Transactional
-    public PlanoDTO excluirRefeicao(Nutricionista autor, Integer pacienteId, Integer planoId, Integer refeicaoId, Long versao) {
-        bloquearPaciente(autor, pacienteId);
-        PlanoAlimentar plano = exigirAutoria(autor, pacienteId, planoId);
+    public PlanoDTO excluirRefeicao(Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer planoId,
+            Integer refeicaoId, Long versao) {
+        PlanoAlimentar plano = bloquearPlanoParaEdicao(autor, pacienteId, atendimentoId, planoId);
         exigirRascunho(plano, versao);
         plano.getRefeicoes().remove(encontrarRefeicao(plano, refeicaoId));
         plano.tocar();
@@ -206,10 +221,9 @@ public class PrescricaoService {
     }
 
     @Transactional
-    public PlanoDTO replicarRefeicao(Nutricionista autor, Integer pacienteId, Integer planoId, Integer refeicaoId,
+    public PlanoDTO replicarRefeicao(Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer planoId, Integer refeicaoId,
             List<Integer> dias, Long versao) {
-        bloquearPaciente(autor, pacienteId);
-        PlanoAlimentar plano = exigirAutoria(autor, pacienteId, planoId);
+        PlanoAlimentar plano = bloquearPlanoParaEdicao(autor, pacienteId, atendimentoId, planoId);
         exigirRascunho(plano, versao);
         Refeicao origem = encontrarRefeicao(plano, refeicaoId);
         if (dias == null || dias.isEmpty() || dias.size() > 6 || new HashSet<>(dias).size() != dias.size()
@@ -234,18 +248,51 @@ public class PrescricaoService {
                 .orElseThrow(PlanoNaoEncontradoException::new);
     }
 
-    private void bloquearPaciente(Nutricionista autor, Integer pacienteId) {
-        acesso.exigirAcesso(autor, pacienteId);
-        entityManager.find(Paciente.class, pacienteId, LockModeType.PESSIMISTIC_WRITE);
+    private void exigirLeitura(Nutricionista autor, Integer pacienteId, Integer atendimentoId) {
+        if (atendimentoId == null) {
+            acesso.exigirAcesso(autor, pacienteId);
+        } else {
+            atendimentos.exigirComRegistro(autor, atendimentoId, pacienteId);
+        }
     }
 
-    private PlanoAlimentar exigirAutoria(Nutricionista autor, Integer pacienteId, Integer id) {
-        return planos.findById(id)
-                .filter(
-                        p ->
-                                p.getPaciente().getId().equals(pacienteId)
-                                        && p.getNutricionista().getId().equals(autor.getId()))
+    private PlanoAlimentar bloquearPlanoParaEdicao(
+            Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer id) {
+        if (atendimentoId == null) {
+            acesso.exigirAcesso(autor, pacienteId);
+        } else {
+            atendimentos.exigirEmAndamento(autor, atendimentoId, pacienteId);
+        }
+        entityManager.find(Paciente.class, pacienteId, LockModeType.PESSIMISTIC_WRITE);
+        return exigirPlanoNoEscopo(autor, pacienteId, atendimentoId, id);
+    }
+
+    private PlanoAlimentar exigirPlanoNoEscopo(
+            Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer id) {
+        return planos.findByIdAndPaciente_IdAndNutricionista_Id(id, pacienteId, autor.getId())
+                .filter(p -> pertenceAoEscopo(p.getConsulta(), atendimentoId))
                 .orElseThrow(PlanoNaoEncontradoException::new);
+    }
+
+    private boolean pertenceAoEscopo(Consulta consulta, Integer atendimentoId) {
+        if (atendimentoId == null) return consulta == null || !consulta.isAvulsa();
+        return consulta != null && atendimentoId.equals(consulta.getId());
+    }
+
+    private Consulta consultaLongitudinal(Nutricionista autor, Integer pacienteId, Integer consultaId) {
+        if (consultaId == null) return null;
+        Consulta consulta = entityManager.find(Consulta.class, consultaId);
+        if (consulta == null || consulta.isAvulsa() || !consulta.getPaciente().getId().equals(pacienteId)
+                || !consulta.getNutricionista().getId().equals(autor.getId())) {
+            throw new IllegalArgumentException("Consulta não pertence a este atendimento.");
+        }
+        return consulta;
+    }
+
+    private void validarConsultaDoPlano(Consulta consulta, Integer consultaId) {
+        if (consultaId != null && (consulta == null || !consultaId.equals(consulta.getId()))) {
+            throw new IllegalArgumentException("Consulta não pertence a este atendimento.");
+        }
     }
 
     private void exigirRascunho(PlanoAlimentar plano, Long versao) {
@@ -271,15 +318,6 @@ public class PrescricaoService {
                     "O fim da vigência deve ser igual ou posterior ao início.");
         }
         validarMetas(request.metas());
-        if (request.consultaId() != null) {
-            var consulta = entityManager.find(com.nutri4you.backend.model.Consulta.class, request.consultaId());
-            if (consulta == null || !consulta.getPaciente().getId().equals(plano.getPaciente().getId())
-                    || !consulta.getNutricionista().getId().equals(plano.getNutricionista().getId()))
-                throw new IllegalArgumentException("Consulta não pertence a este atendimento.");
-            if (planos.existsByConsulta_IdAndIdNot(consulta.getId(), plano.getId() == null ? -1 : plano.getId()))
-                throw new PlanoConflitoException("Consulta já possui um plano alimentar.");
-            plano.vincularConsulta(consulta);
-        }
         if (request.refeicoes() == null || request.refeicoes().size() > 140)
             throw new IllegalArgumentException("Informe de 0 a 140 refeições.");
         List<Refeicao> novas =

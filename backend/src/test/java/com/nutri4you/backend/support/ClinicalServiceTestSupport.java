@@ -33,7 +33,9 @@ public abstract class ClinicalServiceTestSupport {
     protected LocalDateTime agora() { return LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).withNano(0); }
     protected PlanoAlimentar rascunho(LocalDate inicio, LocalDate fim) {
         PlanoAlimentar plano = new PlanoAlimentar(paciente, nutri);
-        plano.editar(null, inicio, fim, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.TEN);
+        plano.editar(plano.getTitulo(), null, inicio, fim,
+                new com.nutri4you.backend.dto.PrescricaoDTO.Nutrientes(
+                        BigDecimal.TEN, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.TEN));
         return planos.saveAndFlush(plano);
     }
     protected Consulta consulta(LocalDateTime inicio, String status) {

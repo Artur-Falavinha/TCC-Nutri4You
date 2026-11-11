@@ -19,46 +19,46 @@ class PlanoAlimentarServiceTest extends ClinicalServiceTestSupport {
                 List.of(new RefeicaoRequest("Almoço", LocalTime.NOON, hoje().getDayOfWeek().getValue(), List.of(new ItemRequest(alimento.getId(), BigDecimal.valueOf(250))))));
     }
     private PlanoDTO publicado(LocalDate inicio, LocalDate fim) {
-        var p = service.criar(nutri, paciente.getId(), dados(inicio, fim, null));
-        return service.publicar(nutri, paciente.getId(), p.id(), p.versao());
+        var p = service.criar(nutri, paciente.getId(), null, dados(inicio, fim, null));
+        return service.publicar(nutri, paciente.getId(), null, p.id(), p.versao());
     }
     @Test void bloqueiaTodaSobreposicaoSemAlterarPlanoAnterior() {
         var anterior = publicado(hoje(), hoje().plusDays(10));
-        var novo = service.criar(nutri, paciente.getId(), dados(hoje().plusDays(3), hoje().plusDays(12), null));
-        assertThatThrownBy(() -> service.publicar(nutri, paciente.getId(), novo.id(), novo.versao())).isInstanceOf(PlanoConflitoException.class);
-        var preservado = service.buscar(nutri, paciente.getId(), anterior.id());
+        var novo = service.criar(nutri, paciente.getId(), null, dados(hoje().plusDays(3), hoje().plusDays(12), null));
+        assertThatThrownBy(() -> service.publicar(nutri, paciente.getId(), null, novo.id(), novo.versao())).isInstanceOf(PlanoConflitoException.class);
+        var preservado = service.buscar(nutri, paciente.getId(), null, anterior.id());
         assertThat(preservado.status()).isEqualTo("PUBLICADO");
         assertThat(preservado.vigenciaFim()).isEqualTo(anterior.vigenciaFim());
         assertThat(preservado.versao()).isEqualTo(anterior.versao());
     }
     @Test void datasIguaisTambemSaoSobreposicao() {
         publicado(hoje(), hoje().plusDays(10));
-        var novo = service.criar(nutri, paciente.getId(), dados(hoje(), hoje().plusDays(3), null));
-        assertThatThrownBy(() -> service.publicar(nutri, paciente.getId(), novo.id(), novo.versao())).isInstanceOf(PlanoConflitoException.class);
+        var novo = service.criar(nutri, paciente.getId(), null, dados(hoje(), hoje().plusDays(3), null));
+        assertThatThrownBy(() -> service.publicar(nutri, paciente.getId(), null, novo.id(), novo.versao())).isInstanceOf(PlanoConflitoException.class);
     }
     @Test void permiteVigenciasAdjacentesEPreservaHistorico() {
         var anterior = publicado(hoje(), hoje().plusDays(6));
         var proximo = publicado(hoje().plusDays(7), hoje().plusDays(13));
         assertThat(service.ativo(paciente).id()).isEqualTo(anterior.id());
-        assertThat(service.listar(nutri, paciente.getId())).extracting(PlanoDTO::id).containsExactly(proximo.id(), anterior.id());
+        assertThat(service.listar(nutri, paciente.getId(), null)).extracting(PlanoDTO::id).containsExactly(proximo.id(), anterior.id());
     }
     @Test void publicacaoExigeRefeicoesEFimExplicito() {
-        var semFim = service.criar(nutri, paciente.getId(), dados(hoje(), null, null));
-        assertThatThrownBy(() -> service.publicar(nutri, paciente.getId(), semFim.id(), semFim.versao())).isInstanceOf(IllegalArgumentException.class);
-        var vazio = service.criar(nutri, paciente.getId(), new PlanoRequest("Vazio", null, hoje(), hoje(), null, null, List.of()));
-        assertThatThrownBy(() -> service.publicar(nutri, paciente.getId(), vazio.id(), vazio.versao())).isInstanceOf(IllegalArgumentException.class);
+        var semFim = service.criar(nutri, paciente.getId(), null, dados(hoje(), null, null));
+        assertThatThrownBy(() -> service.publicar(nutri, paciente.getId(), null, semFim.id(), semFim.versao())).isInstanceOf(IllegalArgumentException.class);
+        var vazio = service.criar(nutri, paciente.getId(), null, new PlanoRequest("Vazio", null, hoje(), hoje(), null, null, List.of()));
+        assertThatThrownBy(() -> service.publicar(nutri, paciente.getId(), null, vazio.id(), vazio.versao())).isInstanceOf(IllegalArgumentException.class);
     }
     @Test void versaoAntigaEPlanoPublicadoNaoPermitemEdicao() {
-        var plano = service.criar(nutri, paciente.getId(), dados(hoje(), hoje(), null));
-        assertThatThrownBy(() -> service.editar(nutri, paciente.getId(), plano.id(), dados(hoje(), hoje(), 99L))).isInstanceOf(PlanoConflitoException.class);
-        var pub = service.publicar(nutri, paciente.getId(), plano.id(), plano.versao());
-        assertThatThrownBy(() -> service.editar(nutri, paciente.getId(), pub.id(), dados(hoje(), hoje(), pub.versao()))).isInstanceOf(PlanoConflitoException.class);
+        var plano = service.criar(nutri, paciente.getId(), null, dados(hoje(), hoje(), null));
+        assertThatThrownBy(() -> service.editar(nutri, paciente.getId(), null, plano.id(), dados(hoje(), hoje(), 99L))).isInstanceOf(PlanoConflitoException.class);
+        var pub = service.publicar(nutri, paciente.getId(), null, plano.id(), plano.versao());
+        assertThatThrownBy(() -> service.editar(nutri, paciente.getId(), null, pub.id(), dados(hoje(), hoje(), pub.versao()))).isInstanceOf(PlanoConflitoException.class);
     }
     @Test void outroAutorVinculadoNaoPodeAlterarPlano() {
-        var plano = service.criar(nutri, paciente.getId(), dados(hoje(), hoje(), null));
+        var plano = service.criar(nutri, paciente.getId(), null, dados(hoje(), hoje(), null));
         var outro = nutricionistas.save(new Nutricionista("Outro", "outro@teste.com", "hash", "CRN8-12345"));
         relacoes.save(RelacaoClinica.criar(paciente, outro));
-        assertThatThrownBy(() -> service.editar(outro, paciente.getId(), plano.id(), dados(hoje(), hoje(), plano.versao()))).isInstanceOf(PlanoNaoEncontradoException.class);
+        assertThatThrownBy(() -> service.editar(outro, paciente.getId(), null, plano.id(), dados(hoje(), hoje(), plano.versao()))).isInstanceOf(PlanoNaoEncontradoException.class);
     }
     @Test void comprasConsideramHojeDiasDaSemanaEVigenciaSemSubstitutos() {
         var alimento = alimentos.saveAndFlush(new Alimento("Principal", BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE));
@@ -67,8 +67,8 @@ class PlanoAlimentarServiceTest extends ClinicalServiceTestSupport {
         var refeicoes = List.of(
                 new RefeicaoRequest("Hoje", LocalTime.NOON, hojeDia, List.of(new ItemRequest(alimento.getId(), BigDecimal.valueOf(100), List.of(new SubstitutoRequest(sub.getId(), BigDecimal.valueOf(50)))))),
                 new RefeicaoRequest("Amanhã", LocalTime.NOON, hoje().plusDays(1).getDayOfWeek().getValue(), List.of(new ItemRequest(alimento.getId(), BigDecimal.valueOf(200)))));
-        var p = service.criar(nutri, paciente.getId(), new PlanoRequest("Compras", null, hoje(), hoje().plusDays(7), null, null, refeicoes));
-        service.publicar(nutri, paciente.getId(), p.id(), p.versao());
+        var p = service.criar(nutri, paciente.getId(), null, new PlanoRequest("Compras", null, hoje(), hoje().plusDays(7), null, null, refeicoes));
+        service.publicar(nutri, paciente.getId(), null, p.id(), p.versao());
         assertThat(service.compras(paciente, 1).itens().getFirst().quantidadeGramas()).isEqualByComparingTo("100");
         assertThat(service.compras(paciente, 7).itens().getFirst().quantidadeGramas()).isEqualByComparingTo("300");
         var compras = service.compras(paciente, 30);

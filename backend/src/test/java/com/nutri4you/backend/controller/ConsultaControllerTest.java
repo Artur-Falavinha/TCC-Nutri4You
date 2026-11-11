@@ -32,6 +32,7 @@ class ConsultaControllerTest {
     @Autowired NutricionistaRepository nutricionistas;
     @Autowired PacienteRepository pacientes;
     @Autowired ConsultaRepository consultas;
+    @Autowired RelacaoClinicaRepository relacoes;
     @Autowired AvaliacaoAntropometricaRepository avaliacoes;
     @Autowired PasswordEncoder encoder;
     private Nutricionista nutri;
@@ -44,6 +45,7 @@ class ConsultaControllerTest {
         nutri = nutricionistas.save(TestDataFactory.nutricionista(encoder));
         paciente = pacientes.save(TestDataFactory.pacienteConfirmado(encoder));
         consultas.save(TestDataFactory.consulta(paciente, nutri));
+        relacoes.save(RelacaoClinica.criar(paciente, nutri));
         base = "/api/v1/gestao-pacientes/" + paciente.getId() + "/consultas";
         token = login("nutri@teste.com");
     }

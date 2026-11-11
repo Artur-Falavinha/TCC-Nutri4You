@@ -9,6 +9,7 @@ public class Exame {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) @Column(name = "id_exame") private Integer id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "id_paciente", nullable = false) private Paciente paciente;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "id_nutricionista", nullable = false) private Nutricionista nutricionista;
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "id_consulta", updatable = false) private Consulta consulta;
     @Column(name = "nome_exame", nullable = false, length = 150) private String nome;
     @Column(name = "descricao_exame", columnDefinition = "text") private String descricao;
     @Column(name = "data_solicitacao") private LocalDate dataSolicitacao;
@@ -22,9 +23,10 @@ public class Exame {
     @Column(name = "analisado_em") private Instant analisadoEm;
     @Version @Column(nullable = false) private long versao;
     protected Exame() {}
-    public Exame(Paciente paciente, Nutricionista nutricionista, String nome, String descricao, LocalDate data) {
+    public Exame(Paciente paciente, Nutricionista nutricionista, Consulta consulta, String nome, String descricao, LocalDate data) {
         this.paciente = paciente; this.nutricionista = nutricionista; this.nome = nome;
         this.descricao = descricao; this.dataSolicitacao = data;
+        this.consulta = consulta;
     }
     public void enviar(byte[] arquivo, String nome, String tipo, LocalDate data) {
         this.arquivo = arquivo; this.arquivoNome = nome; this.arquivoTipo = tipo;
@@ -38,6 +40,7 @@ public class Exame {
     public Integer getId() { return id; }
     public Paciente getPaciente() { return paciente; }
     public Nutricionista getNutricionista() { return nutricionista; }
+    public Consulta getConsulta() { return consulta; }
     public String getNome() { return nome; }
     public String getDescricao() { return descricao; }
     public LocalDate getDataSolicitacao() { return dataSolicitacao; }

@@ -1,10 +1,10 @@
 <header class="page-header">
   <h1>{{ paciente?.nome || 'Paciente' }}</h1>
-  <app-patient-tabs [patientId]="patientId" />
+  @if (atendimentoId === null) { <app-patient-tabs [patientId]="patientId" /> }
 </header>
 
 <main class="canvas" [attr.aria-busy]="carregando || salvando || publicando || excluindo">
-  <a class="text-action" [routerLink]="['/pacientes', patientId, 'consultas']">← Voltar às consultas</a>
+  <a class="text-action" [routerLink]="atendimentoId === null ? ['/pacientes', patientId, 'consultas'] : ['/agenda/atendimentos', atendimentoId]">← {{ atendimentoId === null ? 'Voltar às consultas' : 'Voltar ao atendimento' }}</a>
   <app-form-alert [message]="erro" type="error" />
   <app-form-alert [message]="mensagem" type="success" />
 
@@ -38,15 +38,16 @@
         <h2>Planos alimentares</h2>
         <p class="subtitle">{{ planos.length }} plano(s) registrado(s)</p>
       </div>
-      <app-ui-button label="Novo plano" icon="plus-circle" [fullWidth]="false" (click)="abrirNovoRascunho()" />
+      @if (atendimentoId === null || podeEditarAtendimento) { <app-ui-button label="Novo plano" icon="plus-circle" [fullWidth]="false" (click)="abrirNovoRascunho()" /> }
     </div>
 
     @if (planos.length === 0) {
       <section class="empty-state" aria-labelledby="empty-title">
         <img src="/dieta/prescricao-vazia.png" alt="Ilustração de uma prescrição alimentar" width="240" height="180" />
         <h3 id="empty-title">Nenhum plano alimentar</h3>
+        @if (atendimentoId === null || podeEditarAtendimento) {
         <p>Crie um rascunho para organizar refeições e alimentos deste paciente.</p>
-        <app-ui-button label="Criar primeiro plano" icon="plus-circle" [fullWidth]="false" (click)="abrirNovoRascunho()" />
+        <app-ui-button label="Criar primeiro plano" icon="plus-circle" [fullWidth]="false" (click)="abrirNovoRascunho()" /> }
       </section>
     } @else {
       <section class="plan-list" aria-label="Planos alimentares do paciente">
@@ -90,11 +91,11 @@
         @if (plano.status !== 'SUBSTITUIDO') {
           <app-ui-button label="Prévia de compras" icon="basket" variant="secondary" [fullWidth]="false" (click)="abrirPreviaListaCompras()" />
         }
-        @if (plano.status === 'RASCUNHO') {
+        @if (plano.status === 'RASCUNHO' && (atendimentoId === null || podeEditarAtendimento)) {
           <app-ui-button label="Editar rascunho" icon="pencil-simple" variant="secondary" [fullWidth]="false" (click)="abrirEdicao()" />
           <app-ui-button label="Publicar" icon="check-circle" [fullWidth]="false" [loading]="publicando" (click)="publicar()" />
           <app-ui-button label="Excluir" icon="trash" variant="danger" [fullWidth]="false" [loading]="excluindo" (click)="excluir()" />
-        } @else {
+        } @else if (plano.status !== 'RASCUNHO' && (atendimentoId === null || podeEditarAtendimento)) {
           <app-ui-button label="Criar novo rascunho" icon="copy" variant="secondary" [fullWidth]="false" (click)="duplicarPlano()" />
         }
       </div>

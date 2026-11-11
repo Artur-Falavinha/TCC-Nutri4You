@@ -27,18 +27,18 @@ export class RelacaoPacienteModalComponent {
   errorMessage = '';
 
   get title(): string {
-    return this.acao === 'desvincular' ? 'Encerrar relação?' : 'Vincular paciente?';
+    return this.acao === 'desvincular' ? 'Encerrar relação?' : 'Solicitar vínculo?';
   }
 
   get description(): string {
     if (this.acao === 'desvincular') {
       return 'Este paciente deixará de aparecer na listagem principal. O histórico clínico permanece guardado no sistema.';
     }
-    return 'Este paciente passa a ter relação recorrente com você e entra na listagem principal.';
+    return 'O paciente precisa aceitar a solicitação no aplicativo para iniciar o vínculo.';
   }
 
   get confirmLabel(): string {
-    return this.acao === 'desvincular' ? 'Encerrar relação' : 'Vincular';
+    return this.acao === 'desvincular' ? 'Encerrar relação' : 'Enviar solicitação';
   }
 
   onConfirmar(): void {
@@ -57,7 +57,7 @@ export class RelacaoPacienteModalComponent {
           error.message ??
           (this.acao === 'desvincular'
             ? 'Não foi possível encerrar a relação.'
-            : 'Não foi possível vincular o paciente.');
+            : 'Não foi possível enviar a solicitação de vínculo.');
       }
     });
   }

@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.time.LocalDateTime;
 
@@ -33,7 +34,7 @@ public class RelacaoClinica {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private StatusRelacaoClinica status = StatusRelacaoClinica.ATIVA;
+    private StatusRelacaoClinica status = StatusRelacaoClinica.PENDENTE;
 
     @Column(name = "iniciada_em")
     private LocalDateTime iniciadaEm;
@@ -41,16 +42,33 @@ public class RelacaoClinica {
     @Column(name = "encerrada_em")
     private LocalDateTime encerradaEm;
 
+    @Version
+    @Column(nullable = false)
+    private long versao;
+
     protected RelacaoClinica() {
     }
 
     public static RelacaoClinica criar(Paciente paciente, Nutricionista nutricionista) {
+        RelacaoClinica relacao = criarSolicitacao(paciente, nutricionista);
+        relacao.reativar();
+        return relacao;
+    }
+
+    public static RelacaoClinica criarSolicitacao(Paciente paciente, Nutricionista nutricionista) {
         RelacaoClinica relacao = new RelacaoClinica();
         relacao.paciente = paciente;
         relacao.nutricionista = nutricionista;
-        relacao.status = StatusRelacaoClinica.ATIVA;
-        relacao.iniciadaEm = LocalDateTime.now();
+        relacao.solicitar();
         return relacao;
+    }
+
+    public void solicitar() {
+        this.status = StatusRelacaoClinica.PENDENTE;
+    }
+
+    public void recusar() {
+        this.status = StatusRelacaoClinica.ENCERRADA;
     }
 
     public void reativar() {
@@ -82,6 +100,10 @@ public class RelacaoClinica {
 
     public LocalDateTime getIniciadaEm() {
         return iniciadaEm;
+    }
+
+    public long getVersao() {
+        return versao;
     }
 
     public LocalDateTime getEncerradaEm() {

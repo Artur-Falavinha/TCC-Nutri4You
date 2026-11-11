@@ -82,19 +82,19 @@ public class GestaoPacienteService {
     }
 
     @Transactional
-    public void vincular(Nutricionista nutricionista, Integer idPaciente) {
-        Paciente paciente = pacienteRepository.findById(idPaciente)
+    public StatusRelacaoClinica vincular(Nutricionista nutricionista, Integer idPaciente) {
+        Paciente paciente = pacienteRepository.findByIdForUpdate(idPaciente)
                 .orElseThrow(PacienteNaoEncontradoException::new);
 
         RelacaoClinica relacao = relacaoClinicaRepository
                 .findByPaciente_IdAndNutricionista_Id(paciente.getId(), nutricionista.getId())
                 .orElseGet(() -> relacaoClinicaRepository.save(
-                        RelacaoClinica.criar(paciente, nutricionista)));
+                        RelacaoClinica.criarSolicitacao(paciente, nutricionista)));
 
         if (relacao.getStatus() == StatusRelacaoClinica.ENCERRADA) {
-            relacao.reativar();
-            relacaoClinicaRepository.save(relacao);
+            relacao.solicitar();
         }
+        return relacao.getStatus();
     }
 
     @Transactional
@@ -121,15 +121,19 @@ public class GestaoPacienteService {
         relacaoClinicaRepository.save(relacao);
     }
 
-    private void validarAcessoNutricionista(Nutricionista nutricionista, Paciente paciente) {
-        boolean relacaoAtiva = relacaoClinicaRepository
-                .findByPaciente_IdAndNutricionista_IdAndStatus(
-                        paciente.getId(), nutricionista.getId(), StatusRelacaoClinica.ATIVA)
-                .isPresent();
-        boolean consulta = consultaRepository.existeConsultaComAcessoClinico(
-                paciente.getId(), nutricionista.getId());
+    @Transactional(readOnly = true)
+    public void exigirAcessoAoHistoricoDeConsultas(Nutricionista nutricionista, Integer pacienteId) {
+        Paciente paciente = pacienteRepository.findById(pacienteId)
+                .orElseThrow(PacienteNaoEncontradoException::new);
+        if (!relacaoAtiva(nutricionista, paciente)
+                && !consultaRepository.existsByPaciente_IdAndNutricionista_IdAndAvulsaFalse(
+                        pacienteId, nutricionista.getId())) {
+            throw new AcessoNegadoException("Sem permissão para acessar consultas deste paciente.");
+        }
+    }
 
-        if (!relacaoAtiva && !consulta) {
+    private void validarAcessoNutricionista(Nutricionista nutricionista, Paciente paciente) {
+        if (!relacaoAtiva(nutricionista, paciente)) {
             throw new AcessoNegadoException("Sem permissão para acessar dados deste paciente.");
         }
     }

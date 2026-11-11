@@ -33,7 +33,7 @@ public class PlanoAlimentar {
     private Integer id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_consulta", unique = true)
+    @JoinColumn(name = "id_consulta", unique = true, updatable = false)
     private Consulta consulta;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -92,8 +92,13 @@ public class PlanoAlimentar {
     private List<ListaCompras> listasCompras = new ArrayList<>();
 
     public PlanoAlimentar(Paciente paciente, Nutricionista nutricionista) {
+        this(paciente, nutricionista, null);
+    }
+
+    public PlanoAlimentar(Paciente paciente, Nutricionista nutricionista, Consulta consulta) {
         this.paciente = paciente;
         this.nutricionista = nutricionista;
+        this.consulta = consulta;
     }
 
     public void editar(
@@ -108,16 +113,6 @@ public class PlanoAlimentar {
         this.metaCarboidratos = metas == null ? null : metas.carboidratos();
         this.metaGordura = metas == null ? null : metas.gorduras();
     }
-
-    public void editar(Consulta consulta, LocalDate inicio, LocalDate fim,
-                       BigDecimal kcal, BigDecimal carboidratos,
-                       BigDecimal gordura, BigDecimal proteina) {
-        this.consulta = consulta;
-        editar(titulo, orientacoes, inicio, fim,
-                new Nutrientes(kcal, proteina, carboidratos, gordura, null));
-    }
-
-    public void vincularConsulta(Consulta consulta) { this.consulta = consulta; }
 
     public void publicar() {
         status = "PUBLICADO";
