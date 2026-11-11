@@ -418,7 +418,7 @@ describe('DietaComponent', () => {
     confirmar.click();
     fixture.detectChanges();
 
-    expect(dieta.publicarPlano).toHaveBeenCalledOnceWith(paciente.id, rascunho.id, rascunho.versao);
+    expect(dieta.publicarPlano).toHaveBeenCalledOnceWith(paciente.id, rascunho.id, rascunho.versao, null);
     expect(raiz.querySelector('app-paciente-dialog')).toBeNull();
   });
 
