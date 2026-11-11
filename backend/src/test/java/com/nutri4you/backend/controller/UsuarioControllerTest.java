@@ -156,6 +156,8 @@ class UsuarioControllerTest {
         consultaRealizada.atualizar(realizadaFutura, "REALIZADA", "Consulta concluída");
         consultaRepository.save(consultaRealizada);
 
+        consultaRepository.save(new Consulta(paciente, nutricionista, agora.plusDays(1), true));
+
         LocalDateTime futura = agora.plusDays(3)
                 .withHour(14).withMinute(30).withSecond(0).withNano(0);
         Consulta consulta = new Consulta(paciente, nutricionista, futura);

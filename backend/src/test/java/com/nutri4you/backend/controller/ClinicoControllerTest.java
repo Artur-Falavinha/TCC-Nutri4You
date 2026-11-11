@@ -118,21 +118,30 @@ class ClinicoControllerTest {
     void agendaIncluiConsultaDeHojeSemanaSexoIdadeEDozeMeses() throws Exception {
         paciente.setDataNascimento(LocalDate.now(ZoneId.of("America/Sao_Paulo")).minusYears(25));
         pacienteRepository.save(paciente);
+        LocalDate hoje = consulta.getDataHora().toLocalDate();
+        Nutricionista nutricionista = consulta.getNutricionista();
+        consulta.atualizar(hoje.atTime(8, 0), "CONFIRMADA", null);
+        Consulta realizada = new Consulta(paciente, nutricionista, hoje.atTime(9, 0));
+        realizada.atualizar(realizada.getDataHora(), "REALIZADA", null);
+        consultaRepository.save(realizada);
+        consultaRepository.save(new Consulta(oculto, nutricionista, hoje.atTime(10, 0), true));
         String token = login();
 
         mockMvc.perform(get("/api/v1/dashboard/consultas")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.hoje", hasSize(1)))
+                .andExpect(jsonPath("$.data.hoje", hasSize(2)))
+                .andExpect(jsonPath("$.data.hoje[*].id", hasItem(consulta.getId())))
+                .andExpect(jsonPath("$.data.hoje[*].id", hasItem(realizada.getId())))
                 .andExpect(jsonPath("$.data.hoje[0].pacienteNome").value("Paciente Teste"))
                 .andExpect(jsonPath("$.data.semana", hasSize(7)))
                 .andExpect(jsonPath("$.data.semana[0].rotulo").value("Seg"))
                 .andExpect(jsonPath("$.data.semana[6].rotulo").value("Dom"))
-                .andExpect(jsonPath("$.data.totalSemana").value(1))
+                .andExpect(jsonPath("$.data.totalSemana").value(2))
                 .andExpect(jsonPath("$.data.sexo[?(@.rotulo == 'Masculino')].quantidade", hasItem(1)))
                 .andExpect(jsonPath("$.data.faixaEtaria[?(@.rotulo == '20–29')].quantidade", hasItem(1)))
                 .andExpect(jsonPath("$.data.ultimos12Meses", hasSize(12)))
-                .andExpect(jsonPath("$.data.totalConsultas12Meses").value(1));
+                .andExpect(jsonPath("$.data.totalConsultas12Meses").value(2));
     }
 
     @Test

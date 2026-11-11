@@ -2,6 +2,7 @@ package com.nutri4you.backend.service;
 
 import com.nutri4you.backend.dto.*;
 import com.nutri4you.backend.exception.*;
+import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.support.*;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,30 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
         assertThat(nova.status()).isEqualTo("AGUARDANDO_CONFIRMACAO");
         assertThat(nova.versao()).isGreaterThan(confirmada.versao());
         assertThat(service.disponibilidade(paciente, nutri.getId(), dia).horarios()).contains(dia.atTime(9, 0));
+    }
+
+    @Test void disponibilidadeParaReagendarIgnoraSomenteAConsultaAutorizada() {
+        var dia = hoje().plusDays(7);
+        int diaDaSemana = dia.getDayOfWeek().getValue();
+        horarios.salvar(nutri, List.of(
+                new HorarioAtendimentoDTO(diaDaSemana, LocalTime.of(9, 0)),
+                new HorarioAtendimentoDTO(diaDaSemana, LocalTime.of(9, 30)),
+                new HorarioAtendimentoDTO(diaDaSemana, LocalTime.of(10, 15)),
+                new HorarioAtendimentoDTO(diaDaSemana, LocalTime.of(11, 0))));
+        var original = consulta(dia.atTime(9, 0), "CONFIRMADA");
+        consulta(dia.atTime(10, 15), "CONFIRMADA");
+        var outro = pacientes.save(TestDataFactory.outroPaciente(encoder));
+        var pendente = consultas.save(new Consulta(outro, nutri, dia.atTime(11, 0), true));
+
+        assertThat(service.disponibilidadeParaReagendar(paciente, original.getId(), nutri.getId(), dia).horarios())
+                .containsExactly(dia.atTime(9, 30));
+        assertThat(service.disponibilidade(paciente, nutri.getId(), dia).horarios()).isEmpty();
+        assertThatThrownBy(() -> service.disponibilidadeParaReagendar(outro, original.getId(), nutri.getId(), dia))
+                .isInstanceOf(ConsultaNaoEncontradaException.class);
+        assertThatThrownBy(() -> service.disponibilidadeParaReagendar(paciente, original.getId(), -1, dia))
+                .isInstanceOf(ConsultaNaoEncontradaException.class);
+        assertThatThrownBy(() -> service.disponibilidadeParaReagendar(outro, pendente.getId(), nutri.getId(), dia))
+                .isInstanceOf(IllegalArgumentException.class);
     }
     @Test void cancelamentoLiberaDisponibilidadeERemoveDaListagem() {
         var dia = prepararGrade();
@@ -102,9 +127,12 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
 
         horarios.salvarPreferencia(nutri, new PreferenciaAgendaDTO(false));
         assertThat(service.disponibilidadeParaReagendar(semVinculo, reserva.id(), nutri.getId(), dia).horarios())
-                .contains(dia.atTime(9, 45));
+                .containsExactly(dia.atTime(9, 30), dia.atTime(9, 45));
+        var proximaSemana = dia.plusWeeks(1);
+        assertThat(service.disponibilidadeParaReagendar(semVinculo, reserva.id(), nutri.getId(), proximaSemana).horarios())
+                .contains(proximaSemana.atTime(9, 0));
         var reagendada = service.reagendar(semVinculo, reserva.id(),
-                new ReagendarConsultaRequest(dia.atTime(9, 45), confirmada.versao()));
+                new ReagendarConsultaRequest(dia.atTime(9, 30), confirmada.versao()));
         assertThat(reagendada.status()).isEqualTo("AGUARDANDO_CONFIRMACAO");
         assertThat(atendimento.listarAvulsasPendentes(nutri)).extracting(SolicitacaoAvulsaDTO::id)
                 .containsExactly(reserva.id());

@@ -9,6 +9,7 @@
   flex: 1;
   min-height: 0;
   min-width: 0;
+  container-type: inline-size;
 }
 
 /* ─── Cabeçalho ─────────────────────────────────────── */
@@ -148,9 +149,12 @@
   display: flex;
   gap: var(--space-16);
   flex: 1;
+  min-width: 0;
 }
 
 .filter-input {
+  flex: 0 1 200px;
+  min-width: 0;
   max-width: 200px;
 }
 
@@ -234,6 +238,11 @@
 .pacientes-table__col-acoes {
   flex: 1;
   gap: var(--space-12);
+}
+
+.pacientes-table__row > :is(.pacientes-table__col-nome, .pacientes-table__col-email, .pacientes-table__col-telefone) {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* ─── Elementos da tabela ───────────────────────────── */
@@ -335,5 +344,84 @@
 
 .pagination-page {
   font-weight: 600;
+}
+
+@container (max-width: 48rem) {
+  .pacientes-header {
+    height: auto;
+    min-height: 4rem;
+    padding: var(--space-12) var(--space-16);
+    gap: var(--space-12);
+  }
+
+  .pacientes-header__title {
+    font-size: 1.5rem;
+    line-height: var(--leading-tight);
+    white-space: normal;
+  }
+
+  .pacientes-header__bell {
+    flex-shrink: 0;
+  }
+
+  .pacientes-main__toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-16);
+    padding: var(--space-16);
+  }
+
+  .pacientes-main__filters {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .filter-input {
+    max-width: none;
+  }
+
+  .pacientes-table-container,
+  .pacientes-pagination {
+    margin-inline: var(--space-16);
+  }
+
+  .pacientes-table__header {
+    display: none;
+  }
+
+  .pacientes-table__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-6) var(--space-12);
+    padding: var(--space-12) var(--space-16);
+  }
+
+  .pacientes-table__row > div {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .pacientes-table__row > :is(.pacientes-table__col-nome, .pacientes-table__col-email, .pacientes-table__col-telefone) {
+    grid-column: 1 / -1;
+  }
+
+  .action-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .pacientes-pagination {
+    flex-wrap: wrap;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--space-16);
+  }
+}
+
+@container (max-width: 34rem) {
+  .pacientes-main__filters {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-12);
+  }
 }
 
