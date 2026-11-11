@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '../../core/api/api-response.types';
@@ -20,19 +20,28 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
   const [erro, setErro] = useState('');
   const [aviso, setAviso] = useState('');
 
-  const carregar = useCallback(async () => {
+  const [revisao, setRevisao] = useState(0);
+
+  useEffect(() => {
+    let vigente = true;
+    void listarSolicitacoesVinculo()
+      .then((pedidos) => {
+        if (vigente) setSolicitacoes(pedidos);
+      })
+      .catch(() => {
+        if (vigente) setErro('Não foi possível carregar as solicitações de vínculo.');
+      })
+      .finally(() => {
+        if (vigente) setCarregando(false);
+      });
+    return () => { vigente = false; };
+  }, [revisao]);
+
+  const atualizar = () => {
     setCarregando(true);
     setErro('');
-    try {
-      setSolicitacoes(await listarSolicitacoesVinculo());
-    } catch {
-      setErro('Não foi possível carregar as solicitações de vínculo.');
-    } finally {
-      setCarregando(false);
-    }
-  }, []);
-
-  useEffect(() => { void carregar(); }, [carregar]);
+    setRevisao((atual) => atual + 1);
+  };
 
   const decidir = async (solicitacao: SolicitacaoVinculo, aceitar: boolean) => {
     setDecidindo(true);
@@ -55,7 +64,7 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
     <View style={styles.secao}>
       <View style={styles.cabecalho}>
         <Text style={styles.titulo} accessibilityRole="header">Solicitações de vínculo</Text>
-        <Pressable onPress={() => void carregar()} accessibilityRole="button"
+        <Pressable onPress={atualizar} accessibilityRole="button"
           accessibilityLabel="Atualizar solicitações de vínculo" disabled={ocupado}
           style={[styles.acao, ocupado && styles.desabilitada]}>
           <Text style={styles.atualizar}>Atualizar</Text>
