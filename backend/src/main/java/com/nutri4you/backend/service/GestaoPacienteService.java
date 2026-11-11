@@ -3,11 +3,13 @@ package com.nutri4you.backend.service;
 import com.nutri4you.backend.dto.PacienteResumoDTO;
 import com.nutri4you.backend.dto.PacienteResponseDTO;
 import com.nutri4you.backend.exception.AcessoNegadoException;
+import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.RelacaoClinica;
 import com.nutri4you.backend.model.StatusRelacaoClinica;
 import com.nutri4you.backend.repository.ConsultaRepository;
+import com.nutri4you.backend.repository.NutricionistaRepository;
 import com.nutri4you.backend.repository.PacienteRepository;
 import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import org.springframework.stereotype.Service;
@@ -21,14 +23,20 @@ public class GestaoPacienteService {
     private final PacienteRepository pacienteRepository;
     private final RelacaoClinicaRepository relacaoClinicaRepository;
     private final ConsultaRepository consultaRepository;
+    private final NutricionistaRepository nutricionistaRepository;
+    private final JanelaConsulta janela;
 
     public GestaoPacienteService(
             PacienteRepository pacienteRepository,
             RelacaoClinicaRepository relacaoClinicaRepository,
-            ConsultaRepository consultaRepository) {
+            ConsultaRepository consultaRepository,
+            NutricionistaRepository nutricionistaRepository,
+            JanelaConsulta janela) {
         this.pacienteRepository = pacienteRepository;
         this.relacaoClinicaRepository = relacaoClinicaRepository;
         this.consultaRepository = consultaRepository;
+        this.nutricionistaRepository = nutricionistaRepository;
+        this.janela = janela;
     }
 
     @Transactional(readOnly = true)
@@ -99,26 +107,26 @@ public class GestaoPacienteService {
 
     @Transactional
     public void desvincularNutricionista(Nutricionista nutricionista, Integer idPaciente) {
-        RelacaoClinica relacao = relacaoClinicaRepository
-                .findByPaciente_IdAndNutricionista_IdAndStatus(
-                        idPaciente, nutricionista.getId(), StatusRelacaoClinica.ATIVA)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Não existe relação recorrente ativa com este paciente."));
-
-        relacao.encerrar();
-        relacaoClinicaRepository.save(relacao);
+        encerrarVinculo(idPaciente, nutricionista.getId(),
+                "Não existe relação recorrente ativa com este paciente.");
     }
 
     @Transactional
     public void desvincularPaciente(Paciente paciente, Integer idNutricionista) {
-        RelacaoClinica relacao = relacaoClinicaRepository
-                .findByPaciente_IdAndNutricionista_IdAndStatus(
-                        paciente.getId(), idNutricionista, StatusRelacaoClinica.ATIVA)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Não existe relação recorrente ativa com este nutricionista."));
+        encerrarVinculo(paciente.getId(), idNutricionista,
+                "Não existe relação recorrente ativa com este nutricionista.");
+    }
 
+    private void encerrarVinculo(Integer pacienteId, Integer nutricionistaId, String mensagemSemVinculo) {
+        nutricionistaRepository.findByIdForUpdate(nutricionistaId)
+                .orElseThrow(() -> new IllegalArgumentException(mensagemSemVinculo));
+        RelacaoClinica relacao = relacaoClinicaRepository
+                .findByPaciente_IdAndNutricionista_IdAndStatus(pacienteId, nutricionistaId, StatusRelacaoClinica.ATIVA)
+                .orElseThrow(() -> new IllegalArgumentException(mensagemSemVinculo));
+
+        consultaRepository.bloquearRecorrentesFuturasNaoIniciadas(pacienteId, nutricionistaId, janela.agora())
+                .forEach(Consulta::cancelar);
         relacao.encerrar();
-        relacaoClinicaRepository.save(relacao);
     }
 
     @Transactional(readOnly = true)

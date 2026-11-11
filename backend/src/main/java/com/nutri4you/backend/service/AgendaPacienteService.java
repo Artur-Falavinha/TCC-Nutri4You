@@ -130,10 +130,12 @@ public class AgendaPacienteService {
             Paciente paciente,
             Integer consultaId,
             ReagendarConsultaRequest request) {
+        Integer nutricionistaId = consultas.buscarNutricionistaDaConsulta(consultaId, paciente.getId())
+                .orElseThrow(ConsultaNaoEncontradaException::new);
+        bloquearNutricionista(nutricionistaId);
         Consulta consulta = exigirConsulta(paciente, consultaId);
         validarReagendamento(paciente, consulta);
         validarVersao(request == null ? null : request.versao(), consulta);
-        bloquearNutricionista(consulta.getNutricionista().getId());
         validarHorario(consulta.getNutricionista().getId(), request.dataHora());
         exigirHorarioLivre(consulta.getNutricionista().getId(), request.dataHora(), consulta.getId());
 

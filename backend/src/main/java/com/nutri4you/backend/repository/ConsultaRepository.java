@@ -24,6 +24,19 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Integer> {
             """)
     List<Consulta> listarAgendaPaciente(Integer pacienteId, LocalDateTime agora);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select c from Consulta c where c.paciente.id = :pacienteId
+            and c.nutricionista.id = :nutricionistaId and c.avulsa = false
+            and c.iniciadaEm is null and c.dataHora > :agora
+            and c.status in ('AGUARDANDO_CONFIRMACAO', 'CONFIRMADA')
+            """)
+    List<Consulta> bloquearRecorrentesFuturasNaoIniciadas(
+            Integer pacienteId, Integer nutricionistaId, LocalDateTime agora);
+
+    @Query("select c.nutricionista.id from Consulta c where c.id = :id and c.paciente.id = :pacienteId")
+    Optional<Integer> buscarNutricionistaDaConsulta(Integer id, Integer pacienteId);
+
     Optional<Consulta> findByIdAndPaciente_IdAndNutricionista_IdAndAvulsaFalse(
             Integer id, Integer pacienteId, Integer nutricionistaId);
 
