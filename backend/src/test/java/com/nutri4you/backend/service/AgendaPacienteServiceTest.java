@@ -105,7 +105,7 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
         assertThat(service.listarNutricionistas(paciente)).hasSize(1);
     }
 
-    @Test void confirmaAvulsaSemCriarVinculoELiberaFichaSoAposConfirmacao() {
+    @Test void confirmaAvulsaSemCriarVinculoENaoLiberaFicha() {
         var dia = prepararGrade();
         var semVinculo = pacientes.save(TestDataFactory.outroPaciente(encoder));
         horarios.salvarPreferencia(nutri, new PreferenciaAgendaDTO(true));
@@ -122,7 +122,9 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
         var confirmada = service.listar(semVinculo).getFirst();
         assertThat(confirmada.status()).isEqualTo("CONFIRMADA");
         assertThat(atendimento.listarAvulsasPendentes(nutri)).isEmpty();
-        assertThat(gestao.exigirAcesso(nutri, semVinculo.getId())).isEqualTo(semVinculo);
+        assertThat(gestao.listarParaNutricionista(nutri)).noneMatch(item -> item.id().equals(semVinculo.getId()));
+        assertThatThrownBy(() -> gestao.exigirAcesso(nutri, semVinculo.getId()))
+                .isInstanceOf(AcessoNegadoException.class);
         assertThat(relacoes.findByPaciente_IdAndNutricionista_Id(semVinculo.getId(), nutri.getId())).isEmpty();
 
         horarios.salvarPreferencia(nutri, new PreferenciaAgendaDTO(false));
