@@ -65,7 +65,7 @@ public class AgendaPacienteService {
         Nutricionista nutricionista = nutricionistas.findById(nutricionistaId)
                 .orElseThrow(() -> new IllegalArgumentException(INDISPONIVEL));
         validarNovaSolicitacao(nutricionista, temVinculo(paciente, nutricionistaId));
-        return horariosDisponiveis(nutricionista, data);
+        return horariosDisponiveis(nutricionista, data, null);
     }
 
     @Transactional(readOnly = true)
@@ -76,10 +76,11 @@ public class AgendaPacienteService {
             throw new ConsultaNaoEncontradaException();
         }
         validarReagendamento(paciente, consulta);
-        return horariosDisponiveis(consulta.getNutricionista(), data);
+        return horariosDisponiveis(consulta.getNutricionista(), data, consulta.getId());
     }
 
-    private DisponibilidadeConsultaResponse horariosDisponiveis(Nutricionista nutricionista, LocalDate data) {
+    private DisponibilidadeConsultaResponse horariosDisponiveis(
+            Nutricionista nutricionista, LocalDate data, Integer ignorarConsultaId) {
         if (data == null) {
             throw new IllegalArgumentException("Informe a data desejada.");
         }
@@ -92,10 +93,10 @@ public class AgendaPacienteService {
                         data.plusDays(1).atStartOfDay());
         LocalDateTime agora = LocalDateTime.now(FUSO_HORARIO);
         List<LocalDateTime> disponiveis = horarios.horarios(nutricionistaId, data.getDayOfWeek().getValue()).stream()
-                        .map(data::atTime)
-                        .filter(horario -> horario.isAfter(agora))
-                        .filter(horario -> !possuiConflito(ocupadas, horario, null))
-                        .toList();
+                .map(data::atTime)
+                .filter(horario -> horario.isAfter(agora))
+                .filter(horario -> !possuiConflito(ocupadas, horario, ignorarConsultaId))
+                .toList();
         return new DisponibilidadeConsultaResponse(
                 nutricionista.getId(),
                 nutricionista.getNome(),
