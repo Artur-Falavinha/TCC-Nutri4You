@@ -47,15 +47,16 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
         int diaDaSemana = dia.getDayOfWeek().getValue();
         horarios.salvar(nutri, List.of(
                 new HorarioAtendimentoDTO(diaDaSemana, LocalTime.of(9, 0)),
-                new HorarioAtendimentoDTO(diaDaSemana, LocalTime.of(9, 45)),
-                new HorarioAtendimentoDTO(diaDaSemana, LocalTime.of(10, 30))));
+                new HorarioAtendimentoDTO(diaDaSemana, LocalTime.of(9, 30)),
+                new HorarioAtendimentoDTO(diaDaSemana, LocalTime.of(10, 15)),
+                new HorarioAtendimentoDTO(diaDaSemana, LocalTime.of(11, 0))));
         var original = consulta(dia.atTime(9, 0), "CONFIRMADA");
-        consulta(dia.atTime(9, 45), "CONFIRMADA");
+        consulta(dia.atTime(10, 15), "CONFIRMADA");
         var outro = pacientes.save(TestDataFactory.outroPaciente(encoder));
-        var pendente = consultas.save(new Consulta(outro, nutri, dia.atTime(10, 30), true));
+        var pendente = consultas.save(new Consulta(outro, nutri, dia.atTime(11, 0), true));
 
         assertThat(service.disponibilidadeParaReagendar(paciente, original.getId(), nutri.getId(), dia).horarios())
-                .containsExactly(dia.atTime(9, 0));
+                .containsExactly(dia.atTime(9, 30));
         assertThat(service.disponibilidade(paciente, nutri.getId(), dia).horarios()).isEmpty();
         assertThatThrownBy(() -> service.disponibilidadeParaReagendar(outro, original.getId(), nutri.getId(), dia))
                 .isInstanceOf(ConsultaNaoEncontradaException.class);
@@ -126,7 +127,10 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
 
         horarios.salvarPreferencia(nutri, new PreferenciaAgendaDTO(false));
         assertThat(service.disponibilidadeParaReagendar(semVinculo, reserva.id(), nutri.getId(), dia).horarios())
-                .containsExactly(dia.atTime(9, 0), dia.atTime(9, 30), dia.atTime(9, 45));
+                .containsExactly(dia.atTime(9, 30), dia.atTime(9, 45));
+        var proximaSemana = dia.plusWeeks(1);
+        assertThat(service.disponibilidadeParaReagendar(semVinculo, reserva.id(), nutri.getId(), proximaSemana).horarios())
+                .contains(proximaSemana.atTime(9, 0));
         var reagendada = service.reagendar(semVinculo, reserva.id(),
                 new ReagendarConsultaRequest(dia.atTime(9, 30), confirmada.versao()));
         assertThat(reagendada.status()).isEqualTo("AGUARDANDO_CONFIRMACAO");
