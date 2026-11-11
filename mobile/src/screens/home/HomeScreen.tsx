@@ -28,6 +28,7 @@ import { formatPhoneDisplay, normalizePhone } from '../../core/utils/phone-mask.
 import { RootStackParamList } from '../../navigation/types';
 import { AppHeader } from '../../components/layout/AppHeader';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
+import { SolicitacoesVinculo } from './SolicitacoesVinculo';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DadosPessoais'>;
 
@@ -264,6 +265,15 @@ export function HomeScreen({ navigation }: Props) {
           >
             <Text style={styles.botaoTexto}>{salvando ? 'Salvando...' : 'Salvar dados'}</Text>
           </Pressable>
+
+          {!carregando && (
+            <SolicitacoesVinculo
+              onAceito={(novoVinculo) => setVinculos((atuais) => [
+                ...atuais.filter((vinculo) => vinculo.id !== novoVinculo.id),
+                novoVinculo
+              ])}
+            />
+          )}
 
           <Text style={styles.secao}>Nutricionistas vinculados</Text>
           {vinculos.length === 0 ? (

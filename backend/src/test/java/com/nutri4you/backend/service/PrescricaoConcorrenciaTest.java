@@ -9,10 +9,12 @@ import com.nutri4you.backend.dto.PrescricaoDTO.RefeicaoRequest;
 import com.nutri4you.backend.exception.PlanoConflitoException;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
+import com.nutri4you.backend.model.RelacaoClinica;
 import com.nutri4you.backend.repository.ConsultaRepository;
 import com.nutri4you.backend.repository.NutricionistaRepository;
 import com.nutri4you.backend.repository.PacienteRepository;
 import com.nutri4you.backend.repository.PlanoAlimentarRepository;
+import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import com.nutri4you.backend.support.TestDataFactory;
 
 import jakarta.persistence.EntityManager;
@@ -41,6 +43,7 @@ class PrescricaoConcorrenciaTest {
     @Autowired NutricionistaRepository nutricionistas;
     @Autowired PacienteRepository pacientes;
     @Autowired ConsultaRepository consultas;
+    @Autowired RelacaoClinicaRepository relacoes;
     @Autowired PlanoAlimentarRepository planos;
     @Autowired EntityManager em;
     @Autowired PasswordEncoder encoder;
@@ -65,6 +68,8 @@ class PrescricaoConcorrenciaTest {
                                     pacientes.save(TestDataFactory.pacienteConfirmado(encoder));
                             consultas.save(TestDataFactory.consulta(paciente, primeiro));
                             consultas.save(TestDataFactory.consulta(paciente, segundo));
+                            relacoes.save(RelacaoClinica.criar(paciente, primeiro));
+                            relacoes.save(RelacaoClinica.criar(paciente, segundo));
                             em.createNativeQuery(
                                             "insert into alimento"
                                                 + " (id_alimento,nome,nome_busca,kcal_100g,proteina_100g,carboidratos_100g,gordura_100g,disponivel_prescricao,catalogo_ativo)"
@@ -89,8 +94,8 @@ class PrescricaoConcorrenciaTest {
                                                                             3001,
                                                                             new BigDecimal(
                                                                                     "100"))))));
-                            PlanoDTO a = service.criar(primeiro, paciente.getId(), request);
-                            PlanoDTO b = service.criar(segundo, paciente.getId(), request);
+                            PlanoDTO a = service.criar(primeiro, paciente.getId(), null, request);
+                            PlanoDTO b = service.criar(segundo, paciente.getId(), null, request);
                             return new Contexto(primeiro, segundo, paciente.getId(), a, b);
                         });
         CountDownLatch inicio = new CountDownLatch(1);
@@ -131,7 +136,7 @@ class PrescricaoConcorrenciaTest {
             throws InterruptedException {
         inicio.await();
         try {
-            service.publicar(autor, pacienteId, plano.id(), plano.versao());
+            service.publicar(autor, pacienteId, null, plano.id(), plano.versao());
             return "PUBLICADO";
         } catch (PlanoConflitoException conflito) {
             return "CONFLITO";

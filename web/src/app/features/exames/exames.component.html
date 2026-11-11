@@ -1,13 +1,13 @@
-<header class="page-header"><h1>{{ nomePaciente || 'Paciente' }}</h1><app-patient-tabs [patientId]="patientId" /></header>
+<header class="page-header"><h1>{{ nomePaciente || 'Paciente' }}</h1>@if (atendimentoId === null) { <app-patient-tabs [patientId]="patientId" /> } @else { <a [routerLink]="['/agenda/atendimentos', atendimentoId]">Voltar ao atendimento</a> }</header>
 <main class="canvas" [attr.aria-busy]="carregando || salvando">
   <h2>Exames do paciente</h2>
   @if (erro) { <p role="alert" class="error">{{ erro }}</p><button type="button" (click)="carregar()" [disabled]="salvando">Recarregar exames</button> }
   @if (mensagem) { <p role="status">{{ mensagem }}</p> }
-  <form (ngSubmit)="solicitar()"><fieldset [disabled]="salvando || carregando"><legend>Solicitar exame</legend>
+  @if (atendimentoId === null || podeSolicitar) { <form (ngSubmit)="solicitar()"><fieldset [disabled]="salvando || carregando"><legend>Solicitar exame</legend>
     <label>Nome do exame<input name="nome" [(ngModel)]="nome" required maxlength="150" /></label>
     <label>Descrição e orientações<textarea name="descricao" [(ngModel)]="descricao" maxlength="5000"></textarea></label>
     <button type="submit" [disabled]="!nome.trim()">Solicitar exame</button>
-  </fieldset></form>
+  </fieldset></form> }
   @if (carregando) { <p role="status">Carregando exames...</p> }
   @for (exame of dados?.itens; track exame.id) {
     <article><div class="heading"><h3>{{ exame.nome }}</h3><strong>{{ exame.status }}</strong></div>

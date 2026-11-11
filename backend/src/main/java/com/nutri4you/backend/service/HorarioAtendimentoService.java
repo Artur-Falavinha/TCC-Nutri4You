@@ -1,6 +1,7 @@
 package com.nutri4you.backend.service;
 
 import com.nutri4you.backend.dto.HorarioAtendimentoDTO;
+import com.nutri4you.backend.dto.PreferenciaAgendaDTO;
 import com.nutri4you.backend.model.HorarioAtendimento;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.repository.HorarioAtendimentoRepository;
@@ -48,6 +49,21 @@ public class HorarioAtendimentoService {
         horarios.saveAll(entrada.stream().map(h -> new HorarioAtendimento(nutri, h.diaSemana(), h.horario())).toList());
         horarios.flush();
         return listar(nutri);
+    }
+
+    @Transactional(readOnly = true)
+    public PreferenciaAgendaDTO preferencia(Nutricionista nutricionista) {
+        return new PreferenciaAgendaDTO(nutricionista.aceitaConsultasAvulsas());
+    }
+
+    @Transactional
+    public PreferenciaAgendaDTO salvarPreferencia(Nutricionista nutricionista, PreferenciaAgendaDTO preferencia) {
+        if (preferencia == null || preferencia.aceitaConsultasAvulsas() == null) {
+            throw new IllegalArgumentException("Informe se aceita consultas avulsas.");
+        }
+        Nutricionista atualizado = nutricionistas.findByIdForUpdate(nutricionista.getId()).orElseThrow();
+        atualizado.definirAceiteDeConsultasAvulsas(preferencia.aceitaConsultasAvulsas());
+        return preferencia(atualizado);
     }
 
     @Transactional(readOnly = true)

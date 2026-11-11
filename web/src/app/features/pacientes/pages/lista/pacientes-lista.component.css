@@ -9,6 +9,11 @@
   flex: 1;
   min-height: 0;
   min-width: 0;
+  container-type: inline-size;
+}
+
+.pacientes-main__mensagem {
+  padding: var(--space-16);
 }
 
 /* ─── Cabeçalho ─────────────────────────────────────── */
@@ -19,7 +24,6 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-12);
   height: 96px;
   padding: var(--space-32) var(--space-40);
   background-color: var(--color-surface-card);
@@ -32,15 +36,13 @@
   font-size: 2.25rem;
   font-weight: 700;
   color: var(--color-text-primary);
-  min-width: 0;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 .pacientes-header__bell {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: none;
   width: 2.5rem;
   height: 2.5rem;
   border: none;
@@ -155,7 +157,7 @@
 }
 
 .filter-input {
-  flex: 1;
+  flex: 0 1 200px;
   min-width: 0;
   max-width: 200px;
 }
@@ -173,7 +175,6 @@
 .pacientes-table__header {
   display: flex;
   align-items: center;
-  gap: var(--space-12);
   padding: var(--space-16) var(--space-24);
   background-color: var(--color-surface-page);
   border-bottom: 1px solid var(--color-border-default);
@@ -193,7 +194,6 @@
 .pacientes-table__row {
   display: flex;
   align-items: center;
-  gap: var(--space-12);
   padding: var(--space-16) var(--space-24);
   border-bottom: 1px solid var(--color-border-default);
   transition: background-color var(--transition-fast);
@@ -218,8 +218,6 @@
 .pacientes-table__col-acoes {
   display: flex;
   justify-content: center;
-  min-width: 0;
-  overflow-wrap: anywhere;
   text-align: center;
 }
 
@@ -243,8 +241,12 @@
 
 .pacientes-table__col-acoes {
   flex: 1;
-  min-width: calc(4rem + var(--space-12));
   gap: var(--space-12);
+}
+
+.pacientes-table__row > :is(.pacientes-table__col-nome, .pacientes-table__col-email, .pacientes-table__col-telefone) {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* ─── Elementos da tabela ───────────────────────────── */
@@ -348,28 +350,35 @@
   font-weight: 600;
 }
 
-
-@media (max-width: 960px) {
+@container (max-width: 48rem) {
   .pacientes-header {
     height: auto;
-    padding: var(--space-16);
+    min-height: 4rem;
+    padding: var(--space-12) var(--space-16);
+    gap: var(--space-12);
   }
 
   .pacientes-header__title {
-    margin: 0;
-    font-size: 1.75rem;
+    font-size: 1.5rem;
+    line-height: var(--leading-tight);
+    white-space: normal;
+  }
+
+  .pacientes-header__bell {
+    flex-shrink: 0;
   }
 
   .pacientes-main__toolbar {
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-start;
     gap: var(--space-16);
     padding: var(--space-16);
   }
 
   .pacientes-main__filters {
     display: grid;
-    flex-basis: 100%;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
   }
 
   .filter-input {
@@ -388,8 +397,8 @@
   .pacientes-table__row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-8) var(--space-12);
-    padding: var(--space-16);
+    gap: var(--space-6) var(--space-12);
+    padding: var(--space-12) var(--space-16);
   }
 
   .pacientes-table__row > div {
@@ -397,15 +406,26 @@
     text-align: left;
   }
 
-  .pacientes-table__col-nome,
-  .pacientes-table__col-email,
-  .pacientes-table__col-telefone {
+  .pacientes-table__row > :is(.pacientes-table__col-nome, .pacientes-table__col-email, .pacientes-table__col-telefone) {
     grid-column: 1 / -1;
+  }
+
+  .action-btn {
+    width: 2.75rem;
+    height: 2.75rem;
   }
 
   .pacientes-pagination {
     flex-wrap: wrap;
     gap: var(--space-12);
-    padding: var(--space-16);
+    padding: var(--space-12) var(--space-16);
   }
 }
+
+@container (max-width: 34rem) {
+  .pacientes-main__filters {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-12);
+  }
+}
+

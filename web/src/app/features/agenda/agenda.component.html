@@ -1,5 +1,6 @@
 <main class="agenda" [attr.aria-busy]="carregando || salvando">
   <h1>Agenda</h1>
+  <app-consultas-avulsas />
   <p>Configure os horários de início disponíveis a cada semana. Cada consulta dura 45 minutos, no horário de Brasília.</p>
   <p>Consultas já solicitadas ou confirmadas são preservadas. Um dia sem horários fica fechado para novas solicitações.</p>
   <app-form-alert [message]="erro" type="error" />

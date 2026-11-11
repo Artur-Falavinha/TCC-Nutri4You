@@ -77,7 +77,13 @@ public class ClinicoService {
     @Transactional(readOnly = true)
     public List<AvaliacaoResponse> listarAvaliacoes(Nutricionista nutricionista, Integer pacienteId) {
         gestaoPacienteService.exigirAcesso(nutricionista, pacienteId);
-        return listarAvaliacoes(pacienteId);
+        return listarAvaliacoesLongitudinais(pacienteId);
+    }
+
+    private List<AvaliacaoResponse> listarAvaliacoesLongitudinais(Integer pacienteId) {
+        return avaliacaoRepository.listarAvaliacoesLongitudinais(pacienteId).stream()
+                .map(MedidasAntropometricas::paraResposta)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -92,12 +98,12 @@ public class ClinicoService {
     public HistoricoResponse historico(Nutricionista nutricionista, Integer pacienteId) {
         Paciente paciente = gestaoPacienteService.exigirAcesso(nutricionista, pacienteId);
         List<ConsultaResumoDTO> consultas = consultaRepository
-                .findByPaciente_IdAndNutricionista_IdOrderByDataHoraDesc(paciente.getId(), nutricionista.getId())
+                .findByPaciente_IdAndNutricionista_IdAndAvulsaFalseOrderByDataHoraDesc(paciente.getId(), nutricionista.getId())
                 .stream()
                 .filter(this::naoCancelada)
                 .map(this::paraConsulta)
                 .toList();
-        return new HistoricoResponse(consultas, listarAvaliacoes(pacienteId));
+        return new HistoricoResponse(consultas, listarAvaliacoesLongitudinais(pacienteId));
     }
 
     @Transactional(readOnly = true)
@@ -149,8 +155,7 @@ public class ClinicoService {
                 .findByPaciente_IdOrderByDataHoraDesc(paciente.getId())
                 .stream()
                 .filter(c -> !c.getDataHora().isBefore(agora))
-                .filter(c -> !"REALIZADA".equalsIgnoreCase(c.getStatus()))
-                .filter(this::naoCancelada)
+                .filter(this::confirmada)
                 .min(Comparator.comparing(Consulta::getDataHora))
                 .map(c -> new DashboardPacienteDTO.ProximaConsultaDTO(
                         c.getId(),
@@ -220,23 +225,20 @@ public class ClinicoService {
         YearMonth mesAtual = YearMonth.from(hoje);
         LocalDateTime inicio12 = mesAtual.minusMonths(11).atDay(1).atStartOfDay();
         LocalDateTime fim12 = mesAtual.plusMonths(1).atDay(1).atStartOfDay();
-        List<Consulta> ano = consultaRepository
-                .findByNutricionista_IdAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
-                        nutricionista.getId(), inicio12, fim12)
+        Integer nutricionistaId = nutricionista.getId();
+        List<Consulta> ano = consultasMarcadasEntre(nutricionistaId, inicio12, fim12);
+        List<Consulta> daSemana = consultasMarcadasEntre(
+                nutricionistaId, segunda.atStartOfDay(), segunda.plusDays(7).atStartOfDay());
+        List<ConsultaResumoDTO> consultasDeHoje = consultasMarcadasEntre(
+                nutricionistaId, hoje.atStartOfDay(), hoje.plusDays(1).atStartOfDay())
                 .stream()
-                .filter(this::naoCancelada)
-                .toList();
-        List<Consulta> daSemana = consultaRepository
-                .findByNutricionista_IdAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
-                        nutricionista.getId(), segunda.atStartOfDay(), segunda.plusDays(7).atStartOfDay())
-                .stream()
-                .filter(this::naoCancelada)
+                .map(this::paraConsulta)
                 .toList();
         List<ContagemDTO> semana = contarSemana(daSemana);
         List<ContagemDTO> meses = contarMeses(mesAtual, ano);
         List<PacienteResponseDTO> pacientes = gestaoPacienteService.listarParaNutricionista(nutricionista);
         return new AgendaResponse(
-                consultasEntre(nutricionista.getId(), hoje.atStartOfDay(), hoje.plusDays(1).atStartOfDay()),
+                consultasDeHoje,
                 semana,
                 somar(semana),
                 contarSexo(pacientes),
@@ -323,14 +325,17 @@ public class ClinicoService {
         return contagens.stream().mapToInt(ContagemDTO::quantidade).sum();
     }
 
-    private List<ConsultaResumoDTO> consultasEntre(Integer nutricionistaId, LocalDateTime inicio, LocalDateTime fim) {
+    private List<Consulta> consultasMarcadasEntre(Integer nutricionistaId, LocalDateTime inicio, LocalDateTime fim) {
         return consultaRepository
                 .findByNutricionista_IdAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
                         nutricionistaId, inicio, fim)
                 .stream()
-                .filter(this::naoCancelada)
-                .map(this::paraConsulta)
+                .filter(c -> confirmada(c) || "REALIZADA".equalsIgnoreCase(c.getStatus()))
                 .toList();
+    }
+
+    private boolean confirmada(Consulta consulta) {
+        return "CONFIRMADA".equalsIgnoreCase(consulta.getStatus());
     }
 
     private boolean naoCancelada(Consulta consulta) {

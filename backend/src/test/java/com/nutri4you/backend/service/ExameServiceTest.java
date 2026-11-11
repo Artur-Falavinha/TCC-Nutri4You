@@ -16,7 +16,7 @@ class ExameServiceTest extends ClinicalServiceTestSupport {
         byte[] bytes = new byte[size]; System.arraycopy("%PDF-1.4".getBytes(java.nio.charset.StandardCharsets.US_ASCII), 0, bytes, 0, 8);
         return new MockMultipartFile("arquivo", "resultado.pdf", "application/pdf", bytes);
     }
-    private ExameResponse pedido() { return service.solicitar(nutri, paciente.getId(), new ExameService.Solicitacao("Hemograma", "Orientação")); }
+    private ExameResponse pedido() { return service.solicitar(nutri, paciente.getId(), null, new ExameService.Solicitacao("Hemograma", "Orientação")); }
     @Test void aceitaLimiteExatoRejeitaExcessoEConteudoIncompativel() {
         var e = pedido();
         assertThat(service.enviar(paciente, e.id(), e.versao(), pdf(5 * 1024 * 1024)).arquivoTamanho()).isEqualTo(5L * 1024 * 1024);
@@ -36,7 +36,7 @@ class ExameServiceTest extends ClinicalServiceTestSupport {
     }
     @Test void analiseBloqueiaRemocaoESubstituicaoEMantemParecer() {
         var e = pedido(); var enviado = service.enviar(paciente, e.id(), e.versao(), pdf(20));
-        var analisado = service.analisar(nutri, paciente.getId(), e.id(), new ExameService.Analise("Revisado", enviado.versao()));
+        var analisado = service.analisar(nutri, paciente.getId(), null, e.id(), new ExameService.Analise("Revisado", enviado.versao()));
         assertThatThrownBy(() -> service.remover(paciente, e.id(), analisado.versao())).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.enviar(paciente, e.id(), analisado.versao(), pdf(30))).isInstanceOf(IllegalArgumentException.class);
         assertThat(service.listar(paciente, 0).itens().getFirst().parecer()).isEqualTo("Revisado");

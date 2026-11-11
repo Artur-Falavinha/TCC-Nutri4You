@@ -17,16 +17,17 @@ import { useAppAlert } from '../../components/feedback/AppAlertProvider';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { ApiError } from '../../core/api/api-response.types';
 import { logout } from '../../core/auth/auth.service';
+import { carregarPerfil } from '../../core/perfil/perfil.service';
 import {
-  carregarPerfil,
-  listarNutricionistas,
-  NutricionistaVinculo
-} from '../../core/perfil/perfil.service';
-import { cancelAppointment, listAppointments } from '../../features/appointments/appointments.service';
+  cancelAppointment,
+  listAgendaNutritionists,
+  listAppointments
+} from '../../features/appointments/appointments.service';
 import { dateKeyFromLocalDateTime, toDateKey } from '../../features/appointments/appointments-date.util';
-import { Appointment } from '../../features/appointments/appointments.models';
+import { AgendaNutritionist, Appointment } from '../../features/appointments/appointments.models';
 import { AppointmentCard } from '../../features/appointments/components/AppointmentCard';
 import { CalendarCard } from '../../features/appointments/components/CalendarCard';
+import { NutritionistCatalog } from '../../features/appointments/components/NutritionistCatalog';
 import { CancelAppointmentModal } from '../../features/appointments/components/CancelAppointmentModal';
 import { buildGoogleCalendarUrl } from '../../features/appointments/google-calendar-link';
 import { RootStackParamList } from '../../navigation/types';
@@ -41,7 +42,8 @@ function errorMessage(error: unknown, fallback: string): string {
 export function AppointmentsScreen({ navigation }: Props) {
   const { showAlert } = useAppAlert();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [nutritionists, setNutritionists] = useState<NutricionistaVinculo[]>([]);
+  const [nutritionists, setNutritionists] = useState<AgendaNutritionist[]>([]);
+  const [selectedNutritionistId, setSelectedNutritionistId] = useState<number | null>(null);
   const [userName, setUserName] = useState('Paciente');
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
   const [loading, setLoading] = useState(true);
@@ -61,11 +63,16 @@ export function AppointmentsScreen({ navigation }: Props) {
     try {
       const [appointmentData, nutritionistData, profile] = await Promise.all([
         listAppointments(),
-        listarNutricionistas(),
+        listAgendaNutritionists(),
         carregarPerfil()
       ]);
       setAppointments(appointmentData ?? []);
-      setNutritionists(nutritionistData ?? []);
+      const options = nutritionistData ?? [];
+      setNutritionists(options);
+      setSelectedNutritionistId((previous) => {
+        if (options.some((item) => item.id === previous)) return previous;
+        return options.length === 1 && options[0].vinculado ? options[0].id : null;
+      });
       setUserName(profile.nome || 'Paciente');
     } catch (failure) {
       setError(errorMessage(failure, 'Não foi possível carregar a agenda.'));
@@ -82,21 +89,17 @@ export function AppointmentsScreen({ navigation }: Props) {
   );
 
   const appointmentDates = useMemo(
-    () => new Set(appointments.map((item) => dateKeyFromLocalDateTime(item.dataHora))),
+    () => new Set(appointments.filter((item) => item.status !== 'CANCELADA')
+      .map((item) => dateKeyFromLocalDateTime(item.dataHora))),
     [appointments]
   );
 
-  const openAvailability = (date: string, nutritionistId?: number, appointment?: Appointment) => {
-    const selectedNutritionist = nutritionistId
-      ? nutritionists.find((item) => item.id === nutritionistId)
-      : nutritionists[0];
-    if (!selectedNutritionist) {
-      setError('Você precisa ter um nutricionista vinculado para solicitar uma consulta.');
-      return;
-    }
+  const selectedNutritionist = nutritionists.find((item) => item.id === selectedNutritionistId);
+
+  const openAvailability = (date: string, nutritionistId: number, appointment?: Appointment) => {
     setSelectedDate(date);
     navigation.navigate('HorariosDisponiveis', {
-      nutricionistaId: selectedNutritionist.id,
+      nutricionistaId: nutritionistId,
       data: date,
       consultaId: appointment?.id,
       versao: appointment?.versao
@@ -189,11 +192,20 @@ export function AppointmentsScreen({ navigation }: Props) {
           />
         }
       >
-        <CalendarCard
-          selectedDate={selectedDate}
-          appointmentDates={appointmentDates}
-          onSelectDate={(date) => openAvailability(date)}
-        />
+        {!loading && !error && (
+          <NutritionistCatalog
+            nutritionists={nutritionists}
+            selected={selectedNutritionist}
+            onSelect={setSelectedNutritionistId}
+          />
+        )}
+        {selectedNutritionist && (
+          <CalendarCard
+            selectedDate={selectedDate}
+            appointmentDates={appointmentDates}
+            onSelectDate={(date) => openAvailability(date, selectedNutritionist.id)}
+          />
+        )}
 
         <View style={styles.appointmentsSection}>
           <Text style={styles.sectionTitle}>Consultas Agendadas</Text>
@@ -211,7 +223,9 @@ export function AppointmentsScreen({ navigation }: Props) {
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>Nenhuma consulta agendada</Text>
               <Text style={styles.emptyText}>
-                Escolha um dia disponível no calendário para solicitar um horário.
+                {selectedNutritionist
+                  ? 'Escolha um dia no calendário para solicitar um horário.'
+                  : 'Seus pedidos e consultas confirmadas aparecem aqui.'}
               </Text>
             </View>
           ) : (

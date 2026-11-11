@@ -22,6 +22,11 @@
 </header>
 
 <main class="pacientes-main">
+  @if (mensagemRelacao) {
+    <div class="pacientes-main__mensagem">
+      <app-form-alert type="success" [message]="mensagemRelacao" />
+    </div>
+  }
 
   @if (state === 'loading') {
     <div class="pacientes-main__state" role="status" aria-label="Carregando pacientes">
@@ -59,12 +64,12 @@
         <p class="pacientes-main__empty-title">Nenhum paciente na lista</p>
         <p class="pacientes-main__empty-desc">
           Você ainda não possui pacientes vinculados. Busque pelo e-mail ou CPF
-          alguém que já criou a conta para iniciar consultas e acompanhar a evolução clínica.
+          alguém que já criou a conta e envie uma solicitação de vínculo.
         </p>
       </div>
 
       <app-ui-button
-        label="Vincular paciente"
+        label="Solicitar vínculo"
         icon="link"
         type="button"
         [fullWidth]="false"
@@ -81,7 +86,7 @@
         <app-ui-input formControlName="telefone" label="Telefone" placeholder="Filtrar por telefone" leadingIcon="ph-magnifying-glass" class="filter-input" />
       </div>
       <app-ui-button
-        label="Vincular paciente"
+        label="Solicitar vínculo"
         icon="link"
         type="button"
         [fullWidth]="false"
@@ -134,7 +139,7 @@
                 <button
                   class="action-btn action-btn--success"
                   type="button"
-                  [attr.aria-label]="'Vincular ' + paciente.nome"
+                  [attr.aria-label]="'Solicitar vínculo com ' + paciente.nome"
                   (click)="abrirModalRelacao(paciente, 'vincular')"
                 >
                   <i class="ph ph-link" aria-hidden="true"></i>

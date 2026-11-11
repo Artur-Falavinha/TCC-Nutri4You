@@ -13,7 +13,8 @@ jest.mock('../../../core/perfil/perfil.service', () => ({
   atualizarPerfil: jest.fn(),
   carregarPerfil: jest.fn(),
   desvincularNutricionista: jest.fn(),
-  listarNutricionistas: jest.fn()
+  listarNutricionistas: jest.fn(),
+  listarSolicitacoesVinculo: jest.fn().mockResolvedValue([])
 }));
 
 jest.mock('../../../core/auth/auth.service', () => ({ logout: jest.fn() }));

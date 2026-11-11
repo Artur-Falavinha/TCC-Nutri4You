@@ -61,29 +61,28 @@ public class PrescricaoController {
 
     @GetMapping({"/gestao-pacientes/{pacienteId}/planos-alimentares", "/gestao-pacientes/{pacienteId}/planos"})
     public ApiResponse<List<PlanoDTO>> listar(
-            Authentication auth, @PathVariable Integer pacienteId) {
-        return ApiResponse.ok(prescricoes.listar(nutricionista(auth), pacienteId));
+            Authentication auth, @PathVariable Integer pacienteId,
+            @RequestParam(required = false) Integer atendimentoId) {
+        return ApiResponse.ok(prescricoes.listar(nutricionista(auth), pacienteId, atendimentoId));
     }
 
     @PostMapping({"/gestao-pacientes/{pacienteId}/planos-alimentares", "/gestao-pacientes/{pacienteId}/planos"})
     public ResponseEntity<ApiResponse<PlanoDTO>> criar(
             Authentication auth,
             @PathVariable Integer pacienteId,
+            @RequestParam(required = false) Integer atendimentoId,
             @RequestBody PlanoRequest request) {
-        PlanoDTO plano = prescricoes.criar(nutricionista(auth), pacienteId, request);
-        return ResponseEntity.created(
-                        URI.create(
-                                "/api/v1/gestao-pacientes/"
-                                        + pacienteId
-                                        + "/planos-alimentares/"
-                                        + plano.id()))
-                .body(ApiResponse.ok(plano));
+        PlanoDTO plano = prescricoes.criar(nutricionista(auth), pacienteId, atendimentoId, request);
+        String caminho = "/api/v1/gestao-pacientes/" + pacienteId + "/planos-alimentares/" + plano.id();
+        if (atendimentoId != null) caminho += "?atendimentoId=" + atendimentoId;
+        return ResponseEntity.created(URI.create(caminho)).body(ApiResponse.ok(plano));
     }
 
     @GetMapping({"/gestao-pacientes/{pacienteId}/planos-alimentares/{id}", "/gestao-pacientes/{pacienteId}/planos/{id}"})
     public ApiResponse<PlanoDTO> buscar(
-            Authentication auth, @PathVariable Integer pacienteId, @PathVariable Integer id) {
-        return ApiResponse.ok(prescricoes.buscar(nutricionista(auth), pacienteId, id));
+            Authentication auth, @PathVariable Integer pacienteId, @PathVariable Integer id,
+            @RequestParam(required = false) Integer atendimentoId) {
+        return ApiResponse.ok(prescricoes.buscar(nutricionista(auth), pacienteId, atendimentoId, id));
     }
 
     @GetMapping({"/gestao-pacientes/{pacienteId}/planos-alimentares/{id}/lista-compras", "/gestao-pacientes/{pacienteId}/planos/{id}/lista-compras"})
@@ -91,8 +90,9 @@ public class PrescricaoController {
             Authentication auth,
             @PathVariable Integer pacienteId,
             @PathVariable Integer id,
+            @RequestParam(required = false) Integer atendimentoId,
             @RequestParam(defaultValue = "7") int dias) {
-        return ApiResponse.ok(prescricoes.previaCompras(nutricionista(auth), pacienteId, id, dias));
+        return ApiResponse.ok(prescricoes.previaCompras(nutricionista(auth), pacienteId, atendimentoId, id, dias));
     }
 
     @PutMapping({"/gestao-pacientes/{pacienteId}/planos-alimentares/{id}", "/gestao-pacientes/{pacienteId}/planos/{id}"})
@@ -100,8 +100,9 @@ public class PrescricaoController {
             Authentication auth,
             @PathVariable Integer pacienteId,
             @PathVariable Integer id,
+            @RequestParam(required = false) Integer atendimentoId,
             @RequestBody PlanoRequest request) {
-        return ApiResponse.ok(prescricoes.editar(nutricionista(auth), pacienteId, id, request));
+        return ApiResponse.ok(prescricoes.editar(nutricionista(auth), pacienteId, atendimentoId, id, request));
     }
 
     @DeleteMapping({"/gestao-pacientes/{pacienteId}/planos-alimentares/{id}", "/gestao-pacientes/{pacienteId}/planos/{id}"})
@@ -109,8 +110,9 @@ public class PrescricaoController {
             Authentication auth,
             @PathVariable Integer pacienteId,
             @PathVariable Integer id,
+            @RequestParam(required = false) Integer atendimentoId,
             @RequestParam Long versao) {
-        prescricoes.excluir(nutricionista(auth), pacienteId, id, versao);
+        prescricoes.excluir(nutricionista(auth), pacienteId, atendimentoId, id, versao);
         return ResponseEntity.noContent().build();
     }
 
@@ -119,9 +121,10 @@ public class PrescricaoController {
             Authentication auth,
             @PathVariable Integer pacienteId,
             @PathVariable Integer id,
+            @RequestParam(required = false) Integer atendimentoId,
             @RequestBody PublicacaoRequest request) {
         return ApiResponse.ok(
-                prescricoes.publicar(nutricionista(auth), pacienteId, id, request.versao()));
+                prescricoes.publicar(nutricionista(auth), pacienteId, atendimentoId, id, request.versao()));
     }
 
     @GetMapping({"/me/plano-alimentar", "/usuarios/me/dieta-ativa"})

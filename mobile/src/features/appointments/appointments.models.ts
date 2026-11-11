@@ -14,6 +14,12 @@ export interface Appointment {
   iniciadaEm?: string | null;
 }
 
+export interface AgendaNutritionist {
+  id: number;
+  nome: string;
+  vinculado: boolean;
+}
+
 export interface AppointmentAvailability {
   nutricionistaId: number;
   nutricionistaNome: string;

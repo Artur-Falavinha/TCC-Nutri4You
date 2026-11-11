@@ -76,16 +76,6 @@ public interface PacienteRepository extends JpaRepository<Paciente, Integer> {
 
             )
 
-            OR EXISTS (
-
-                SELECT 1 FROM Consulta c
-
-                WHERE c.paciente = p
-
-                  AND c.nutricionista.id = :nutricionistaId
-
-            )
-
             ORDER BY p.nome
 
             """)

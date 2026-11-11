@@ -1,6 +1,6 @@
 <header class="page-header">
   <h1>{{ nome || 'Paciente' }}</h1>
-  <app-patient-tabs [patientId]="patientId" />
+  @if (!atendimento) { <app-patient-tabs [patientId]="patientId" /> }
 </header>
 <main class="canvas" [attr.aria-busy]="carregando || salvando">
   <app-form-alert [message]="erro" type="error" />
@@ -9,6 +9,10 @@
     <p class="state" role="status">Carregando consultas...</p>
   } @else if (!carregado) {
     <app-ui-button label="Tentar novamente" icon="arrow-clockwise" [fullWidth]="false" (click)="carregar()" />
+  } @else if (atendimento && !consultaAtual?.iniciadaEm) {
+    <h2>Atendimento confirmado</h2>
+    <p>{{ consultaAtual?.dataHora | date:'dd/MM/yyyy HH:mm' }}</p>
+    <a class="action secondary" routerLink="/agenda">Voltar à agenda</a>
   } @else if (!editor) {
     <div class="toolbar">
       <div><h2>Consultas do paciente</h2><p class="subtitle">{{ lista?.total || 0 }} atendimento(s) registrado(s)</p></div>
@@ -64,6 +68,25 @@
     }
   } @else {
     <form (ngSubmit)="salvar()" novalidate>
+      @if (atendimento && consultaAtual?.iniciadaEm) {
+        <nav class="actions" aria-label="Registros do atendimento">
+          <a class="action secondary" [routerLink]="['/pacientes', patientId, 'exames']" [queryParams]="{ atendimentoId: consultaId }">Exames</a>
+          <a class="action secondary" [routerLink]="['/pacientes', patientId, 'dieta']" [queryParams]="{ atendimentoId: consultaId }">Planos alimentares e orientações</a>
+        </nav>
+        @if (contextoClinico; as contexto) {
+          <section class="form-section"><h3>Dados informados pelo paciente</h3>
+            <p>Data de nascimento: {{ contexto.dataNascimento ? (contexto.dataNascimento | date:'dd/MM/yyyy') : 'Não informada' }}</p>
+            <p>Sexo: {{ contexto.sexo || 'Não informado' }}</p>
+            <h4>Anamnese finalizada</h4>
+            @if (erroCamposAnamnese) { <p role="alert">{{ erroCamposAnamnese }}</p> }
+            @for (secao of respostasAnamnese; track secao.secao) {
+              <h5>{{ secao.secao }}</h5>
+              <dl>@for (campo of secao.campos; track campo.label) { <div><dt>{{ campo.label }}</dt><dd>{{ campo.valor }}</dd></div> }</dl>
+            } @empty { @if (camposAnamnese.length && !erroCamposAnamnese) { <p>Nenhuma resposta disponível.</p> } }
+
+          </section>
+        }
+      }
       <div class="toolbar">
         <h2>{{ consultaId ? 'Consulta' : 'Nova consulta' }}@if (consultaId && form.dataHora) { · {{ form.dataHora | date:'dd/MM/yyyy HH:mm' }} }</h2>
         <div class="actions">
@@ -71,11 +94,11 @@
           @if (consultaAtual && consultaAtual.status === 'CONFIRMADA' && !consultaAtual.iniciadaEm) {
             <button type="button" class="action primary" [disabled]="salvando || !podeIniciar(consultaAtual)" (click)="acao(consultaAtual, 'inicio')">Iniciar Consulta</button>
           }
-          <a class="action secondary" [routerLink]="['/pacientes', patientId, 'consultas']"
+          <a class="action secondary" [routerLink]="atendimento ? ['/agenda'] : ['/pacientes', patientId, 'consultas']"
             [attr.aria-disabled]="salvando"><i class="ph ph-arrow-left" aria-hidden="true"></i>{{ alterado ? 'Cancelar' : 'Voltar' }}</a>
         </div>
       </div>
-      <fieldset [disabled]="salvando || !podeEditar">
+      <fieldset [disabled]="salvando || avisoConclusaoRascunhoAberto || !podeEditar">
         <section class="form-section" aria-labelledby="dados-title">
           <h3 id="dados-title">Dados da consulta</h3>
           <div class="fields">
@@ -117,3 +140,25 @@
     </form>
   }
 </main>
+
+@if (avisoConclusaoRascunhoAberto) {
+  <app-paciente-dialog
+    title="Dieta em rascunho"
+    description="Há uma dieta em rascunho vinculada a este atendimento. Ao concluir, o rascunho será preservado sem publicação e ficará somente para leitura."
+    (fechar)="fecharAvisoConclusaoRascunho()"
+  >
+    <app-ui-button
+      dialogActions
+      label="Voltar ao atendimento"
+      variant="outline"
+      [fullWidth]="false"
+      (click)="fecharAvisoConclusaoRascunho()"
+    />
+    <app-ui-button
+      dialogActions
+      label="Concluir e manter rascunho"
+      [fullWidth]="false"
+      (click)="confirmarConclusaoComRascunho()"
+    />
+  </app-paciente-dialog>
+}

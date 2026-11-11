@@ -1,0 +1,28 @@
+.avulsas {
+  margin-block: var(--space-16) var(--space-24);
+  padding: var(--space-16);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-card);
+}
+
+h2, h3, p { margin: 0 0 var(--space-8); }
+.linha, .acoes { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-12); }
+.linha { justify-content: space-between; }
+.cabecalho-pedidos { margin-top: var(--space-16); }
+.cabecalho-pedidos h3 { margin: 0; }
+.mensagem { color: var(--color-brand-primary); }
+.mensagem:empty { margin: 0; }
+ul { padding: 0; margin: 0; list-style: none; }
+li { border-top: 1px solid var(--color-border-default); padding-block: var(--space-12); }
+time { display: block; }
+button {
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-card);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+button:disabled { opacity: .6; cursor: default; }
+.confirmar { background: var(--color-brand-primary); color: white; }

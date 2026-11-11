@@ -37,3 +37,23 @@ export function listarNutricionistas(): Promise<NutricionistaVinculo[]> {
 export function desvincularNutricionista(idNutricionista: number): Promise<void> {
   return apiClient.delete<void>(`/usuarios/me/nutricionistas/${idNutricionista}/relacao`);
 }
+
+export interface SolicitacaoVinculo {
+  id: number;
+  nutricionistaNome: string;
+  versao: number;
+}
+
+export function listarSolicitacoesVinculo(): Promise<SolicitacaoVinculo[]> {
+  return apiClient.get<SolicitacaoVinculo[]>('/usuarios/me/solicitacoes-vinculo');
+}
+
+export function decidirSolicitacaoVinculo(
+  solicitacao: SolicitacaoVinculo,
+  aceitar: boolean
+): Promise<NutricionistaVinculo | null> {
+  return apiClient.post<NutricionistaVinculo | null>(
+    '/usuarios/me/solicitacoes-vinculo/' + solicitacao.id + '/decisao',
+    { versao: solicitacao.versao, aceitar }
+  );
+}

@@ -4,9 +4,11 @@ import com.jayway.jsonpath.JsonPath;
 import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
+import com.nutri4you.backend.model.RelacaoClinica;
 import com.nutri4you.backend.repository.ConsultaRepository;
 import com.nutri4you.backend.repository.NutricionistaRepository;
 import com.nutri4you.backend.repository.PacienteRepository;
+import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import com.nutri4you.backend.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +45,8 @@ class ClinicoControllerTest {
     @Autowired
     private ConsultaRepository consultaRepository;
     @Autowired
+    private RelacaoClinicaRepository relacoes;
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private Paciente paciente;
@@ -55,6 +59,7 @@ class ClinicoControllerTest {
         paciente = pacienteRepository.save(TestDataFactory.pacienteConfirmado(passwordEncoder));
         oculto = pacienteRepository.save(TestDataFactory.outroPaciente(passwordEncoder));
         consulta = consultaRepository.save(TestDataFactory.consulta(paciente, nutricionista));
+        relacoes.save(RelacaoClinica.criar(paciente, nutricionista));
     }
 
     @Test
@@ -118,21 +123,30 @@ class ClinicoControllerTest {
     void agendaIncluiConsultaDeHojeSemanaSexoIdadeEDozeMeses() throws Exception {
         paciente.setDataNascimento(LocalDate.now(ZoneId.of("America/Sao_Paulo")).minusYears(25));
         pacienteRepository.save(paciente);
+        LocalDate hoje = consulta.getDataHora().toLocalDate();
+        Nutricionista nutricionista = consulta.getNutricionista();
+        consulta.atualizar(hoje.atTime(8, 0), "CONFIRMADA", null);
+        Consulta realizada = new Consulta(paciente, nutricionista, hoje.atTime(9, 0));
+        realizada.atualizar(realizada.getDataHora(), "REALIZADA", null);
+        consultaRepository.save(realizada);
+        consultaRepository.save(new Consulta(oculto, nutricionista, hoje.atTime(10, 0), true));
         String token = login();
 
         mockMvc.perform(get("/api/v1/dashboard/consultas")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.hoje", hasSize(1)))
+                .andExpect(jsonPath("$.data.hoje", hasSize(2)))
+                .andExpect(jsonPath("$.data.hoje[*].id", hasItem(consulta.getId())))
+                .andExpect(jsonPath("$.data.hoje[*].id", hasItem(realizada.getId())))
                 .andExpect(jsonPath("$.data.hoje[0].pacienteNome").value("Paciente Teste"))
                 .andExpect(jsonPath("$.data.semana", hasSize(7)))
                 .andExpect(jsonPath("$.data.semana[0].rotulo").value("Seg"))
                 .andExpect(jsonPath("$.data.semana[6].rotulo").value("Dom"))
-                .andExpect(jsonPath("$.data.totalSemana").value(1))
+                .andExpect(jsonPath("$.data.totalSemana").value(2))
                 .andExpect(jsonPath("$.data.sexo[?(@.rotulo == 'Masculino')].quantidade", hasItem(1)))
                 .andExpect(jsonPath("$.data.faixaEtaria[?(@.rotulo == '20–29')].quantidade", hasItem(1)))
                 .andExpect(jsonPath("$.data.ultimos12Meses", hasSize(12)))
-                .andExpect(jsonPath("$.data.totalConsultas12Meses").value(1));
+                .andExpect(jsonPath("$.data.totalConsultas12Meses").value(2));
     }
 
     @Test

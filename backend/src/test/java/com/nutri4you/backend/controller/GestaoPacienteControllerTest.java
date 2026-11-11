@@ -3,6 +3,7 @@ package com.nutri4you.backend.controller;
 import com.jayway.jsonpath.JsonPath;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
+import com.nutri4you.backend.model.RelacaoClinica;
 import com.nutri4you.backend.repository.ConsultaRepository;
 import com.nutri4you.backend.repository.NutricionistaRepository;
 import com.nutri4you.backend.repository.PacienteRepository;
@@ -59,7 +60,8 @@ class GestaoPacienteControllerTest {
         nutricionista = nutricionistaRepository.save(TestDataFactory.nutricionista(passwordEncoder));
         pacienteVisivel = pacienteRepository.save(TestDataFactory.pacienteConfirmado(passwordEncoder));
         pacienteOculto = pacienteRepository.save(TestDataFactory.outroPaciente(passwordEncoder));
-        consultaRepository.save(TestDataFactory.consulta(pacienteVisivel, nutricionista));
+        consultaRepository.save(TestDataFactory.consulta(pacienteOculto, nutricionista));
+        relacaoClinicaRepository.save(RelacaoClinica.criar(pacienteVisivel, nutricionista));
     }
 
     @Test
@@ -69,7 +71,7 @@ class GestaoPacienteControllerTest {
     }
 
     @Test
-    void listagemQ16RetornaApenasPacientesComConsultaOuRelacao() throws Exception {
+    void listagemRetornaApenasPacientesComRelacaoAtiva() throws Exception {
         String token = loginComoNutricionista();
 
         mockMvc.perform(get("/api/v1/gestao-pacientes")
@@ -77,7 +79,7 @@ class GestaoPacienteControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data", hasSize(1)))
                 .andExpect(jsonPath("$.data[0].email").value("paciente@teste.com"))
-                .andExpect(jsonPath("$.data[0].relacaoAtiva").value(false));
+                .andExpect(jsonPath("$.data[0].relacaoAtiva").value(true));
     }
 
     @Test
@@ -103,26 +105,77 @@ class GestaoPacienteControllerTest {
     }
 
     @Test
-    void vincularEDesvincularRelacaoRecorrente() throws Exception {
-        String token = loginComoNutricionista();
+    void exigeAceiteDoPacienteParaAtivarVinculo() throws Exception {
+        String nutricionistaToken = loginComoNutricionista();
+        String pacienteToken = loginComoPaciente("outro@teste.com");
+        String outroToken = loginComoPaciente("paciente@teste.com");
+        String solicitacoes = "/api/v1/usuarios/me/solicitacoes-vinculo";
 
+        solicitarVinculo(nutricionistaToken);
+        solicitarVinculo(nutricionistaToken);
+        mockMvc.perform(get("/api/v1/gestao-pacientes/{id}", pacienteOculto.getId())
+                        .header("Authorization", "Bearer " + nutricionistaToken))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/usuarios/me/nutricionistas")
+                        .header("Authorization", "Bearer " + pacienteToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(0)));
+
+        MvcResult pedido = mockMvc.perform(get(solicitacoes)
+                        .header("Authorization", "Bearer " + pacienteToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andReturn();
+        Number id = JsonPath.read(pedido.getResponse().getContentAsString(), "$.data[0].id");
+        Number versao = JsonPath.read(pedido.getResponse().getContentAsString(), "$.data[0].versao");
+        String decisao = solicitacoes + "/" + id + "/decisao";
+        decidirVinculo(decisao, outroToken, versao, true).andExpect(status().isForbidden());
+        decidirVinculo(decisao, pacienteToken, versao, false).andExpect(status().isOk());
+
+        solicitarVinculo(nutricionistaToken);
+        decidirVinculo(decisao, pacienteToken, versao, true).andExpect(status().isConflict());
+        MvcResult novoPedido = mockMvc.perform(get(solicitacoes)
+                        .header("Authorization", "Bearer " + pacienteToken))
+                .andExpect(status().isOk()).andReturn();
+        Number versaoAtual = JsonPath.read(novoPedido.getResponse().getContentAsString(), "$.data[0].versao");
+        decidirVinculo(decisao, pacienteToken, versaoAtual, true)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(nutricionista.getId()));
+
+        mockMvc.perform(get("/api/v1/gestao-pacientes/{id}", pacienteOculto.getId())
+                        .header("Authorization", "Bearer " + nutricionistaToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.relacaoAtiva").value(true));
+        mockMvc.perform(delete("/api/v1/gestao-pacientes/{id}/relacao", pacienteOculto.getId())
+                        .header("Authorization", "Bearer " + nutricionistaToken))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/gestao-pacientes/{id}", pacienteOculto.getId())
+                        .header("Authorization", "Bearer " + nutricionistaToken))
+                .andExpect(status().isForbidden());
+    }
+
+    private void solicitarVinculo(String token) throws Exception {
         mockMvc.perform(post("/api/v1/gestao-pacientes/{id}/vincular", pacienteOculto.getId())
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(get("/api/v1/gestao-pacientes")
-                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(2)));
+                .andExpect(jsonPath("$.data.mensagem").value("Solicitação enviada. Aguarde o aceite do paciente."));
+    }
 
-        mockMvc.perform(delete("/api/v1/gestao-pacientes/{id}/relacao", pacienteOculto.getId())
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk());
+    private org.springframework.test.web.servlet.ResultActions decidirVinculo(
+            String rota, String token, Number versao, boolean aceitar) throws Exception {
+        return mockMvc.perform(post(rota)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"versao\":" + versao + ",\"aceitar\":" + aceitar + "}"));
+    }
 
-        mockMvc.perform(get("/api/v1/gestao-pacientes")
-                        .header("Authorization", "Bearer " + token))
+    private String loginComoPaciente(String email) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"senha\":\"senha123\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(1)));
+                .andReturn();
+        return JsonPath.read(result.getResponse().getContentAsString(), "$.data.token");
     }
 
     @Test

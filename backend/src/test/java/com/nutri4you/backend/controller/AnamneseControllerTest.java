@@ -45,6 +45,7 @@ class AnamneseControllerTest {
         nutritionist = nutritionists.save(TestDataFactory.nutricionista(encoder));
         patient = patients.save(TestDataFactory.pacienteConfirmado(encoder));
         consultations.save(TestDataFactory.consulta(patient, nutritionist));
+        relations.save(RelacaoClinica.criar(patient, nutritionist));
         token = "Bearer " + tokens.gerarToken(nutritionist.getEmail());
         path = "/api/v1/gestao-pacientes/" + patient.getId() + "/anamnese";
         for (var field : catalog.fields()) {
@@ -76,7 +77,6 @@ class AnamneseControllerTest {
 
     @Test void activeRelationWithoutConsultationGrantsAccess() throws Exception {
         consultations.deleteAll();
-        relations.save(RelacaoClinica.criar(patient, nutritionist));
         mvc.perform(get(path).header("Authorization", token)).andExpect(status().isOk());
     }
 

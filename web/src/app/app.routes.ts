@@ -1,4 +1,5 @@
 import { AgendaComponent, agendaPendenteGuard } from './features/agenda/agenda.component';
+import { ConsultasComponent, consultaPendenteGuard } from './features/clinico/consultas/consultas.component';
 import { Routes } from '@angular/router';
 
 import { authGuard } from './core/guards/auth.guard';
@@ -19,6 +20,7 @@ export const routes: Routes = [
     component: AppShellComponent,
     canActivate: [authGuard],
     children: [
+      { path: 'agenda/atendimentos/:consultaId', component: ConsultasComponent, data: { editor: true, atendimento: true }, canDeactivate: [consultaPendenteGuard], title: 'Atendimento — Nutri4You' },
       { path: 'agenda', component: AgendaComponent, canDeactivate: [agendaPendenteGuard], title: 'Agenda — Nutri4You' },
       {
         path: 'dashboard',

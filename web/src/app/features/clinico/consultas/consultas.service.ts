@@ -61,3 +61,22 @@ export class ConsultasService {
       : this.api.put<Consulta>(`${this.path(pacienteId)}/${id}`, payload);
   }
 }
+
+export interface AtendimentoClinico extends Consulta {
+  pacienteNome: string;
+  pacienteId: number | null;
+  janelaInicio: string;
+  janelaFim: string;
+  contextoClinico?: { dataNascimento: string | null; sexo: string | null; anamneseFinalizada: Record<string, unknown> | null } | null;
+}
+
+@Injectable({ providedIn: 'root' })
+export class AtendimentosService {
+  private readonly api = inject(ApiService);
+  private readonly path = '/agenda-nutricionista/atendimentos';
+  listar() { return this.api.get<AtendimentoClinico[]>(this.path); }
+  buscar(id: number) { return this.api.get<AtendimentoClinico>(`${this.path}/${id}`); }
+  iniciar(c: AtendimentoClinico) { return this.api.post<AtendimentoClinico>(`${this.path}/${c.id}/inicio`, { versao: c.versao }); }
+  cancelar(c: AtendimentoClinico) { return this.api.post<void>(`${this.path}/${c.id}/cancelamento`, { versao: c.versao }); }
+  salvar(id: number, payload: ConsultaPayload) { return this.api.put<AtendimentoClinico>(`${this.path}/${id}`, payload); }
+}

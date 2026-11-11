@@ -6,6 +6,9 @@ Base `/api/v1`. JWT de nutricionista obrigatório. Horários civis da clínica e
 | --- | --- | --- |
 | GET | `/agenda-nutricionista/horarios` | Lista semanal do próprio profissional |
 | PUT | `/agenda-nutricionista/horarios` | Substitui a lista semanal inteira e retorna a lista ordenada |
+| GET e PUT | `/agenda-nutricionista/preferencias` | Consulta ou altera `aceitaConsultasAvulsas` |
+| GET | `/agenda-nutricionista/solicitacoes-avulsas` | Lista os pedidos avulsos futuros do próprio profissional |
+| POST | `/agenda-nutricionista/solicitacoes-avulsas/{id}/decisao` | Confirma ou recusa com `{ "aceitar": true, "versao": 0 }` |
 
 ```json
 [
@@ -17,8 +20,10 @@ Base `/api/v1`. JWT de nutricionista obrigatório. Horários civis da clínica e
 
 Dias ISO: segunda = 1, domingo = 7. Horários têm precisão de minutos, até 23:15. Até 224 alternativas semanais, sem duplicatas. Alternativas podem se sobrepor: a reserva de uma consulta de 45 minutos oculta todas as alternativas conflitantes.
 
-Lista vazia fecha a agenda. Alterar disponibilidade não cancela nem desloca reservas existentes. Novos profissionais começam sem horários. V9 preserva os horários antigos para profissionais existentes na migração. A tela `/agenda` permite cadastrar e remover horários e avisa ao sair com alterações não salvas.
+Lista vazia fecha a agenda. Alterar disponibilidade não cancela nem desloca reservas existentes. Novos profissionais começam sem horários. V12 preserva os horários antigos para profissionais existentes na migração. A tela `/agenda` permite cadastrar e remover horários e avisa ao sair com alterações não salvas.
 
-Edição de disponibilidade e solicitação/reagendamento usam o mesmo bloqueio do nutricionista. Solicitações exigem vínculo ativo, horário futuro cadastrado e ausência de sobreposição. A API retorna 409 para horário ocupado ou versão antiga.
+A edição de disponibilidade, a preferência de consultas avulsas e a reserva usam o mesmo bloqueio do nutricionista. Solicitações exigem horário futuro cadastrado e ausência de sobreposição. A API retorna 409 para horário ocupado ou versão antiga.
 
-Aprovar, cancelar e iniciar são ações da listagem de consultas de cada paciente; veja [consultas](consultas.md). O mobile consulta automaticamente a disponibilidade configurada. Esta entrega cobre recorrência semanal, sem exceções por data, feriados ou duração variável.
+A preferência começa desabilitada. Com a preferência ativa e horários cadastrados, o profissional aparece no catálogo de pacientes sem vínculo. A fila de avulsas pendentes retorna `id`, `pacienteNome`, `dataHora` e `versao`. O pedido pendente não concede acesso à ficha clínica. Confirmar marca a consulta avulsa. Recusar cancela e libera o horário.
+
+O acompanhamento e o início da consulta continuam na listagem de cada paciente. Veja [consultas](consultas.md). O mobile consulta automaticamente a disponibilidade configurada. Esta entrega cobre recorrência semanal, sem exceções por data, feriados ou duração variável.

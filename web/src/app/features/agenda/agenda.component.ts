@@ -5,12 +5,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApiService } from '../../core/services/api.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
+import { ConsultasAvulsasComponent } from './consultas-avulsas.component';
 
 interface Horario { diaSemana: number; horario: string }
 
 @Component({
   selector: 'app-agenda',
-  imports: [FormsModule, FormAlertComponent],
+  imports: [FormsModule, FormAlertComponent, ConsultasAvulsasComponent],
   templateUrl: './agenda.component.html',
   styleUrl: './agenda.component.css'
 })

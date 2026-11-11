@@ -1,6 +1,7 @@
 package com.nutri4you.backend.controller;
 
 import com.jayway.jsonpath.JsonPath;
+import com.nutri4you.backend.dto.PrescricaoDTO.Nutrientes;
 import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.ConsumoDiario;
 import com.nutri4you.backend.model.Nutricionista;
@@ -156,6 +157,8 @@ class UsuarioControllerTest {
         consultaRealizada.atualizar(realizadaFutura, "REALIZADA", "Consulta concluída");
         consultaRepository.save(consultaRealizada);
 
+        consultaRepository.save(new Consulta(paciente, nutricionista, agora.plusDays(1), true));
+
         LocalDateTime futura = agora.plusDays(3)
                 .withHour(14).withMinute(30).withSecond(0).withNano(0);
         Consulta consulta = new Consulta(paciente, nutricionista, futura);
@@ -304,8 +307,8 @@ class UsuarioControllerTest {
         return JsonPath.read(result.getResponse().getContentAsString(), "$.data.token");
     }
     private void publicarPlano(PlanoAlimentar p) {
-        p.editar(p.getConsulta(), LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")), null,
-                p.getMetaCalorias(), p.getMetaCarboidratos(), p.getMetaGordura(), p.getMetaProteina());
+        p.editar(p.getTitulo(), p.getOrientacoes(), LocalDate.now(FUSO_HORARIO), null,
+                new Nutrientes(p.getMetaCalorias(), p.getMetaProteina(), p.getMetaCarboidratos(), p.getMetaGordura()));
         p.publicar();
         planoAlimentarRepository.save(p);
     }
