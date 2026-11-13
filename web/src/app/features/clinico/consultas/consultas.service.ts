@@ -5,11 +5,17 @@ export interface MedidasConsulta {
   peso: number | null;
   altura: number | null;
   percentualGordura: number | null;
+  massaMagraKg?: number | null;
+  massaGordaKg?: number | null;
   massaMuscularKg: number | null;
   pregaBicipital: number | null;
+  pregaPeitoral?: number | null;
+  pregaAxilarMedia?: number | null;
   pregaTricipital: number | null;
   pregaSubescapular: number | null;
+  pregaAbdominal?: number | null;
   pregaSuprailiaca: number | null;
+  pregaCoxa?: number | null;
   circunferenciaCintura: number | null;
   circunferenciaQuadril: number | null;
   circunferenciaBraco: number | null;
@@ -30,9 +36,14 @@ export interface Consulta extends Omit<ConsultaPayload, 'avaliacao' | 'versao' |
   inicioPermitidoDe?: string;
   inicioPermitidoAte?: string;
   podeIniciar?: boolean;
+  contextoClinico?: {
+    dataNascimento: string | null;
+    sexo: string | null;
+    anamneseFinalizada: Record<string, unknown> | null;
+  } | null;
   observacao: string | null;
   versao: number;
-  avaliacao: (MedidasConsulta & { id: number; imc: number }) | null;
+  avaliacao: (MedidasConsulta & { id: number; imc: number; somaSetePregas?: number | null; metodoPercentualGordura?: string | null }) | null;
 }
 
 export interface PaginaConsultas {
@@ -67,7 +78,6 @@ export interface AtendimentoClinico extends Consulta {
   pacienteId: number | null;
   janelaInicio: string;
   janelaFim: string;
-  contextoClinico?: { dataNascimento: string | null; sexo: string | null; anamneseFinalizada: Record<string, unknown> | null } | null;
 }
 
 @Injectable({ providedIn: 'root' })

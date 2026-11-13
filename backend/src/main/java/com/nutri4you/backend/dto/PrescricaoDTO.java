@@ -52,6 +52,9 @@ public final class PrescricaoDTO {
         }
     }
 
+    public record DistribuicaoMacros(
+            BigDecimal proteinas, BigDecimal carboidratos, BigDecimal gorduras) {}
+
     public record AlimentoDTO(
             Integer id,
             Integer codigoTaco,
@@ -100,10 +103,16 @@ public final class PrescricaoDTO {
             Nutrientes metas,
             Long versao,
             List<RefeicaoRequest> refeicoes,
-            Integer consultaId) {
+            Integer consultaId,
+            DistribuicaoMacros percentuais) {
         public PlanoRequest(String titulo, String orientacoes, LocalDate inicio, LocalDate fim, Nutrientes metas,
                 Long versao, List<RefeicaoRequest> refeicoes) {
-            this(titulo, orientacoes, inicio, fim, metas, versao, refeicoes, null);
+            this(titulo, orientacoes, inicio, fim, metas, versao, refeicoes, null, null);
+        }
+
+        public PlanoRequest(String titulo, String orientacoes, LocalDate inicio, LocalDate fim, Nutrientes metas,
+                Long versao, List<RefeicaoRequest> refeicoes, Integer consultaId) {
+            this(titulo, orientacoes, inicio, fim, metas, versao, refeicoes, consultaId, null);
         }
     }
 
@@ -138,6 +147,7 @@ public final class PrescricaoDTO {
             LocalDate vigenciaFim,
             Instant publicadoEm,
             Nutrientes metas,
+            DistribuicaoMacros percentuais,
             Nutrientes totais,
             List<RefeicaoDTO> refeicoes,
             Integer consultaId) {}

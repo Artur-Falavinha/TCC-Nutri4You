@@ -26,6 +26,18 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
                 new HorarioAtendimentoDTO(dia.getDayOfWeek().getValue(), LocalTime.of(9, 45))));
         return dia;
     }
+    @Test void solicitacaoApareceNasNotificacoesDoNutricionista() {
+        var dia = prepararGrade();
+        var reserva = service.solicitar(paciente, new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 0)));
+
+        assertThat(atendimento.listarNotificacoes(nutri))
+                .singleElement()
+                .satisfies(item -> {
+                    assertThat(item.id()).isEqualTo(reserva.id());
+                    assertThat(item.pacienteId()).isEqualTo(paciente.getId());
+                    assertThat(item.avulsa()).isFalse();
+                });
+    }
     @Test void reservaBloqueiaSobreposicaoMasPermiteInicioNoLimiteDe45Minutos() {
         var dia = prepararGrade();
         var reserva = service.solicitar(paciente, new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 0)));

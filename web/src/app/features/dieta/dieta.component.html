@@ -118,9 +118,9 @@
         <h3 id="goals-title">Metas diárias <span tabindex="0" title="Uma meta comum para cada dia da semana. Os totais previstos não representam consumo registrado.">ⓘ</span></h3>
         <dl class="nutrient-grid">
           <div><dt>Energia</dt><dd>{{ formatarNutriente(plano.metas.kcal) }} kcal</dd></div>
-          <div><dt>Proteínas</dt><dd>{{ formatarNutriente(plano.metas.proteinas) }} g</dd></div>
-          <div><dt>Carboidratos</dt><dd>{{ formatarNutriente(plano.metas.carboidratos) }} g</dd></div>
-          <div><dt>Gorduras</dt><dd>{{ formatarNutriente(plano.metas.gorduras) }} g</dd></div>
+          <div><dt>Proteínas</dt><dd>{{ formatarNutriente(plano.metas.proteinas) }} g @if (plano.percentuais) { <small>({{ formatarNutriente(plano.percentuais.proteinas) }}%)</small> }</dd></div>
+          <div><dt>Carboidratos</dt><dd>{{ formatarNutriente(plano.metas.carboidratos) }} g @if (plano.percentuais) { <small>({{ formatarNutriente(plano.percentuais.carboidratos) }}%)</small> }</dd></div>
+          <div><dt>Gorduras</dt><dd>{{ formatarNutriente(plano.metas.gorduras) }} g @if (plano.percentuais) { <small>({{ formatarNutriente(plano.percentuais.gorduras) }}%)</small> }</dd></div>
         </dl>
       </section>
     }
@@ -241,10 +241,13 @@
           @if (errors['metas']) { <p class="field-error" role="alert">{{ errors['metas'] }}</p> }
           <div class="nutrient-inputs">
             <label class="field" for="meta-kcal"><span>Energia (kcal)</span><input id="meta-kcal" name="meta-kcal" type="number" min="0.01" max="999999.99" step="0.01" inputmode="decimal" [(ngModel)]="form.metas.kcal" [attr.aria-invalid]="!!errors['meta-kcal']" />@if (errors['meta-kcal']) { <span class="field-error" role="alert">{{ errors['meta-kcal'] }}</span> }</label>
-            <label class="field" for="meta-proteinas"><span>Proteínas (g)</span><input id="meta-proteinas" name="meta-proteinas" type="number" min="0" max="999999.99" step="0.01" inputmode="decimal" [(ngModel)]="form.metas.proteinas" [attr.aria-invalid]="!!errors['meta-proteinas']" />@if (errors['meta-proteinas']) { <span class="field-error" role="alert">{{ errors['meta-proteinas'] }}</span> }</label>
-            <label class="field" for="meta-carboidratos"><span>Carboidratos (g)</span><input id="meta-carboidratos" name="meta-carboidratos" type="number" min="0" max="999999.99" step="0.01" inputmode="decimal" [(ngModel)]="form.metas.carboidratos" [attr.aria-invalid]="!!errors['meta-carboidratos']" />@if (errors['meta-carboidratos']) { <span class="field-error" role="alert">{{ errors['meta-carboidratos'] }}</span> }</label>
-            <label class="field" for="meta-gorduras"><span>Gorduras (g)</span><input id="meta-gorduras" name="meta-gorduras" type="number" min="0" max="999999.99" step="0.01" inputmode="decimal" [(ngModel)]="form.metas.gorduras" [attr.aria-invalid]="!!errors['meta-gorduras']" />@if (errors['meta-gorduras']) { <span class="field-error" role="alert">{{ errors['meta-gorduras'] }}</span> }</label>
+            <label class="field" for="meta-percentual-proteinas"><span>Proteínas (%)</span><input id="meta-percentual-proteinas" name="meta-percentual-proteinas" type="number" min="0" max="100" step="0.01" inputmode="decimal" [(ngModel)]="form.metas.percentualProteinas" [attr.aria-invalid]="!!errors['meta-percentualProteinas']" />@if (errors['meta-percentualProteinas']) { <span class="field-error" role="alert">{{ errors['meta-percentualProteinas'] }}</span> }</label>
+            <label class="field" for="meta-percentual-carboidratos"><span>Carboidratos (%)</span><input id="meta-percentual-carboidratos" name="meta-percentual-carboidratos" type="number" min="0" max="100" step="0.01" inputmode="decimal" [(ngModel)]="form.metas.percentualCarboidratos" [attr.aria-invalid]="!!errors['meta-percentualCarboidratos']" />@if (errors['meta-percentualCarboidratos']) { <span class="field-error" role="alert">{{ errors['meta-percentualCarboidratos'] }}</span> }</label>
+            <label class="field" for="meta-percentual-gorduras"><span>Gorduras (%)</span><input id="meta-percentual-gorduras" name="meta-percentual-gorduras" type="number" min="0" max="100" step="0.01" inputmode="decimal" [(ngModel)]="form.metas.percentualGorduras" [attr.aria-invalid]="!!errors['meta-percentualGorduras']" />@if (errors['meta-percentualGorduras']) { <span class="field-error" role="alert">{{ errors['meta-percentualGorduras'] }}</span> }</label>
           </div>
+          @if (metasCalculadas; as calculadas) {
+            <p class="section-help">Cálculo automático: {{ formatarNutriente(calculadas.proteinas) }} g de proteínas · {{ formatarNutriente(calculadas.carboidratos) }} g de carboidratos · {{ formatarNutriente(calculadas.gorduras) }} g de gorduras.</p>
+          }
         </section>
 
         <section class="form-section" aria-labelledby="meals-form-title">

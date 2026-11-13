@@ -70,7 +70,7 @@ public class ClinicoService {
         Paciente paciente = gestaoPacienteService.exigirAcesso(nutricionista, pacienteId);
         validarMedidas(request);
         AvaliacaoAntropometrica avaliacao = new AvaliacaoAntropometrica(paciente, LocalDateTime.now(java.time.ZoneId.of("America/Sao_Paulo")));
-        aplicar(avaliacao, request);
+        aplicar(avaliacao, request, paciente);
         return paraResposta(avaliacaoRepository.save(avaliacao));
     }
 

@@ -23,6 +23,10 @@ $v14 = Get-Content (Join-Path $migrations 'V14__refeicoes_semanais.sql') -Raw
 $v16 = Get-Content (Join-Path $migrations 'V16__consumo_por_refeicao.sql') -Raw
 $v15 = Get-Content (Join-Path $migrations 'V15__exames_metadados_seguranca.sql') -Raw
 $v17 = Get-Content (Join-Path $migrations 'V17__consultas_avulsas.sql') -Raw
+$v18 = Get-Content (Join-Path $migrations 'V18__exames_por_atendimento.sql') -Raw
+$v19 = Get-Content (Join-Path $migrations 'V19__aceite_de_vinculo_clinico.sql') -Raw
+$v20 = Get-Content (Join-Path $migrations 'V20__jackson_pollock_sete_pregas.sql') -Raw
+$v21 = Get-Content (Join-Path $migrations 'V21__percentuais_macronutrientes.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
 
 # Every scenario uses a new schema inside a transaction, rolled back even on
@@ -271,6 +275,10 @@ $v14
 $v15
 $v16
 $v17
+$v18
+$v19
+$v20
+$v21
 DO `$`$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM Nutricionista WHERE id_nutricionista = 1 AND aceita_consultas_avulsas = FALSE)
@@ -291,6 +299,17 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM Consulta WHERE id_consulta = 1 AND iniciada_em IS NULL) THEN
         RAISE EXCEPTION 'V13 lost legacy consultation';
+    END IF;
+    IF (SELECT count(*) FROM information_schema.columns
+        WHERE table_schema = current_schema() AND table_name = 'avaliacao_antropometrica'
+          AND column_name IN ('prega_peitoral', 'prega_axilar_media', 'prega_abdominal', 'prega_coxa',
+                              'massa_magra_kg', 'massa_gorda_kg', 'metodo_percentual_gordura')) <> 7 THEN
+        RAISE EXCEPTION 'V20 did not add all Jackson-Pollock and composition columns';
+    END IF;
+    IF (SELECT count(*) FROM information_schema.columns
+        WHERE table_schema = current_schema() AND table_name = 'plano_alimentar'
+          AND column_name IN ('percentual_proteina', 'percentual_carboidratos', 'percentual_gordura')) <> 3 THEN
+        RAISE EXCEPTION 'V21 did not add the macronutrient percentage columns';
     END IF;
     BEGIN
         INSERT INTO Horario_Atendimento (id_nutricionista, dia_semana, horario) VALUES (1, 8, '10:00');

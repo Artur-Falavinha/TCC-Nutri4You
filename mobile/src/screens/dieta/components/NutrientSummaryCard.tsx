@@ -1,13 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { nutrientEntries } from '../../../features/dieta/dieta.formatters';
-import { Nutrients } from '../../../features/dieta/dieta.models';
+import { MacroDistribution, Nutrients } from '../../../features/dieta/dieta.models';
 import { colors, fontFamily, radius, shadows, spacing } from '../../../theme/tokens';
 
 interface NutrientSummaryCardProps {
   title: string;
   nutrients: Nutrients;
   goals?: Nutrients | null;
+  distribution?: MacroDistribution | null;
   subtitle?: string;
 }
 
@@ -37,6 +38,7 @@ export function NutrientSummaryCard({
   title,
   nutrients,
   goals,
+  distribution,
   subtitle
 }: NutrientSummaryCardProps) {
   const entries = nutrientEntries(nutrients);
@@ -62,6 +64,9 @@ export function NutrientSummaryCard({
           const percentage = hasGoal ? Math.round(rawRatio * 100) : null;
           const clampedPercent = hasGoal ? Math.min(Math.max(rawRatio * 100, 0), 100) : 0;
           const exceeded = hasGoal && (spec.current as number) > (spec.target as number);
+          const macroPercent = spec.key === 'proteinas' ? distribution?.proteinas
+            : spec.key === 'carboidratos' ? distribution?.carboidratos
+              : spec.key === 'gorduras' ? distribution?.gorduras : null;
 
           return (
             <View key={entry.label} style={[styles.cell, hasGoal && styles.cellFullWidth]}>
@@ -76,7 +81,7 @@ export function NutrientSummaryCard({
                   </Text>
                 ) : null}
               </View>
-              <Text style={styles.value}>{entry.value}</Text>
+              <Text style={styles.value}>{entry.value}{macroPercent != null ? ` · ${macroPercent}%` : ''}</Text>
               {hasGoal ? (
                 <View style={styles.progressSection}>
                   <View

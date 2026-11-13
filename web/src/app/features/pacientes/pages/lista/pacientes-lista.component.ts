@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 
 import { UiButtonComponent } from '../../../../shared/components/ui-button/ui-button.component';
@@ -14,6 +14,7 @@ import {
 import { PacientesService } from '../../../../core/services/pacientes.service';
 import { Paciente } from '../../../../core/models/paciente.models';
 import { ApiErrorResponse } from '../../../../core/models/api-response.model';
+import { NotificationBellComponent } from '../../../../shared/components/notification-bell/notification-bell.component';
 
 type ListaState = 'loading' | 'empty' | 'loaded' | 'error';
 
@@ -21,12 +22,12 @@ type ListaState = 'loading' | 'empty' | 'loaded' | 'error';
   selector: 'app-pacientes-lista',
   imports: [
     ReactiveFormsModule,
-    RouterLink,
     UiButtonComponent,
     UiInputComponent,
     FormAlertComponent,
     NovoPacienteModalComponent,
-    RelacaoPacienteModalComponent
+    RelacaoPacienteModalComponent,
+    NotificationBellComponent
   ],
   templateUrl: './pacientes-lista.component.html',
   styleUrl: './pacientes-lista.component.css'

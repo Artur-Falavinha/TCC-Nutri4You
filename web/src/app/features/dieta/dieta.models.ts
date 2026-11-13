@@ -13,6 +13,12 @@ export interface MetasNutricionais {
   gorduras: number;
 }
 
+export interface DistribuicaoMacros {
+  proteinas: number;
+  carboidratos: number;
+  gorduras: number;
+}
+
 export interface Alimento {
   id: number;
   codigoTaco: number | null;
@@ -74,6 +80,7 @@ export interface Plano {
   vigenciaFim: string | null;
   publicadoEm: string | null;
   metas: MetasNutricionais | null;
+  percentuais?: DistribuicaoMacros | null;
   totais: Nutrientes;
   refeicoes: Refeicao[];
 }
@@ -84,6 +91,7 @@ export interface PlanoRequest {
   vigenciaInicio: string | null;
   vigenciaFim: string | null;
   metas: MetasNutricionais | null;
+  percentuais?: DistribuicaoMacros | null;
   versao?: number;
   refeicoes: {
     nome: string;
@@ -122,9 +130,9 @@ export interface SubstitutoEdicao {
 
 export interface MetasEdicao {
   kcal: CampoNumericoEdicao;
-  proteinas: CampoNumericoEdicao;
-  carboidratos: CampoNumericoEdicao;
-  gorduras: CampoNumericoEdicao;
+  percentualProteinas: CampoNumericoEdicao;
+  percentualCarboidratos: CampoNumericoEdicao;
+  percentualGorduras: CampoNumericoEdicao;
 }
 
 export interface ItemListaCompras {

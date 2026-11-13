@@ -98,6 +98,8 @@ class AtendimentoClinicoControllerTest {
                 .andExpect(jsonPath("$.data.pacienteId").value(paciente.getId()))
                 .andExpect(jsonPath("$.data.iniciadaEm").exists())
                 .andExpect(jsonPath("$.data.contextoClinico.anamneseFinalizada.allergy").value("Sim"))
+                .andExpect(jsonPath("$.data.contextoClinico.anamneseFinalizada.height").value(1.72))
+                .andExpect(jsonPath("$.data.contextoClinico.anamneseFinalizada.weight").value(70.5))
                 .andExpect(jsonPath("$.data.contextoClinico.anamneseFinalizada.phone").doesNotExist())
                 .andExpect(jsonPath("$.data.contextoClinico.anamneseFinalizada.diagnoses").doesNotExist());
         mvc.perform(get(ficha + "/anamnese").header("Authorization", token))
@@ -203,15 +205,21 @@ class AtendimentoClinicoControllerTest {
         anamneses.save(anamnese);
         publicarResposta("allergy", "\"Sim\"");
         publicarResposta("phone", "\"41999990000\"");
+        publicarResposta("height", "1.72", false);
+        publicarResposta("weight", "70.5", false);
     }
 
     private void publicarResposta(String campo, String valor) {
+        publicarResposta(campo, valor, true);
+    }
+
+    private void publicarResposta(String campo, String valor, boolean ativo) {
         var pergunta = new PerguntaAnamnese();
         pergunta.codigo = campo;
         pergunta.texto = campo;
         pergunta.categoria = "Histórico de Saúde";
         pergunta.tipo = "text";
-        pergunta.ativo = true;
+        pergunta.ativo = ativo;
         var resposta = new RespostaAnamnese();
         resposta.pergunta = perguntas.save(pergunta);
         resposta.pacienteId = paciente.getId();

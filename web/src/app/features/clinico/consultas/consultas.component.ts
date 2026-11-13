@@ -17,6 +17,7 @@ import { AnamneseService } from '../../anamnese/anamnese.service';
 import { DietaService } from '../../dieta/dieta.service';
 import { CAMPOS_MEDIDAS, ConsultaForm, STATUS_CONSULTA, decimal } from './consulta-form';
 import { AtendimentoClinico, AtendimentosService, Consulta, ConsultasService, PaginaConsultas } from './consultas.service';
+import { criarLinkGoogleAgenda } from '../../agenda/google-calendar-link';
 
 @Component({
   selector: 'app-consultas',
@@ -46,9 +47,9 @@ export class ConsultasComponent implements OnInit {
   consultaAtual: Consulta | null = null;
   agora = Date.now();
   readonly grupos = [
-    { titulo: 'Medidas antropométricas', campos: CAMPOS_MEDIDAS.slice(0, 4) },
-    { titulo: 'Pregas cutâneas', campos: CAMPOS_MEDIDAS.slice(4, 8) },
-    { titulo: 'Circunferências', campos: CAMPOS_MEDIDAS.slice(8) }
+    { titulo: 'Medidas antropométricas e composição corporal', campos: CAMPOS_MEDIDAS.slice(0, 6) },
+    { titulo: 'Sete pregas de Jackson-Pollock', campos: CAMPOS_MEDIDAS.slice(7, 14) },
+    { titulo: 'Medidas complementares', campos: [CAMPOS_MEDIDAS[6], ...CAMPOS_MEDIDAS.slice(14)] }
   ];
   readonly decimal = decimal;
   form = new ConsultaForm();
@@ -88,7 +89,11 @@ export class ConsultasComponent implements OnInit {
           this.nome = consulta.pacienteNome;
           this.contextoClinico = consulta.contextoClinico;
           this.consultaAtual = consulta;
+          this.form.definirContextoAntropometrico(
+            consulta.contextoClinico?.dataNascimento ?? null,
+            consulta.contextoClinico?.sexo ?? null);
           this.form.carregar(consulta);
+          this.form.preencherDaAnamnese(consulta.contextoClinico?.anamneseFinalizada);
           this.original = this.form.assinatura();
           this.carregado = true;
           this.carregando = false;
@@ -105,7 +110,14 @@ export class ConsultasComponent implements OnInit {
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ paciente, consulta, lista }) => {
         this.nome = paciente.nome;
-        if (consulta) this.form.carregar(consulta);
+        if (consulta) {
+          this.contextoClinico = consulta.contextoClinico ?? null;
+          this.form.definirContextoAntropometrico(
+            consulta.contextoClinico?.dataNascimento ?? paciente.dataNascimento ?? null,
+            consulta.contextoClinico?.sexo ?? paciente.sexo ?? null);
+          this.form.carregar(consulta);
+          this.form.preencherDaAnamnese(consulta.contextoClinico?.anamneseFinalizada);
+        }
         this.consultaAtual = consulta;
         this.original = this.form.assinatura();
         this.lista = lista;
@@ -233,6 +245,9 @@ export class ConsultasComponent implements OnInit {
 
   statusLabel(status: string): string {
     return STATUS_CONSULTA.find(item => item.value === status)?.label || status;
+  }
+  googleAgendaUrl(consulta: Consulta): string {
+    return criarLinkGoogleAgenda({ dataHora: consulta.dataHora, pacienteNome: this.nome || 'Paciente' });
   }
   get alterado(): boolean { return this.editor && this.carregado && this.form.assinatura() !== this.original; }
   podeSair(): boolean {

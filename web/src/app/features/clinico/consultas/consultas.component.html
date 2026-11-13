@@ -45,6 +45,7 @@
               <button type="button" class="action primary" [disabled]="salvando" (click)="acao(consulta, 'confirmacao')">Aprovar</button>
             }
             @if (consulta.status === 'CONFIRMADA' && !consulta.iniciadaEm) {
+              <a class="action secondary" [href]="googleAgendaUrl(consulta)" target="_blank" rel="noopener noreferrer">Adicionar ao Google Agenda</a>
               <button type="button" class="action primary" [disabled]="salvando || !podeIniciar(consulta)" (click)="acao(consulta, 'inicio')">Iniciar Consulta</button>
               <small>Início permitido de {{ consulta.inicioPermitidoDe | date:'dd/MM HH:mm' }} até {{ consulta.inicioPermitidoAte | date:'dd/MM HH:mm' }}</small>
             }
@@ -92,6 +93,7 @@
         <div class="actions">
           @if (podeEditar) { <app-ui-button label="Salvar consulta" icon="check-circle" type="submit" [loading]="salvando" /> }
           @if (consultaAtual && consultaAtual.status === 'CONFIRMADA' && !consultaAtual.iniciadaEm) {
+            <a class="action secondary" [href]="googleAgendaUrl(consultaAtual)" target="_blank" rel="noopener noreferrer">Adicionar ao Google Agenda</a>
             <button type="button" class="action primary" [disabled]="salvando || !podeIniciar(consultaAtual)" (click)="acao(consultaAtual, 'inicio')">Iniciar Consulta</button>
           }
           <a class="action secondary" [routerLink]="atendimento ? ['/agenda'] : ['/pacientes', patientId, 'consultas']"
@@ -119,12 +121,16 @@
                     [readonly]="true" placeholder="—" />
                 }
                 <app-ui-input [label]="campo.label" [inputId]="campo.key" [name]="campo.key"
-                  [(ngModel)]="form.medidas[campo.key]" [maxlength]="6" [inputmode]="campo.inteiro ? 'numeric' : 'decimal'"
-                  [class.full-row]="campo.key === 'massaMuscularKg' || campo.key === 'circunferenciaBraco'"
+                  [ngModel]="form.medidas[campo.key]" (ngModelChange)="form.atualizarMedida(campo.key, $event)"
+                  [readonly]="form.campoSomenteLeitura(campo.key)" [maxlength]="6" [inputmode]="campo.inteiro ? 'numeric' : 'decimal'"
+                  [class.full-row]="campo.key === 'circunferenciaBraco'"
                   [required]="form.exigeMedidas && (campo.key === 'peso' || campo.key === 'altura')"
                   [errorMessage]="errors[campo.key] || ''" />
               }
             </div>
+            @if (grupoIndex === 1) {
+              <p class="subtitle">Preencha as sete pregas para calcular automaticamente gordura corporal, massa magra e massa gorda. {{ form.metodoComposicao }}</p>
+            }
           </section>
         }
         <section class="form-section" aria-labelledby="observacoes-title">

@@ -153,9 +153,9 @@ describe('DietaComponent', () => {
     fixture.detectChanges();
 
     await preencherNumero('#meta-kcal', 1800);
-    await preencherNumero('#meta-proteinas', 100);
-    await preencherNumero('#meta-carboidratos', 200);
-    await preencherNumero('#meta-gorduras', 50);
+    await preencherNumero('#meta-percentual-proteinas', 50);
+    await preencherNumero('#meta-percentual-carboidratos', 30);
+    await preencherNumero('#meta-percentual-gorduras', 20);
     await preencherNumero('#gramas-2', 125.5);
 
     expect(typeof component.form.metas.kcal).toBe('number');
@@ -166,7 +166,8 @@ describe('DietaComponent', () => {
     component.salvar();
 
     expect(dieta.criarPlano).toHaveBeenCalledWith(paciente.id, jasmine.objectContaining({
-      metas: { kcal: 1800, proteinas: 100, carboidratos: 200, gorduras: 50 },
+      metas: { kcal: 1800, proteinas: 225, carboidratos: 135, gorduras: 40 },
+      percentuais: { proteinas: 50, carboidratos: 30, gorduras: 20 },
       refeicoes: [{
         nome: 'Café da manhã',
         horario: '08:00',

@@ -424,6 +424,7 @@ export function MealPlanScreen({ navigation }: Props) {
                       title="Metas diárias"
                       subtitle="Metas nutricionais de referência diária"
                       nutrients={plan.metas}
+                      distribution={plan.percentuais}
                     />
                   </View>
                 ) : (

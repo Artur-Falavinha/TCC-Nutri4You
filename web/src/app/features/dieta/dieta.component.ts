@@ -69,7 +69,7 @@ export class DietaComponent implements OnInit {
   }
   get indicadores() {
     const totais = this.tela === 'editor' ? this.totaisPrevistos : this.totaisDetalhe;
-    const metas = this.tela === 'editor' ? this.form.metas : this.planoSelecionado?.metas;
+    const metas = this.tela === 'editor' ? this.metasCalculadas : this.planoSelecionado?.metas;
     return ([['kcal', 'Energia', 'kcal'], ['proteinas', 'Proteínas', 'g'], ['carboidratos', 'Carboidratos', 'g'], ['gorduras', 'Gorduras', 'g']] as const)
       .map(([chave, nome, unidade]) => {
         const meta = metas ? this.numero(metas[chave]) : null;
@@ -77,6 +77,19 @@ export class DietaComponent implements OnInit {
         const percentual = meta && meta > 0 ? Math.round(valor / meta * 100) : null;
         return { nome, unidade, valor, meta, percentual, barra: Math.min(percentual ?? 0, 100), excesso: meta !== null && valor > meta };
       });
+  }
+  get metasCalculadas() {
+    const kcal = this.numero(this.form.metas.kcal);
+    const proteinas = this.numero(this.form.metas.percentualProteinas);
+    const carboidratos = this.numero(this.form.metas.percentualCarboidratos);
+    const gorduras = this.numero(this.form.metas.percentualGorduras);
+    if (kcal === null || proteinas === null || carboidratos === null || gorduras === null) return null;
+    return {
+      kcal,
+      proteinas: kcal * proteinas / 100 / 4,
+      carboidratos: kcal * carboidratos / 100 / 4,
+      gorduras: kcal * gorduras / 100 / 9
+    };
   }
   get totaisDetalhe(): Nutrientes {
     return this.refeicoesDetalhe.reduce((total, r) => this.somar(total, r.totais), { ...NUTRIENTES_VAZIOS });
@@ -740,21 +753,28 @@ export class DietaComponent implements OnInit {
   }
 
   private validarMetas(errors: Record<string, string>): void {
-    const chaves: (keyof MetasEdicao)[] = ['kcal', 'proteinas', 'carboidratos', 'gorduras'];
+    const chaves: (keyof MetasEdicao)[] = ['kcal', 'percentualProteinas', 'percentualCarboidratos', 'percentualGorduras'];
     const preenchidos = chaves.filter(chave => this.textoNumerico(this.form.metas[chave]).trim() !== '');
     if (preenchidos.length === 0) return;
     if (preenchidos.length !== chaves.length) {
-      errors['metas'] = 'Preencha os quatro campos de meta ou deixe todos vazios.';
+      errors['metas'] = 'Preencha as calorias e os três percentuais ou deixe todos vazios.';
       return;
     }
     for (const chave of chaves) {
       const valor = this.numero(this.form.metas[chave]);
       const minimoValido = chave === 'kcal' ? valor !== null && valor > 0 : valor !== null && valor >= 0;
-      if (!minimoValido || valor! > 999999.99 || !this.temNoMaximoDuasCasas(this.form.metas[chave])) {
+      const maximo = chave === 'kcal' ? 999999.99 : 100;
+      if (!minimoValido || valor! > maximo || !this.temNoMaximoDuasCasas(this.form.metas[chave])) {
         errors[`meta-${chave}`] = chave === 'kcal'
           ? 'Informe calorias maiores que zero, até 999.999,99 e com no máximo duas casas.'
-          : 'Informe um valor entre zero e 999.999,99, com no máximo duas casas.';
+          : 'Informe um percentual entre zero e 100, com no máximo duas casas.';
       }
+    }
+    const soma = (this.numero(this.form.metas.percentualProteinas) ?? 0)
+      + (this.numero(this.form.metas.percentualCarboidratos) ?? 0)
+      + (this.numero(this.form.metas.percentualGorduras) ?? 0);
+    if (!Object.keys(errors).some(chave => chave.startsWith('meta-')) && Math.abs(soma - 100) > 0.001) {
+      errors['metas'] = `A distribuição dos macronutrientes deve somar 100% (atual: ${soma.toLocaleString('pt-BR')}%).`;
     }
   }
 
@@ -772,18 +792,19 @@ export class DietaComponent implements OnInit {
 
   private payload(): PlanoRequest {
     const metas = this.form.metas;
-    const metasPreenchidas = [metas.kcal, metas.proteinas, metas.carboidratos, metas.gorduras]
+    const metasPreenchidas = [metas.kcal, metas.percentualProteinas, metas.percentualCarboidratos, metas.percentualGorduras]
       .every(valor => this.textoNumerico(valor).trim() !== '');
+    const calculadas = this.metasCalculadas;
     return {
       titulo: this.form.titulo.trim(),
       orientacoes: this.form.orientacoes.trim() || null,
       vigenciaInicio: this.form.vigenciaInicio || null,
       vigenciaFim: this.form.vigenciaFim || null,
-      metas: metasPreenchidas ? {
-        kcal: this.numero(metas.kcal) ?? 0,
-        proteinas: this.numero(metas.proteinas) ?? 0,
-        carboidratos: this.numero(metas.carboidratos) ?? 0,
-        gorduras: this.numero(metas.gorduras) ?? 0
+      metas: metasPreenchidas && calculadas ? calculadas : null,
+      percentuais: metasPreenchidas ? {
+        proteinas: this.numero(metas.percentualProteinas) ?? 0,
+        carboidratos: this.numero(metas.percentualCarboidratos) ?? 0,
+        gorduras: this.numero(metas.percentualGorduras) ?? 0
       } : null,
       ...(this.planoEmEdicaoId === null ? {} : { versao: this.planoSelecionado?.versao }),
       refeicoes: this.form.refeicoes.map(refeicao => ({
@@ -805,7 +826,7 @@ export class DietaComponent implements OnInit {
   private novoFormulario(): PlanoEdicao {
     return {
       titulo: '', orientacoes: '', vigenciaInicio: '', vigenciaFim: '',
-      metas: { kcal: '', proteinas: '', carboidratos: '', gorduras: '' },
+      metas: { kcal: '', percentualProteinas: '', percentualCarboidratos: '', percentualGorduras: '' },
       refeicoes: []
     };
   }
@@ -818,10 +839,10 @@ export class DietaComponent implements OnInit {
       vigenciaFim: plano.vigenciaFim ?? '',
       metas: plano.metas ? {
         kcal: String(plano.metas.kcal),
-        proteinas: String(plano.metas.proteinas),
-        carboidratos: String(plano.metas.carboidratos),
-        gorduras: String(plano.metas.gorduras)
-      } : { kcal: '', proteinas: '', carboidratos: '', gorduras: '' },
+        percentualProteinas: String(plano.percentuais?.proteinas ?? this.percentualDaMeta(plano.metas.proteinas, plano.metas.kcal, 4)),
+        percentualCarboidratos: String(plano.percentuais?.carboidratos ?? this.percentualDaMeta(plano.metas.carboidratos, plano.metas.kcal, 4)),
+        percentualGorduras: String(plano.percentuais?.gorduras ?? this.percentualDaMeta(plano.metas.gorduras, plano.metas.kcal, 9))
+      } : { kcal: '', percentualProteinas: '', percentualCarboidratos: '', percentualGorduras: '' },
       refeicoes: plano.refeicoes.map(refeicao => ({
         chave: this.proximaChave(),
         diaSemana: refeicao.diaSemana ?? null,
@@ -839,6 +860,10 @@ export class DietaComponent implements OnInit {
         }))
       }))
     };
+  }
+
+  private percentualDaMeta(gramas: number, kcal: number, fator: number): number {
+    return kcal > 0 ? Number((gramas * fator / kcal * 100).toFixed(2)) : 0;
   }
 
   private assinatura(): string {

@@ -22,6 +22,18 @@ class PlanoAlimentarServiceTest extends ClinicalServiceTestSupport {
         var p = service.criar(nutri, paciente.getId(), null, dados(inicio, fim, null));
         return service.publicar(nutri, paciente.getId(), null, p.id(), p.versao());
     }
+    @Test void calculaGramasAPartirDasCaloriasEDosPercentuais() {
+        var request = new PlanoRequest("Meta percentual", null, hoje(), hoje().plusDays(7),
+                new Nutrientes(new BigDecimal("1700"), null, null, null), null, List.of(), null,
+                new DistribuicaoMacros(new BigDecimal("50"), new BigDecimal("30"), new BigDecimal("20")));
+
+        var plano = service.criar(nutri, paciente.getId(), null, request);
+
+        assertThat(plano.metas().proteinas()).isEqualByComparingTo("212.50");
+        assertThat(plano.metas().carboidratos()).isEqualByComparingTo("127.50");
+        assertThat(plano.metas().gorduras()).isEqualByComparingTo("37.78");
+        assertThat(plano.percentuais().proteinas()).isEqualByComparingTo("50");
+    }
     @Test void bloqueiaTodaSobreposicaoSemAlterarPlanoAnterior() {
         var anterior = publicado(hoje(), hoje().plusDays(10));
         var novo = service.criar(nutri, paciente.getId(), null, dados(hoje().plusDays(3), hoje().plusDays(12), null));

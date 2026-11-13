@@ -59,6 +59,7 @@
             <span>{{ item.status === 'REALIZADA' ? 'Concluída' : item.iniciadaEm ? 'Em andamento' : 'Confirmada' }}</span></div>
           <div class="acoes">
             @if (!item.iniciadaEm && item.status === 'CONFIRMADA') {
+              <a [href]="googleAgendaUrl(item)" target="_blank" rel="noopener noreferrer">Adicionar ao Google Agenda</a>
               <button type="button" class="confirmar" [disabled]="iniciando || cancelando || !podeIniciar(item)" (click)="iniciar(item)">Iniciar atendimento</button>
               <small>Início permitido de {{ item.janelaInicio | date:'dd/MM HH:mm' }} até {{ item.janelaFim | date:'dd/MM HH:mm' }}</small>
               @if (podeCancelar(item)) {

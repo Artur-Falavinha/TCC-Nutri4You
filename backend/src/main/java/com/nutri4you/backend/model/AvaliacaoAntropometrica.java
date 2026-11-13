@@ -55,8 +55,20 @@ public class AvaliacaoAntropometrica {
     @Column(name = "massa_muscular_kg", precision = 5, scale = 2)
     private BigDecimal massaMuscularKg;
 
+    @Column(name = "massa_magra_kg", precision = 5, scale = 2)
+    private BigDecimal massaMagraKg;
+
+    @Column(name = "massa_gorda_kg", precision = 5, scale = 2)
+    private BigDecimal massaGordaKg;
+
     @Column(name = "prega_bicipital", precision = 5, scale = 2)
     private BigDecimal pregaBicipital;
+
+    @Column(name = "prega_peitoral", precision = 5, scale = 2)
+    private BigDecimal pregaPeitoral;
+
+    @Column(name = "prega_axilar_media", precision = 5, scale = 2)
+    private BigDecimal pregaAxilarMedia;
 
     @Column(name = "prega_tricipital", precision = 5, scale = 2)
     private BigDecimal pregaTricipital;
@@ -64,8 +76,17 @@ public class AvaliacaoAntropometrica {
     @Column(name = "prega_subescapular", precision = 5, scale = 2)
     private BigDecimal pregaSubescapular;
 
+    @Column(name = "prega_abdominal", precision = 5, scale = 2)
+    private BigDecimal pregaAbdominal;
+
     @Column(name = "prega_suprailiaca", precision = 5, scale = 2)
     private BigDecimal pregaSuprailiaca;
+
+    @Column(name = "prega_coxa", precision = 5, scale = 2)
+    private BigDecimal pregaCoxa;
+
+    @Column(name = "metodo_percentual_gordura", length = 60)
+    private String metodoPercentualGordura;
 
     @Column(name = "circunferencia_cintura", precision = 5, scale = 2)
     private BigDecimal circunferenciaCintura;
@@ -136,6 +157,11 @@ public class AvaliacaoAntropometrica {
         this.massaMuscularKg = massaMuscularKg;
     }
 
+    public BigDecimal getMassaMagraKg() { return massaMagraKg; }
+    public void setMassaMagraKg(BigDecimal massaMagraKg) { this.massaMagraKg = massaMagraKg; }
+    public BigDecimal getMassaGordaKg() { return massaGordaKg; }
+    public void setMassaGordaKg(BigDecimal massaGordaKg) { this.massaGordaKg = massaGordaKg; }
+
     public BigDecimal getPregaBicipital() {
         return pregaBicipital;
     }
@@ -143,6 +169,11 @@ public class AvaliacaoAntropometrica {
     public void setPregaBicipital(BigDecimal pregaBicipital) {
         this.pregaBicipital = pregaBicipital;
     }
+
+    public BigDecimal getPregaPeitoral() { return pregaPeitoral; }
+    public void setPregaPeitoral(BigDecimal pregaPeitoral) { this.pregaPeitoral = pregaPeitoral; }
+    public BigDecimal getPregaAxilarMedia() { return pregaAxilarMedia; }
+    public void setPregaAxilarMedia(BigDecimal pregaAxilarMedia) { this.pregaAxilarMedia = pregaAxilarMedia; }
 
     public BigDecimal getPregaTricipital() {
         return pregaTricipital;
@@ -160,6 +191,9 @@ public class AvaliacaoAntropometrica {
         this.pregaSubescapular = pregaSubescapular;
     }
 
+    public BigDecimal getPregaAbdominal() { return pregaAbdominal; }
+    public void setPregaAbdominal(BigDecimal pregaAbdominal) { this.pregaAbdominal = pregaAbdominal; }
+
     public BigDecimal getPregaSuprailiaca() {
         return pregaSuprailiaca;
     }
@@ -167,6 +201,11 @@ public class AvaliacaoAntropometrica {
     public void setPregaSuprailiaca(BigDecimal pregaSuprailiaca) {
         this.pregaSuprailiaca = pregaSuprailiaca;
     }
+
+    public BigDecimal getPregaCoxa() { return pregaCoxa; }
+    public void setPregaCoxa(BigDecimal pregaCoxa) { this.pregaCoxa = pregaCoxa; }
+    public String getMetodoPercentualGordura() { return metodoPercentualGordura; }
+    public void setMetodoPercentualGordura(String metodoPercentualGordura) { this.metodoPercentualGordura = metodoPercentualGordura; }
 
     public BigDecimal getCircunferenciaCintura() {
         return circunferenciaCintura;

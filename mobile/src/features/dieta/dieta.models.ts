@@ -6,6 +6,12 @@ export interface Nutrients {
   fibras: number | null;
 }
 
+export interface MacroDistribution {
+  proteinas: number;
+  carboidratos: number;
+  gorduras: number;
+}
+
 export interface Food {
   id: number;
   codigoTaco: number | null;
@@ -57,6 +63,7 @@ export interface MealPlan {
   vigenciaFim: string | null;
   publicadoEm: string | null;
   metas: Nutrients | null;
+  percentuais?: MacroDistribution | null;
   totais: Nutrients;
   refeicoes: Meal[];
 }

@@ -5,6 +5,7 @@ import com.nutri4you.backend.dto.DecisaoConsultaRequest;
 import com.nutri4you.backend.dto.HorarioAtendimentoDTO;
 import com.nutri4you.backend.dto.PreferenciaAgendaDTO;
 import com.nutri4you.backend.dto.SolicitacaoAvulsaDTO;
+import com.nutri4you.backend.dto.NotificacaoConsultaDTO;
 import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.service.ConsultaService;
@@ -56,6 +57,18 @@ public class AgendaNutricionistaController {
     @GetMapping("/solicitacoes-avulsas")
     public ApiResponse<List<SolicitacaoAvulsaDTO>> listarAvulsas(Authentication auth) {
         return ApiResponse.ok(consultas.listarAvulsasPendentes(nutricionista(auth)), "Solicitações carregadas.");
+    }
+
+    @GetMapping("/notificacoes")
+    public ApiResponse<List<NotificacaoConsultaDTO>> listarNotificacoes(Authentication auth) {
+        return ApiResponse.ok(consultas.listarNotificacoes(nutricionista(auth)), "Notificações carregadas.");
+    }
+
+    @PostMapping("/notificacoes/{id}/decisao")
+    public ApiResponse<Void> decidirNotificacao(
+            Authentication auth, @PathVariable Integer id, @RequestBody DecisaoConsultaRequest decisao) {
+        consultas.decidirNotificacao(nutricionista(auth), id, decisao);
+        return ApiResponse.ok(null, Boolean.TRUE.equals(decisao.aceitar()) ? "Consulta confirmada." : "Consulta recusada.");
     }
 
     @PostMapping("/solicitacoes-avulsas/{id}/decisao")

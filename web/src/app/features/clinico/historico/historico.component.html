@@ -45,14 +45,14 @@
         <article class="kpi">
           <p class="dica" tabindex="0">
             <i class="ph ph-chart-pie" aria-hidden="true"></i> Gordura atual
-            <span class="dica__badge" role="tooltip">Percentual de gordura informado na avaliação. O sistema não calcula essa medida.</span>
+            <span class="dica__badge" role="tooltip">Percentual estimado automaticamente pelo método Jackson-Pollock de 7 pregas quando todas as medidas estão disponíveis.</span>
           </p>
           <strong>{{ gorduraAtual }}</strong>
         </article>
         <article class="kpi">
           <p class="dica" tabindex="0">
             <i class="ph ph-barbell" aria-hidden="true"></i> Massa magra atual
-            <span class="dica__badge" role="tooltip">Massa muscular informada na última avaliação, em quilogramas.</span>
+            <span class="dica__badge" role="tooltip">Massa livre de gordura calculada a partir do peso e do percentual de gordura.</span>
           </p>
           <strong>{{ massaAtual }}</strong>
         </article>
@@ -105,12 +105,9 @@
       </article>
       <article class="grafico">
         <div class="grafico__topo">
-          <h2><i class="ph ph-chart-line" aria-hidden="true"></i> Pregas cutâneas</h2>
+          <h2><i class="ph ph-chart-line" aria-hidden="true"></i> Método das 7 pregas</h2>
           <ul class="legenda">
-            <li class="dica" tabindex="0"><i class="legenda__peso"></i> Bicipital<span class="dica__badge" role="tooltip">Prega cutânea bicipital registrada na avaliação, em milímetros.</span></li>
-            <li class="dica" tabindex="0"><i class="legenda__imc"></i> Triciptal<span class="dica__badge" role="tooltip">Prega cutânea tricipital registrada na avaliação, em milímetros.</span></li>
-            <li class="dica" tabindex="0"><i class="legenda__escuro"></i> Subescapular<span class="dica__badge" role="tooltip">Prega cutânea subescapular registrada na avaliação, em milímetros.</span></li>
-            <li class="dica dica--fim" tabindex="0"><i class="legenda__supra"></i> Supra-ilíaca<span class="dica__badge" role="tooltip">Prega cutânea supra-ilíaca registrada na avaliação, em milímetros.</span></li>
+            <li class="dica dica--fim" tabindex="0"><i class="legenda__imc"></i> Soma das 7 pregas<span class="dica__badge" role="tooltip">Peitoral, axilar média, tricipital, subescapular, abdominal, supra-ilíaca e coxa, em milímetros.</span></li>
           </ul>
         </div>
         <div class="grafico__plot">
@@ -118,42 +115,15 @@
             @for (y of grades; track y) {
               <line x1="28" [attr.x2]="612" [attr.y1]="y" [attr.y2]="y" stroke="#e2e8f0" />
             }
-            <polyline [attr.points]="traco('pregaBicipital')" fill="none" stroke="#006f1e" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
-            <polyline [attr.points]="traco('pregaTricipital')" fill="none" stroke="#3d6b99" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
-            <polyline [attr.points]="traco('pregaSubescapular')" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
-            <polyline [attr.points]="traco('pregaSuprailiaca')" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
-            @for (ponto of marcadores('pregaBicipital'); track $index) {
-              <circle [attr.cx]="ponto.x" [attr.cy]="ponto.y" r="4" fill="#006f1e" />
-            }
-            @for (ponto of marcadores('pregaTricipital'); track $index) {
+            <polyline [attr.points]="traco('somaSetePregas')" fill="none" stroke="#3d6b99" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+            @for (ponto of marcadores('somaSetePregas'); track $index) {
               <circle [attr.cx]="ponto.x" [attr.cy]="ponto.y" r="4" fill="#3d6b99" />
-            }
-            @for (ponto of marcadores('pregaSubescapular'); track $index) {
-              <circle [attr.cx]="ponto.x" [attr.cy]="ponto.y" r="4" fill="#1e293b" />
-            }
-            @for (ponto of marcadores('pregaSuprailiaca'); track $index) {
-              <circle [attr.cx]="ponto.x" [attr.cy]="ponto.y" r="4" fill="#94a3b8" />
             }
             @for (marca of eixo(); track $index) {
               <text [attr.x]="marca.x" y="184" text-anchor="middle" fill="#64748b" font-size="12">{{ marca.texto }}</text>
             }
           </svg>
-          @for (ponto of marcadores('pregaBicipital'); track $index) {
-            <button type="button" class="linha__hit" [class.linha__hit--abaixo]="!ponto.acima" [class.linha__hit--inicio]="ponto.inicio" [class.linha__hit--fim]="ponto.fim" [style.left.%]="ponto.esquerda" [style.top.%]="ponto.topo" [style.--ponto]="ponto.cor" [attr.aria-label]="ponto.rotulo + ', ' + ponto.serie + ': ' + ponto.valor">
-              <span class="grafico-badge"><span class="grafico-badge__rotulo">{{ ponto.rotulo }}</span><strong>{{ ponto.valor }}</strong><span>{{ ponto.serie }}</span></span>
-            </button>
-          }
-          @for (ponto of marcadores('pregaTricipital'); track $index) {
-            <button type="button" class="linha__hit" [class.linha__hit--abaixo]="!ponto.acima" [class.linha__hit--inicio]="ponto.inicio" [class.linha__hit--fim]="ponto.fim" [style.left.%]="ponto.esquerda" [style.top.%]="ponto.topo" [style.--ponto]="ponto.cor" [attr.aria-label]="ponto.rotulo + ', ' + ponto.serie + ': ' + ponto.valor">
-              <span class="grafico-badge"><span class="grafico-badge__rotulo">{{ ponto.rotulo }}</span><strong>{{ ponto.valor }}</strong><span>{{ ponto.serie }}</span></span>
-            </button>
-          }
-          @for (ponto of marcadores('pregaSubescapular'); track $index) {
-            <button type="button" class="linha__hit" [class.linha__hit--abaixo]="!ponto.acima" [class.linha__hit--inicio]="ponto.inicio" [class.linha__hit--fim]="ponto.fim" [style.left.%]="ponto.esquerda" [style.top.%]="ponto.topo" [style.--ponto]="ponto.cor" [attr.aria-label]="ponto.rotulo + ', ' + ponto.serie + ': ' + ponto.valor">
-              <span class="grafico-badge"><span class="grafico-badge__rotulo">{{ ponto.rotulo }}</span><strong>{{ ponto.valor }}</strong><span>{{ ponto.serie }}</span></span>
-            </button>
-          }
-          @for (ponto of marcadores('pregaSuprailiaca'); track $index) {
+          @for (ponto of marcadores('somaSetePregas'); track $index) {
             <button type="button" class="linha__hit" [class.linha__hit--abaixo]="!ponto.acima" [class.linha__hit--inicio]="ponto.inicio" [class.linha__hit--fim]="ponto.fim" [style.left.%]="ponto.esquerda" [style.top.%]="ponto.topo" [style.--ponto]="ponto.cor" [attr.aria-label]="ponto.rotulo + ', ' + ponto.serie + ': ' + ponto.valor">
               <span class="grafico-badge"><span class="grafico-badge__rotulo">{{ ponto.rotulo }}</span><strong>{{ ponto.valor }}</strong><span>{{ ponto.serie }}</span></span>
             </button>
@@ -167,18 +137,18 @@
           <div class="grafico__topo">
             <h2><i class="ph ph-chart-line" aria-hidden="true"></i> Composição corporal</h2>
             <ul class="legenda">
-              <li class="dica" tabindex="0"><i class="legenda__peso"></i> Massa muscular<span class="dica__badge" role="tooltip">Massa muscular informada em cada avaliação, em quilogramas.</span></li>
-              <li class="dica dica--fim" tabindex="0"><i class="legenda__escuro"></i> % gordura<span class="dica__badge" role="tooltip">Percentual de gordura informado na avaliação. Não é calculado pelo sistema.</span></li>
+              <li class="dica" tabindex="0"><i class="legenda__peso"></i> Massa magra<span class="dica__badge" role="tooltip">Massa livre de gordura calculada em cada avaliação.</span></li>
+              <li class="dica dica--fim" tabindex="0"><i class="legenda__escuro"></i> % gordura<span class="dica__badge" role="tooltip">Estimativa Jackson-Pollock de 7 pregas convertida pela equação de Siri.</span></li>
             </ul>
           </div>
           <div class="grafico__plot">
-            <svg viewBox="0 0 640 196" role="img" aria-label="Evolução de massa muscular e percentual de gordura">
+            <svg viewBox="0 0 640 196" role="img" aria-label="Evolução de massa magra e percentual de gordura">
               @for (y of grades; track y) {
                 <line x1="28" [attr.x2]="612" [attr.y1]="y" [attr.y2]="y" stroke="#e2e8f0" />
               }
-              <polyline [attr.points]="traco('massaMuscularKg')" fill="none" stroke="#006f1e" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+              <polyline [attr.points]="traco('massaMagraKg')" fill="none" stroke="#006f1e" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
               <polyline [attr.points]="traco('percentualGordura')" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
-              @for (ponto of marcadores('massaMuscularKg'); track $index) {
+              @for (ponto of marcadores('massaMagraKg'); track $index) {
                 <circle [attr.cx]="ponto.x" [attr.cy]="ponto.y" r="4" fill="#006f1e" />
               }
               @for (ponto of marcadores('percentualGordura'); track $index) {
@@ -188,7 +158,7 @@
                 <text [attr.x]="marca.x" y="184" text-anchor="middle" fill="#64748b" font-size="12">{{ marca.texto }}</text>
               }
             </svg>
-            @for (ponto of marcadores('massaMuscularKg'); track $index) {
+            @for (ponto of marcadores('massaMagraKg'); track $index) {
               <button type="button" class="linha__hit" [class.linha__hit--abaixo]="!ponto.acima" [class.linha__hit--inicio]="ponto.inicio" [class.linha__hit--fim]="ponto.fim" [style.left.%]="ponto.esquerda" [style.top.%]="ponto.topo" [style.--ponto]="ponto.cor" [attr.aria-label]="ponto.rotulo + ', ' + ponto.serie + ': ' + ponto.valor">
                 <span class="grafico-badge"><span class="grafico-badge__rotulo">{{ ponto.rotulo }}</span><strong>{{ ponto.valor }}</strong><span>{{ ponto.serie }}</span></span>
               </button>

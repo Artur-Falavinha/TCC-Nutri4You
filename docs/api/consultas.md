@@ -35,11 +35,17 @@ As respostas usam `ApiResponse`. Listagem retorna `itens`, `pagina`,
     "peso": 68.5,
     "altura": 1.70,
     "percentualGordura": null,
+    "massaMagraKg": null,
+    "massaGordaKg": null,
     "massaMuscularKg": null,
     "pregaBicipital": null,
-    "pregaTricipital": null,
-    "pregaSubescapular": null,
-    "pregaSuprailiaca": null,
+    "pregaPeitoral": 12,
+    "pregaAxilarMedia": 14,
+    "pregaTricipital": 16,
+    "pregaSubescapular": 15,
+    "pregaAbdominal": 18,
+    "pregaSuprailiaca": 13,
+    "pregaCoxa": 20,
     "circunferenciaCintura": null,
     "circunferenciaQuadril": null,
     "circunferenciaBraco": null
@@ -57,13 +63,17 @@ clinica (`TIMESTAMP WITHOUT TIME ZONE`), interpretado em America/Sao_Paulo.
 - Data/hora e status obrigatorios; datas entre 1900 e 2100.
 - Status: `AGUARDANDO_CONFIRMACAO`, `CONFIRMADA`, `REALIZADA`, `CANCELADA`.
   A tela apresenta `REALIZADA` como **Concluida**.
-- Consulta futura nao pode ser concluida. Conclusao exige peso e altura.
+- Uma consulta ainda não iniciada não pode ser concluída no futuro. Depois de iniciada dentro da janela permitida, ela pode permanecer em andamento e ser salva ou concluída a qualquer momento; conclusão exige peso e altura.
 - Ações de agenda não exigem avaliação. Edição de atendimento exige início prévio e não altera horário agendado.
   Quando qualquer medida for enviada, peso e altura sao obrigatorios.
 - Peso: 1 a 500 kg; altura: 0,30 a 2,70 m; gordura: 0 a 100%; massa muscular:
   0 a 300 kg; pregas: 0,1 a 100 mm; cintura/quadril: 0,1 a 300 cm;
   braco: 0,1 a 150 cm. Medidas aceitam ate duas casas decimais.
 - Medidas opcionais nao coletadas permanecem nulas. Observacoes: ate 5.000 caracteres.
+- Peitoral, axilar média, tricipital, subescapular, abdominal, supra-ilíaca e coxa formam o método de 7 pregas. Ao iniciar o novo protocolo, as sete são exigidas; os registros legados com apenas as pregas antigas continuam aceitos sem cálculo automático. O servidor calcula a densidade corporal pela equação de Jackson-Pollock específica por sexo e idade, converte-a em percentual de gordura pela equação de Siri e deriva massa gorda e massa magra. Massa muscular continua sendo uma medida separada e manual.
+- O cálculo é limitado às faixas de validação das equações originais: homens de 18 a 61 anos e mulheres de 18 a 55 anos. Sexo e data de nascimento vêm do cadastro do paciente.
+- Referências do cálculo: [equação masculina de Jackson e Pollock](https://pubmed.ncbi.nlm.nih.gov/718832/), [equação feminina de Jackson, Pollock e Ward](https://pubmed.ncbi.nlm.nih.gov/7402053/) e [conversão de densidade corporal de Siri](https://escholarship.org/uc/item/6mh9f4nf).
+- Peso e altura que já existirem nas respostas finalizadas da anamnese, inclusive registros legados, são usados como valores iniciais na primeira avaliação da consulta. O atendimento apenas consome esses dados: os campos não são reativados nem adicionados novamente ao formulário da anamnese.
 - Edicao atualiza a avaliacao vinculada, sem duplicar; nao apaga avaliacao
   existente ao receber `null`. A data da avaliacao acompanha a consulta.
 - Bloqueio otimista protege tambem edicoes somente de medidas.
@@ -74,6 +84,8 @@ clinica (`TIMESTAMP WITHOUT TIME ZONE`), interpretado em America/Sao_Paulo.
 V7 adiciona versao e instante de atualizacao, amplia observacoes para TEXT,
 amplia a capacidade do IMC calculado e cria indice para a listagem.
 Nenhuma migration anterior foi alterada.
+
+V20 adiciona as quatro pregas ausentes, massas derivadas e identificação do método, preservando avaliações anteriores com valores nulos. O gráfico de evolução usa a soma das sete pregas e a massa magra calculada.
 
 A tela isolada de medidas foi removida. `/pacientes/{id}/medidas` redireciona
 para `/pacientes/{id}/consultas`. Avaliacoes antigas, inclusive sem consulta,
@@ -87,14 +99,14 @@ e restrito ao checksum conhecido; nao apagar volumes nem recalcular horarios.
 
 - `ConsultaControllerTest`: persistencia, edicao, versao, validacao, paginacao,
   autorizacao e isolamento por nutricionista (H2).
-- `consulta-form.spec.ts`: obrigatoriedade, unidades, limites, edicao e IMC.
-- `scripts/test-migrations.ps1`: SQL V1 a V7 em PostgreSQL 16 isolado,
+- `consulta-form.spec.ts`: obrigatoriedade, unidades, limites, IMC, preenchimento da anamnese e protocolo de sete pregas.
+- `scripts/test-migrations.ps1`: SQL V1 a V21 em PostgreSQL 16 isolado,
   incluindo preservacao de consultas e unicidade de avaliacao.
   Este script nao verifica o mecanismo Flyway de checksum/baseline.
 - Frontend: `npm run build`, `npm run lint` e testes em ChromeHeadless.
 
 ## Início do atendimento
 
-Janela confirmada por Gabriel: 15 minutos antes até 15 minutos depois, inclusive. Configurável por `CONSULTA_INICIO_MINUTOS_ANTES` e `CONSULTA_INICIO_MINUTOS_DEPOIS` (0 a 1440). O servidor retorna `iniciadaEm`, `inicioPermitidoDe`, `inicioPermitidoAte` (ISO com offset) e `podeIniciar`. A web atualiza o botão pelos limites retornados; a API revalida no momento da ação. Não se pode iniciar duas vezes ou sem confirmação.
+Janela de início: 15 minutos antes até 15 minutos depois, inclusive. Configurável por `CONSULTA_INICIO_MINUTOS_ANTES` e `CONSULTA_INICIO_MINUTOS_DEPOIS` (0 a 1440). O servidor retorna `iniciadaEm`, `inicioPermitidoDe`, `inicioPermitidoAte` (ISO com offset) e `podeIniciar`. A web atualiza o botão pelos limites retornados; a API revalida no momento da ação. Essa janela vale somente para iniciar: uma consulta iniciada não expira e pode durar o tempo necessário. Não se pode iniciar duas vezes ou sem confirmação.
 
 V10 acrescenta o início sem fabricar dados para consultas legadas. Consultas históricas realizadas continuam editáveis; novos atendimentos exigem início. A edição aceita CONFIRMADA ou REALIZADA, sem reabrir uma realizada. Aprovação/cancelamento usam ações próprias. A rota web `/consultas/nova` redireciona à listagem. Novos atendimentos devem partir de solicitação aprovada.

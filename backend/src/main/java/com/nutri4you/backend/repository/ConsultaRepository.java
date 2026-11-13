@@ -1,6 +1,7 @@
 package com.nutri4you.backend.repository;
 
 import com.nutri4you.backend.dto.SolicitacaoAvulsaDTO;
+import com.nutri4you.backend.dto.NotificacaoConsultaDTO;
 import com.nutri4you.backend.model.Consulta;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -53,6 +54,19 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Integer> {
             order by c.dataHora, c.id
             """)
     List<SolicitacaoAvulsaDTO> listarAvulsasPendentes(Integer nutricionistaId, LocalDateTime agora);
+
+    @Query("""
+            select new com.nutri4you.backend.dto.NotificacaoConsultaDTO(
+                c.id, p.id, p.nome, c.dataHora, c.versao, c.avulsa)
+            from Consulta c join c.paciente p
+            where c.nutricionista.id = :nutricionistaId
+            and c.status = 'AGUARDANDO_CONFIRMACAO' and c.dataHora > :agora
+            order by c.dataHora, c.id
+            """)
+    List<NotificacaoConsultaDTO> listarNotificacoesPendentes(Integer nutricionistaId, LocalDateTime agora);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Consulta> findByIdAndNutricionista_Id(Integer id, Integer nutricionistaId);
 
     Optional<Consulta> findByIdAndNutricionista_IdAndAvulsaTrue(Integer id, Integer nutricionistaId);
 

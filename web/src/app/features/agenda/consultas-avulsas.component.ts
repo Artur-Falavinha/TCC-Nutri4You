@@ -7,6 +7,7 @@ import { AtendimentoClinico, AtendimentosService } from '../clinico/consultas/co
 import { ApiService } from '../../core/services/api.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
+import { criarLinkGoogleAgenda } from './google-calendar-link';
 
 interface PreferenciaAgenda {
   aceitaConsultasAvulsas: boolean;
@@ -108,6 +109,10 @@ export class ConsultasAvulsasComponent implements OnInit {
       },
       error: (erro: ApiErrorResponse) => { this.erroAtendimentos = erro.message || 'Não foi possível cancelar o atendimento.'; }
     });
+  }
+
+  googleAgendaUrl(item: AtendimentoClinico): string {
+    return criarLinkGoogleAgenda({ dataHora: item.dataHora, pacienteNome: item.pacienteNome });
   }
 
   carregarPreferencia(): void {

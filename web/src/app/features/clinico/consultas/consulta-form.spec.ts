@@ -33,6 +33,13 @@ describe('ConsultaForm', () => {
     form.dataHora = '2099-12-01T12:00'; form.observacao = 'x'.repeat(5001);
     expect(form.validar()['dataHora']).toBeTruthy(); expect(form.validar()['observacao']).toBeTruthy();
   });
+  it('permite concluir uma consulta iniciada sem limitar sua duracao ao horario agendado', () => {
+    form.carregar({ id: 1, idPaciente: 1, dataHora: '2099-12-01T12:00:00', status: 'CONFIRMADA',
+      observacao: null, versao: 1, iniciadaEm: '2099-12-01T11:45:00-03:00', avaliacao: null });
+    form.status = 'REALIZADA'; form.medidas.peso = '75'; form.medidas.altura = '180';
+
+    expect(form.validar()['dataHora']).toBeUndefined();
+  });
   it('preserva a avaliacao e a versao ao abrir para editar', () => {
     form.carregar({ id: 1, idPaciente: 1, dataHora: '2025-01-15T14:30:00', status: 'REALIZADA',
       observacao: 'Exames', versao: 2, avaliacao: { id: 3, imc: 24.69, peso: 80, altura: 1.8,
@@ -48,6 +55,30 @@ describe('ConsultaForm', () => {
       status: 'CONFIRMADA', observacao: null, versao: 0, avaliacao: null });
     expect(form.dataHora).toBe('2025-01-15T14:30');
     expect(form.payload().dataHora).toBe('2025-01-15T14:30:45');
+  });
+  it('preenche peso e altura a partir da anamnese quando a consulta ainda nao tem avaliacao', () => {
+    form.preencherDaAnamnese({ weight: 72.5, height: 1.68 });
+    expect(form.medidas.peso).toBe('72,5');
+    expect(form.medidas.altura).toBe('168');
+  });
+  it('calcula gordura e massas pelo metodo de sete pregas', () => {
+    form.definirContextoAntropometrico('1995-01-01', 'Masculino');
+    form.atualizarMedida('peso', '80');
+    form.atualizarMedida('altura', '180');
+    for (const campo of ['pregaPeitoral', 'pregaAxilarMedia', 'pregaTricipital', 'pregaSubescapular',
+      'pregaAbdominal', 'pregaSuprailiaca', 'pregaCoxa'] as const) {
+      form.atualizarMedida(campo, '20');
+    }
+    expect(form.medidas.percentualGordura).toBe('19,98');
+    expect(form.medidas.massaMagraKg).toBe('64,02');
+    expect(form.medidas.massaGordaKg).toBe('15,98');
+    expect(form.campoSomenteLeitura('percentualGordura')).toBeTrue();
+  });
+
+  it('exige o conjunto completo ao iniciar o protocolo de sete pregas', () => {
+    form.medidas.pregaPeitoral = '10';
+
+    expect(form.validar()['pregaAxilarMedia']).toContain('sete pregas');
   });
 
 });
