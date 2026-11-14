@@ -121,7 +121,7 @@
                     [readonly]="true" placeholder="—" />
                 }
                 <app-ui-input [label]="campo.label" [inputId]="campo.key" [name]="campo.key"
-                  [ngModel]="form.medidas[campo.key]" (ngModelChange)="form.atualizarMedida(campo.key, $event)"
+                  [ngModel]="form.medidas[campo.key]" (ngModelChange)="atualizarMedida(campo.key, $event)"
                   [readonly]="form.campoSomenteLeitura(campo.key)" [maxlength]="6" [inputmode]="campo.inteiro ? 'numeric' : 'decimal'"
                   [class.full-row]="campo.key === 'circunferenciaBraco'"
                   [required]="form.exigeMedidas && (campo.key === 'peso' || campo.key === 'altura')"

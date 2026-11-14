@@ -97,6 +97,11 @@ public class Consulta {
         this.atualizadoEm = Instant.now();
     }
 
+    public void recusar() {
+        this.status = "RECUSADA";
+        this.atualizadoEm = Instant.now();
+    }
+
     public void reagendar(LocalDateTime dataHora) {
         this.dataHora = dataHora;
         this.status = "AGUARDANDO_CONFIRMACAO";

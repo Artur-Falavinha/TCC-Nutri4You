@@ -129,10 +129,13 @@ export interface SubstitutoEdicao {
 }
 
 export interface MetasEdicao {
+  metodo: 'PERCENTUAL' | 'G_POR_KG';
   kcal: CampoNumericoEdicao;
   percentualProteinas: CampoNumericoEdicao;
   percentualCarboidratos: CampoNumericoEdicao;
   percentualGorduras: CampoNumericoEdicao;
+  proteinasGKg: CampoNumericoEdicao;
+  carboidratosGKg: CampoNumericoEdicao;
 }
 
 export interface ItemListaCompras {

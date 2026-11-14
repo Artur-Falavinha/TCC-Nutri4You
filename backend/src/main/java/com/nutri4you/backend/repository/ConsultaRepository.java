@@ -18,8 +18,7 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Integer> {
 
     @Query("""
             select c from Consulta c where c.paciente.id = :pacienteId
-            and (c.status in ('AGUARDANDO_CONFIRMACAO', 'CONFIRMADA')
-                or (c.avulsa = true and c.status = 'CANCELADA'))
+            and c.status in ('AGUARDANDO_CONFIRMACAO', 'CONFIRMADA', 'RECUSADA')
             and (c.dataHora >= :agora or (c.status = 'CONFIRMADA' and c.iniciadaEm is not null))
             order by c.dataHora, c.id
             """)
@@ -98,6 +97,12 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Integer> {
 
     Optional<Consulta> findByIdAndPaciente_Id(Integer id, Integer pacienteId);
 
-    List<Consulta> findByNutricionista_IdAndStatusNotAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
-            Integer nutricionistaId, String status, LocalDateTime inicio, LocalDateTime fim);
+    @Query("""
+            select c from Consulta c where c.nutricionista.id = :nutricionistaId
+            and c.status not in ('CANCELADA', 'RECUSADA')
+            and c.dataHora >= :inicio and c.dataHora < :fim
+            order by c.dataHora
+            """)
+    List<Consulta> listarOcupadas(
+            Integer nutricionistaId, LocalDateTime inicio, LocalDateTime fim);
 }

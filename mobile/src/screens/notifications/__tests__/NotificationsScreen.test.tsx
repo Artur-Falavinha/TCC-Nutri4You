@@ -37,7 +37,7 @@ describe('NotificationsScreen', () => {
     ]);
     const tree = await renderScreen();
     expect(appointments).toHaveBeenCalledTimes(1);
-    expect(tree.root.findAllByType(Text).map((item) => item.props.children)).toContainEqual(['Consulta ', 'confirmada']);
+    expect(tree.root.findAllByType(Text).map((item) => item.props.children)).toContain('Consulta confirmada');
     const reminders = tree.root.findAllByProps({ accessibilityRole: 'button' }).filter((item) => item.props.accessibilityLabel?.includes('Abrir agenda'));
     expect(reminders.length).toBeGreaterThan(0);
     await act(async () => reminders[0].props.onPress());
@@ -80,6 +80,19 @@ describe('NotificationsScreen', () => {
     appointments.mockResolvedValue([]);
     const tree = await renderScreen();
     expect(tree.root.findAllByType(Text).map((item) => item.props.children)).toContain('Tudo em dia');
+    await act(async () => tree.unmount());
+  });
+
+  it('exibe a recusa de consulta como notificação acionável', async () => {
+    appointments.mockResolvedValue([
+      { id: 3, nutricionistaId: 2, nutricionistaNome: 'Nutri', dataHora: '2030-02-01T09:00:00', status: 'RECUSADA', versao: 2 }
+    ]);
+
+    const tree = await renderScreen();
+    const textos = tree.root.findAllByType(Text).map((item) => item.props.children);
+    expect(textos).toContain('Consulta recusada');
+    expect(textos).toContain('O nutricionista não pôde aceitar este horário. Escolha uma nova data na agenda.');
+    expect(textos).not.toContain('Tudo em dia');
     await act(async () => tree.unmount());
   });
 });

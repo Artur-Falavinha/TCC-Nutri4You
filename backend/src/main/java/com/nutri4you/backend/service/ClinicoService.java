@@ -339,7 +339,8 @@ public class ClinicoService {
     }
 
     private boolean naoCancelada(Consulta consulta) {
-        return !"CANCELADA".equalsIgnoreCase(consulta.getStatus());
+        return !("CANCELADA".equalsIgnoreCase(consulta.getStatus())
+                || "RECUSADA".equalsIgnoreCase(consulta.getStatus()));
     }
 
 

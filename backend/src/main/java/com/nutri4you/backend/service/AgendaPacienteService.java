@@ -85,12 +85,8 @@ public class AgendaPacienteService {
             throw new IllegalArgumentException("Informe a data desejada.");
         }
         Integer nutricionistaId = nutricionista.getId();
-        List<Consulta> ocupadas = consultas
-                .findByNutricionista_IdAndStatusNotAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
-                        nutricionistaId,
-                        "CANCELADA",
-                        data.atStartOfDay(),
-                        data.plusDays(1).atStartOfDay());
+        List<Consulta> ocupadas = consultas.listarOcupadas(
+                nutricionistaId, data.atStartOfDay(), data.plusDays(1).atStartOfDay());
         LocalDateTime agora = LocalDateTime.now(FUSO_HORARIO);
         LocalDateTime horarioAtual = consultaParaReagendar == null ? null : consultaParaReagendar.getDataHora();
         Integer ignorarConsultaId = consultaParaReagendar == null ? null : consultaParaReagendar.getId();
@@ -200,12 +196,9 @@ public class AgendaPacienteService {
     }
 
     private void exigirHorarioLivre(Integer nutricionistaId, LocalDateTime dataHora, Integer ignorarConsultaId) {
-        List<Consulta> proximas = consultas
-                .findByNutricionista_IdAndStatusNotAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
-                        nutricionistaId,
-                        "CANCELADA",
-                        dataHora.minusMinutes(DURACAO_MINUTOS),
-                        dataHora.plusMinutes(DURACAO_MINUTOS));
+        List<Consulta> proximas = consultas.listarOcupadas(
+                nutricionistaId, dataHora.minusMinutes(DURACAO_MINUTOS),
+                dataHora.plusMinutes(DURACAO_MINUTOS));
         if (possuiConflito(proximas, dataHora, ignorarConsultaId)) {
             throw new ConsultaConflitoException("O horário selecionado já está ocupado.");
         }

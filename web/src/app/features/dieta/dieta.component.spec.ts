@@ -5,6 +5,8 @@ import { of, Subject, throwError } from 'rxjs';
 import { Paciente } from '../../core/models/paciente.models';
 import { PacientesService } from '../../core/services/pacientes.service';
 import { AtendimentosService } from '../clinico/consultas/consultas.service';
+import { ClinicoService } from '../clinico/clinico.service';
+import { AnamneseService } from '../anamnese/anamnese.service';
 import { DietaComponent } from './dieta.component';
 import { DietaService } from './dieta.service';
 import { Alimento, ItemEdicao, Nutrientes, PaginaAlimentos, Plano } from './dieta.models';
@@ -18,7 +20,9 @@ describe('DietaComponent', () => {
   const paciente: Paciente = {
     id: 12,
     nome: 'Paciente de teste',
-    email: 'paciente@example.test'
+    email: 'paciente@example.test',
+    dataNascimento: '2000-01-01',
+    sexo: 'Masculino'
   };
   const alimento: Alimento = {
     id: 40,
@@ -122,6 +126,11 @@ describe('DietaComponent', () => {
         },
         { provide: PacientesService, useValue: pacientes },
         { provide: AtendimentosService, useValue: jasmine.createSpyObj('AtendimentosService', ['buscar']) },
+        { provide: ClinicoService, useValue: { historico: () => of({ consultas: [], avaliacoes: [] }) } },
+        { provide: AnamneseService, useValue: { get: () => of({ paciente, versao: 1, status: 'FINALIZADA',
+            respostas: { weight: 72.5, height: 1.75, physicalActivity: 'Sim', weeklyFrequency: '3 vezes por semana', intensity: 'Moderada' },
+            rascunho: null, finalizadaEm: '2026-01-01T12:00:00Z', atualizadaEm: '2026-01-01T12:00:00Z' })
+        } },
         { provide: DietaService, useValue: dieta }
       ]
     }).compileComponents();
@@ -425,12 +434,51 @@ describe('DietaComponent', () => {
 
   it('exige confirmação para excluir refeições', () => {
     component.abrirNovoRascunho(); component.adicionarRefeicao();
-    spyOn(window, 'confirm').and.returnValue(false);
     component.removerRefeicao(component.form.refeicoes[0]);
     expect(component.form.refeicoes.length).toBe(1);
-    (window.confirm as jasmine.Spy).and.returnValue(true);
+    component.cancelarConfirmacaoDestrutiva();
+    expect(component.form.refeicoes.length).toBe(1);
     component.removerRefeicao(component.form.refeicoes[0]);
+    component.confirmarAcaoDestrutiva();
     expect(component.form.refeicoes.length).toBe(0);
+  });
+
+  it('completa e mantém inteligente o terceiro percentual de macronutrientes', () => {
+    component.abrirNovoRascunho();
+    component.atualizarPercentual('percentualProteinas', 40);
+    component.atualizarPercentual('percentualCarboidratos', 40);
+    expect(component.form.metas.percentualGorduras).toBe(20);
+
+    component.atualizarPercentual('percentualProteinas', 35);
+    expect(component.form.metas.percentualGorduras).toBe(25);
+  });
+
+  it('calcula metas em g por kg e usa a gordura para completar as calorias', () => {
+    component.abrirNovoRascunho();
+    component.form.metas.kcal = 2000;
+    component.alterarMetodoMacros('G_POR_KG');
+    component.form.metas.proteinasGKg = 1.6;
+    component.form.metas.carboidratosGKg = 3;
+
+    expect(component.referenciaEnergetica?.peso).toBe(72.5);
+    expect(component.referenciaEnergetica?.faSugerido).toBe(1.55);
+    expect(component.metasCalculadas?.proteinas).toBeCloseTo(116);
+    expect(component.metasCalculadas?.carboidratos).toBeCloseTo(217.5);
+    expect(component.percentuaisCalculados?.proteinas).toBe(23.2);
+    const percentuais = component.percentuaisCalculados!;
+    expect(percentuais.proteinas + percentuais.carboidratos + percentuais.gorduras).toBe(100);
+  });
+
+  it('usa o modal visual para confirmar a saída com alterações', () => {
+    component.abrirNovoRascunho();
+    component.form.titulo = 'Alterado';
+    let resposta: boolean | undefined;
+    (component.podeSair() as import('rxjs').Observable<boolean>).subscribe(valor => resposta = valor);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-paciente-dialog [role="dialog"]')).not.toBeNull();
+    component.confirmarDescarte();
+    expect(resposta).toBeTrue();
   });
 
 });

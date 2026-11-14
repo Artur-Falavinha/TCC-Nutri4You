@@ -20,7 +20,7 @@ app-form-alert.form-alert-host--visible { display: block; margin-bottom: 16px; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 32px; }
 .subtitle { margin-top: 6px; color: var(--color-text-secondary); font-size: 14px; }
 .actions { display: flex; gap: 12px; flex-shrink: 0; }
-.action { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 44px; padding: 10px 20px; border: 1px solid transparent; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; text-decoration: none; text-align: center; }
+.action { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 44px; padding: 10px 20px; border: 1px solid transparent; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; text-decoration: none; text-align: center; cursor: pointer; }
 .action i { font-size: 20px; }
 .primary { background: var(--color-brand-primary); color: white; }
 .primary:hover { filter: brightness(.9); }
@@ -82,4 +82,4 @@ textarea::placeholder { color: var(--color-text-muted); }
 .consulta-row { flex-wrap: wrap; }
 .consulta-row .actions { flex-wrap: wrap; align-items: center; }
 .consulta-row .actions small { flex-basis: 100%; max-width: 360px; line-height: 1.5; }
-.action:disabled { opacity: .5; cursor: default; filter: none; }
+.action:disabled { opacity: .5; cursor: not-allowed; filter: none; }

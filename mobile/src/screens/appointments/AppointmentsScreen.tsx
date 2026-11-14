@@ -89,7 +89,7 @@ export function AppointmentsScreen({ navigation }: Props) {
   );
 
   const appointmentDates = useMemo(
-    () => new Set(appointments.filter((item) => item.status !== 'CANCELADA')
+    () => new Set(appointments.filter((item) => !['CANCELADA', 'RECUSADA'].includes(item.status))
       .map((item) => dateKeyFromLocalDateTime(item.dataHora))),
     [appointments]
   );

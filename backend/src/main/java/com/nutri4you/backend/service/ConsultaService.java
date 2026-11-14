@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @Service
 public class ConsultaService {
     private static final Set<String> STATUS = Set.of(
-            "AGUARDANDO_CONFIRMACAO", "CONFIRMADA", "REALIZADA", "CANCELADA");
+            "AGUARDANDO_CONFIRMACAO", "CONFIRMADA", "REALIZADA", "CANCELADA", "RECUSADA");
     private final JanelaConsulta janela;
     private final com.nutri4you.backend.repository.NutricionistaRepository nutricionistas;
     private final GestaoPacienteService pacientes;
@@ -161,7 +161,7 @@ public class ConsultaService {
             exigirSemConflito(consulta);
             consulta.atualizar(consulta.getDataHora(), "CONFIRMADA", consulta.getObservacao());
         } else {
-            consulta.cancelar();
+            consulta.recusar();
         }
         consultas.flush();
     }
@@ -176,8 +176,8 @@ public class ConsultaService {
     }
 
     private void exigirSemConflito(Consulta c) {
-        var proximas = consultas.findByNutricionista_IdAndStatusNotAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
-                c.getNutricionista().getId(), "CANCELADA", c.getDataHora().minusMinutes(45), c.getDataHora().plusMinutes(45));
+        var proximas = consultas.listarOcupadas(
+                c.getNutricionista().getId(), c.getDataHora().minusMinutes(45), c.getDataHora().plusMinutes(45));
         if (proximas.stream().anyMatch(outra -> !outra.getId().equals(c.getId())
                 && outra.getDataHora().plusMinutes(45).isAfter(c.getDataHora()))) {
             throw new ConsultaConflitoException("O horário selecionado já está ocupado.");
@@ -201,7 +201,7 @@ public class ConsultaService {
         }
         if (!("CONFIRMADA".equals(request.status()) || "REALIZADA".equals(request.status()))
                 || ("REALIZADA".equals(consulta.getStatus()) && !"REALIZADA".equals(request.status()))
-                || "CANCELADA".equals(consulta.getStatus())) {
+                || "CANCELADA".equals(consulta.getStatus()) || "RECUSADA".equals(consulta.getStatus())) {
             throw new IllegalArgumentException("Transição de status inválida. Use as ações da agenda.");
         }
         exigirVersao(consulta, request.versao());
@@ -268,7 +268,7 @@ public class ConsultaService {
     }
 
     private void validarHorarioLivre(Integer nutricionistaId, ConsultaRequest request, Integer ignorarConsultaId) {
-        if (!"CANCELADA".equals(request.status())) {
+        if (!("CANCELADA".equals(request.status()) || "RECUSADA".equals(request.status()))) {
             horarios.exigirHorarioLivre(nutricionistaId, request.dataHora(), ignorarConsultaId);
         }
     }

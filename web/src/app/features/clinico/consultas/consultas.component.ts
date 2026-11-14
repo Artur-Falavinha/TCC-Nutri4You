@@ -15,7 +15,7 @@ import { PacienteDialogComponent } from '../../pacientes/components/paciente-dia
 import { AnamneseField } from '../../anamnese/anamnese.models';
 import { AnamneseService } from '../../anamnese/anamnese.service';
 import { DietaService } from '../../dieta/dieta.service';
-import { CAMPOS_MEDIDAS, ConsultaForm, STATUS_CONSULTA, decimal } from './consulta-form';
+import { CAMPOS_MEDIDAS, CampoMedida, ConsultaForm, STATUS_CONSULTA, decimal } from './consulta-form';
 import { AtendimentoClinico, AtendimentosService, Consulta, ConsultasService, PaginaConsultas } from './consultas.service';
 import { criarLinkGoogleAgenda } from '../../agenda/google-calendar-link';
 
@@ -147,6 +147,17 @@ export class ConsultasComponent implements OnInit {
     }
 
     this.salvarConsulta();
+  }
+
+  atualizarMedida(campo: CampoMedida, valor: string): void {
+    this.form.atualizarMedida(campo, valor);
+    delete this.errors[campo];
+    const pregas = CAMPOS_MEDIDAS.slice(7, 14).map(item => item.key);
+    if (pregas.every(chave => this.form.medidas[chave].trim() !== '')) {
+      for (const chave of pregas) {
+        if (this.errors[chave]?.includes('sete pregas')) delete this.errors[chave];
+      }
+    }
   }
 
   confirmarConclusaoComRascunho(): void {
