@@ -5,7 +5,16 @@
     </header>
 
     <div class="dash-main">
-      @if (erro) { <p class="alert" role="alert">{{ erro }}</p> }
+      @if (solicitacoesPendentes > 0) {
+        <a class="pending-alert" routerLink="/notificacoes" data-testid="solicitacoes-pendentes">
+          <i class="ph ph-calendar-plus" aria-hidden="true"></i>
+          <span class="pending-alert__text">
+            <strong>{{ solicitacoesPendentes === 1 ? '1 solicitação de consulta aguardando sua confirmação' : solicitacoesPendentes + ' solicitações de consulta aguardando sua confirmação' }}</strong>
+            <small>Aceite ou recuse para que o paciente seja avisado.</small>
+          </span>
+          <span class="pending-alert__cta">Ver notificações <i class="ph ph-arrow-right" aria-hidden="true"></i></span>
+        </a>
+      }      @if (erro) { <p class="alert" role="alert">{{ erro }}</p> }
       @else if (carregando) { <p role="status">Carregando...</p> }
       @else if (agenda) {
         <div class="grade">

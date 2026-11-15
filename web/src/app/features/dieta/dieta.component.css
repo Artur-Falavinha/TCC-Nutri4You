@@ -49,6 +49,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 dt { margin-bottom: 5px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
 dd { overflow-wrap: anywhere; }
 .nutrient-grid dd, .meal-total dd { font-size: 15px; font-weight: 700; }
+.goal-list { display: grid; gap: 0; max-width: 520px; }
+.goal-row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--color-border-default); }
+.goal-row:last-child { border-bottom: 0; }
+.goal-row dt { margin: 0; font-size: 14px; font-weight: 600; text-transform: none; color: var(--color-text-primary); }
+.goal-row--energy dt { font-weight: 700; }
+.goal-main { font-size: 18px; font-weight: 700; color: var(--color-text-primary); white-space: nowrap; }
+.goal-secondary { margin-left: 6px; font-size: 13px; font-weight: 500; color: var(--color-text-secondary); }
+.goal-preview { margin-top: 18px; padding: 14px 18px; border: 1px solid var(--color-border-default); border-radius: 12px; background: var(--color-surface-card); }
+.goal-preview h4 { margin-bottom: 4px; }
 .guidance { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--color-border-default); }
 .guidance h4 { margin-bottom: 7px; }
 .guidance p { line-height: 1.55; white-space: pre-wrap; }

@@ -469,6 +469,27 @@ describe('DietaComponent', () => {
     expect(percentuais.proteinas + percentuais.carboidratos + percentuais.gorduras).toBe(100);
   });
 
+  it('exibe as metas diárias com o percentual em destaque e as gramas como valor secundário', () => {
+    const resumo = component.resumoMetas({ kcal: 1700, proteinas: 213, carboidratos: 128, gorduras: 38 }, { proteinas: 50, carboidratos: 30, gorduras: 20 });
+    expect(resumo.energia).toBe(1700);
+    expect(resumo.macros.map(macro => [macro.nome, macro.percentual, macro.gramas]))
+      .toEqual([['Carboidratos', 30, 128], ['Proteínas', 50, 213], ['Gorduras', 20, 38]]);
+
+    component.abrirNovoRascunho();
+    component.form.metas.kcal = 1700;
+    component.atualizarPercentual('percentualProteinas', 50);
+    component.atualizarPercentual('percentualCarboidratos', 30);
+    fixture.detectChanges();
+
+    const bloco = fixture.nativeElement.querySelector('[data-testid="metas-diarias-editor"]') as HTMLElement;
+    const linhas = Array.from(bloco.querySelectorAll('.goal-row')) as HTMLElement[];
+    expect(linhas[0].textContent).toContain('Calorias');
+    expect(linhas[0].querySelector('.goal-main')?.textContent).toContain('1.700,00 kcal');
+    const proteinas = linhas.find(linha => linha.textContent?.includes('Proteínas'))!;
+    expect(proteinas.querySelector('.goal-main')?.textContent?.trim()).toBe('50,00%');
+    expect(proteinas.querySelector('.goal-secondary')?.textContent).toContain('212,50 g');
+  });
+
   it('usa o modal visual para confirmar a saída com alterações', () => {
     component.abrirNovoRascunho();
     component.form.titulo = 'Alterado';

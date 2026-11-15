@@ -116,15 +116,17 @@
       }
     </section>
 
-    @if (plano.metas) {
+    @if (plano.metas; as metas) {
       <section class="summary-card" aria-labelledby="goals-title">
         <h3 id="goals-title">Metas diárias <span tabindex="0" title="Uma meta comum para cada dia da semana. Os totais previstos não representam consumo registrado.">ⓘ</span></h3>
-        <dl class="nutrient-grid">
-          <div><dt>Energia</dt><dd>{{ formatarNutriente(plano.metas.kcal) }} kcal</dd></div>
-          <div><dt>Proteínas</dt><dd>{{ formatarNutriente(plano.metas.proteinas) }} g @if (plano.percentuais) { <small>({{ formatarNutriente(plano.percentuais.proteinas) }}%)</small> }</dd></div>
-          <div><dt>Carboidratos</dt><dd>{{ formatarNutriente(plano.metas.carboidratos) }} g @if (plano.percentuais) { <small>({{ formatarNutriente(plano.percentuais.carboidratos) }}%)</small> }</dd></div>
-          <div><dt>Gorduras</dt><dd>{{ formatarNutriente(plano.metas.gorduras) }} g @if (plano.percentuais) { <small>({{ formatarNutriente(plano.percentuais.gorduras) }}%)</small> }</dd></div>
-        </dl>
+        @if (resumoMetas(metas, plano.percentuais); as resumo) {
+          <dl class="goal-list" data-testid="metas-diarias">
+            <div class="goal-row goal-row--energy"><dt>Calorias</dt><dd class="goal-main">{{ formatarNutriente(resumo.energia) }} kcal</dd></div>
+            @for (macro of resumo.macros; track macro.nome) {
+              <div class="goal-row"><dt>{{ macro.nome }} <small class="goal-secondary">{{ formatarNutriente(macro.gramas) }} g</small></dt><dd class="goal-main">{{ formatarNutriente(macro.percentual) }}%</dd></div>
+            }
+          </dl>
+        }
       </section>
     }
 
@@ -264,28 +266,26 @@
           } @else {
             <p class="reference-unavailable">TMB e GET ficarão disponíveis quando peso, altura, sexo e data de nascimento estiverem salvos.</p>
           }
-          <fieldset class="macro-method">
-            <legend>Forma de definir macronutrientes</legend>
-            <label><input type="radio" name="metodo-macros" value="PERCENTUAL" [ngModel]="form.metas.metodo" (ngModelChange)="alterarMetodoMacros($event)" /> Percentual energético</label>
-            <label><input type="radio" name="metodo-macros" value="G_POR_KG" [ngModel]="form.metas.metodo" (ngModelChange)="alterarMetodoMacros($event)" [disabled]="!referenciaEnergetica" /> Gramas por kg corporal</label>
-          </fieldset>
-          <p class="section-help">No modo percentual, o terceiro macro é completado automaticamente quando os outros dois são informados. Em g/kg, proteínas e carboidratos usam o peso atual e a gordura completa a energia restante.</p>
+          <p class="section-help">O terceiro macronutriente é completado automaticamente quando os outros dois são informados, e as gramas são calculadas abaixo.</p>
           @if (errors['metas']) { <p class="field-error" role="alert">{{ errors['metas'] }}</p> }
           <div class="nutrient-inputs">
             <label class="field" for="meta-kcal"><span>Energia (kcal)</span><input id="meta-kcal" name="meta-kcal" type="number" min="0.01" max="999999.99" step="0.01" inputmode="decimal" [(ngModel)]="form.metas.kcal" [attr.aria-invalid]="!!errors['meta-kcal']" />@if (errors['meta-kcal']) { <span class="field-error" role="alert">{{ errors['meta-kcal'] }}</span> }</label>
-            @if (form.metas.metodo === 'PERCENTUAL') {
-              <label class="field" for="meta-percentual-proteinas"><span>Proteínas (%)</span><input id="meta-percentual-proteinas" name="meta-percentual-proteinas" type="number" min="0" max="100" step="0.01" inputmode="decimal" [ngModel]="form.metas.percentualProteinas" (ngModelChange)="atualizarPercentual('percentualProteinas', $event)" [attr.aria-invalid]="!!errors['meta-percentualProteinas']" />@if (errors['meta-percentualProteinas']) { <span class="field-error" role="alert">{{ errors['meta-percentualProteinas'] }}</span> }</label>
-              <label class="field" for="meta-percentual-carboidratos"><span>Carboidratos (%)</span><input id="meta-percentual-carboidratos" name="meta-percentual-carboidratos" type="number" min="0" max="100" step="0.01" inputmode="decimal" [ngModel]="form.metas.percentualCarboidratos" (ngModelChange)="atualizarPercentual('percentualCarboidratos', $event)" [attr.aria-invalid]="!!errors['meta-percentualCarboidratos']" />@if (errors['meta-percentualCarboidratos']) { <span class="field-error" role="alert">{{ errors['meta-percentualCarboidratos'] }}</span> }</label>
-              <label class="field" for="meta-percentual-gorduras"><span>Gorduras (%)</span><input id="meta-percentual-gorduras" name="meta-percentual-gorduras" type="number" min="0" max="100" step="0.01" inputmode="decimal" [ngModel]="form.metas.percentualGorduras" (ngModelChange)="atualizarPercentual('percentualGorduras', $event)" [attr.aria-invalid]="!!errors['meta-percentualGorduras']" />@if (errors['meta-percentualGorduras']) { <span class="field-error" role="alert">{{ errors['meta-percentualGorduras'] }}</span> }</label>
-            } @else {
-              <label class="field" for="meta-proteinas-gkg"><span>Proteínas (g/kg)</span><input id="meta-proteinas-gkg" name="meta-proteinas-gkg" type="number" min="0" max="20" step="0.01" inputmode="decimal" [(ngModel)]="form.metas.proteinasGKg" [attr.aria-invalid]="!!errors['meta-proteinasGKg']" />@if (errors['meta-proteinasGKg']) { <span class="field-error" role="alert">{{ errors['meta-proteinasGKg'] }}</span> }</label>
-              <label class="field" for="meta-carboidratos-gkg"><span>Carboidratos (g/kg)</span><input id="meta-carboidratos-gkg" name="meta-carboidratos-gkg" type="number" min="0" max="20" step="0.01" inputmode="decimal" [(ngModel)]="form.metas.carboidratosGKg" [attr.aria-invalid]="!!errors['meta-carboidratosGKg']" />@if (errors['meta-carboidratosGKg']) { <span class="field-error" role="alert">{{ errors['meta-carboidratosGKg'] }}</span> }</label>
-              <div class="calculated-fat"><span>Gorduras calculadas</span><strong>{{ metasCalculadas ? formatarNutriente(metasCalculadas.gorduras) + ' g' : '—' }}</strong><small>Energia restante após proteínas e carboidratos.</small></div>
-            }
+            <label class="field" for="meta-percentual-proteinas"><span>Proteínas (%)</span><input id="meta-percentual-proteinas" name="meta-percentual-proteinas" type="number" min="0" max="100" step="0.01" inputmode="decimal" [ngModel]="form.metas.percentualProteinas" (ngModelChange)="atualizarPercentual('percentualProteinas', $event)" [attr.aria-invalid]="!!errors['meta-percentualProteinas']" />@if (errors['meta-percentualProteinas']) { <span class="field-error" role="alert">{{ errors['meta-percentualProteinas'] }}</span> }</label>
+            <label class="field" for="meta-percentual-carboidratos"><span>Carboidratos (%)</span><input id="meta-percentual-carboidratos" name="meta-percentual-carboidratos" type="number" min="0" max="100" step="0.01" inputmode="decimal" [ngModel]="form.metas.percentualCarboidratos" (ngModelChange)="atualizarPercentual('percentualCarboidratos', $event)" [attr.aria-invalid]="!!errors['meta-percentualCarboidratos']" />@if (errors['meta-percentualCarboidratos']) { <span class="field-error" role="alert">{{ errors['meta-percentualCarboidratos'] }}</span> }</label>
+            <label class="field" for="meta-percentual-gorduras"><span>Gorduras (%)</span><input id="meta-percentual-gorduras" name="meta-percentual-gorduras" type="number" min="0" max="100" step="0.01" inputmode="decimal" [ngModel]="form.metas.percentualGorduras" (ngModelChange)="atualizarPercentual('percentualGorduras', $event)" [attr.aria-invalid]="!!errors['meta-percentualGorduras']" />@if (errors['meta-percentualGorduras']) { <span class="field-error" role="alert">{{ errors['meta-percentualGorduras'] }}</span> }</label>
           </div>
           @if (metasCalculadas; as calculadas) {
-            <p class="section-help">Cálculo automático: {{ formatarNutriente(calculadas.proteinas) }} g de proteínas · {{ formatarNutriente(calculadas.carboidratos) }} g de carboidratos · {{ formatarNutriente(calculadas.gorduras) }} g de gorduras.</p>
-            @if (percentuaisCalculados; as percentuais) { <p class="macro-total">Distribuição: {{ formatarNutriente(percentuais.proteinas) }}% P · {{ formatarNutriente(percentuais.carboidratos) }}% C · {{ formatarNutriente(percentuais.gorduras) }}% G = 100%</p> }
+            <div class="goal-preview" aria-label="Metas diárias calculadas">
+              <h4>Metas diárias</h4>
+              @if (resumoMetas(calculadas, percentuaisCalculados); as resumo) {
+                <dl class="goal-list" data-testid="metas-diarias-editor">
+                  <div class="goal-row goal-row--energy"><dt>Calorias</dt><dd class="goal-main">{{ formatarNutriente(resumo.energia) }} kcal</dd></div>
+                  @for (macro of resumo.macros; track macro.nome) {
+                    <div class="goal-row"><dt>{{ macro.nome }} <small class="goal-secondary">{{ formatarNutriente(macro.gramas) }} g</small></dt><dd class="goal-main">{{ formatarNutriente(macro.percentual) }}%</dd></div>
+                  }
+                </dl>
+              }
+            </div>
           }
         </section>
 

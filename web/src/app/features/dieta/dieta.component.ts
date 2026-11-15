@@ -16,10 +16,12 @@ import { BuscaAlimentosComponent } from './busca-alimentos.component';
 import {
   Alimento,
   CampoNumericoEdicao,
+  DistribuicaoMacros,
   ItemEdicao,
   ItemListaCompras,
   ListaCompras,
   MetasEdicao,
+  MetasNutricionais,
   Nutrientes,
   PaginaAlimentos,
   Plano,
@@ -744,6 +746,23 @@ export class DietaComponent implements OnInit {
       substitutos: []
     };
     return this.nutrientesPrevistos(item);
+  }
+
+  /** Metas diárias com o percentual energético como valor principal e as gramas como apoio. */
+  resumoMetas(metas: MetasNutricionais, percentuais?: DistribuicaoMacros | null): {
+    energia: number;
+    macros: { nome: string; percentual: number; gramas: number }[];
+  } {
+    const percentual = (gramas: number, fator: number, informado?: number) =>
+      informado ?? this.percentualDaMeta(gramas, metas.kcal, fator);
+    return {
+      energia: metas.kcal,
+      macros: [
+        { nome: 'Carboidratos', gramas: metas.carboidratos, percentual: percentual(metas.carboidratos, 4, percentuais?.carboidratos) },
+        { nome: 'Proteínas', gramas: metas.proteinas, percentual: percentual(metas.proteinas, 4, percentuais?.proteinas) },
+        { nome: 'Gorduras', gramas: metas.gorduras, percentual: percentual(metas.gorduras, 9, percentuais?.gorduras) }
+      ]
+    };
   }
 
   formatarNutriente(valor: number | null | undefined): string {
