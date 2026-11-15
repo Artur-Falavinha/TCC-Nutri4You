@@ -110,8 +110,8 @@ export function RootNavigator() {
   }, []);
 
   useEffect(() => {
-    const handleUrl = (url: string | null) => {
-      const token = extractResetTokenFromUrl(url);
+    const handleUrl = (url: string | null | undefined) => {
+      const token = extractResetTokenFromUrl(url ?? null);
       if (!token || !isValidUuid(token)) {
         return;
       }

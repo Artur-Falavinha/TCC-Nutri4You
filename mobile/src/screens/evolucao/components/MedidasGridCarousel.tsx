@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { ComponentRef, useRef, useState } from 'react';
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AvaliacaoHistorico, calcularVariacao } from '../../../core/evolucao/evolucao.service';
 
@@ -19,7 +19,7 @@ export function MedidasGridCarousel({ avaliacoes }: Props) {
   const [containerWidth, setContainerWidth] = useState(
     Dimensions.get('window').width - 32
   );
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
 
   const atual = avaliacoes[0];
   const anterior = avaliacoes.length > 1 ? avaliacoes[1] : undefined;
