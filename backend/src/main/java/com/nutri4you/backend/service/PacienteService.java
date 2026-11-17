@@ -17,18 +17,20 @@ public class PacienteService {
     private final PasswordEncoder passwordEncoder;
     private final EmailNotificationService emailNotificationService;
     private final EmailProperties emailProperties;
+    private final PrivacidadeService privacidade;
 
     public PacienteService(
             PacienteRepository pacienteRepository,
             NutricionistaRepository nutricionistaRepository,
             PasswordEncoder passwordEncoder,
             EmailNotificationService emailNotificationService,
-            EmailProperties emailProperties) {
+            EmailProperties emailProperties, PrivacidadeService privacidade) {
         this.pacienteRepository = pacienteRepository;
         this.nutricionistaRepository = nutricionistaRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailNotificationService = emailNotificationService;
         this.emailProperties = emailProperties;
+        this.privacidade = privacidade;
     }
 
     @Transactional
@@ -38,6 +40,7 @@ public class PacienteService {
         }
 
         AuthEmailService.validarSenha(dto.senha());
+        PrivacidadeService.exigirVersao(dto.versaoTermos());
 
         String email = dto.email().trim().toLowerCase();
         if (pacienteRepository.existsByEmail(email) || nutricionistaRepository.existsByEmail(email)) {
@@ -63,6 +66,7 @@ public class PacienteService {
         }
 
         Paciente salvo = pacienteRepository.save(novoPaciente);
+        privacidade.aceitar(salvo, dto.versaoTermos());
         if (!emailProperties.isAutoConfirm()) {
             emailNotificationService.agendarConfirmacaoCadastro(salvo);
         }

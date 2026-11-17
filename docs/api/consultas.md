@@ -13,7 +13,7 @@ Base: `/api/v1/gestao-pacientes/{pacienteId}/consultas`.
 | GET | Base + `?pagina=0` | Pagina de 10 consultas, data e ID decrescentes |
 | POST | Base | Criação livre desativada; retorna 400 orientando agendar |
 | POST | Base + `/{id}/confirmacao` | Aprova solicitação futura pendente; exige `versao` |
-| POST | Base + `/{id}/inicio` | Inicia confirmada dentro da janela; exige `versao` |
+| POST | Base + `/{id}/inicio` | Inicia consulta confirmada; exige `versao` |
 | POST | Base + `/{id}/cancelamento` | Cancela pendente/confirmada não iniciada; exige `versao` |
 | GET | Base + `/{id}` | Consulta e avaliacao vinculada |
 | PUT | Base + `/{id}` | Atualiza o mesmo registro; exige `versao` |
@@ -63,7 +63,7 @@ clinica (`TIMESTAMP WITHOUT TIME ZONE`), interpretado em America/Sao_Paulo.
 - Data/hora e status obrigatorios; datas entre 1900 e 2100.
 - Status: `AGUARDANDO_CONFIRMACAO`, `CONFIRMADA`, `REALIZADA`, `CANCELADA`.
   A tela apresenta `REALIZADA` como **Concluida**.
-- Uma consulta ainda não iniciada não pode ser concluída no futuro. Depois de iniciada dentro da janela permitida, ela pode permanecer em andamento e ser salva ou concluída a qualquer momento; conclusão exige peso e altura.
+- Uma consulta ainda não iniciada não pode ser concluída no futuro. Depois de iniciada, ela pode permanecer em andamento e ser salva ou concluída a qualquer momento; conclusão exige peso e altura.
 - Ações de agenda não exigem avaliação. Edição de atendimento exige início prévio e não altera horário agendado.
   Quando qualquer medida for enviada, peso e altura sao obrigatorios.
 - Peso: 1 a 500 kg; altura: 0,30 a 2,70 m; gordura: 0 a 100%; massa muscular:
@@ -107,6 +107,6 @@ e restrito ao checksum conhecido; nao apagar volumes nem recalcular horarios.
 
 ## Início do atendimento
 
-Janela de início: 15 minutos antes até 15 minutos depois, inclusive. Configurável por `CONSULTA_INICIO_MINUTOS_ANTES` e `CONSULTA_INICIO_MINUTOS_DEPOIS` (0 a 1440). O servidor retorna `iniciadaEm`, `inicioPermitidoDe`, `inicioPermitidoAte` (ISO com offset) e `podeIniciar`. A web atualiza o botão pelos limites retornados; a API revalida no momento da ação. Essa janela vale somente para iniciar: uma consulta iniciada não expira e pode durar o tempo necessário. Não se pode iniciar duas vezes ou sem confirmação.
+O profissional responsável pode iniciar uma consulta confirmada a qualquer momento. O servidor retorna `iniciadaEm` e `podeIniciar` e valida a versão e o status no momento da ação. Uma consulta iniciada pode durar o tempo necessário e não pode ser iniciada novamente. Uma avulsa confirmada que não ocorreu deve ser cancelada pelo profissional para liberar uma nova solicitação sem vínculo.
 
 V10 acrescenta o início sem fabricar dados para consultas legadas. Consultas históricas realizadas continuam editáveis; novos atendimentos exigem início. A edição aceita CONFIRMADA ou REALIZADA, sem reabrir uma realizada. Aprovação/cancelamento usam ações próprias. A rota web `/consultas/nova` redireciona à listagem. Novos atendimentos devem partir de solicitação aprovada.

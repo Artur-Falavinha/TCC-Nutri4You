@@ -4,10 +4,11 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { Alimento, PaginaAlimentos } from './dieta.models';
+import { UiSelectComponent } from '../../shared/components/ui-select/ui-select.component';
 
 @Component({
   selector: 'app-busca-alimentos',
-  imports: [FormsModule],
+  imports: [FormsModule, UiSelectComponent],
   templateUrl: './busca-alimentos.component.html',
   styleUrl: './busca-alimentos.component.css'
 })
@@ -32,6 +33,11 @@ export class BuscaAlimentosComponent {
 
   private readonly alteracoesBusca = new Subject<void>();
 
+  get opcoesCategorias() {
+    return [{ label: 'Todas as categorias', value: '__todas__' },
+      ...this.categorias.map(categoria => ({ label: categoria, value: categoria }))];
+  }
+
   constructor() {
     this.alteracoesBusca.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => this.buscar.emit(0));
   }
@@ -42,7 +48,7 @@ export class BuscaAlimentosComponent {
   }
 
   alterarCategoria(valor: string): void {
-    this.categoriaSelecionadaChange.emit(valor);
+    this.categoriaSelecionadaChange.emit(valor === '__todas__' ? '' : valor);
     this.buscar.emit(0);
   }
 

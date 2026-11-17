@@ -1,13 +1,15 @@
 import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { finalize, interval } from 'rxjs';
+import { finalize } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import { AtendimentoClinico, AtendimentosService } from '../clinico/consultas/consultas.service';
 import { ApiService } from '../../core/services/api.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
 import { criarLinkGoogleAgenda } from './google-calendar-link';
+import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog/paciente-dialog.component';
+import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
 
 interface PreferenciaAgenda {
   aceitaConsultasAvulsas: boolean;
@@ -25,7 +27,7 @@ const SOLICITACOES = '/agenda-nutricionista/solicitacoes-avulsas';
 
 @Component({
   selector: 'app-consultas-avulsas',
-  imports: [DatePipe, FormAlertComponent, RouterLink],
+  imports: [DatePipe, FormAlertComponent, RouterLink, PacienteDialogComponent, UiButtonComponent],
   templateUrl: './consultas-avulsas.component.html',
   styleUrl: './consultas-avulsas.component.css'
 })
@@ -51,11 +53,9 @@ export class ConsultasAvulsasComponent implements OnInit {
   atendimentoParaCancelar: number | null = null;
   cancelando = false;
   iniciando = false;
-  agora = Date.now();
 
   ngOnInit(): void {
     this.carregarAtendimentos();
-    interval(1000).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => { this.agora = Date.now(); });
     this.carregarPreferencia();
     this.carregarSolicitacoes();
   }
@@ -71,8 +71,7 @@ export class ConsultasAvulsasComponent implements OnInit {
   }
 
   podeIniciar(item: AtendimentoClinico): boolean {
-    return item.status === 'CONFIRMADA' && !item.iniciadaEm && !!item.janelaInicio && !!item.janelaFim
-      && this.agora >= Date.parse(item.janelaInicio) && this.agora <= Date.parse(item.janelaFim);
+    return item.status === 'CONFIRMADA' && !item.iniciadaEm;
   }
 
   iniciar(item: AtendimentoClinico): void {
@@ -88,11 +87,7 @@ export class ConsultasAvulsasComponent implements OnInit {
   }
 
   podeCancelar(item: AtendimentoClinico): boolean {
-    const agoraClinica = new Intl.DateTimeFormat('sv-SE', {
-      timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
-    }).format(new Date(this.agora)).replace(' ', 'T');
-    return item.status === 'CONFIRMADA' && !item.iniciadaEm && item.dataHora.slice(0, 19) > agoraClinica;
+    return item.status === 'CONFIRMADA' && !item.iniciadaEm;
   }
 
   cancelarAtendimento(item: AtendimentoClinico): void {

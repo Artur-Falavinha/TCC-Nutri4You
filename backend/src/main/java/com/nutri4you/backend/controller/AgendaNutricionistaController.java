@@ -10,6 +10,7 @@ import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.service.ConsultaService;
 import com.nutri4you.backend.service.HorarioAtendimentoService;
+import com.nutri4you.backend.service.SolicitacaoVinculoService;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,12 +25,27 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/agenda-nutricionista")
 public class AgendaNutricionistaController {
+    private final SolicitacaoVinculoService solicitacoesVinculo;
+
+    @GetMapping("/notificacoes/vinculos")
+    public ApiResponse<List<SolicitacaoVinculoService.PedidoRecebido>> listarVinculos(Authentication auth) {
+        return ApiResponse.ok(solicitacoesVinculo.listarRecebidas(nutricionista(auth)), "Solicitações de vínculo carregadas.");
+    }
+
+    @PostMapping("/notificacoes/vinculos/{id}/decisao")
+    public ApiResponse<Void> decidirVinculo(Authentication auth, @PathVariable Integer id,
+            @RequestBody SolicitacaoVinculoController.DecisaoVinculoRequest decisao) {
+        solicitacoesVinculo.decidirComoNutricionista(nutricionista(auth), id, decisao.versao(), decisao.aceitar());
+        return ApiResponse.ok(null, "Decisão sobre vínculo registrada.");
+    }
     private final HorarioAtendimentoService horarios;
     private final ConsultaService consultas;
 
-    public AgendaNutricionistaController(HorarioAtendimentoService horarios, ConsultaService consultas) {
+    public AgendaNutricionistaController(HorarioAtendimentoService horarios, ConsultaService consultas,
+                                          SolicitacaoVinculoService solicitacoesVinculo) {
         this.horarios = horarios;
         this.consultas = consultas;
+        this.solicitacoesVinculo = solicitacoesVinculo;
     }
 
     @GetMapping("/horarios")

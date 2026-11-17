@@ -15,7 +15,6 @@ import com.nutri4you.backend.repository.PerguntaAnamneseRepository;
 import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import com.nutri4you.backend.repository.RespostaAnamneseRepository;
 import com.nutri4you.backend.security.TokenService;
-import com.nutri4you.backend.service.JanelaConsulta;
 import com.nutri4you.backend.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 
@@ -55,7 +55,7 @@ class AtendimentoClinicoControllerTest {
     @Autowired RespostaAnamneseRepository respostas;
     @Autowired PasswordEncoder encoder;
     @Autowired TokenService tokens;
-    @Autowired JanelaConsulta janela;
+    @Autowired Clock clock;
 
     private Nutricionista nutricionista;
     private Nutricionista outraNutricionista;
@@ -128,31 +128,41 @@ class AtendimentoClinicoControllerTest {
     }
 
     @Test
-    void restringeAcessoAoResponsavelEExcluiCanceladasEFaltas() throws Exception {
+    void restringeAcessoAoResponsavelEPermiteIniciarAvulsasConfirmadasAntesOuDepois() throws Exception {
         Consulta futura = consulta(nutricionista, agora().plusHours(1), "CONFIRMADA", true);
         Consulta cancelada = consulta(nutricionista, agora().plusHours(2), "CANCELADA", true);
-        Consulta falta = consulta(nutricionista, agora().minusHours(1), "CONFIRMADA", true);
-        Consulta realizadaSemInicio = consulta(nutricionista, agora().minusHours(2), "REALIZADA", true);
+        var outroPaciente = pacientes.save(TestDataFactory.outroPaciente(encoder));
+        Consulta falta = new Consulta(outroPaciente, nutricionista, agora().minusHours(1), true);
+        falta.atualizar(falta.getDataHora(), "CONFIRMADA", null);
+        consultas.saveAndFlush(falta);
+        Consulta realizadaSemInicio = new Consulta(outroPaciente, outraNutricionista, agora().minusHours(2), true);
+        realizadaSemInicio.atualizar(realizadaSemInicio.getDataHora(), "REALIZADA", null);
+        consultas.saveAndFlush(realizadaSemInicio);
         Consulta alheia = consulta(outraNutricionista, agora(), "CONFIRMADA", true);
 
         mvc.perform(get(BASE)).andExpect(status().isUnauthorized());
         mvc.perform(get(BASE).header("Authorization", bearer(paciente.getEmail())))
                 .andExpect(status().isForbidden());
         mvc.perform(get(BASE).header("Authorization", token))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data", hasSize(1)))
-                .andExpect(jsonPath("$.data[0].id").value(futura.getId()))
-                .andExpect(jsonPath("$.data[0].podeIniciar").value(false));
-        for (Consulta excluida : java.util.List.of(cancelada, falta, realizadaSemInicio, alheia)) {
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data", hasSize(2)))
+                .andExpect(jsonPath("$.data[0].podeIniciar").value(true));
+        for (Consulta excluida : java.util.List.of(cancelada, realizadaSemInicio, alheia)) {
             mvc.perform(get(BASE + "/" + excluida.getId()).header("Authorization", token))
                     .andExpect(status().isNotFound());
         }
-        mvc.perform(post(BASE + "/" + futura.getId() + "/inicio").header("Authorization", token)
+        for (Consulta confirmada : java.util.List.of(futura, falta)) {
+            mvc.perform(post(BASE + "/" + confirmada.getId() + "/inicio").header("Authorization", token)
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"versao\":0}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.iniciadaEm").exists());
+        }
+        Consulta duplicadaLegada = consulta(nutricionista, agora().plusDays(1), "CONFIRMADA", true);
+        mvc.perform(post(BASE + "/" + duplicadaLegada.getId() + "/inicio").header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"versao\":0}"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void permiteCancelarSomenteAvulsaConfirmadaFuturaNaoIniciadaDoResponsavel() throws Exception {
+    void permiteCancelarSomenteAvulsaConfirmadaNaoIniciadaDoResponsavel() throws Exception {
         Consulta futura = consulta(nutricionista, agora().plusHours(2), "CONFIRMADA", true);
         Consulta passada = consulta(nutricionista, agora().minusMinutes(5), "CONFIRMADA", true);
         Consulta iniciada = consulta(nutricionista, agora().plusMinutes(5), "CONFIRMADA", true);
@@ -163,14 +173,14 @@ class AtendimentoClinicoControllerTest {
         cancelar(futura, bearer(outraNutricionista.getEmail()), futura.getVersao())
                 .andExpect(status().isNotFound());
         cancelar(futura, token, futura.getVersao() + 1).andExpect(status().isConflict());
-        cancelar(passada, token, passada.getVersao()).andExpect(status().isBadRequest());
+        cancelar(passada, token, passada.getVersao()).andExpect(status().isOk());
         cancelar(iniciada, token, iniciada.getVersao()).andExpect(status().isBadRequest());
         cancelar(futura, token, futura.getVersao()).andExpect(status().isOk());
         mvc.perform(get(url).header("Authorization", token)).andExpect(status().isNotFound());
     }
 
     @Test
-    void preservaConsultaLegadaPropriaSemLiberarFichaOuEscrita() throws Exception {
+    void preservaConsultaLegadaMasBloqueiaLeituraEEscritaSemVinculo() throws Exception {
         Consulta legada = consulta(nutricionista, agora().minusHours(2), "REALIZADA", false);
         String ficha = GESTAO + "/" + paciente.getId();
         String url = ficha + "/consultas/" + legada.getId();
@@ -178,7 +188,7 @@ class AtendimentoClinicoControllerTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data", hasSize(0)));
         mvc.perform(get(ficha).header("Authorization", token)).andExpect(status().isForbidden());
         mvc.perform(get(url).header("Authorization", token))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.id").value(legada.getId()));
+                .andExpect(status().isForbidden());
         mvc.perform(put(url).header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
                         .content(registro(legada))).andExpect(status().isForbidden());
     }
@@ -236,7 +246,7 @@ class AtendimentoClinicoControllerTest {
     }
 
     private LocalDateTime agora() {
-        return janela.agora().withNano(0);
+        return LocalDateTime.now(clock).withNano(0);
     }
 
     private String bearer(String email) {

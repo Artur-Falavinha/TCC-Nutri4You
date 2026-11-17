@@ -27,6 +27,9 @@ $v18 = Get-Content (Join-Path $migrations 'V18__exames_por_atendimento.sql') -Ra
 $v19 = Get-Content (Join-Path $migrations 'V19__aceite_de_vinculo_clinico.sql') -Raw
 $v20 = Get-Content (Join-Path $migrations 'V20__jackson_pollock_sete_pregas.sql') -Raw
 $v21 = Get-Content (Join-Path $migrations 'V21__percentuais_macronutrientes.sql') -Raw
+$v22 = Get-Content (Join-Path $migrations 'V22__reativar_medidas_opcionais_anamnese.sql') -Raw
+$v23 = Get-Content (Join-Path $migrations 'V23__solicitacao_de_vinculo_pelo_paciente.sql') -Raw
+$v24 = Get-Content (Join-Path $migrations 'V24__termos_e_direitos_do_titular.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
 
 # Every scenario uses a new schema inside a transaction, rolled back even on
@@ -279,8 +282,17 @@ $v18
 $v19
 $v20
 $v21
+$v22
+$v23
+$v24
 DO `$`$
 BEGIN
+    IF EXISTS (SELECT 1 FROM Relacao_Clinica WHERE solicitada_pelo_paciente) THEN
+        RAISE EXCEPTION 'V23 changed the initiator of a legacy relation';
+    END IF;
+    IF to_regclass('aceite_termo') IS NULL OR to_regclass('pedido_privacidade') IS NULL THEN
+        RAISE EXCEPTION 'V24 did not create privacy records';
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM Nutricionista WHERE id_nutricionista = 1 AND aceita_consultas_avulsas = FALSE)
         OR NOT EXISTS (SELECT 1 FROM Consulta WHERE id_consulta = 1 AND avulsa = FALSE) THEN
         RAISE EXCEPTION 'V17 changed the visibility or type of legacy appointments';

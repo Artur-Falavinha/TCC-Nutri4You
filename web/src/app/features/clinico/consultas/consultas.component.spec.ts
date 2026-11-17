@@ -24,14 +24,10 @@ describe('ConsultasComponent', () => {
     observacao: null,
     versao: 3,
     iniciadaEm: '2025-01-15T14:30:00-03:00',
-    inicioPermitidoDe: '2025-01-15T14:15:00-03:00',
-    inicioPermitidoAte: '2025-01-15T14:45:00-03:00',
     podeIniciar: false,
     avaliacao: null,
     pacienteNome: 'Paciente de teste',
     pacienteId: 12,
-    janelaInicio: '2025-01-15T14:15:00-03:00',
-    janelaFim: '2025-01-15T14:45:00-03:00',
     contextoClinico: null
   };
 

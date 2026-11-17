@@ -1,10 +1,10 @@
 import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { finalize } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
-import { NotificacaoConsulta, NotificacoesService } from './notificacoes.service';
+import { NotificacaoConsulta, NotificacaoVinculo, NotificacoesService } from './notificacoes.service';
 
 @Component({
   selector: 'app-notificacoes',
@@ -16,6 +16,7 @@ export class NotificacoesComponent implements OnInit {
   private readonly service = inject(NotificacoesService);
   private readonly destroyRef = inject(DestroyRef);
   itens: NotificacaoConsulta[] = [];
+  vinculos: NotificacaoVinculo[] = [];
   carregando = true;
   decidindo: number | null = null;
   erro = '';
@@ -26,11 +27,28 @@ export class NotificacoesComponent implements OnInit {
   carregar(): void {
     this.carregando = true;
     this.erro = '';
-    this.service.listar().pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.carregando = false; }))
+    forkJoin({ consultas: this.service.listar(), vinculos: this.service.listarVinculos() })
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.carregando = false; }))
       .subscribe({
-        next: itens => { this.itens = itens; },
+        next: ({ consultas, vinculos }) => { this.itens = consultas; this.vinculos = vinculos; },
         error: (erro: ApiErrorResponse) => { this.erro = erro.message || 'Não foi possível carregar as notificações.'; }
       });
+  }
+
+  decidirVinculo(item: NotificacaoVinculo, aceitar: boolean): void {
+    if (this.decidindo !== null) return;
+    this.decidindo = item.id;
+    this.erro = '';
+    this.mensagem = '';
+    this.service.decidirVinculo(item, aceitar).pipe(
+      takeUntilDestroyed(this.destroyRef), finalize(() => { this.decidindo = null; })
+    ).subscribe({
+      next: () => {
+        this.vinculos = this.vinculos.filter(atual => atual.id !== item.id);
+        this.mensagem = aceitar ? 'Vínculo aceito.' : 'Solicitação de vínculo recusada.';
+      },
+      error: (erro: ApiErrorResponse) => { this.erro = erro.message || 'Não foi possível decidir o vínculo.'; }
+    });
   }
 
   decidir(item: NotificacaoConsulta, aceitar: boolean): void {

@@ -11,6 +11,7 @@ import { PacientesService } from '../../core/services/pacientes.service';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
 import { PatientTabsComponent } from '../../shared/components/patient-tabs/patient-tabs.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
+import { UiSelectComponent } from '../../shared/components/ui-select/ui-select.component';
 import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog/paciente-dialog.component';
 import { BuscaAlimentosComponent } from './busca-alimentos.component';
 import {
@@ -56,7 +57,7 @@ const MAXIMO_SUBSTITUTOS = 10;
 
 @Component({
   selector: 'app-dieta',
-  imports: [DatePipe, FormsModule, RouterLink, PatientTabsComponent, FormAlertComponent, UiButtonComponent, BuscaAlimentosComponent, PacienteDialogComponent],
+  imports: [DatePipe, FormsModule, RouterLink, PatientTabsComponent, FormAlertComponent, UiButtonComponent, UiSelectComponent, BuscaAlimentosComponent, PacienteDialogComponent],
   templateUrl: './dieta.component.html',
   styleUrl: './dieta.component.css'
 })
@@ -72,7 +73,7 @@ export class DietaComponent implements OnInit {
 
   readonly atendimentoId = this.route.snapshot.queryParamMap.has('atendimentoId') ? Number(this.route.snapshot.queryParamMap.get('atendimentoId')) : null;
   podeEditarAtendimento = false;
-  paciente: Paciente | null = null;
+  paciente: Pick<Paciente, 'nome'> & { dataNascimento?: string; sexo?: string } | null = null;
   anamnese: Anamnese | null = null;
   avaliacaoAtual: Avaliacao | null = null;
   fatorAtividade = 1.2;
@@ -252,13 +253,14 @@ export class DietaComponent implements OnInit {
       : this.atendimentos.buscar(this.atendimentoId).pipe(switchMap(a => {
         if (a.pacienteId !== this.patientId || !a.iniciadaEm) return throwError(() => new Error('Atendimento indisponível.'));
         this.podeEditarAtendimento = a.status === 'CONFIRMADA';
-        return this.pacientes.buscarPorId(this.patientId);
+        return of({ nome: a.pacienteNome, dataNascimento: a.contextoClinico?.dataNascimento ?? undefined,
+          sexo: a.contextoClinico?.sexo ?? undefined });
       }));
     forkJoin({
       paciente: dadosPaciente,
       planos: this.dieta.listarPlanos(this.patientId, this.atendimentoId),
-      anamnese: this.anamneses.get(this.patientId).pipe(catchError(() => of(null))),
-      historico: this.clinico.historico(this.patientId).pipe(catchError(() => of(null)))
+      anamnese: this.atendimentoId === null ? this.anamneses.get(this.patientId).pipe(catchError(() => of(null))) : of(null),
+      historico: this.atendimentoId === null ? this.clinico.historico(this.patientId).pipe(catchError(() => of(null))) : of(null)
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ paciente, planos, anamnese, historico }) => {
         this.paciente = paciente;
@@ -280,6 +282,10 @@ export class DietaComponent implements OnInit {
   atualizarFatorAtividade(valor: string | number): void {
     const fator = Number(valor);
     if (this.fatoresAtividade.some(item => item.valor === fator)) this.fatorAtividade = fator;
+  }
+
+  get opcoesFatorAtividade() {
+    return this.fatoresAtividade.map(item => ({ value: String(item.valor), label: item.rotulo }));
   }
 
   usarGetComoMeta(): void {

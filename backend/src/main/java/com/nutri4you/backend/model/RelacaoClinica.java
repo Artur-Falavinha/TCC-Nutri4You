@@ -42,6 +42,9 @@ public class RelacaoClinica {
     @Column(name = "encerrada_em")
     private LocalDateTime encerradaEm;
 
+    @Column(name = "solicitada_pelo_paciente", nullable = false)
+    private boolean solicitadaPeloPaciente;
+
     @Version
     @Column(nullable = false)
     private long versao;
@@ -64,8 +67,15 @@ public class RelacaoClinica {
     }
 
     public void solicitar() {
-        this.status = StatusRelacaoClinica.PENDENTE;
+        solicitar(false);
     }
+
+    public void solicitar(boolean peloPaciente) {
+        this.status = StatusRelacaoClinica.PENDENTE;
+        this.solicitadaPeloPaciente = peloPaciente;
+    }
+
+    public boolean solicitadaPeloPaciente() { return solicitadaPeloPaciente; }
 
     public void recusar() {
         this.status = StatusRelacaoClinica.ENCERRADA;

@@ -192,3 +192,9 @@
       }
     </div>
 </section>
+@if (confirmacao; as modal) {
+  <app-paciente-dialog [title]="modal.titulo" [description]="modal.descricao" (fechar)="responderConfirmacao(false)">
+    <app-ui-button dialogActions label="Cancelar" variant="outline" (click)="responderConfirmacao(false)" />
+    <app-ui-button dialogActions [label]="modal.confirmar" variant="danger" (click)="responderConfirmacao(true)" />
+  </app-paciente-dialog>
+}

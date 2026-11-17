@@ -1,7 +1,7 @@
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, of, switchMap, timer } from 'rxjs';
+import { catchError, forkJoin, of, switchMap, timer } from 'rxjs';
 import { NotificacoesService } from '../../../features/notificacoes/notificacoes.service';
 
 @Component({
@@ -9,7 +9,7 @@ import { NotificacoesService } from '../../../features/notificacoes/notificacoes
   imports: [RouterLink],
   template: `
     <a class="bell" routerLink="/notificacoes"
-      [attr.aria-label]="quantidade ? quantidade + ' notificações de consulta pendentes' : 'Notificações'">
+      [attr.aria-label]="quantidade ? quantidade + ' notificações pendentes' : 'Notificações'">
       <i class="ph ph-bell" aria-hidden="true"></i>
       @if (quantidade) { <span class="badge" aria-hidden="true">{{ quantidade > 99 ? '99+' : quantidade }}</span> }
     </a>
@@ -32,8 +32,11 @@ export class NotificationBellComponent implements OnInit {
 
   ngOnInit(): void {
     timer(0, 30_000).pipe(
-      switchMap(() => this.service.listar().pipe(catchError(() => of([])))),
+      switchMap(() => forkJoin({
+        consultas: this.service.listar().pipe(catchError(() => of([]))),
+        vinculos: this.service.listarVinculos().pipe(catchError(() => of([])))
+      })),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(itens => { this.quantidade = itens.length; });
+    ).subscribe(({ consultas, vinculos }) => { this.quantidade = consultas.length + vinculos.length; });
   }
 }

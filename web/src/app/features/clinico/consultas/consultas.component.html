@@ -47,7 +47,6 @@
             @if (consulta.status === 'CONFIRMADA' && !consulta.iniciadaEm) {
               <a class="action secondary" [href]="googleAgendaUrl(consulta)" target="_blank" rel="noopener noreferrer">Adicionar ao Google Agenda</a>
               <button type="button" class="action primary" [disabled]="salvando || !podeIniciar(consulta)" (click)="acao(consulta, 'inicio')">Iniciar Consulta</button>
-              <small>Início permitido de {{ consulta.inicioPermitidoDe | date:'dd/MM HH:mm' }} até {{ consulta.inicioPermitidoAte | date:'dd/MM HH:mm' }}</small>
             }
             @if (!consulta.iniciadaEm && (consulta.status === 'CONFIRMADA' || consulta.status === 'AGUARDANDO_CONFIRMACAO')) {
               <button type="button" class="action secondary" [disabled]="salvando" (click)="acao(consulta, 'cancelamento')">Cancelar</button>
@@ -146,6 +145,18 @@
     </form>
   }
 </main>
+@if (modalSaida) {
+  <app-paciente-dialog title="Sair da consulta?" description="As alterações não salvas desta consulta serão descartadas." (fechar)="responderSaida(false)">
+    <app-ui-button dialogActions label="Continuar editando" variant="outline" (click)="responderSaida(false)" />
+    <app-ui-button dialogActions label="Descartar e sair" variant="danger" (click)="responderSaida(true)" />
+  </app-paciente-dialog>
+}
+@if (consultaParaCancelar) {
+  <app-paciente-dialog title="Cancelar consulta?" description="A consulta será cancelada e o horário ficará disponível." (fechar)="consultaParaCancelar = null">
+    <app-ui-button dialogActions label="Manter consulta" variant="outline" (click)="consultaParaCancelar = null" />
+    <app-ui-button dialogActions label="Cancelar consulta" variant="danger" (click)="confirmarCancelamento()" />
+  </app-paciente-dialog>
+}
 
 @if (avisoConclusaoRascunhoAberto) {
   <app-paciente-dialog

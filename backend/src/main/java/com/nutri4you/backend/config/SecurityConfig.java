@@ -46,6 +46,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/nutricionistas/autocadastro").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/nutricionistas/cadastro").hasRole("NUTRICIONISTA")
                         .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/privacidade/termos").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/v1/gestao-pacientes/**").hasRole("NUTRICIONISTA")
                         .requestMatchers("/api/v1/agenda-nutricionista/**").hasRole("NUTRICIONISTA")

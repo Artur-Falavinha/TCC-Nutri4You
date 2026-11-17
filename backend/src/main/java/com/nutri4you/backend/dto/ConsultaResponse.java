@@ -6,8 +6,7 @@ import java.util.Map;
 
 public record ConsultaResponse(Integer id, Integer idPaciente, LocalDateTime dataHora, String status,
                                String observacao, long versao, AvaliacaoResponse avaliacao,
-                               LocalDateTime iniciadaEm, java.time.OffsetDateTime inicioPermitidoDe,
-                               java.time.OffsetDateTime inicioPermitidoAte, boolean podeIniciar,
+                               LocalDateTime iniciadaEm, boolean podeIniciar,
                                ContextoClinico contextoClinico) {
     public record ContextoClinico(
             LocalDate dataNascimento,

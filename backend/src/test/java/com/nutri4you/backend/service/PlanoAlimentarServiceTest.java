@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.*;
 
 class PlanoAlimentarServiceTest extends ClinicalServiceTestSupport {
     @Autowired PrescricaoService service;
+    @Autowired GestaoPacienteService gestao;
     private PlanoRequest dados(LocalDate inicio, LocalDate fim, Long versao) {
         var alimento = alimentos.saveAndFlush(new Alimento("Feijão", BigDecimal.valueOf(100), BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ONE));
         return new PlanoRequest("Plano semanal", null, inicio, fim, new Nutrientes(BigDecimal.ONE, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.TEN), versao,
@@ -21,6 +22,14 @@ class PlanoAlimentarServiceTest extends ClinicalServiceTestSupport {
     private PlanoDTO publicado(LocalDate inicio, LocalDate fim) {
         var p = service.criar(nutri, paciente.getId(), null, dados(inicio, fim, null));
         return service.publicar(nutri, paciente.getId(), null, p.id(), p.versao());
+    }
+
+    @Test void desvinculoPreservaPlanoVigenteParaPacienteMasBloqueiaNutricionista() {
+        var plano = publicado(hoje(), hoje().plusDays(7));
+        gestao.desvincularPaciente(paciente, nutri.getId());
+        assertThat(service.ativo(paciente).id()).isEqualTo(plano.id());
+        assertThatThrownBy(() -> service.buscar(nutri, paciente.getId(), null, plano.id()))
+                .isInstanceOf(AcessoNegadoException.class);
     }
     @Test void calculaGramasAPartirDasCaloriasEDosPercentuais() {
         var request = new PlanoRequest("Meta percentual", null, hoje(), hoje().plusDays(7),

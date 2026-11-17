@@ -100,7 +100,7 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
     }
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void encerrarVinculoCancelaSomenteRecorrentesFuturasNaoIniciadas(boolean peloPaciente) {
+    void encerrarVinculoCancelaConsultasEmAbertoERetiraAcessoDoNutricionista(boolean peloPaciente) {
         var dia = prepararGrade();
         horarios.salvarPreferencia(nutri, new PreferenciaAgendaDTO(true));
         var outraPessoa = pacientes.save(TestDataFactory.outroPaciente(encoder));
@@ -131,13 +131,14 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
         assertThat(pendente.getStatus()).isEqualTo("CANCELADA");
         assertThat(confirmada.getStatus()).isEqualTo("CANCELADA");
         assertThat(confirmada.getVersao()).isGreaterThan(versaoConfirmada);
-        assertThat(emAndamento.getStatus()).isEqualTo("CONFIRMADA");
-        assertThat(passada.getStatus()).isEqualTo("CONFIRMADA");
+        assertThat(emAndamento.getStatus()).isEqualTo("CANCELADA");
+        assertThat(passada.getStatus()).isEqualTo("CANCELADA");
         assertThat(realizada.getStatus()).isEqualTo("REALIZADA");
-        assertThat(avulsa.getStatus()).isEqualTo("AGUARDANDO_CONFIRMACAO");
+        assertThat(avulsa.getStatus()).isEqualTo("CANCELADA");
         assertThat(deOutroPaciente.getStatus()).isEqualTo("AGUARDANDO_CONFIRMACAO");
-        assertThat(service.listar(paciente)).extracting(ConsultaPacienteResponse::id)
-                .containsExactly(emAndamento.getId(), avulsa.getId());
+        assertThat(service.listar(paciente)).isEmpty();
+        assertThatThrownBy(() -> atendimento.buscar(nutri, paciente.getId(), realizada.getId()))
+                .isInstanceOf(AcessoNegadoException.class);
         assertThatThrownBy(() -> atendimento.confirmar(nutri, paciente.getId(), pendente.getId(), pendente.getVersao()))
                 .isInstanceOf(AcessoNegadoException.class);
     }
@@ -197,6 +198,10 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
                 .isInstanceOf(AcessoNegadoException.class);
         assertThat(relacoes.findByPaciente_IdAndNutricionista_Id(semVinculo.getId(), nutri.getId())).isEmpty();
 
+        assertThatThrownBy(() -> service.solicitar(semVinculo,
+                new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 45))))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("consulta inicial");
+
         horarios.salvarPreferencia(nutri, new PreferenciaAgendaDTO(false));
         assertThat(service.disponibilidadeParaReagendar(semVinculo, reserva.id(), nutri.getId(), dia).horarios())
                 .containsExactly(dia.atTime(9, 30), dia.atTime(9, 45));
@@ -208,6 +213,22 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
         assertThat(reagendada.status()).isEqualTo("AGUARDANDO_CONFIRMACAO");
         assertThat(atendimento.listarAvulsasPendentes(nutri)).extracting(SolicitacaoAvulsaDTO::id)
                 .containsExactly(reserva.id());
+    }
+
+    @Test void segundaConsultaAposAvulsaRealizadaExigeVinculo() {
+        var dia = prepararGrade();
+        var titular = pacientes.save(TestDataFactory.outroPaciente(encoder));
+        horarios.salvarPreferencia(nutri, new PreferenciaAgendaDTO(true));
+        var anterior = new Consulta(titular, nutri, agora().minusDays(2), true);
+        anterior.atualizar(anterior.getDataHora(), "REALIZADA", null);
+        consultas.saveAndFlush(anterior);
+        var pedido = new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 0));
+
+        assertThatThrownBy(() -> service.solicitar(titular, pedido))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("vínculo ativo");
+        relacoes.saveAndFlush(com.nutri4you.backend.model.RelacaoClinica.criar(titular, nutri));
+        assertThat(consultas.findById(service.solicitar(titular, pedido).id())).hasValueSatisfying(c ->
+                assertThat(c.isAvulsa()).isFalse());
     }
 
     @Test void recusaAvulsaComVersaoAtualPeloNutricionistaDaConsulta() {

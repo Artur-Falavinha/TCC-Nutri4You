@@ -327,8 +327,8 @@ public class ClinicoService {
 
     private List<Consulta> consultasMarcadasEntre(Integer nutricionistaId, LocalDateTime inicio, LocalDateTime fim) {
         return consultaRepository
-                .findByNutricionista_IdAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
-                        nutricionistaId, inicio, fim)
+                .listarVisiveisNoPainel(nutricionistaId, inicio, fim,
+                        com.nutri4you.backend.model.StatusRelacaoClinica.ATIVA)
                 .stream()
                 .filter(c -> confirmada(c) || "REALIZADA".equalsIgnoreCase(c.getStatus()))
                 .toList();

@@ -3,7 +3,7 @@ import { Component, DestroyRef, HostListener, OnInit, inject } from '@angular/co
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, CanDeactivateFn, Router, RouterLink } from '@angular/router';
-import { forkJoin, of, interval } from 'rxjs';
+import { forkJoin, of, Observable, Subject, take } from 'rxjs';
 import { ApiErrorResponse } from '../../../core/models/api-response.model';
 import { PacientesService } from '../../../core/services/pacientes.service';
 import { FormAlertComponent } from '../../../shared/components/form-alert/form-alert.component';
@@ -27,6 +27,9 @@ import { criarLinkGoogleAgenda } from '../../agenda/google-calendar-link';
   styleUrl: './consultas.component.css'
 })
 export class ConsultasComponent implements OnInit {
+  modalSaida = false;
+  consultaParaCancelar: Consulta | null = null;
+  private respostaSaida: Subject<boolean> | null = null;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly pacientes = inject(PacientesService);
@@ -45,7 +48,6 @@ export class ConsultasComponent implements OnInit {
   readonly editor = !!this.route.snapshot.data['editor'];
   readonly statusOptions = STATUS_CONSULTA.filter(s => ['CONFIRMADA', 'REALIZADA'].includes(s.value));
   consultaAtual: Consulta | null = null;
-  agora = Date.now();
   readonly grupos = [
     { titulo: 'Medidas antropométricas e composição corporal', campos: CAMPOS_MEDIDAS.slice(0, 6) },
     { titulo: 'Sete pregas de Jackson-Pollock', campos: CAMPOS_MEDIDAS.slice(7, 14) },
@@ -75,7 +77,6 @@ export class ConsultasComponent implements OnInit {
       this.mensagem = 'Consulta salva com sucesso.';
     }
     this.carregar();
-    interval(1000).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => { this.agora = Date.now(); });
   }
 
   carregar(pagina = 0): void {
@@ -236,13 +237,19 @@ export class ConsultasComponent implements OnInit {
       || (this.consultaAtual.status === 'CONFIRMADA' && !!this.consultaAtual.iniciadaEm));
   }
   podeIniciar(c: Consulta): boolean {
-    // Server supplies the configured bounds with the clinic timezone offset.
-    return c.status === 'CONFIRMADA' && !c.iniciadaEm && !!c.inicioPermitidoDe && !!c.inicioPermitidoAte
-      && this.agora >= Date.parse(c.inicioPermitidoDe)
-      && this.agora <= Date.parse(c.inicioPermitidoAte);
+    return c.status === 'CONFIRMADA' && !c.iniciadaEm;
   }
   acao(c: Consulta, acao: 'inicio' | 'confirmacao' | 'cancelamento'): void {
-    if (this.salvando || (acao === 'cancelamento' && !window.confirm('Cancelar esta consulta?'))) return;
+    if (this.salvando) return;
+    if (acao === 'cancelamento') { this.consultaParaCancelar = c; return; }
+    this.executarAcao(c, acao);
+  }
+  confirmarCancelamento(): void {
+    const consulta = this.consultaParaCancelar;
+    this.consultaParaCancelar = null;
+    if (consulta) this.executarAcao(consulta, 'cancelamento');
+  }
+  private executarAcao(c: Consulta, acao: 'inicio' | 'confirmacao' | 'cancelamento'): void {
     this.salvando = true; this.erro = '';
     this.service.acao(this.patientId, c, acao).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
@@ -261,8 +268,18 @@ export class ConsultasComponent implements OnInit {
     return criarLinkGoogleAgenda({ dataHora: consulta.dataHora, pacienteNome: this.nome || 'Paciente' });
   }
   get alterado(): boolean { return this.editor && this.carregado && this.form.assinatura() !== this.original; }
-  podeSair(): boolean {
-    return !this.salvando && (!this.alterado || window.confirm('Descartar as alterações desta consulta?'));
+  podeSair(): boolean | Observable<boolean> {
+    if (this.salvando) return false;
+    if (!this.alterado) return true;
+    this.respostaSaida ??= new Subject<boolean>();
+    this.modalSaida = true;
+    return this.respostaSaida.asObservable().pipe(take(1));
+  }
+  responderSaida(confirmar: boolean): void {
+    this.modalSaida = false;
+    this.respostaSaida?.next(confirmar);
+    this.respostaSaida?.complete();
+    this.respostaSaida = null;
   }
   @HostListener('window:beforeunload', ['$event'])
   antesDeFechar(event: BeforeUnloadEvent): void {

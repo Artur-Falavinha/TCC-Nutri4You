@@ -17,6 +17,7 @@ export interface MensagemResponse {
 }
 
 export interface NutricionistaCadastroPayload {
+  versaoTermos?: string;
   nome: string;
   email: string;
   senha: string;
@@ -24,6 +25,7 @@ export interface NutricionistaCadastroPayload {
 }
 
 export interface RegisterDraft {
+  versaoTermos?: string;
   nome: string;
   crn: string;
   email: string;

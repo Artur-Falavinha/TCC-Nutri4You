@@ -253,13 +253,11 @@
                 <div><dt>FA</dt><dd>{{ fatorAtividade.toLocaleString('pt-BR') }}</dd></div>
                 <div><dt>GET</dt><dd>{{ referencia.get }} kcal/dia</dd></div>
               </dl>
-              <label class="field compact-field" for="fator-atividade">
-                <span>Fator de atividade</span>
-                <select id="fator-atividade" name="fator-atividade" [ngModel]="fatorAtividade" (ngModelChange)="atualizarFatorAtividade($event)">
-                  @for (fator of fatoresAtividade; track fator.valor) { <option [ngValue]="fator.valor">{{ fator.rotulo }}</option> }
-                </select>
+              <div class="field compact-field">
+                <app-ui-select label="Fator de atividade" selectId="fator-atividade" name="fator-atividade"
+                  [options]="opcoesFatorAtividade" [ngModel]="'' + fatorAtividade" (ngModelChange)="atualizarFatorAtividade($event)" />
                 <small>Sugerido pela atividade informada na anamnese; pode ser ajustado pelo nutricionista.</small>
-              </label>
+              </div>
               <button type="button" class="action secondary" (click)="usarGetComoMeta()">Usar GET na meta</button>
               <p class="reference-note">Estimativa de apoio clínico, não prescrição automática.</p>
             </aside>

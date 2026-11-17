@@ -16,11 +16,13 @@ import {
   ScrollView,
   ActivityIndicator,
   Modal,
-  Pressable
+  Pressable,
+  Linking
 } from 'react-native';
 
 import { useAppAlert } from '../components/feedback/AppAlertProvider';
 import { autocadastrarPaciente } from '../core/auth/auth.service';
+import { URL_TERMOS, VERSAO_TERMOS } from '../core/perfil/privacidade';
 import { ApiError } from '../core/api/api-response.types';
 import { formatCpfDisplay, isCpfComplete, normalizeCpf } from '../core/utils/cpf-mask.util';
 import {
@@ -55,6 +57,7 @@ export default function CriarContaScreen() {
   const { showAlert } = useAppAlert();
   const webDateInputRef = useRef<HTMLInputElement | null>(null);
   const [nome, setNome] = useState('');
+  const [aceitouTermos, setAceitouTermos] = useState(false);
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
@@ -122,6 +125,10 @@ export default function CriarContaScreen() {
   };
 
   const handleRegister = async () => {
+    if (!aceitouTermos) {
+      showAlert('Atenção', 'Leia e aceite os termos de uso para criar a conta.');
+      return;
+    }
     if (!nome.trim() || !email.trim() || !senha || !confirmarSenha) {
       showAlert('Atenção', 'Preencha nome, e-mail e senha.');
       return;
@@ -158,7 +165,8 @@ export default function CriarContaScreen() {
         cpf: normalizeCpf(cpf),
         telefone: normalizePhone(telefone),
         sexo: sexo || undefined,
-        dataNascimento: isoDate
+        dataNascimento: isoDate,
+        versaoTermos: VERSAO_TERMOS
       });
 
       showAlert('Sucesso', 'Conta criada com sucesso! Faça login para continuar.', [
@@ -372,6 +380,17 @@ export default function CriarContaScreen() {
             </View>
           </View>
 
+          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(URL_TERMOS).catch(() =>
+            showAlert('Atenção', 'Não foi possível abrir os termos.'))}>
+            <Text style={styles.termosLink}>Ler termos de uso e aviso de privacidade</Text>
+          </Pressable>
+          <Pressable style={styles.termosAceite} accessibilityRole="checkbox" accessibilityState={{ checked: aceitouTermos }}
+            onPress={() => setAceitouTermos(valor => !valor)}>
+            <View style={[styles.termosCheck, aceitouTermos && styles.termosCheckAtivo]}>
+              {aceitouTermos && <Feather name="check" size={15} color="#fff" />}
+            </View>
+            <Text style={styles.termosTexto}>Li e aceito os termos de uso.</Text>
+          </Pressable>
           <TouchableOpacity
             style={styles.button}
             onPress={handleRegister}
@@ -464,6 +483,11 @@ export default function CriarContaScreen() {
 }
 
 const styles = StyleSheet.create({
+  termosLink: { color: '#006f1e', fontWeight: '700', paddingVertical: 8 },
+  termosAceite: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, marginBottom: 12 },
+  termosCheck: { width: 22, height: 22, borderWidth: 1, borderColor: '#94a3b8', borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  termosCheckAtivo: { backgroundColor: '#006f1e', borderColor: '#006f1e' },
+  termosTexto: { flex: 1, color: '#334155', fontSize: 14 },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5'

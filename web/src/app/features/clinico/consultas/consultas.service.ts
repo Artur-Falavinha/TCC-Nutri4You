@@ -33,8 +33,6 @@ export interface Consulta extends Omit<ConsultaPayload, 'avaliacao' | 'versao' |
   id: number;
   idPaciente: number;
   iniciadaEm?: string | null;
-  inicioPermitidoDe?: string;
-  inicioPermitidoAte?: string;
   podeIniciar?: boolean;
   contextoClinico?: {
     dataNascimento: string | null;
@@ -76,8 +74,6 @@ export class ConsultasService {
 export interface AtendimentoClinico extends Consulta {
   pacienteNome: string;
   pacienteId: number | null;
-  janelaInicio: string;
-  janelaFim: string;
 }
 
 @Injectable({ providedIn: 'root' })

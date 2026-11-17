@@ -8,7 +8,9 @@ import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.exception.ConsultaNaoEncontradaException;
 import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.Nutricionista;
+import com.nutri4you.backend.model.StatusRelacaoClinica;
 import com.nutri4you.backend.repository.ConsultaRepository;
+import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,20 +22,20 @@ public class AtendimentoClinicoService {
     private final ConsultaRepository consultas;
     private final ConsultaService consultaService;
     private final AnamneseService anamneses;
-    private final JanelaConsulta janela;
+    private final RelacaoClinicaRepository relacoes;
 
     public AtendimentoClinicoService(
             ConsultaRepository consultas, ConsultaService consultaService,
-            AnamneseService anamneses, JanelaConsulta janela) {
+            AnamneseService anamneses, RelacaoClinicaRepository relacoes) {
         this.consultas = consultas;
         this.consultaService = consultaService;
         this.anamneses = anamneses;
-        this.janela = janela;
+        this.relacoes = relacoes;
     }
 
     @Transactional(readOnly = true)
     public List<AtendimentoClinicoResponse> listar(Nutricionista nutricionista) {
-        return consultas.listarAtendimentosAvulsos(nutricionista.getId(), janela.primeiroHorarioIniciavel()).stream()
+        return consultas.listarAtendimentosAvulsos(nutricionista.getId()).stream()
                 .map(consulta -> resposta(consulta, consultaService.resposta(consulta, null), false))
                 .toList();
     }
@@ -42,8 +44,7 @@ public class AtendimentoClinicoService {
     public AtendimentoClinicoResponse buscar(Nutricionista nutricionista, Integer consultaId) {
         Consulta consulta = buscarAvulsa(nutricionista, consultaId);
         boolean temRegistro = temRegistro(consulta);
-        if (!temRegistro && (!"CONFIRMADA".equals(consulta.getStatus())
-                || consulta.getDataHora().isBefore(janela.primeiroHorarioIniciavel()))) {
+        if (!temRegistro && !"CONFIRMADA".equals(consulta.getStatus())) {
             throw new ConsultaNaoEncontradaException();
         }
         ConsultaResponse dados = temRegistro
@@ -54,7 +55,14 @@ public class AtendimentoClinicoService {
 
     @Transactional
     public AtendimentoClinicoResponse iniciar(Nutricionista nutricionista, Integer consultaId, Long versao) {
+        consultaService.bloquearAgenda(nutricionista.getId());
         Consulta consulta = bloquearAvulsa(nutricionista, consultaId);
+        Integer pacienteId = consulta.getPaciente().getId();
+        if (consultas.temOutraConsultaInicialRealizadaOuIniciada(pacienteId, nutricionista.getId(), consultaId)
+                && relacoes.findByPaciente_IdAndNutricionista_IdAndStatus(
+                        pacienteId, nutricionista.getId(), StatusRelacaoClinica.ATIVA).isEmpty()) {
+            throw new IllegalArgumentException("O paciente já utilizou a consulta inicial. Confirme um vínculo antes de iniciar outra consulta.");
+        }
         consultaService.iniciarConsulta(consulta, versao);
         return resposta(consulta, consultaService.respostaComMedidas(consulta), true);
     }
@@ -62,8 +70,8 @@ public class AtendimentoClinicoService {
     @Transactional
     public void cancelar(Nutricionista nutricionista, Integer consultaId, Long versao) {
         Consulta consulta = bloquearAvulsa(nutricionista, consultaId);
-        if (!"CONFIRMADA".equals(consulta.getStatus()) || !consulta.getDataHora().isAfter(janela.agora())) {
-            throw new IllegalArgumentException("Somente atendimentos confirmados e futuros podem ser cancelados.");
+        if (!"CONFIRMADA".equals(consulta.getStatus())) {
+            throw new IllegalArgumentException("Somente atendimentos confirmados podem ser cancelados.");
         }
         consultaService.cancelarConsulta(consulta, versao);
     }
@@ -71,6 +79,7 @@ public class AtendimentoClinicoService {
     @Transactional
     public AtendimentoClinicoResponse atualizar(
             Nutricionista nutricionista, Integer consultaId, ConsultaRequest request) {
+        consultaService.bloquearAgenda(nutricionista.getId());
         Consulta consulta = exigirEmAndamento(nutricionista, consultaId);
         return resposta(consulta, consultaService.atualizarConsulta(consulta, request), true);
     }
@@ -107,11 +116,13 @@ public class AtendimentoClinicoService {
 
     private Consulta buscarAvulsa(Nutricionista nutricionista, Integer consultaId) {
         return consultas.findByIdAndNutricionista_IdAndAvulsaTrue(consultaId, nutricionista.getId())
+                .filter(this::vinculoNaoEncerrado)
                 .orElseThrow(ConsultaNaoEncontradaException::new);
     }
 
     private Consulta bloquearAvulsa(Nutricionista nutricionista, Integer consultaId) {
         return consultas.buscarAvulsaParaAtualizar(consultaId, nutricionista.getId())
+                .filter(this::vinculoNaoEncerrado)
                 .orElseThrow(ConsultaNaoEncontradaException::new);
     }
 
@@ -119,6 +130,11 @@ public class AtendimentoClinicoService {
         if (pacienteId != null && !pacienteId.equals(consulta.getPaciente().getId())) {
             throw new ConsultaNaoEncontradaException();
         }
+    }
+
+    private boolean vinculoNaoEncerrado(Consulta consulta) {
+        return !relacoes.existsByPaciente_IdAndNutricionista_IdAndEncerradaEmIsNotNull(
+                consulta.getPaciente().getId(), consulta.getNutricionista().getId());
     }
 
     private boolean emAndamento(Consulta consulta) {
@@ -138,7 +154,7 @@ public class AtendimentoClinicoService {
                 : null;
         return new AtendimentoClinicoResponse(
                 dados.id(), paciente.getNome(), dados.dataHora(), dados.status(), dados.versao(),
-                dados.iniciadaEm(), dados.inicioPermitidoDe(), dados.inicioPermitidoAte(), dados.podeIniciar(),
+                dados.iniciadaEm(), dados.podeIniciar(),
                 incluirRegistro ? dados.idPaciente() : null, incluirRegistro ? dados.observacao() : null,
                 incluirRegistro ? dados.avaliacao() : null, contexto);
     }

@@ -41,13 +41,16 @@ class ConsultaServiceTest extends ClinicalServiceTestSupport {
         assertThatThrownBy(() -> service.iniciar(nutri, paciente.getId(), consulta.getId(), consulta.getVersao())).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.cancelar(nutri, paciente.getId(), consulta.getId(), consulta.getVersao())).isInstanceOf(IllegalArgumentException.class);
     }
-    @Test void rejeitaInicioForaDaJanelaOuAindaPendente() {
-        var distante = consulta(agora().plusHours(1), "CONFIRMADA");
+    @Test void permiteIniciarConfirmadasComAntecedenciaOuAtrasoERejeitaPendente() {
+        var futura = consulta(agora().plusHours(1), "CONFIRMADA");
+        var passada = consulta(agora().minusHours(1), "CONFIRMADA");
         var pendente = consulta(agora().plusMinutes(5), "AGUARDANDO_CONFIRMACAO");
-        for (var consulta : java.util.List.of(distante, pendente)) {
-            assertThatThrownBy(() -> service.iniciar(nutri, paciente.getId(), consulta.getId(), consulta.getVersao())).isInstanceOf(IllegalArgumentException.class);
-            assertThat(consulta.getIniciadaEm()).isNull();
+        for (var confirmada : java.util.List.of(futura, passada)) {
+            assertThat(service.iniciar(nutri, paciente.getId(), confirmada.getId(), confirmada.getVersao()).iniciadaEm()).isNotNull();
         }
+        assertThatThrownBy(() -> service.iniciar(nutri, paciente.getId(), pendente.getId(), pendente.getVersao()))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(pendente.getIniciadaEm()).isNull();
     }
     @Test void consultaIniciadaPodeSerConcluidaAntesDoHorarioAgendado() {
         var consulta = consulta(agora().plusMinutes(10), "CONFIRMADA");

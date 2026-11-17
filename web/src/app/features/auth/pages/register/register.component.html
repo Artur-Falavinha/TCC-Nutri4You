@@ -30,9 +30,10 @@
         [errorMessage]="fieldError('email')"
       />
 
+      <a [href]="urlTermos" target="_blank" rel="noopener">Ler termos de uso e aviso de privacidade</a>
       <app-ui-checkbox
         checkboxId="terms"
-        label="Declaro que todas as informações fornecidas, especialmente meu número de registro no Conselho Regional de Nutrição (CRN), são exatas e verdadeiras. Estou ciente de que a falsidade ideológica e o exercício ilegal da profissão são crimes previstos em lei, assumindo total responsabilidade civil e criminal pelos meus atos dentro da plataforma Nutri4You."
+        label="Li e aceito os termos de uso e declaro que os dados profissionais informados, incluindo meu CRN, são verdadeiros."
         [required]="true"
         formControlName="termsAccepted"
         [errorMessage]="termsError()"

@@ -61,14 +61,13 @@
             @if (!item.iniciadaEm && item.status === 'CONFIRMADA') {
               <a [href]="googleAgendaUrl(item)" target="_blank" rel="noopener noreferrer">Adicionar ao Google Agenda</a>
               <button type="button" class="confirmar" [disabled]="iniciando || cancelando || !podeIniciar(item)" (click)="iniciar(item)">Iniciar atendimento</button>
-              <small>Início permitido de {{ item.janelaInicio | date:'dd/MM HH:mm' }} até {{ item.janelaFim | date:'dd/MM HH:mm' }}</small>
               @if (podeCancelar(item)) {
+                <button type="button" [disabled]="iniciando || cancelando" (click)="atendimentoParaCancelar = item.id">Cancelar atendimento</button>
                 @if (atendimentoParaCancelar === item.id) {
-                  <span>Cancelar o atendimento de {{ item.pacienteNome }}?</span>
-                  <button type="button" [disabled]="cancelando" (click)="atendimentoParaCancelar = null">Manter atendimento</button>
-                  <button type="button" [disabled]="cancelando || iniciando" (click)="cancelarAtendimento(item)">Confirmar cancelamento</button>
-                } @else {
-                  <button type="button" [disabled]="iniciando || cancelando" (click)="atendimentoParaCancelar = item.id">Cancelar atendimento</button>
+                  <app-paciente-dialog title="Cancelar atendimento?" [description]="'O atendimento de ' + item.pacienteNome + ' será cancelado.'" (fechar)="atendimentoParaCancelar = null">
+                    <app-ui-button dialogActions label="Manter atendimento" variant="outline" [disabled]="cancelando" (click)="atendimentoParaCancelar = null" />
+                    <app-ui-button dialogActions label="Cancelar atendimento" variant="danger" [disabled]="cancelando || iniciando" (click)="cancelarAtendimento(item)" />
+                  </app-paciente-dialog>
                 }
               }
             } @else {

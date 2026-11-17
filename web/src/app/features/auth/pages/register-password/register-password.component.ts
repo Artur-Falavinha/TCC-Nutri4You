@@ -17,6 +17,7 @@ import {
   resolveGroupFieldError
 } from '../../../../shared/utils/form-field-error.util';
 import { RegisterFlowService } from '../../services/register-flow.service';
+import { VERSAO_TERMOS } from '../../../privacidade/privacidade.component';
 
 @Component({
   selector: 'app-register-password',
@@ -72,6 +73,9 @@ export class RegisterPasswordComponent implements OnInit {
     let draft;
     try {
       draft = this.registerFlow.requireDraft();
+      if (!draft.termsAccepted || draft.versaoTermos !== VERSAO_TERMOS) {
+        throw new Error('Volte ao primeiro passo para aceitar a versão atual dos termos.');
+      }
     } catch (error) {
       this.errorMessage = error instanceof Error ? error.message : 'Cadastro incompleto.';
       return;
@@ -87,7 +91,8 @@ export class RegisterPasswordComponent implements OnInit {
         nome: draft.nome,
         email: draft.email,
         senha,
-        crn: normalizeCrnForApi(draft.crn)
+        crn: normalizeCrnForApi(draft.crn),
+        versaoTermos: draft.versaoTermos
       })
       .pipe(finalize(() => (this.loading = false)))
       .subscribe({

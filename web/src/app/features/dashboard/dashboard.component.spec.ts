@@ -21,7 +21,7 @@ describe('DashboardComponent — solicitações de consulta pendentes', () => {
       providers: [
         provideRouter([]),
         { provide: ClinicoService, useValue: { agenda: () => of(agendaVazia) } },
-        { provide: NotificacoesService, useValue: { listar: () => of(itens) } }
+        { provide: NotificacoesService, useValue: { listar: () => of(itens), listarVinculos: () => of([]) } }
       ]
     });
     const fixture = TestBed.createComponent(DashboardComponent);
