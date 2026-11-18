@@ -419,7 +419,7 @@ export function MealPlanScreen({ navigation }: Props) {
             {dentroDaVigencia ? (
               <View style={[styles.summaryGrid, wide && styles.summaryGridWide]}>
                 {plan.metas ? (
-                  <View style={styles.summaryColumn}>
+                  <View style={wide && styles.summaryColumnWide}>
                     <NutrientSummaryCard
                       title="Metas diárias"
                       subtitle="Metas nutricionais de referência diária"
@@ -427,12 +427,12 @@ export function MealPlanScreen({ navigation }: Props) {
                     />
                   </View>
                 ) : (
-                  <View style={[styles.summaryColumn, styles.missingGoal]}>
+                  <View style={[styles.missingGoal, wide && styles.summaryColumnWide]}>
                     <Text style={styles.sectionTitle}>Metas diárias</Text>
                     <Text style={styles.bodyText}>A nutricionista não informou metas para este plano.</Text>
                   </View>
                 )}
-                <View style={styles.summaryColumn}>
+                <View style={wide && styles.summaryColumnWide}>
                   <NutrientSummaryCard
                     title="Totais diários"
                     subtitle="Progresso diário em relação às metas prescritas"
@@ -754,7 +754,7 @@ const styles = StyleSheet.create({
   guidance: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm, gap: spacing.xs },
   summaryGrid: { gap: spacing.md },
   summaryGridWide: { flexDirection: 'row' },
-  summaryColumn: { flex: 1, minWidth: 220 },
+  summaryColumnWide: { flex: 1, minWidth: 0 },
   missingGoal: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm },
   section: { gap: spacing.sm },
   sectionTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 17 },

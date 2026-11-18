@@ -268,7 +268,7 @@ export default function CriarContaScreen() {
           </View>
 
           <View style={styles.row}>
-            <View style={[styles.inputGroup, styles.flex1, { marginRight: 8 }]}>
+            <View style={[styles.inputGroup, styles.contactField]}>
               <Text style={styles.label}>CPF</Text>
               <View style={styles.inputContainer}>
                 <Feather name="credit-card" size={20} color="#64748b" style={styles.inputIconLeft} />
@@ -284,7 +284,7 @@ export default function CriarContaScreen() {
               </View>
             </View>
 
-            <View style={[styles.inputGroup, styles.flex1, { marginLeft: 8 }]}>
+            <View style={[styles.inputGroup, styles.contactField]}>
               <Text style={styles.label}>TELEFONE</Text>
               <View style={styles.inputContainer}>
                 <Feather name="phone" size={20} color="#64748b" style={styles.inputIconLeft} />
@@ -508,10 +508,13 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between'
+    flexWrap: 'wrap',
+    columnGap: 16
   },
-  flex1: {
-    flex: 1
+  contactField: {
+    flexBasis: 176,
+    flexGrow: 1,
+    flexShrink: 1
   },
   label: {
     fontSize: 10,

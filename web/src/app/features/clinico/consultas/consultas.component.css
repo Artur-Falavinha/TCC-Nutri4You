@@ -28,8 +28,9 @@ app-form-alert.form-alert-host--visible { display: block; margin-bottom: 16px; }
 .secondary:hover { border-color: var(--color-brand-primary); }
 .action:focus-visible, .icon-button:focus-visible { outline: 2px solid var(--color-brand-primary); outline-offset: 3px; }
 .consultas-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
-.consulta-row { display: flex; align-items: center; gap: 24px; padding: 20px 24px; background: var(--color-surface-card); border-radius: 12px; box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05); }
-.consulta-info { display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 0; }
+.consulta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; padding: 20px 24px; background: var(--color-surface-card); border-radius: 12px; box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05); }
+.consulta-info { display: flex; align-items: flex-start; gap: 12px; flex: 1 1 13rem; min-width: 0; }
+.consulta-info > div { min-width: 0; }
 .consulta-info > i { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
 .status { margin-top: 6px; font-size: 14px; color: #805b10; }
 .status.concluida { color: var(--color-brand-primary); }
@@ -58,8 +59,6 @@ textarea::placeholder { color: var(--color-text-muted); }
 .field-error { color: var(--color-error); font-size: 12px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 1100px) {
-  .consulta-row { flex-wrap: wrap; }
-  .consulta-info { flex-basis: calc(100% - 320px); }
   .consulta-row > .action { margin-left: auto; }
   .toolbar { flex-wrap: wrap; }
 }
@@ -79,7 +78,6 @@ textarea::placeholder { color: var(--color-text-muted); }
   .consulta-row > .action { width: 100%; }
 }
 
-.consulta-row { flex-wrap: wrap; }
-.consulta-row .actions { flex-wrap: wrap; align-items: center; }
-.consulta-row .actions small { flex-basis: 100%; max-width: 360px; line-height: 1.5; }
+.consulta-row .actions { flex-wrap: wrap; align-items: center; max-width: min(100%, 18rem); }
+.consulta-row .actions small { flex: 0 0 100%; order: 1; line-height: 1.5; }
 .action:disabled { opacity: .5; cursor: default; filter: none; }

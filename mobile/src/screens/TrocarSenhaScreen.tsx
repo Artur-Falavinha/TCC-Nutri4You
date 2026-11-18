@@ -87,11 +87,11 @@ export default function TrocarSenhaScreen() {
 
     const trimmed = token.trim();
     if (!trimmed) {
-      showAlert('Atenção', 'Cole o código de verificação (UUID).');
+      showAlert('Atenção', 'Informe o código de verificação que recebeu por e-mail.');
       return;
     }
     if (!isValidUuid(trimmed)) {
-      showAlert('Atenção', 'Código inválido. Informe um UUID válido.');
+      showAlert('Atenção', 'Código inválido. Confira o código no e-mail recebido.');
       return;
     }
     navigation.navigate('NovaSenha', { token: trimmed });
@@ -202,7 +202,6 @@ export default function TrocarSenhaScreen() {
             </Text>
             <Text style={styles.subtitle}>
               Informe o e-mail cadastrado. Se existir, você receberá instruções para redefinir a senha.
-              Em ambiente local, o UUID também aparece no log do backend.
             </Text>
           </View>
 
@@ -226,11 +225,11 @@ export default function TrocarSenhaScreen() {
 
             {step === 2 && (
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>CÓDIGO DE VERIFICAÇÃO (UUID)</Text>
+                <Text style={styles.label}>CÓDIGO DE VERIFICAÇÃO</Text>
                 <View style={[styles.inputContainer, { paddingLeft: 16 }]}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Cole o UUID recebido"
+                    placeholder="Cole o código recebido"
                     placeholderTextColor="#94a3b8"
                     value={token}
                     onChangeText={setToken}
@@ -252,7 +251,7 @@ export default function TrocarSenhaScreen() {
                 <ActivityIndicator color="#ffffff" />
               ) : (
                 <Text style={styles.buttonText}>
-                  {step === 1 ? 'Enviar token por e-mail' : 'Continuar'}
+                  {step === 1 ? 'Enviar código por e-mail' : 'Continuar'}
                 </Text>
               )}
             </TouchableOpacity>
@@ -276,7 +275,7 @@ export default function TrocarSenhaScreen() {
             <View style={styles.securityTextContainer}>
               <Text style={styles.securityTitle}>DICA DE SEGURANÇA</Text>
               <Text style={styles.securityText}>
-                Não compartilhe com ninguém o seu token de verificação.
+                Não compartilhe com ninguém o seu código de verificação.
               </Text>
             </View>
           </View>
