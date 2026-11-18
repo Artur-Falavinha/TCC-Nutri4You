@@ -1,0 +1,13 @@
+Nutri4You — Termos de uso e aviso de privacidade — versão 2026-11-16
+
+O Nutri4You permite agendar consultas e acompanhar atendimentos nutricionais. Use uma conta individual, mantenha suas credenciais em sigilo e informe dados corretos. O sistema não substitui avaliação profissional ou serviços de urgência.
+
+O sistema trata dados cadastrais e de contato para operar a conta e a agenda. Medidas, anamnese, exames, prescrições e demais informações clínicas são dados sensíveis tratados para atendimento e acompanhamento nutricional. A equipe responsável deve limitar o acesso a quem precisar dos dados para a finalidade informada.
+
+Ao solicitar vínculo ou aceitar um convite, o paciente autoriza o vínculo operacional com o profissional identificado. A autorização do vínculo pode ser encerrada em Dados pessoais. O encerramento não é um pedido de eliminação do prontuário. Os dados clínicos podem ser conservados para cumprir obrigações legais ou regulatórias. O paciente continua com acesso aos seus dados e à dieta publicada durante a vigência.
+
+Se o usuário escolher abrir um evento no Google Agenda, os dados exibidos no evento serão enviados ao Google. O uso desse recurso é opcional.
+
+Na área Privacidade é possível pedir confirmação e acesso, correção, informações sobre compartilhamento, portabilidade, anonimização ou bloqueio, eliminação e revogação de consentimento quando aplicável. O protocolo pode ser acompanhado na mesma área. A eliminação depende da finalidade, da base legal e de obrigações de conservação. O pedido não exclui automaticamente dados nem a conta.
+
+Referências: Lei 13.709/2018 (LGPD), Lei 13.787/2018 e Resolução CFN 594/2017.

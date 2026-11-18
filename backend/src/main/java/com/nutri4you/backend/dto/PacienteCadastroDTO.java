@@ -9,5 +9,6 @@ public record PacienteCadastroDTO(
         String sexo,
         String telefone,
         String email,
-        String senha) {
+        String senha,
+        String versaoTermos) {
 }

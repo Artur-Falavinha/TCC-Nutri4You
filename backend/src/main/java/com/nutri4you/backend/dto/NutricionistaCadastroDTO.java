@@ -4,5 +4,6 @@ public record NutricionistaCadastroDTO(
         String nome,
         String email,
         String senha,
-        String crn) {
+        String crn,
+        String versaoTermos) {
 }

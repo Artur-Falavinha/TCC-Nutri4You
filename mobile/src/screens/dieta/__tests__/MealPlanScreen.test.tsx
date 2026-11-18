@@ -6,6 +6,7 @@ import { ScrollView, Text } from 'react-native';
 import { addWater, getActiveMealPlan, getHydrationProgress } from '../../../features/dieta/dieta.service';
 import { Food, MealPlan, MealPlanItem, Nutrients } from '../../../features/dieta/dieta.models';
 import { MealPlanScreen } from '../MealPlanScreen';
+import { buildGoalRows } from '../components/NutrientSummaryCard';
 
 jest.mock('../../../features/dieta/dieta.service', () => ({
   getActiveMealPlan: jest.fn(),
@@ -153,6 +154,35 @@ describe('MealPlanScreen', () => {
     expect(output).not.toContain('Substituto informativo');
 
     act(() => tree.unmount());
+  });
+
+  it('exibe as metas diárias com o percentual em destaque e as gramas como valor secundário', async () => {
+    const plan = {
+      ...mealPlan(),
+      metas: { kcal: 1700, proteinas: 213, carboidratos: 128, gorduras: 38, fibras: null },
+      percentuais: { proteinas: 50, carboidratos: 30, gorduras: 20 }
+    };
+    const tree = await renderPlan(plan);
+
+    const primary = (key: string) => tree.root.findByProps({ testID: `nutrient-goal-primary-${key}` }).props.children;
+    const secondary = (key: string) => tree.root.findByProps({ testID: `nutrient-goal-secondary-${key}` }).props.children;
+
+    expect(primary('kcal')).toBe('1700 kcal');
+    expect(primary('carboidratos')).toBe('30%');
+    expect(secondary('carboidratos')).toBe(' 128 g');
+    expect(primary('proteinas')).toBe('50%');
+    expect(secondary('proteinas')).toBe(' 213 g');
+    expect(primary('gorduras')).toBe('20%');
+    expect(secondary('gorduras')).toBe(' 38 g');
+
+    act(() => tree.unmount());
+  });
+
+  it('calcula o percentual a partir das gramas quando o plano não informa a distribuição', () => {
+    const rows = buildGoalRows({ kcal: 2000, proteinas: 150, carboidratos: 200, gorduras: 66.67, fibras: null }, null);
+    expect(rows.find((row) => row.key === 'proteinas')?.primary).toBe('30%');
+    expect(rows.find((row) => row.key === 'carboidratos')?.primary).toBe('40%');
+    expect(rows.find((row) => row.key === 'gorduras')?.primary).toBe('30%');
   });
 
   it('renderiza cards individuais por refeição, seletor de dias e barras de progresso das metas diárias', async () => {

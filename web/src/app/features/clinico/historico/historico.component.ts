@@ -7,7 +7,7 @@ import { PatientTabsComponent } from '../../../shared/components/patient-tabs/pa
 import { Avaliacao, ClinicoService, Historico } from '../clinico.service';
 
 type Campo = keyof Pick<Avaliacao,
-  'peso' | 'imc' | 'percentualGordura' | 'massaMuscularKg' |
+  'peso' | 'imc' | 'percentualGordura' | 'massaMuscularKg' | 'massaMagraKg' | 'massaGordaKg' | 'somaSetePregas' |
   'circunferenciaCintura' | 'circunferenciaQuadril' | 'circunferenciaBraco' |
   'pregaBicipital' | 'pregaTricipital' | 'pregaSubescapular' | 'pregaSuprailiaca'>;
 
@@ -61,6 +61,9 @@ export class HistoricoComponent implements OnInit {
     imc: '#3d6b99',
     percentualGordura: '#1e293b',
     massaMuscularKg: '#006f1e',
+    massaMagraKg: '#006f1e',
+    massaGordaKg: '#7dcea0',
+    somaSetePregas: '#3d6b99',
     circunferenciaCintura: '#006f1e',
     circunferenciaQuadril: '#7dcea0',
     circunferenciaBraco: '#94a3b8',
@@ -72,8 +75,11 @@ export class HistoricoComponent implements OnInit {
   private readonly grupos: Record<Campo, Campo[]> = {
     peso: ['peso', 'imc'],
     imc: ['peso', 'imc'],
-    percentualGordura: ['massaMuscularKg', 'percentualGordura'],
+    percentualGordura: ['massaMagraKg', 'percentualGordura'],
     massaMuscularKg: ['massaMuscularKg', 'percentualGordura'],
+    massaMagraKg: ['massaMagraKg', 'percentualGordura'],
+    massaGordaKg: ['massaGordaKg', 'percentualGordura'],
+    somaSetePregas: ['somaSetePregas'],
     circunferenciaCintura: ['circunferenciaCintura', 'circunferenciaQuadril', 'circunferenciaBraco'],
     circunferenciaQuadril: ['circunferenciaCintura', 'circunferenciaQuadril', 'circunferenciaBraco'],
     circunferenciaBraco: ['circunferenciaCintura', 'circunferenciaQuadril', 'circunferenciaBraco'],
@@ -127,7 +133,7 @@ export class HistoricoComponent implements OnInit {
   }
 
   get massaAtual(): string {
-    return this.comUnidade(this.atual?.massaMuscularKg, 1, 'kg');
+    return this.comUnidade(this.atual?.massaMagraKg, 1, 'kg');
   }
 
   get cinturaQuadril(): string {
@@ -249,6 +255,12 @@ export class HistoricoComponent implements OnInit {
         return { valor: `${this.numero(medida, 0)}%`, serie: 'Gordura' };
       case 'massaMuscularKg':
         return { valor: `${this.numero(medida, 1)} kg`, serie: 'Massa muscular' };
+      case 'massaMagraKg':
+        return { valor: `${this.numero(medida, 1)} kg`, serie: 'Massa magra' };
+      case 'massaGordaKg':
+        return { valor: `${this.numero(medida, 1)} kg`, serie: 'Massa gorda' };
+      case 'somaSetePregas':
+        return { valor: `${this.numero(medida, 1)} mm`, serie: 'Soma das 7 pregas' };
       case 'circunferenciaCintura':
         return { valor: `${this.numero(medida, 0)} cm`, serie: 'Cintura' };
       case 'circunferenciaQuadril':

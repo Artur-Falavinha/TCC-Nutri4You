@@ -68,7 +68,7 @@ class FluxosClinicosControllerTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"nutricionistaId\":" + n.getId() + ",\"dataHora\":\"2030-01-07T09:00\"}"))
                 .andExpect(status().isBadRequest());
     }
-    @Test void consultaExigeConfirmacaoJanelaEVersaoEImpedeReinicio() throws Exception {
+    @Test void consultaExigeConfirmacaoEVersaoEImpedeReinicio() throws Exception {
         Consulta c = consultas.saveAndFlush(new Consulta(p, n, agora().plusMinutes(5)));
         acao(c, "inicio", 0).andExpect(status().isBadRequest());
         acao(c, "confirmacao", 0).andExpect(status().isOk());
@@ -79,12 +79,12 @@ class FluxosClinicosControllerTest {
         acao(c, "inicio", c.getVersao()).andExpect(status().isBadRequest());
         acao(c, "cancelamento", c.getVersao()).andExpect(status().isBadRequest());
     }
-    @Test void consultaForaDaJanelaENaoIniciadaNaoAceitaAtendimento() throws Exception {
+    @Test void consultaPodeComecarMaisDeUmaHoraAntesMasExigeInicioParaRegistrarAtendimento() throws Exception {
         Consulta c = new Consulta(p, n, agora().plusHours(1)); c.atualizar(c.getDataHora(), "CONFIRMADA", null); consultas.saveAndFlush(c);
-        acao(c, "inicio", c.getVersao()).andExpect(status().isBadRequest());
         mvc.perform(put(base + "/consultas/" + c.getId()).header("Authorization", nutriToken)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"dataHora\":\"" + c.getDataHora() + "\",\"status\":\"CONFIRMADA\",\"versao\":0,\"observacao\":\"não iniciado\"}"))
                 .andExpect(status().isBadRequest());
+        acao(c, "inicio", c.getVersao()).andExpect(status().isOk());
     }
     @Test void consultaPassadaNaoPodeSerReagendadaPeloPaciente() throws Exception {
         Consulta c = new Consulta(p, n, agora().minusDays(1)); c.atualizar(c.getDataHora(), "CONFIRMADA", null); consultas.saveAndFlush(c);

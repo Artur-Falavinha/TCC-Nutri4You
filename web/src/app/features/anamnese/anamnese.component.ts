@@ -12,11 +12,12 @@ import { UiSelectComponent, UiSelectOption } from '../../shared/components/ui-se
 import { PatientTabsComponent } from '../../shared/components/patient-tabs/patient-tabs.component';
 import { AnamneseService } from './anamnese.service';
 import { Anamnese, AnamneseField, Answers, Answer, Patient } from './anamnese.models';
+import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog/paciente-dialog.component';
 
 @Component({
   selector: 'app-anamnese',
   standalone: true,
-  imports: [FormsModule, DatePipe, UiButtonComponent, UiCheckboxComponent, UiSelectComponent, PatientTabsComponent],
+  imports: [FormsModule, DatePipe, UiButtonComponent, UiCheckboxComponent, UiSelectComponent, PatientTabsComponent, PacienteDialogComponent],
   templateUrl: './anamnese.component.html',
   styleUrl: './anamnese.component.css'
 })
@@ -41,6 +42,8 @@ export class AnamneseComponent implements OnInit {
   message = '';
   conflict = false;
   private original = '{}';
+  confirmacao: { titulo: string; descricao: string; confirmar: string } | null = null;
+  private resolverConfirmacao: ((valor: boolean) => void) | null = null;
 
   ngOnInit(): void {
     if (this.auth.authenticated) void this.initialize();
@@ -74,7 +77,7 @@ export class AnamneseComponent implements OnInit {
   }
 
   async selectPatient(id: number): Promise<void> {
-    if (!this.canLeave()) return;
+    if (!await this.canLeave()) return;
     if (id > 0) {
       await this.loadPatient(id);
       await this.router.navigate(['/pacientes', id, 'anamnese'], { replaceUrl: true });
@@ -103,8 +106,8 @@ export class AnamneseComponent implements OnInit {
     this.editing = true;
   }
 
-  cancel(): void {
-    if (!this.canLeave()) return;
+  async cancel(): Promise<void> {
+    if (!await this.canLeave()) return;
     this.answers = {};
     this.editing = false;
     this.errors = {};
@@ -114,8 +117,23 @@ export class AnamneseComponent implements OnInit {
   }
 
   get dirty(): boolean { return this.editing && JSON.stringify(this.answers) !== this.original; }
-  canLeave(): boolean {
-    return !this.saving && (!this.dirty || window.confirm('Descartar as alterações não salvas?'));
+  canLeave(): boolean | Promise<boolean> {
+    if (this.saving) return false;
+    if (!this.dirty) return true;
+    return this.confirmar('Descartar alterações?', 'As alterações não salvas da anamnese serão descartadas.', 'Descartar alterações');
+  }
+
+  private confirmar(titulo: string, descricao: string, confirmar: string): Promise<boolean> {
+    if (this.resolverConfirmacao) return Promise.resolve(false);
+    this.confirmacao = { titulo, descricao, confirmar };
+    return new Promise(resolve => { this.resolverConfirmacao = resolve; });
+  }
+
+  responderConfirmacao(valor: boolean): void {
+    const resolver = this.resolverConfirmacao;
+    this.resolverConfirmacao = null;
+    this.confirmacao = null;
+    resolver?.(valor);
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -235,7 +253,7 @@ export class AnamneseComponent implements OnInit {
 
   async discardDraft(): Promise<void> {
     if (!this.data || this.data.versao === null || this.saving ||
-        !window.confirm('Descartar o rascunho salvo? A última anamnese finalizada será mantida.')) return;
+        !await this.confirmar('Descartar rascunho?', 'A última anamnese finalizada será mantida.', 'Descartar rascunho')) return;
     this.saving = true;
     this.error = '';
     try {
@@ -246,7 +264,7 @@ export class AnamneseComponent implements OnInit {
   }
 
   async reload(): Promise<void> {
-    if (this.patientId && this.canLeave()) await this.loadPatient(this.patientId);
+    if (this.patientId && await this.canLeave()) await this.loadPatient(this.patientId);
   }
 
   private focusError(): void {

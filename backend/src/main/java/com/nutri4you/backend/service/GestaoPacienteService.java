@@ -15,6 +15,8 @@ import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -24,19 +26,19 @@ public class GestaoPacienteService {
     private final RelacaoClinicaRepository relacaoClinicaRepository;
     private final ConsultaRepository consultaRepository;
     private final NutricionistaRepository nutricionistaRepository;
-    private final JanelaConsulta janela;
+    private final Clock clock;
 
     public GestaoPacienteService(
             PacienteRepository pacienteRepository,
             RelacaoClinicaRepository relacaoClinicaRepository,
             ConsultaRepository consultaRepository,
             NutricionistaRepository nutricionistaRepository,
-            JanelaConsulta janela) {
+            Clock clock) {
         this.pacienteRepository = pacienteRepository;
         this.relacaoClinicaRepository = relacaoClinicaRepository;
         this.consultaRepository = consultaRepository;
         this.nutricionistaRepository = nutricionistaRepository;
-        this.janela = janela;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -49,7 +51,7 @@ public class GestaoPacienteService {
     }
 
     @Transactional(readOnly = true)
-    public PacienteResumoDTO buscarPaciente(String email, String cpf) {
+    public PacienteResumoDTO buscarPaciente(Nutricionista nutricionista, String email, String cpf) {
         boolean emailInformado = email != null && !email.isBlank();
         boolean cpfInformado = cpf != null && !cpf.isBlank();
 
@@ -70,6 +72,10 @@ public class GestaoPacienteService {
                     .orElseThrow(PacienteNaoEncontradoException::new);
         }
 
+        if (relacaoClinicaRepository.existsByPaciente_IdAndNutricionista_IdAndEncerradaEmIsNotNull(
+                paciente.getId(), nutricionista.getId())) {
+            throw new PacienteNaoEncontradoException();
+        }
         return paraResumo(paciente);
     }
 
@@ -102,6 +108,9 @@ public class GestaoPacienteService {
         if (relacao.getStatus() == StatusRelacaoClinica.ENCERRADA) {
             relacao.solicitar();
         }
+        if (relacao.getStatus() == StatusRelacaoClinica.PENDENTE && relacao.solicitadaPeloPaciente()) {
+            throw new IllegalArgumentException("Responda à solicitação do paciente em Notificações.");
+        }
         return relacao.getStatus();
     }
 
@@ -120,24 +129,14 @@ public class GestaoPacienteService {
     private void encerrarVinculo(Integer pacienteId, Integer nutricionistaId, String mensagemSemVinculo) {
         nutricionistaRepository.findByIdForUpdate(nutricionistaId)
                 .orElseThrow(() -> new IllegalArgumentException(mensagemSemVinculo));
+        pacienteRepository.findByIdForUpdate(pacienteId).orElseThrow(PacienteNaoEncontradoException::new);
         RelacaoClinica relacao = relacaoClinicaRepository
                 .findByPaciente_IdAndNutricionista_IdAndStatus(pacienteId, nutricionistaId, StatusRelacaoClinica.ATIVA)
                 .orElseThrow(() -> new IllegalArgumentException(mensagemSemVinculo));
 
-        consultaRepository.bloquearRecorrentesFuturasNaoIniciadas(pacienteId, nutricionistaId, janela.agora())
+        consultaRepository.bloquearConsultasEmAberto(pacienteId, nutricionistaId, LocalDateTime.now(clock))
                 .forEach(Consulta::cancelar);
         relacao.encerrar();
-    }
-
-    @Transactional(readOnly = true)
-    public void exigirAcessoAoHistoricoDeConsultas(Nutricionista nutricionista, Integer pacienteId) {
-        Paciente paciente = pacienteRepository.findById(pacienteId)
-                .orElseThrow(PacienteNaoEncontradoException::new);
-        if (!relacaoAtiva(nutricionista, paciente)
-                && !consultaRepository.existsByPaciente_IdAndNutricionista_IdAndAvulsaFalse(
-                        pacienteId, nutricionista.getId())) {
-            throw new AcessoNegadoException("Sem permissão para acessar consultas deste paciente.");
-        }
     }
 
     private void validarAcessoNutricionista(Nutricionista nutricionista, Paciente paciente) {

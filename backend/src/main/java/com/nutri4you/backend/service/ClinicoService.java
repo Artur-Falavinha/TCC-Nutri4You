@@ -70,7 +70,7 @@ public class ClinicoService {
         Paciente paciente = gestaoPacienteService.exigirAcesso(nutricionista, pacienteId);
         validarMedidas(request);
         AvaliacaoAntropometrica avaliacao = new AvaliacaoAntropometrica(paciente, LocalDateTime.now(java.time.ZoneId.of("America/Sao_Paulo")));
-        aplicar(avaliacao, request);
+        aplicar(avaliacao, request, paciente);
         return paraResposta(avaliacaoRepository.save(avaliacao));
     }
 
@@ -327,8 +327,8 @@ public class ClinicoService {
 
     private List<Consulta> consultasMarcadasEntre(Integer nutricionistaId, LocalDateTime inicio, LocalDateTime fim) {
         return consultaRepository
-                .findByNutricionista_IdAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
-                        nutricionistaId, inicio, fim)
+                .listarVisiveisNoPainel(nutricionistaId, inicio, fim,
+                        com.nutri4you.backend.model.StatusRelacaoClinica.ATIVA)
                 .stream()
                 .filter(c -> confirmada(c) || "REALIZADA".equalsIgnoreCase(c.getStatus()))
                 .toList();
@@ -339,7 +339,8 @@ public class ClinicoService {
     }
 
     private boolean naoCancelada(Consulta consulta) {
-        return !"CANCELADA".equalsIgnoreCase(consulta.getStatus());
+        return !("CANCELADA".equalsIgnoreCase(consulta.getStatus())
+                || "RECUSADA".equalsIgnoreCase(consulta.getStatus()));
     }
 
 

@@ -64,7 +64,7 @@ class AuthEmailControllerTest {
                                 {
                                   "nome": "Novo Paciente",
                                   "email": "nao.confirmado@teste.com",
-                                  "senha": "senhaSegura123"
+                                  "senha": "senhaSegura123", "versaoTermos": "2026-11-16.2"
                                 }
                                 """))
                 .andExpect(status().isCreated());
@@ -86,7 +86,7 @@ class AuthEmailControllerTest {
                                 {
                                   "nome": "Confirmar Email",
                                   "email": "confirmar@teste.com",
-                                  "senha": "senhaSegura123"
+                                  "senha": "senhaSegura123", "versaoTermos": "2026-11-16.2"
                                 }
                                 """))
                 .andExpect(status().isCreated());
@@ -119,7 +119,7 @@ class AuthEmailControllerTest {
                                 {
                                   "nome": "JWT Bloqueado",
                                   "email": "jwt.bloqueado@teste.com",
-                                  "senha": "senhaSegura123"
+                                  "senha": "senhaSegura123", "versaoTermos": "2026-11-16.2"
                                 }
                                 """))
                 .andExpect(status().isCreated());
@@ -139,7 +139,7 @@ class AuthEmailControllerTest {
                                 {
                                   "nome": "Recuperar Confirmacao",
                                   "email": "recuperar.confirmacao@teste.com",
-                                  "senha": "senhaSegura123"
+                                  "senha": "senhaSegura123", "versaoTermos": "2026-11-16.2"
                                 }
                                 """))
                 .andExpect(status().isCreated());

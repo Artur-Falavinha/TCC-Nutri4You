@@ -11,7 +11,7 @@
     <fieldset [disabled]="salvando">
       <legend>Disponibilidade semanal</legend>
       <form class="adicionar" (ngSubmit)="adicionar()">
-        <label>Dia da semana<select name="dia" [(ngModel)]="dia">@for (nome of dias; track nome; let i = $index) { <option [ngValue]="i + 1">{{ nome }}</option> }</select></label>
+        <app-ui-select label="Dia da semana" selectId="dia-da-semana" name="dia" [options]="opcoesDias" [(ngModel)]="dia" />
         <label>Horário de início<input name="hora" type="time" max="23:15" required [(ngModel)]="hora" /></label>
         <button type="submit">Adicionar horário</button>
       </form>
@@ -28,3 +28,9 @@
     </fieldset>
   }
 </main>
+@if (modalSaida) {
+  <app-paciente-dialog title="Sair da agenda?" description="As alterações não salvas da disponibilidade serão descartadas." (fechar)="responderSaida(false)">
+    <app-ui-button dialogActions label="Continuar editando" variant="outline" (click)="responderSaida(false)" />
+    <app-ui-button dialogActions label="Descartar e sair" variant="danger" (click)="responderSaida(true)" />
+  </app-paciente-dialog>
+}

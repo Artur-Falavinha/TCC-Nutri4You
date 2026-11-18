@@ -12,7 +12,6 @@ import java.util.List;
 
 @Service
 public class HorarioConsultaService {
-    private static final String STATUS_CANCELADA = "CANCELADA";
     public static final int DURACAO_MINUTOS = 45;
 
     private final ConsultaRepository consultas;
@@ -28,12 +27,9 @@ public class HorarioConsultaService {
         nutricionistas.findByIdForUpdate(nutricionistaId)
                 .orElseThrow(() -> new IllegalArgumentException("Nutricionista não encontrado."));
 
-        List<Consulta> consultasProximas = consultas
-                .findByNutricionista_IdAndStatusNotAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
-                        nutricionistaId,
-                        STATUS_CANCELADA,
-                        dataHora.minusMinutes(DURACAO_MINUTOS),
-                        dataHora.plusMinutes(DURACAO_MINUTOS));
+        List<Consulta> consultasProximas = consultas.listarOcupadas(
+                nutricionistaId, dataHora.minusMinutes(DURACAO_MINUTOS),
+                dataHora.plusMinutes(DURACAO_MINUTOS));
 
         if (possuiConflito(consultasProximas, dataHora, ignorarConsultaId)) {
             throw new ConsultaConflitoException("O horário selecionado já está ocupado.");
@@ -46,7 +42,8 @@ public class HorarioConsultaService {
             Integer ignorarConsultaId) {
         LocalDateTime novoFim = novoInicio.plusMinutes(DURACAO_MINUTOS);
         return consultasExistentes.stream()
-                .filter(consulta -> !STATUS_CANCELADA.equals(consulta.getStatus()))
+                .filter(consulta -> !("CANCELADA".equals(consulta.getStatus())
+                        || "RECUSADA".equals(consulta.getStatus())))
                 .filter(consulta -> ignorarConsultaId == null || !ignorarConsultaId.equals(consulta.getId()))
                 .anyMatch(consulta -> consulta.getDataHora().isBefore(novoFim)
                         && consulta.getDataHora().plusMinutes(DURACAO_MINUTOS).isAfter(novoInicio));

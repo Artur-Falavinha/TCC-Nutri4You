@@ -4,7 +4,10 @@
 </header>
 
 <main class="canvas" [attr.aria-busy]="carregando || salvando || publicando || excluindo">
-  <a class="text-action" [routerLink]="atendimentoId === null ? ['/pacientes', patientId, 'consultas'] : ['/agenda/atendimentos', atendimentoId]">← {{ atendimentoId === null ? 'Voltar às consultas' : 'Voltar ao atendimento' }}</a>
+  <a class="page-back-action" [routerLink]="atendimentoId === null ? ['/pacientes', patientId, 'consultas'] : ['/agenda/atendimentos', atendimentoId]">
+    <i class="ph ph-arrow-left" aria-hidden="true"></i>
+    {{ atendimentoId === null ? 'Voltar às consultas' : 'Voltar ao atendimento' }}
+  </a>
   <app-form-alert [message]="erro" type="error" />
   <app-form-alert [message]="mensagem" type="success" />
 
@@ -113,15 +116,17 @@
       }
     </section>
 
-    @if (plano.metas) {
+    @if (plano.metas; as metas) {
       <section class="summary-card" aria-labelledby="goals-title">
         <h3 id="goals-title">Metas diárias <span tabindex="0" title="Uma meta comum para cada dia da semana. Os totais previstos não representam consumo registrado.">ⓘ</span></h3>
-        <dl class="nutrient-grid">
-          <div><dt>Energia</dt><dd>{{ formatarNutriente(plano.metas.kcal) }} kcal</dd></div>
-          <div><dt>Proteínas</dt><dd>{{ formatarNutriente(plano.metas.proteinas) }} g</dd></div>
-          <div><dt>Carboidratos</dt><dd>{{ formatarNutriente(plano.metas.carboidratos) }} g</dd></div>
-          <div><dt>Gorduras</dt><dd>{{ formatarNutriente(plano.metas.gorduras) }} g</dd></div>
-        </dl>
+        @if (resumoMetas(metas, plano.percentuais); as resumo) {
+          <dl class="goal-list" data-testid="metas-diarias">
+            <div class="goal-row goal-row--energy"><dt>Calorias</dt><dd class="goal-main">{{ formatarNutriente(resumo.energia) }} kcal</dd></div>
+            @for (macro of resumo.macros; track macro.nome) {
+              <div class="goal-row"><dt>{{ macro.nome }} <small class="goal-secondary">{{ formatarNutriente(macro.gramas) }} g</small></dt><dd class="goal-main">{{ formatarNutriente(macro.percentual) }}%</dd></div>
+            }
+          </dl>
+        }
       </section>
     }
 
@@ -236,15 +241,50 @@
         </section>
 
         <section class="form-section" aria-labelledby="goals-form-title">
-          <h3 id="goals-form-title">Metas nutricionais informadas <span class="optional">(opcional)</span></h3>
-          <p class="section-help">Preencha os quatro campos ou deixe todos vazios. Os totais calculados são apresentados separadamente.</p>
+          <h3 id="goals-form-title">Metas nutricionais <span class="optional">(opcional)</span></h3>
+          @if (referenciaEnergetica; as referencia) {
+            <aside class="energy-reference" aria-labelledby="energy-reference-title">
+              <div>
+                <h4 id="energy-reference-title">Referência energética estimada</h4>
+                <p>Com {{ formatarNutriente(referencia.peso) }} kg e {{ formatarNutriente(referencia.alturaCm) }} cm da {{ referencia.origemMedidas }}, pela equação de Mifflin–St Jeor.</p>
+              </div>
+              <dl>
+                <div><dt>TMB</dt><dd>{{ referencia.tmb }} kcal/dia</dd></div>
+                <div><dt>FA</dt><dd>{{ fatorAtividade.toLocaleString('pt-BR') }}</dd></div>
+                <div><dt>GET</dt><dd>{{ referencia.get }} kcal/dia</dd></div>
+              </dl>
+              <div class="field compact-field">
+                <app-ui-select label="Fator de atividade" selectId="fator-atividade" name="fator-atividade"
+                  [options]="opcoesFatorAtividade" [ngModel]="'' + fatorAtividade" (ngModelChange)="atualizarFatorAtividade($event)" />
+                <small>Sugerido pela atividade informada na anamnese; pode ser ajustado pelo nutricionista.</small>
+              </div>
+              <button type="button" class="action secondary" (click)="usarGetComoMeta()">Usar GET na meta</button>
+              <p class="reference-note">Estimativa de apoio clínico, não prescrição automática.</p>
+            </aside>
+          } @else {
+            <p class="reference-unavailable">TMB e GET ficarão disponíveis quando peso, altura, sexo e data de nascimento estiverem salvos.</p>
+          }
+          <p class="section-help">O terceiro macronutriente é completado automaticamente quando os outros dois são informados, e as gramas são calculadas abaixo.</p>
           @if (errors['metas']) { <p class="field-error" role="alert">{{ errors['metas'] }}</p> }
           <div class="nutrient-inputs">
             <label class="field" for="meta-kcal"><span>Energia (kcal)</span><input id="meta-kcal" name="meta-kcal" type="number" min="0.01" max="999999.99" step="0.01" inputmode="decimal" [(ngModel)]="form.metas.kcal" [attr.aria-invalid]="!!errors['meta-kcal']" />@if (errors['meta-kcal']) { <span class="field-error" role="alert">{{ errors['meta-kcal'] }}</span> }</label>
-            <label class="field" for="meta-proteinas"><span>Proteínas (g)</span><input id="meta-proteinas" name="meta-proteinas" type="number" min="0" max="999999.99" step="0.01" inputmode="decimal" [(ngModel)]="form.metas.proteinas" [attr.aria-invalid]="!!errors['meta-proteinas']" />@if (errors['meta-proteinas']) { <span class="field-error" role="alert">{{ errors['meta-proteinas'] }}</span> }</label>
-            <label class="field" for="meta-carboidratos"><span>Carboidratos (g)</span><input id="meta-carboidratos" name="meta-carboidratos" type="number" min="0" max="999999.99" step="0.01" inputmode="decimal" [(ngModel)]="form.metas.carboidratos" [attr.aria-invalid]="!!errors['meta-carboidratos']" />@if (errors['meta-carboidratos']) { <span class="field-error" role="alert">{{ errors['meta-carboidratos'] }}</span> }</label>
-            <label class="field" for="meta-gorduras"><span>Gorduras (g)</span><input id="meta-gorduras" name="meta-gorduras" type="number" min="0" max="999999.99" step="0.01" inputmode="decimal" [(ngModel)]="form.metas.gorduras" [attr.aria-invalid]="!!errors['meta-gorduras']" />@if (errors['meta-gorduras']) { <span class="field-error" role="alert">{{ errors['meta-gorduras'] }}</span> }</label>
+            <label class="field" for="meta-percentual-proteinas"><span>Proteínas (%)</span><input id="meta-percentual-proteinas" name="meta-percentual-proteinas" type="number" min="0" max="100" step="0.01" inputmode="decimal" [ngModel]="form.metas.percentualProteinas" (ngModelChange)="atualizarPercentual('percentualProteinas', $event)" [attr.aria-invalid]="!!errors['meta-percentualProteinas']" />@if (errors['meta-percentualProteinas']) { <span class="field-error" role="alert">{{ errors['meta-percentualProteinas'] }}</span> }</label>
+            <label class="field" for="meta-percentual-carboidratos"><span>Carboidratos (%)</span><input id="meta-percentual-carboidratos" name="meta-percentual-carboidratos" type="number" min="0" max="100" step="0.01" inputmode="decimal" [ngModel]="form.metas.percentualCarboidratos" (ngModelChange)="atualizarPercentual('percentualCarboidratos', $event)" [attr.aria-invalid]="!!errors['meta-percentualCarboidratos']" />@if (errors['meta-percentualCarboidratos']) { <span class="field-error" role="alert">{{ errors['meta-percentualCarboidratos'] }}</span> }</label>
+            <label class="field" for="meta-percentual-gorduras"><span>Gorduras (%)</span><input id="meta-percentual-gorduras" name="meta-percentual-gorduras" type="number" min="0" max="100" step="0.01" inputmode="decimal" [ngModel]="form.metas.percentualGorduras" (ngModelChange)="atualizarPercentual('percentualGorduras', $event)" [attr.aria-invalid]="!!errors['meta-percentualGorduras']" />@if (errors['meta-percentualGorduras']) { <span class="field-error" role="alert">{{ errors['meta-percentualGorduras'] }}</span> }</label>
           </div>
+          @if (metasCalculadas; as calculadas) {
+            <div class="goal-preview" aria-label="Metas diárias calculadas">
+              <h4>Metas diárias</h4>
+              @if (resumoMetas(calculadas, percentuaisCalculados); as resumo) {
+                <dl class="goal-list" data-testid="metas-diarias-editor">
+                  <div class="goal-row goal-row--energy"><dt>Calorias</dt><dd class="goal-main">{{ formatarNutriente(resumo.energia) }} kcal</dd></div>
+                  @for (macro of resumo.macros; track macro.nome) {
+                    <div class="goal-row"><dt>{{ macro.nome }} <small class="goal-secondary">{{ formatarNutriente(macro.gramas) }} g</small></dt><dd class="goal-main">{{ formatarNutriente(macro.percentual) }}%</dd></div>
+                  }
+                </dl>
+              }
+            </div>
+          }
         </section>
 
         <section class="form-section" aria-labelledby="meals-form-title">
@@ -354,6 +394,32 @@
     </form>
   }
 </main>
+
+@if (modalDescartarAlteracoes) {
+  <app-paciente-dialog
+    title="Sair do planejamento?"
+    description="As alterações não salvas deste plano serão descartadas."
+    (fechar)="cancelarDescarte()"
+  >
+    <app-ui-button dialogActions label="Continuar editando" variant="outline" type="button"
+      [fullWidth]="false" (click)="cancelarDescarte()" />
+    <app-ui-button dialogActions label="Descartar e sair" variant="danger" type="button"
+      [fullWidth]="false" (click)="confirmarDescarte()" />
+  </app-paciente-dialog>
+}
+
+@if (confirmacaoDestrutiva; as confirmacao) {
+  <app-paciente-dialog
+    [title]="confirmacao.titulo"
+    [description]="confirmacao.descricao"
+    (fechar)="cancelarConfirmacaoDestrutiva()"
+  >
+    <app-ui-button dialogActions label="Cancelar" variant="outline" type="button"
+      [fullWidth]="false" (click)="cancelarConfirmacaoDestrutiva()" />
+    <app-ui-button dialogActions [label]="confirmacao.confirmar" variant="danger" type="button"
+      [fullWidth]="false" (click)="confirmarAcaoDestrutiva()" />
+  </app-paciente-dialog>
+}
 
 @if (modalAlimentos) {
   <app-busca-alimentos

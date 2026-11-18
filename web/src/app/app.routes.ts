@@ -11,6 +11,7 @@ import { ConfiguracoesComponent } from './features/configuracoes/configuracoes.c
 import { HealthComponent } from './features/health/health.component';
 import { AppShellComponent } from './layout/app-shell.component';
 import { NotFoundComponent } from './features/not-found/not-found.component';
+import { NotificacoesComponent } from './features/notificacoes/notificacoes.component';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
@@ -32,6 +33,7 @@ export const routes: Routes = [
         component: ConfiguracoesComponent,
         title: 'Configurações — Nutri4You',
       },
+      { path: 'notificacoes', component: NotificacoesComponent, title: 'Notificações — Nutri4You' },
       {
         path: 'anamnese',
         component: AnamneseComponent,

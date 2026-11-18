@@ -6,7 +6,6 @@ import CalendarIcon from '../../assets/appointments/nav-calendar.svg';
 import DietIcon from '../../assets/appointments/nav-diet.svg';
 import ExamsIcon from '../../assets/appointments/nav-exams.svg';
 import HomeIcon from '../../assets/appointments/nav-home.svg';
-import LockIcon from '../../assets/appointments/nav-lock.svg';
 import LogoutIcon from '../../assets/appointments/nav-logout.svg';
 import ProfileIcon from '../../assets/appointments/nav-profile.svg';
 import ResultsIcon from '../../assets/appointments/nav-results.svg';
@@ -50,8 +49,7 @@ const menuItems: {
   { destination: 'appointments', label: 'Agenda', icon: CalendarIcon },
   { destination: 'exams', label: 'Exames', icon: ExamsIcon },
   { destination: 'shopping', label: 'Compras', icon: ShoppingIcon },
-  { destination: 'results', label: 'Resultados', icon: ResultsIcon },
-  { destination: 'password', label: 'Trocar Senha', icon: LockIcon }
+  { destination: 'results', label: 'Resultados', icon: ResultsIcon }
 ];
 
 export function SideMenu({

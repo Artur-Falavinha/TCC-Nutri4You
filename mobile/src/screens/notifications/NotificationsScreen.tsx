@@ -59,10 +59,13 @@ export function NotificationsScreen({ navigation }: Props) {
 
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
-  const lembretes = useMemo(() => appointments
-    .filter((item) => ['AGUARDANDO_CONFIRMACAO', 'CONFIRMADA'].includes(item.status)
-      && horarioCivilEmMilissegundos(item.dataHora) >= agoraNaClinica)
-    .sort((a, b) => a.dataHora.localeCompare(b.dataHora)), [appointments, agoraNaClinica]);
+  const notificacoes = useMemo(() => appointments
+    .filter((item) => item.status === 'RECUSADA'
+      || (['AGUARDANDO_CONFIRMACAO', 'CONFIRMADA'].includes(item.status)
+        && horarioCivilEmMilissegundos(item.dataHora) >= agoraNaClinica))
+    .sort((a, b) => a.status === 'RECUSADA' && b.status !== 'RECUSADA' ? -1
+      : b.status === 'RECUSADA' && a.status !== 'RECUSADA' ? 1
+        : a.dataHora.localeCompare(b.dataHora)), [appointments, agoraNaClinica]);
 
   const voltar = () => {
     if (navigation.canGoBack()) {
@@ -85,7 +88,7 @@ export function NotificationsScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} />}
       >
-        <Text style={styles.subtitle}>Lembretes das suas consultas</Text>
+        <Text style={styles.subtitle}>Atualizações e lembretes das suas consultas</Text>
         {loading ? <ActivityIndicator color={colors.brand} accessibilityLabel="Carregando notificações" /> : null}
         {!loading && error ? (
           <View style={styles.card}>
@@ -93,20 +96,26 @@ export function NotificationsScreen({ navigation }: Props) {
             <Pressable onPress={() => void load()} accessibilityRole="button"><Text style={styles.link}>Tentar novamente</Text></Pressable>
           </View>
         ) : null}
-        {!loading && !error && lembretes.length === 0 ? (
+        {!loading && !error && notificacoes.length === 0 ? (
           <View style={styles.card}>
             <Text style={styles.emptyTitle}>Tudo em dia</Text>
             <Text style={styles.body}>Você não tem consultas futuras para lembrar.</Text>
           </View>
         ) : null}
-        {!loading && !error ? lembretes.map((item) => (
+        {!loading && !error ? notificacoes.map((item) => (
           <Pressable key={item.id} style={styles.card} onPress={() => navigation.navigate('Agenda')}
             accessibilityRole="button" accessibilityLabel={`Consulta ${formatarData(item.dataHora)}. Abrir agenda`}>
             <View style={styles.row}>
-              <View style={styles.dot} />
-              <Text style={styles.cardTitle}>Consulta {item.status === 'CONFIRMADA' ? 'confirmada' : 'aguardando confirmação'}</Text>
+              <View style={[styles.dot, item.status === 'RECUSADA' && styles.rejectedDot]} />
+              <Text style={[styles.cardTitle, item.status === 'RECUSADA' && styles.rejectedTitle]}>
+                {item.status === 'RECUSADA' ? 'Consulta recusada'
+                  : `Consulta ${item.status === 'CONFIRMADA' ? 'confirmada' : 'aguardando confirmação'}`}
+              </Text>
             </View>
             <Text style={styles.body}>{formatarData(item.dataHora)}</Text>
+            {item.status === 'RECUSADA' ? (
+              <Text style={styles.body}>O nutricionista não pôde aceitar este horário. Escolha uma nova data na agenda.</Text>
+            ) : null}
             <Text style={styles.link}>Ver agenda</Text>
           </Pressable>
         )) : null}
@@ -148,7 +157,9 @@ const styles = StyleSheet.create({
   card: { padding: spacing.lg, gap: spacing.sm, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.brand },
+  rejectedDot: { backgroundColor: colors.danger },
   cardTitle: { flex: 1, color: colors.text, fontFamily: fontFamily.bold, fontSize: 15 },
+  rejectedTitle: { color: colors.dangerText },
   emptyTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 16 },
   body: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 21 },
   link: { color: colors.brand, fontFamily: fontFamily.semibold, fontSize: 14, paddingTop: spacing.xs },

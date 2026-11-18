@@ -47,7 +47,8 @@ export async function autocadastrarPaciente(
     cpf: payload.cpf?.trim() || undefined,
     telefone: payload.telefone?.trim() || undefined,
     sexo: payload.sexo?.trim() || undefined,
-    dataNascimento: payload.dataNascimento || undefined
+    dataNascimento: payload.dataNascimento || undefined,
+    versaoTermos: payload.versaoTermos
   });
 }
 

@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ComponentRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -51,7 +51,7 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const weekScrollRef = useRef<ScrollView>(null);
+  const weekScrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
 
   const revealSelectedDay = useCallback(() => {
     const index = (fromDateKey(selectedDate).getDay() + 6) % 7;

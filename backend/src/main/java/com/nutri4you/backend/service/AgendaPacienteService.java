@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
@@ -32,16 +33,18 @@ public class AgendaPacienteService {
     private final NutricionistaRepository nutricionistas;
     private final RelacaoClinicaRepository relacoes;
     private final HorarioAtendimentoService horarios;
+    private final Clock clock;
 
 
     public AgendaPacienteService(
             ConsultaRepository consultas,
             NutricionistaRepository nutricionistas,
-            RelacaoClinicaRepository relacoes, HorarioAtendimentoService horarios) {
+            RelacaoClinicaRepository relacoes, HorarioAtendimentoService horarios, Clock clock) {
         this.consultas = consultas;
         this.nutricionistas = nutricionistas;
         this.relacoes = relacoes;
         this.horarios = horarios;
+        this.clock = clock;
 
     }
 
@@ -64,7 +67,7 @@ public class AgendaPacienteService {
             Paciente paciente, Integer nutricionistaId, LocalDate data) {
         Nutricionista nutricionista = nutricionistas.findById(nutricionistaId)
                 .orElseThrow(() -> new IllegalArgumentException(INDISPONIVEL));
-        validarNovaSolicitacao(nutricionista, temVinculo(paciente, nutricionistaId));
+        validarNovaSolicitacao(paciente, nutricionista, temVinculo(paciente, nutricionistaId));
         return horariosDisponiveis(nutricionista, data, null);
     }
 
@@ -85,12 +88,8 @@ public class AgendaPacienteService {
             throw new IllegalArgumentException("Informe a data desejada.");
         }
         Integer nutricionistaId = nutricionista.getId();
-        List<Consulta> ocupadas = consultas
-                .findByNutricionista_IdAndStatusNotAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
-                        nutricionistaId,
-                        "CANCELADA",
-                        data.atStartOfDay(),
-                        data.plusDays(1).atStartOfDay());
+        List<Consulta> ocupadas = consultas.listarOcupadas(
+                nutricionistaId, data.atStartOfDay(), data.plusDays(1).atStartOfDay());
         LocalDateTime agora = LocalDateTime.now(FUSO_HORARIO);
         LocalDateTime horarioAtual = consultaParaReagendar == null ? null : consultaParaReagendar.getDataHora();
         Integer ignorarConsultaId = consultaParaReagendar == null ? null : consultaParaReagendar.getId();
@@ -116,7 +115,7 @@ public class AgendaPacienteService {
         }
         Nutricionista nutricionista = bloquearNutricionista(request.nutricionistaId());
         boolean vinculado = temVinculo(paciente, nutricionista.getId());
-        validarNovaSolicitacao(nutricionista, vinculado);
+        validarNovaSolicitacao(paciente, nutricionista, vinculado);
         validarHorario(nutricionista.getId(), request.dataHora());
         exigirHorarioLivre(nutricionista.getId(), request.dataHora(), null);
 
@@ -162,9 +161,16 @@ public class AgendaPacienteService {
                 paciente.getId(), nutricionistaId, StatusRelacaoClinica.ATIVA).isPresent();
     }
 
-    private void validarNovaSolicitacao(Nutricionista nutricionista, boolean vinculado) {
-        if (!vinculado && !nutricionista.aceitaConsultasAvulsas()) {
+    private void validarNovaSolicitacao(Paciente paciente, Nutricionista nutricionista, boolean vinculado) {
+        if (vinculado) return;
+        if (!nutricionista.aceitaConsultasAvulsas()) {
             throw new IllegalArgumentException(INDISPONIVEL);
+        }
+        if (relacoes.existsByPaciente_IdAndNutricionista_IdAndEncerradaEmIsNotNull(paciente.getId(), nutricionista.getId())
+                || consultas.temConsultaInicial(paciente.getId(), nutricionista.getId(), LocalDateTime.now(clock))) {
+            throw new IllegalArgumentException("Já existe uma consulta inicial ou um acompanhamento anterior com este nutricionista. "
+                    + "Se a consulta não ocorreu, peça ao nutricionista para cancelá-la. "
+                    + "Para continuar o acompanhamento, solicite um vínculo ativo em Dados pessoais.");
         }
     }
 
@@ -200,12 +206,9 @@ public class AgendaPacienteService {
     }
 
     private void exigirHorarioLivre(Integer nutricionistaId, LocalDateTime dataHora, Integer ignorarConsultaId) {
-        List<Consulta> proximas = consultas
-                .findByNutricionista_IdAndStatusNotAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
-                        nutricionistaId,
-                        "CANCELADA",
-                        dataHora.minusMinutes(DURACAO_MINUTOS),
-                        dataHora.plusMinutes(DURACAO_MINUTOS));
+        List<Consulta> proximas = consultas.listarOcupadas(
+                nutricionistaId, dataHora.minusMinutes(DURACAO_MINUTOS),
+                dataHora.plusMinutes(DURACAO_MINUTOS));
         if (possuiConflito(proximas, dataHora, ignorarConsultaId)) {
             throw new ConsultaConflitoException("O horário selecionado já está ocupado.");
         }

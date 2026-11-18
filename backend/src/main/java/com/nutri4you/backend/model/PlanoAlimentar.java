@@ -1,6 +1,7 @@
 package com.nutri4you.backend.model;
 
 import com.nutri4you.backend.dto.PrescricaoDTO.Nutrientes;
+import com.nutri4you.backend.dto.PrescricaoDTO.DistribuicaoMacros;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -65,6 +66,15 @@ public class PlanoAlimentar {
     @Column(name = "meta_proteina", precision = 8, scale = 2)
     private BigDecimal metaProteina;
 
+    @Column(name = "percentual_proteina", precision = 5, scale = 2)
+    private BigDecimal percentualProteina;
+
+    @Column(name = "percentual_carboidratos", precision = 5, scale = 2)
+    private BigDecimal percentualCarboidratos;
+
+    @Column(name = "percentual_gordura", precision = 5, scale = 2)
+    private BigDecimal percentualGordura;
+
     @Version
     @Column(nullable = false)
     private Long versao = 0L;
@@ -102,7 +112,8 @@ public class PlanoAlimentar {
     }
 
     public void editar(
-            String titulo, String orientacoes, LocalDate inicio, LocalDate fim, Nutrientes metas) {
+            String titulo, String orientacoes, LocalDate inicio, LocalDate fim, Nutrientes metas,
+            DistribuicaoMacros percentuais) {
         tocar();
         this.titulo = titulo;
         this.orientacoes = orientacoes;
@@ -112,6 +123,13 @@ public class PlanoAlimentar {
         this.metaProteina = metas == null ? null : metas.proteinas();
         this.metaCarboidratos = metas == null ? null : metas.carboidratos();
         this.metaGordura = metas == null ? null : metas.gorduras();
+        this.percentualProteina = percentuais == null ? null : percentuais.proteinas();
+        this.percentualCarboidratos = percentuais == null ? null : percentuais.carboidratos();
+        this.percentualGordura = percentuais == null ? null : percentuais.gorduras();
+    }
+
+    public void editar(String titulo, String orientacoes, LocalDate inicio, LocalDate fim, Nutrientes metas) {
+        editar(titulo, orientacoes, inicio, fim, metas, null);
     }
 
     public void publicar() {
@@ -209,4 +227,8 @@ public class PlanoAlimentar {
     public BigDecimal getMetaProteina() {
         return metaProteina;
     }
+
+    public BigDecimal getPercentualProteina() { return percentualProteina; }
+    public BigDecimal getPercentualCarboidratos() { return percentualCarboidratos; }
+    public BigDecimal getPercentualGordura() { return percentualGordura; }
 }
