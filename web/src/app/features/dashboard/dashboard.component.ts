@@ -1,16 +1,16 @@
-﻿import { DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { catchError, of, switchMap, timer } from 'rxjs';
-import { NotificationBellComponent } from '../../shared/components/notification-bell/notification-bell.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 import { Agenda, ClinicoService, Contagem } from '../clinico/clinico.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [DatePipe, NotificationBellComponent, RouterLink],
+  imports: [DatePipe, PageHeaderComponent, RouterLink],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })

@@ -1,23 +1,38 @@
-<main class="notificacoes" aria-labelledby="titulo-notificacoes">
-  <header class="cabecalho">
-    <div><h1 id="titulo-notificacoes">Notificações</h1><p>Solicitações de consulta e de vínculo que aguardam sua decisão.</p></div>
-    <button type="button" [disabled]="carregando || decidindo !== null" (click)="carregar()">Atualizar</button>
-  </header>
+<app-page-header titulo="Notificações" [mostrarSino]="false">
+  <app-ui-button
+    label="Atualizar"
+    icon="arrow-clockwise"
+    variant="secondary"
+    [fullWidth]="false"
+    [loading]="carregando"
+    [disabled]="decidindo !== null"
+    (click)="carregar()"
+  />
+</app-page-header>
+
+<div class="notificacoes" [attr.aria-busy]="carregando">
+  <p class="descricao">Solicitações de consulta e de vínculo que aguardam sua decisão.</p>
   <app-form-alert [message]="erro" type="error" />
   <app-form-alert [message]="mensagem" type="success" />
   @if (carregando) {
     <p role="status">Carregando notificações...</p>
   } @else if (!itens.length && !vinculos.length && !erro) {
-    <section class="vazio"><i class="ph ph-bell-slash" aria-hidden="true"></i><h2>Tudo em dia</h2><p>Nenhuma solicitação pendente.</p></section>
-  } @else {
+    <section class="vazio">
+      <i class="ph ph-bell-slash" aria-hidden="true"></i>
+      <h2>Tudo em dia</h2>
+      <p>Nenhuma solicitação pendente.</p>
+    </section>
+  } @else if (itens.length || vinculos.length) {
     <ul>
       @for (item of vinculos; track item.id) {
         <li>
           <div class="icone"><i class="ph ph-link" aria-hidden="true"></i></div>
           <div class="conteudo"><strong>{{ item.pacienteNome }} solicitou um vínculo</strong><span>Acompanhamento nutricional</span></div>
           <div class="acoes">
-            <button type="button" class="recusar" [disabled]="decidindo !== null" (click)="decidirVinculo(item, false)">Recusar</button>
-            <button type="button" class="confirmar" [disabled]="decidindo !== null" (click)="decidirVinculo(item, true)">Aceitar vínculo</button>
+            <app-ui-button label="Recusar" variant="secondary" [fullWidth]="false"
+              [disabled]="decidindo !== null" (click)="decidirVinculo(item, false)" />
+            <app-ui-button label="Aceitar vínculo" [fullWidth]="false"
+              [disabled]="decidindo !== null" (click)="decidirVinculo(item, true)" />
           </div>
         </li>
       }
@@ -30,11 +45,13 @@
             <span>{{ item.avulsa ? 'Consulta avulsa' : 'Paciente vinculado' }}</span>
           </div>
           <div class="acoes">
-            <button type="button" class="recusar" [disabled]="decidindo !== null" (click)="decidir(item, false)">Recusar</button>
-            <button type="button" class="confirmar" [disabled]="decidindo !== null" (click)="decidir(item, true)">Confirmar</button>
+            <app-ui-button label="Recusar" variant="secondary" [fullWidth]="false"
+              [disabled]="decidindo !== null" (click)="decidir(item, false)" />
+            <app-ui-button label="Confirmar" [fullWidth]="false"
+              [disabled]="decidindo !== null" (click)="decidir(item, true)" />
           </div>
         </li>
       }
     </ul>
   }
-</main>
+</div>

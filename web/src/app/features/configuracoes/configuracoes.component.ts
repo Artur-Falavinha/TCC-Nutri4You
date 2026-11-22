@@ -4,6 +4,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { UsuarioInfo } from '../../core/models/auth.models';
 import { AuthService } from '../../core/services/auth.service';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
 import { ClinicoService, ConsultaResumo } from '../clinico/clinico.service';
 import { PrivacidadeComponent } from '../privacidade/privacidade.component';
 
@@ -16,14 +18,13 @@ const PADRAO: PreferenciasNotificacao = { lembretesConsulta: true };
 
 @Component({
   selector: 'app-configuracoes',
-  imports: [RouterLink, DatePipe, PrivacidadeComponent],
+  imports: [RouterLink, DatePipe, PageHeaderComponent, UiButtonComponent, PrivacidadeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="settings">
-      <header class="page-header">
-        <div><p class="eyebrow">Sua conta</p><h1>Configurações</h1></div>
-        <a routerLink="/dashboard">Voltar ao dashboard</a>
-      </header>
+    <app-page-header titulo="Configurações" />
+
+    <div class="settings">
+      <a routerLink="/dashboard">Voltar ao dashboard</a>
 
       <section class="card" aria-labelledby="account-title">
         <div class="section-heading">
@@ -33,7 +34,7 @@ const PADRAO: PreferenciasNotificacao = { lembretesConsulta: true };
         @if (carregandoConta()) { <p role="status">Carregando seus dados...</p> }
         @else if (erroConta()) {
           <p role="alert">{{ erroConta() }}</p>
-          <button class="secondary-action" type="button" (click)="carregarConta()">Tentar novamente</button>
+          <app-ui-button label="Tentar novamente" variant="secondary" [fullWidth]="false" (click)="carregarConta()" />
         }
         @else {
           @if (conta(); as usuario) {
@@ -51,7 +52,20 @@ const PADRAO: PreferenciasNotificacao = { lembretesConsulta: true };
           <span class="icon" aria-hidden="true"><i class="ph ph-lock-key"></i></span>
           <div><h2 id="access-title">Acesso e agenda</h2><p>Gerencie sua senha e disponibilidade.</p></div>
         </div>
-        <div class="action-row"><span><strong>Senha da conta</strong><small>Receba um link de redefinição no e-mail da sua conta.</small></span><button class="secondary-action" type="button" (click)="solicitarRedefinicao()" [disabled]="!conta() || enviandoSenha()">{{ enviandoSenha() ? 'Enviando...' : 'Enviar link' }}</button></div>
+        <div class="action-row">
+          <span>
+            <strong>Senha da conta</strong>
+            <small>Receba um link de redefinição no e-mail da sua conta.</small>
+          </span>
+          <app-ui-button
+            [label]="enviandoSenha() ? 'Enviando...' : 'Enviar link'"
+            variant="secondary"
+            [fullWidth]="false"
+            [disabled]="!conta()"
+            [loading]="enviandoSenha()"
+            (click)="solicitarRedefinicao()"
+          />
+        </div>
         @if (mensagemSenha()) { <p role="status" aria-live="polite">{{ mensagemSenha() }}</p> }
         @if (erroSenha()) { <p role="alert">{{ erroSenha() }}</p> }
         <div class="action-row"><span><strong>Horários de atendimento</strong><small>Defina os horários em que pacientes podem solicitar consultas.</small></span><a routerLink="/agenda">Editar horários</a></div>
@@ -70,7 +84,11 @@ const PADRAO: PreferenciasNotificacao = { lembretesConsulta: true };
         </label>
         <p class="saved" role="status" aria-live="polite">{{ mensagem }}</p>
         <div class="inbox" aria-live="polite">
-          <div class="inbox-heading"><h3>Consultas de hoje</h3><button type="button" (click)="carregar()" [disabled]="carregando()">Atualizar</button></div>
+          <div class="inbox-heading">
+            <h3>Consultas de hoje</h3>
+            <app-ui-button label="Atualizar" variant="secondary" [fullWidth]="false"
+              [loading]="carregando()" (click)="carregar()" />
+          </div>
           @if (!preferencias.lembretesConsulta) { <p>Os lembretes estão desativados neste navegador.</p> }
           @else if (carregando()) { <p role="status">Carregando consultas...</p> }
           @else if (erro()) { <p role="alert">{{ erro() }}</p> }
@@ -84,15 +102,13 @@ const PADRAO: PreferenciasNotificacao = { lembretesConsulta: true };
         <p class="note">A preferência fica salva neste navegador. Esta tela não envia notificações por e-mail ou push.</p>
       </section>
       <app-privacidade />
-    </main>
+    </div>
   `,
   styles: `
     :host { display: block; min-height: 100%; color: var(--color-text-primary); }
-    .settings { max-width: 1100px; margin: 0 auto; padding: 32px 40px; }
-    .page-header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-bottom:24px; border-bottom:1px solid var(--color-border-default); }
-    h1 { margin:0; font-size:32px; } .eyebrow { margin:0 0 6px; color:var(--color-brand-primary); font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+    .settings { padding: var(--space-24) var(--space-40); }
     a { color:var(--color-brand-primary); font-weight:600; } a:focus-visible, input:focus-visible { outline:3px solid var(--color-brand-primary); outline-offset:3px; }
-    .card { max-width:760px; margin-top:24px; padding:28px; background:var(--color-surface-card); border:1px solid var(--color-border-default); border-radius:var(--radius-lg); }
+    .card { margin-top:24px; padding:28px; background:var(--color-surface-card); border:1px solid var(--color-border-default); border-radius:var(--radius-lg); }
     .section-heading { display:flex; gap:16px; align-items:flex-start; margin-bottom:12px; } .icon { display:grid; place-items:center; width:44px; height:44px; border-radius:12px; color:var(--color-brand-primary); background:#eaf4ed; font-size:23px; }
     h2 { margin:0 0 6px; font-size:21px; } .section-heading p, .note { margin:0; color:var(--color-text-secondary); line-height:1.5; }
     .setting-row { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:20px 0; border-top:1px solid var(--color-border-default); cursor:pointer; }
@@ -100,15 +116,19 @@ const PADRAO: PreferenciasNotificacao = { lembretesConsulta: true };
     input { flex:none; width:20px; height:20px; accent-color:var(--color-brand-primary); cursor:pointer; }
     .saved { min-height:20px; margin:0 0 8px; color:var(--color-brand-primary); font-size:14px; } .note { padding-top:14px; border-top:1px solid var(--color-border-default); font-size:13px; }
     .inbox { padding:16px 0 20px; border-top:1px solid var(--color-border-default); } .inbox-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-    h3 { margin:0; font-size:18px; } .inbox p { color:var(--color-text-secondary); } .inbox button { padding:8px 12px; border:1px solid var(--color-border-default); border-radius:var(--radius-sm); background:var(--color-surface-card); color:var(--color-brand-primary); cursor:pointer; }
-    .inbox button:disabled { opacity:.5; cursor:default; } .inbox ul { list-style:none; padding:0; margin:14px 0 0; } .inbox li { display:flex; gap:14px; padding:12px 0; border-top:1px solid var(--color-border-default); }
+    h3 { margin:0; font-size:18px; } .inbox p { color:var(--color-text-secondary); }
+    .inbox ul { list-style:none; padding:0; margin:14px 0 0; } .inbox li { display:flex; gap:14px; padding:12px 0; border-top:1px solid var(--color-border-default); }
     .inbox time { min-width:48px; font-weight:700; color:var(--color-brand-primary); }
     .account-details { margin:0; } .account-details div, .action-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 0; border-top:1px solid var(--color-border-default); }
     dt { color:var(--color-text-secondary); } dd { margin:0; font-weight:600; overflow-wrap:anywhere; text-align:right; }
     .action-row span { display:grid; gap:4px; } .action-row small { color:var(--color-text-secondary); line-height:1.4; }
-    .action-row a { flex:none; } .secondary-action { padding:8px 12px; border:1px solid var(--color-border-default); border-radius:var(--radius-sm); background:var(--color-surface-card); color:var(--color-brand-primary); cursor:pointer; }
-    .secondary-action:disabled { opacity:.5; cursor:default; }
-    @media(max-width:600px) { .settings { padding:24px 16px; } .page-header { align-items:flex-start; flex-direction:column; } h1 { font-size:28px; } .card { padding:20px; } .setting-row { align-items:flex-start; } .action-row { align-items:flex-start; flex-direction:column; } }
+    .action-row a { flex:none; }
+    @media (max-width: 48rem) {
+      .settings { padding: var(--space-16); }
+      .card { padding: var(--space-16); }
+      .setting-row { align-items: flex-start; }
+      .action-row { align-items: flex-start; flex-direction: column; }
+    }
   `
 })
 export class ConfiguracoesComponent {

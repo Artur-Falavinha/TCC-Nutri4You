@@ -5,6 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApiService } from '../../core/services/api.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { ConsultasAvulsasComponent } from './consultas-avulsas.component';
 import { UiSelectComponent } from '../../shared/components/ui-select/ui-select.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
@@ -15,7 +16,10 @@ interface Horario { diaSemana: number; horario: string }
 
 @Component({
   selector: 'app-agenda',
-  imports: [FormsModule, FormAlertComponent, ConsultasAvulsasComponent, UiSelectComponent, UiButtonComponent, PacienteDialogComponent],
+  imports: [
+    FormsModule, FormAlertComponent, PageHeaderComponent, ConsultasAvulsasComponent,
+    UiSelectComponent, UiButtonComponent, PacienteDialogComponent
+  ],
   templateUrl: './agenda.component.html',
   styleUrl: './agenda.component.css'
 })

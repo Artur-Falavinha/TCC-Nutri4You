@@ -14,7 +14,7 @@ import {
 import { PacientesService } from '../../../../core/services/pacientes.service';
 import { Paciente } from '../../../../core/models/paciente.models';
 import { ApiErrorResponse } from '../../../../core/models/api-response.model';
-import { NotificationBellComponent } from '../../../../shared/components/notification-bell/notification-bell.component';
+import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 
 type ListaState = 'loading' | 'empty' | 'loaded' | 'error';
 
@@ -27,7 +27,7 @@ type ListaState = 'loading' | 'empty' | 'loaded' | 'error';
     FormAlertComponent,
     NovoPacienteModalComponent,
     RelacaoPacienteModalComponent,
-    NotificationBellComponent
+    PageHeaderComponent
   ],
   templateUrl: './pacientes-lista.component.html',
   styleUrl: './pacientes-lista.component.css'
