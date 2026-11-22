@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { ComponentRef, useRef, useState } from 'react';
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AvaliacaoHistorico, calcularVariacao } from '../../../core/evolucao/evolucao.service';
 
@@ -19,7 +19,7 @@ export function MedidasGridCarousel({ avaliacoes }: Props) {
   const [containerWidth, setContainerWidth] = useState(
     Dimensions.get('window').width - 32
   );
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
 
   const atual = avaliacoes[0];
   const anterior = avaliacoes.length > 1 ? avaliacoes[1] : undefined;
@@ -64,19 +64,33 @@ export function MedidasGridCarousel({ avaliacoes }: Props) {
       extrairMedida('Braço', atual?.circunferenciaBraco, anterior?.circunferenciaBraco, 'cm'),
       extrairMedida('Relação Cintura/Quadril', atual?.razaoCinturaQuadril, anterior?.razaoCinturaQuadril, '', 2)
     ],
-    // Slide 2: Composição e Dobras Principais
+    // Slide 2: Composição corporal calculada
     [
+      extrairMedida('Massa Magra', atual?.massaMagraKg, anterior?.massaMagraKg, 'kg'),
+      extrairMedida('Massa Gorda', atual?.massaGordaKg, anterior?.massaGordaKg, 'kg'),
       extrairMedida('Massa Muscular', atual?.massaMuscularKg, anterior?.massaMuscularKg, 'kg'),
-      extrairMedida('IMC', atual?.imc, anterior?.imc, '', 2),
-      extrairMedida('Prega Tricipital', atual?.pregaTricipital, anterior?.pregaTricipital, 'mm'),
-      extrairMedida('Prega Supra-ilíaca', atual?.pregaSuprailiaca, anterior?.pregaSuprailiaca, 'mm')
+      extrairMedida('Soma das 7 pregas', atual?.somaSetePregas, anterior?.somaSetePregas, 'mm')
     ],
-    // Slide 3: Dobras Complementares e Altura
+    // Slide 3: Primeiras quatro pregas de Jackson-Pollock
     [
-      extrairMedida('Prega Bicipital', atual?.pregaBicipital, anterior?.pregaBicipital, 'mm'),
+      extrairMedida('Prega Peitoral', atual?.pregaPeitoral, anterior?.pregaPeitoral, 'mm'),
+      extrairMedida('Prega Axilar média', atual?.pregaAxilarMedia, anterior?.pregaAxilarMedia, 'mm'),
+      extrairMedida('Prega Tricipital', atual?.pregaTricipital, anterior?.pregaTricipital, 'mm'),
       extrairMedida('Prega Subescapular', atual?.pregaSubescapular, anterior?.pregaSubescapular, 'mm'),
+    ],
+    // Slide 4: Demais pregas e medidas gerais
+    [
+      extrairMedida('Prega Abdominal', atual?.pregaAbdominal, anterior?.pregaAbdominal, 'mm'),
+      extrairMedida('Prega Supra-ilíaca', atual?.pregaSuprailiaca, anterior?.pregaSuprailiaca, 'mm'),
+      extrairMedida('Prega da Coxa', atual?.pregaCoxa, anterior?.pregaCoxa, 'mm'),
+      extrairMedida('Prega Bicipital', atual?.pregaBicipital, anterior?.pregaBicipital, 'mm')
+    ],
+    // Slide 5: Altura, peso e IMC
+    [
       extrairMedida('Altura', atual?.altura ? (atual.altura > 3 ? atual.altura : atual.altura * 100) : null, undefined, 'cm', 0),
-      extrairMedida('Peso', atual?.peso, anterior?.peso, 'kg')
+      extrairMedida('Peso', atual?.peso, anterior?.peso, 'kg'),
+      extrairMedida('IMC', atual?.imc, anterior?.imc, '', 2),
+      extrairMedida('Gordura Corporal', atual?.percentualGordura, anterior?.percentualGordura, '%')
     ]
   ];
 

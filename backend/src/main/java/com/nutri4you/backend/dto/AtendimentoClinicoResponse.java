@@ -2,7 +2,6 @@ package com.nutri4you.backend.dto;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.util.Map;
 
 public record AtendimentoClinicoResponse(
@@ -12,8 +11,6 @@ public record AtendimentoClinicoResponse(
         String status,
         long versao,
         LocalDateTime iniciadaEm,
-        OffsetDateTime janelaInicio,
-        OffsetDateTime janelaFim,
         boolean podeIniciar,
         Integer pacienteId,
         String observacao,

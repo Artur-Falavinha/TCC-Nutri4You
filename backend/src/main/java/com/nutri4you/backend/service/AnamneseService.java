@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 @Service
 public class AnamneseService {
     private static final Set<String> CAMPOS_ATENDIMENTO = Set.of(
+        "height", "weight",
         "foodPreferences", "typicalDay", "diet", "dietOther", "supplement", "supplementDetails",
         "diagnoses", "diagnosisOther", "medication", "medicationDetails", "allergy", "allergyDetails",
         "recentExams", "exam", "examOther", "digestiveHealth", "physicalActivity", "activities", "activityOther");

@@ -6,6 +6,7 @@ export interface LoginResponse {
 }
 
 export interface PacienteAutocadastroPayload {
+  versaoTermos: string;
   nome: string;
   email: string;
   senha: string;

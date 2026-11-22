@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { UsuarioInfo } from '../../core/models/auth.models';
 import { AuthService } from '../../core/services/auth.service';
 import { ClinicoService, ConsultaResumo } from '../clinico/clinico.service';
+import { PrivacidadeComponent } from '../privacidade/privacidade.component';
 
 interface PreferenciasNotificacao {
   lembretesConsulta: boolean;
@@ -15,7 +16,7 @@ const PADRAO: PreferenciasNotificacao = { lembretesConsulta: true };
 
 @Component({
   selector: 'app-configuracoes',
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, PrivacidadeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="settings">
@@ -82,6 +83,7 @@ const PADRAO: PreferenciasNotificacao = { lembretesConsulta: true };
         </div>
         <p class="note">A preferência fica salva neste navegador. Esta tela não envia notificações por e-mail ou push.</p>
       </section>
+      <app-privacidade />
     </main>
   `,
   styles: `

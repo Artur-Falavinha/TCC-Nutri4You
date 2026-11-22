@@ -11,6 +11,7 @@ import { UiLinkComponent } from '../../../../shared/components/ui-link/ui-link.c
 import { crnValidator, normalizeCrnForApi } from '../../../../shared/utils/crn-mask.util';
 import { resolveFieldError } from '../../../../shared/utils/form-field-error.util';
 import { RegisterFlowService } from '../../services/register-flow.service';
+import { URL_TERMOS, VERSAO_TERMOS } from '../../../privacidade/privacidade.component';
 
 @Component({
   selector: 'app-register',
@@ -27,6 +28,7 @@ import { RegisterFlowService } from '../../services/register-flow.service';
   styleUrl: './register.component.css'
 })
 export class RegisterComponent {
+  readonly urlTermos = URL_TERMOS;
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly registerFlow = inject(RegisterFlowService);
@@ -51,6 +53,7 @@ export class RegisterComponent {
     const draft = this.form.getRawValue();
     this.registerFlow.saveDraft({
       ...draft,
+      versaoTermos: VERSAO_TERMOS,
       crn: normalizeCrnForApi(draft.crn)
     });
     void this.router.navigate(['/cadastro/senha']);

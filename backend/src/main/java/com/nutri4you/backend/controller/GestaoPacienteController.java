@@ -44,10 +44,10 @@ public class GestaoPacienteController {
             Authentication authentication,
             @RequestParam(required = false) String email,
             @RequestParam(required = false) String cpf) {
-        extrairNutricionista(authentication);
+        Nutricionista nutricionista = extrairNutricionista(authentication);
         try {
             return ResponseEntity.ok(ApiResponse.ok(
-                    gestaoPacienteService.buscarPaciente(email, cpf),
+                    gestaoPacienteService.buscarPaciente(nutricionista, email, cpf),
                     "Paciente encontrado com sucesso."));
         } catch (PacienteNaoEncontradoException exception) {
             return ResponseEntity.notFound().build();

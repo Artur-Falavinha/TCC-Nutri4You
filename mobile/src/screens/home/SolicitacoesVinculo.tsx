@@ -79,6 +79,7 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
         <Text style={styles.texto}>
           Ao aceitar, o nutricionista poderá acessar sua ficha clínica para acompanhar você.
           Você pode encerrar o vínculo quando quiser.
+          Você só pode manter um vínculo ativo por vez.
         </Text>}
       {solicitacoes.map((solicitacao) => (
         <View key={solicitacao.id} style={styles.solicitacao}>

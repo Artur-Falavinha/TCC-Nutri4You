@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -29,6 +30,8 @@ import { RootStackParamList } from '../../navigation/types';
 import { AppHeader } from '../../components/layout/AppHeader';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { SolicitacoesVinculo } from './SolicitacoesVinculo';
+import { BuscarVinculo } from './BuscarVinculo';
+import { Privacidade } from './Privacidade';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DadosPessoais'>;
 
@@ -266,6 +269,7 @@ export function HomeScreen({ navigation }: Props) {
             <Text style={styles.botaoTexto}>{salvando ? 'Salvando...' : 'Salvar dados'}</Text>
           </Pressable>
 
+          <View style={styles.separador} />
           {!carregando && (
             <SolicitacoesVinculo
               onAceito={(novoVinculo) => setVinculos((atuais) => [
@@ -275,6 +279,7 @@ export function HomeScreen({ navigation }: Props) {
             />
           )}
 
+          {!carregando && <BuscarVinculo temVinculo={vinculos.length > 0} />}
           <Text style={styles.secao}>Nutricionistas vinculados</Text>
           {vinculos.length === 0 ? (
             <Text style={styles.vazio}>Nenhum nutricionista vinculado.</Text>
@@ -296,31 +301,44 @@ export function HomeScreen({ navigation }: Props) {
             ))
           )}
 
+          <View style={styles.separador} />
+          <View style={styles.secaoSenha}>
+            <Text style={styles.tituloSecao} accessibilityRole="header">Segurança</Text>
+            <Pressable style={styles.botaoSenha} accessibilityRole="button" onPress={() => navigation.navigate('TrocarSenha')}>
+              <Text style={styles.botaoSenhaTexto}>Trocar senha</Text>
+            </Pressable>
+          </View>
+          <View style={styles.separador} />
+          <Privacidade />
+          <View style={styles.separador} />
           <Pressable onPress={() => void sair()} accessibilityRole="button">
             <Text style={styles.sair}>Sair</Text>
           </Pressable>
         </ScrollView>
-        {pendente ? (
-          <View style={styles.confirma} accessibilityRole="alert">
+        <Modal visible={pendente !== null} transparent animationType="fade" onRequestClose={() => setPendente(null)}>
+          {pendente ? <View style={styles.confirmaOverlay}>
+          <View style={styles.confirma} accessibilityRole="alert" accessibilityViewIsModal>
+            <Text style={styles.confirmaTitulo}>Encerrar vínculo?</Text>
             <Text style={styles.confirmaTexto}>
               Encerrar a relação com {pendente.nome}? A conta permanece ativa.
             </Text>
             <View style={styles.confirmaAcoes}>
-              <Pressable onPress={() => setPendente(null)} accessibilityRole="button">
+              <Pressable style={styles.confirmaBotao} onPress={() => setPendente(null)} accessibilityRole="button">
                 <Text style={styles.cancelar}>Cancelar</Text>
               </Pressable>
               <Pressable
+                style={[styles.confirmaBotao, styles.confirmaPerigo]}
                 onPress={() => {
                   void executarDesvinculo(pendente);
                 }}
                 accessibilityRole="button"
                 accessibilityLabel="Confirmar desvínculo"
               >
-                <Text style={styles.desvincular}>Confirmar</Text>
+                <Text style={styles.confirmaPerigoTexto}>Encerrar vínculo</Text>
               </Pressable>
             </View>
-          </View>
-        ) : null}
+          </View></View> : null}
+        </Modal>
       </KeyboardAvoidingView>
       <SideMenu
         visible={menuVisible}
@@ -334,6 +352,11 @@ export function HomeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  separador: { height: 1, backgroundColor: '#dbe5de', marginTop: 24 },
+  secaoSenha: { marginTop: 12, gap: 10 },
+  tituloSecao: { fontSize: 16, fontWeight: '700', color: '#0f172a' },
+  botaoSenha: { minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center', paddingHorizontal: 16, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, backgroundColor: '#fff' },
+  botaoSenhaTexto: { color: '#006f1e', fontWeight: '700' },
   safe: { flex: 1, backgroundColor: '#f8faf8' },
   flex: { flex: 1 },
   content: { padding: 24, gap: 8 },
@@ -386,18 +409,22 @@ const styles = StyleSheet.create({
   vinculoNome: { fontWeight: '700', color: '#0f172a' },
   vinculoEmail: { color: '#64748b', fontSize: 13 },
   desvincular: { color: '#b42318', fontWeight: '700' },
-  sair: { marginTop: 24, color: '#64748b', textAlign: 'center' },
+  sair: { marginTop: 12, color: '#64748b', textAlign: 'center' },
   erro: { color: '#b42318', backgroundColor: '#fef3f2', padding: 8, borderRadius: 8 },
   aviso: { color: '#006f1e', backgroundColor: '#e8f5e9', padding: 8, borderRadius: 8 },
   confirma: {
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
+    padding: 24,
+    borderRadius: 16,
     backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#fecaca',
-    gap: 12
+    width: '100%',
+    maxWidth: 440,
+    gap: 16
   },
+  confirmaOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: 'rgba(0,0,0,0.5)' },
+  confirmaTitulo: { color: '#0f172a', fontSize: 18, fontWeight: '700' },
+  confirmaBotao: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: '#cbd5e1' },
+  confirmaPerigo: { backgroundColor: '#b42318', borderColor: '#b42318' },
+  confirmaPerigoTexto: { color: '#fff', fontWeight: '700' },
   confirmaTexto: { color: '#0f172a' },
   confirmaAcoes: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16 },
   cancelar: { color: '#64748b', fontWeight: '700' }

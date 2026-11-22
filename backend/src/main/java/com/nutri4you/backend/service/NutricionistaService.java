@@ -14,19 +14,24 @@ public class NutricionistaService {
     private final NutricionistaRepository nutricionistaRepository;
     private final PacienteRepository pacienteRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PrivacidadeService privacidade;
 
     public NutricionistaService(
             NutricionistaRepository nutricionistaRepository,
             PacienteRepository pacienteRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder, PrivacidadeService privacidade) {
         this.nutricionistaRepository = nutricionistaRepository;
         this.pacienteRepository = pacienteRepository;
         this.passwordEncoder = passwordEncoder;
+        this.privacidade = privacidade;
     }
 
     @Transactional
     public Nutricionista autocadastrar(NutricionistaCadastroDTO dto) {
-        return cadastrarNutricionista(dto);
+        PrivacidadeService.exigirVersao(dto == null ? null : dto.versaoTermos());
+        Nutricionista cadastrado = cadastrarNutricionista(dto);
+        privacidade.aceitar(cadastrado, dto.versaoTermos());
+        return cadastrado;
     }
 
     @Transactional

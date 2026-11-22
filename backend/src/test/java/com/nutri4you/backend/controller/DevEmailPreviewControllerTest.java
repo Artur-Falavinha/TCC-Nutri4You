@@ -38,7 +38,7 @@ class DevEmailPreviewControllerTest {
                                 {
                                   "nome": "Preview Dev",
                                   "email": "preview@teste.com",
-                                  "senha": "senhaSegura123"
+                                  "senha": "senhaSegura123", "versaoTermos": "2026-11-19"
                                 }
                                 """))
                 .andExpect(status().isCreated());

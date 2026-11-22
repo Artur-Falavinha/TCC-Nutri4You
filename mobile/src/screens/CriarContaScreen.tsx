@@ -10,17 +10,19 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  ScrollView,
   ActivityIndicator,
   Modal,
-  Pressable
+  Pressable,
+  Linking
 } from 'react-native';
 
+import { AuthScreenLayout } from '../components/auth/AuthScreenLayout';
+import { authFormStyles } from '../components/auth/authFormStyles';
 import { useAppAlert } from '../components/feedback/AppAlertProvider';
 import { autocadastrarPaciente } from '../core/auth/auth.service';
+import { URL_TERMOS, VERSAO_TERMOS } from '../core/perfil/privacidade';
 import { ApiError } from '../core/api/api-response.types';
 import { formatCpfDisplay, isCpfComplete, normalizeCpf } from '../core/utils/cpf-mask.util';
 import {
@@ -55,6 +57,7 @@ export default function CriarContaScreen() {
   const { showAlert } = useAppAlert();
   const webDateInputRef = useRef<HTMLInputElement | null>(null);
   const [nome, setNome] = useState('');
+  const [aceitouTermos, setAceitouTermos] = useState(false);
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
@@ -122,6 +125,10 @@ export default function CriarContaScreen() {
   };
 
   const handleRegister = async () => {
+    if (!aceitouTermos) {
+      showAlert('Atenção', 'Leia e aceite os termos de uso para criar a conta.');
+      return;
+    }
     if (!nome.trim() || !email.trim() || !senha || !confirmarSenha) {
       showAlert('Atenção', 'Preencha nome, e-mail e senha.');
       return;
@@ -158,7 +165,8 @@ export default function CriarContaScreen() {
         cpf: normalizeCpf(cpf),
         telefone: normalizePhone(telefone),
         sexo: sexo || undefined,
-        dataNascimento: isoDate
+        dataNascimento: isoDate,
+        versaoTermos: VERSAO_TERMOS
       });
 
       showAlert('Sucesso', 'Conta criada com sucesso! Faça login para continuar.', [
@@ -186,23 +194,20 @@ export default function CriarContaScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Crie Sua Conta</Text>
-          <Text style={styles.subtitle}>Cadastro de paciente no Nutri4You</Text>
-        </View>
+    <>
+      <AuthScreenLayout>
+        <View style={authFormStyles.card}>
+          <View style={authFormStyles.header}>
+            <Text style={authFormStyles.title} accessibilityRole="header">Crie sua conta</Text>
+            <Text style={authFormStyles.description}>Cadastro de paciente no Nutri4You</Text>
+          </View>
 
-        <View style={styles.formCard}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>NOME COMPLETO *</Text>
-            <View style={styles.inputContainer}>
-              <Feather name="user" size={20} color="#64748b" style={styles.inputIconLeft} />
+          <View style={authFormStyles.inputGroup}>
+            <Text style={authFormStyles.label}>NOME COMPLETO *</Text>
+            <View style={authFormStyles.inputContainer}>
+              <Feather name="user" size={20} color="#64748b" style={authFormStyles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={authFormStyles.input}
                 placeholder="Seu Nome"
                 placeholderTextColor="#94a3b8"
                 value={nome}
@@ -211,12 +216,12 @@ export default function CriarContaScreen() {
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>E-MAIL *</Text>
-            <View style={styles.inputContainer}>
-              <Feather name="mail" size={20} color="#64748b" style={styles.inputIconLeft} />
+          <View style={authFormStyles.inputGroup}>
+            <Text style={authFormStyles.label}>E-MAIL *</Text>
+            <View style={authFormStyles.inputContainer}>
+              <Feather name="mail" size={20} color="#64748b" style={authFormStyles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={authFormStyles.input}
                 placeholder="seuemail@exemplo.com"
                 placeholderTextColor="#94a3b8"
                 keyboardType="email-address"
@@ -227,12 +232,12 @@ export default function CriarContaScreen() {
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>SENHA *</Text>
-            <View style={styles.inputContainer}>
-              <Feather name="lock" size={20} color="#64748b" style={styles.inputIconLeft} />
+          <View style={authFormStyles.inputGroup}>
+            <Text style={authFormStyles.label}>SENHA *</Text>
+            <View style={authFormStyles.inputContainer}>
+              <Feather name="lock" size={20} color="#64748b" style={authFormStyles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={authFormStyles.input}
                 placeholder="Mínimo 8 caracteres"
                 placeholderTextColor="#94a3b8"
                 secureTextEntry={!showPassword}
@@ -252,12 +257,12 @@ export default function CriarContaScreen() {
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>CONFIRMAR SENHA *</Text>
-            <View style={styles.inputContainer}>
-              <Feather name="lock" size={20} color="#64748b" style={styles.inputIconLeft} />
+          <View style={authFormStyles.inputGroup}>
+            <Text style={authFormStyles.label}>CONFIRMAR SENHA *</Text>
+            <View style={authFormStyles.inputContainer}>
+              <Feather name="lock" size={20} color="#64748b" style={authFormStyles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={authFormStyles.input}
                 placeholder="Repita a senha"
                 placeholderTextColor="#94a3b8"
                 secureTextEntry={!showPassword}
@@ -267,50 +272,48 @@ export default function CriarContaScreen() {
             </View>
           </View>
 
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, styles.contactField]}>
-              <Text style={styles.label}>CPF</Text>
-              <View style={styles.inputContainer}>
-                <Feather name="credit-card" size={20} color="#64748b" style={styles.inputIconLeft} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="000.000.000-00"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="number-pad"
-                  maxLength={14}
-                  value={cpf}
-                  onChangeText={(text) => setCpf(formatCpfDisplay(text))}
-                />
-              </View>
-            </View>
-
-            <View style={[styles.inputGroup, styles.contactField]}>
-              <Text style={styles.label}>TELEFONE</Text>
-              <View style={styles.inputContainer}>
-                <Feather name="phone" size={20} color="#64748b" style={styles.inputIconLeft} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="(00) 00000-0000"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="phone-pad"
-                  maxLength={15}
-                  value={telefone}
-                  onChangeText={(text) => setTelefone(formatPhoneDisplay(text))}
-                />
-              </View>
+          <View style={authFormStyles.inputGroup}>
+            <Text style={authFormStyles.label}>CPF</Text>
+            <View style={authFormStyles.inputContainer}>
+              <Feather name="credit-card" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+              <TextInput
+                style={authFormStyles.input}
+                placeholder="000.000.000-00"
+                placeholderTextColor="#94a3b8"
+                keyboardType="number-pad"
+                maxLength={14}
+                value={cpf}
+                onChangeText={(text) => setCpf(formatCpfDisplay(text))}
+              />
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>SEXO</Text>
+          <View style={authFormStyles.inputGroup}>
+            <Text style={authFormStyles.label}>TELEFONE</Text>
+            <View style={authFormStyles.inputContainer}>
+              <Feather name="phone" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+              <TextInput
+                style={authFormStyles.input}
+                placeholder="(00) 00000-0000"
+                placeholderTextColor="#94a3b8"
+                keyboardType="phone-pad"
+                maxLength={15}
+                value={telefone}
+                onChangeText={(text) => setTelefone(formatPhoneDisplay(text))}
+              />
+            </View>
+          </View>
+
+          <View style={authFormStyles.inputGroup}>
+            <Text style={authFormStyles.label}>SEXO</Text>
             <TouchableOpacity
-              style={styles.inputContainer}
+              style={authFormStyles.inputContainer}
               onPress={() => setSexoMenuOpen(true)}
               activeOpacity={0.8}
             >
               <Text
                 style={[
-                  styles.input,
+                  authFormStyles.input,
                   styles.selectValue,
                   sexo === null && styles.selectPlaceholder
                 ]}
@@ -322,12 +325,12 @@ export default function CriarContaScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>DATA NASCIMENTO</Text>
-            <View style={styles.inputContainer}>
+          <View style={authFormStyles.inputGroup}>
+            <Text style={authFormStyles.label}>DATA NASCIMENTO</Text>
+            <View style={authFormStyles.inputContainer}>
               {Platform.OS === 'web' ? (
                 <>
-                  <Feather name="calendar" size={20} color="#005414" style={styles.inputIconLeft} />
+                  <Feather name="calendar" size={20} color="#005414" style={authFormStyles.inputIcon} />
                   {React.createElement('input', {
                     ref: webDateInputRef,
                     type: 'date',
@@ -357,11 +360,11 @@ export default function CriarContaScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="Abrir seletor de data"
                 >
-                  <Feather name="calendar" size={20} color="#005414" style={styles.inputIconLeft} />
+                  <Feather name="calendar" size={20} color="#005414" style={authFormStyles.inputIcon} />
                 </TouchableOpacity>
               )}
               <TextInput
-                style={styles.input}
+                style={authFormStyles.input}
                 placeholder="DD/MM/AAAA"
                 placeholderTextColor="#94a3b8"
                 keyboardType="number-pad"
@@ -372,27 +375,44 @@ export default function CriarContaScreen() {
             </View>
           </View>
 
+          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(URL_TERMOS).catch(() =>
+            showAlert('Atenção', 'Não foi possível abrir os termos.'))}>
+            <Text style={styles.termosLink}>Ler termos de uso e aviso de privacidade</Text>
+          </Pressable>
+          <Pressable style={styles.termosAceite} accessibilityRole="checkbox" accessibilityState={{ checked: aceitouTermos }}
+            onPress={() => setAceitouTermos(valor => !valor)}>
+            <View style={[styles.termosCheck, aceitouTermos && styles.termosCheckAtivo]}>
+              {aceitouTermos && <Feather name="check" size={15} color="#fff" />}
+            </View>
+            <Text style={styles.termosTexto}>Li e aceito os termos de uso.</Text>
+          </Pressable>
           <TouchableOpacity
-            style={styles.button}
+            style={authFormStyles.button}
             onPress={handleRegister}
             disabled={isLoading}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityState={{ busy: isLoading, disabled: isLoading }}
           >
             {isLoading ? (
               <ActivityIndicator color="#ffffff" />
             ) : (
-              <Text style={styles.buttonText}>Criar conta</Text>
+              <>
+                <Text style={authFormStyles.buttonText}>Criar conta</Text>
+                <Feather name="arrow-right" size={16} color="#ffffff" />
+              </>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.loginLink}
+            style={authFormStyles.secondaryAction}
             onPress={() => navigation.navigate('Login')}
+            accessibilityRole="button"
           >
-            <Text style={styles.loginLinkText}>Já tenho conta</Text>
+            <Text style={authFormStyles.secondaryActionText}>Já tenho conta</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </AuthScreenLayout>
 
       <Modal
         visible={sexoMenuOpen}
@@ -459,95 +479,18 @@ export default function CriarContaScreen() {
           onChange={onDateChange}
         />
       ) : null}
-    </KeyboardAvoidingView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5'
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 50,
-    paddingHorizontal: 20
-  },
-  header: {
-    marginBottom: 35,
-    alignItems: 'center'
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: '#006f1e',
-    textAlign: 'center'
-  },
-  subtitle: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center'
-  },
-  formCard: {
-    width: '100%',
-    maxWidth: 440,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: 'rgba(0, 0, 0, 0.05)',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 1,
-    shadowRadius: 1,
-    elevation: 2
-  },
-  inputGroup: {
-    marginBottom: 20
-  },
-  row: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    columnGap: 16
-  },
-  contactField: {
-    flexBasis: 176,
-    flexGrow: 1,
-    flexShrink: 1
-  },
-  label: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#94a3b8',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 6,
-    marginLeft: 4
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fafafa',
-    borderColor: '#f4f4f5',
-    borderWidth: 1,
-    height: 56,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    position: 'relative',
-    overflow: 'hidden'
-  },
-  inputIconLeft: {
-    marginRight: 12
-  },
+  termosLink: { color: '#006f1e', fontWeight: '700', paddingVertical: 8 },
+  termosAceite: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, marginBottom: 12 },
+  termosCheck: { width: 22, height: 22, borderWidth: 1, borderColor: '#94a3b8', borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  termosCheckAtivo: { backgroundColor: '#006f1e', borderColor: '#006f1e' },
+  termosTexto: { flex: 1, color: '#334155', fontSize: 14 },
   iconRight: {
     padding: 5
-  },
-  input: {
-    flex: 1,
-    fontSize: 14,
-    color: '#2d3335',
-    height: '100%'
   },
   selectValue: {
     textAlignVertical: 'center',
@@ -555,34 +498,6 @@ const styles = StyleSheet.create({
   },
   selectPlaceholder: {
     color: '#94a3b8'
-  },
-  button: {
-    backgroundColor: '#006f1e',
-    height: 56,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    shadowColor: 'rgba(20, 83, 45, 0.1)',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 6,
-    elevation: 3
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff'
-  },
-  loginLink: {
-    alignItems: 'center',
-    marginTop: 16
-  },
-  loginLinkText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#006f1e'
   },
   modalBackdrop: {
     flex: 1,

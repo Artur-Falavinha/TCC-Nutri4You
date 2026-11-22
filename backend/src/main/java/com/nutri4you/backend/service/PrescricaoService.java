@@ -8,6 +8,7 @@ import com.nutri4you.backend.dto.PrescricaoDTO.SubstitutoRequest;
 import com.nutri4you.backend.dto.PrescricaoDTO.SubstitutoDTO;
 import com.nutri4you.backend.dto.PrescricaoDTO.ListaComprasDTO;
 import com.nutri4you.backend.dto.PrescricaoDTO.Nutrientes;
+import com.nutri4you.backend.dto.PrescricaoDTO.DistribuicaoMacros;
 import com.nutri4you.backend.dto.PrescricaoDTO.PlanoDTO;
 import com.nutri4you.backend.dto.PrescricaoDTO.PlanoRequest;
 import com.nutri4you.backend.dto.PrescricaoDTO.RefeicaoDTO;
@@ -317,7 +318,7 @@ public class PrescricaoService {
             throw new IllegalArgumentException(
                     "O fim da vigência deve ser igual ou posterior ao início.");
         }
-        validarMetas(request.metas());
+        Nutrientes metas = calcularMetas(request.metas(), request.percentuais());
         if (request.refeicoes() == null || request.refeicoes().size() > 140)
             throw new IllegalArgumentException("Informe de 0 a 140 refeições.");
         List<Refeicao> novas =
@@ -327,7 +328,8 @@ public class PrescricaoService {
                 request.orientacoes(),
                 request.vigenciaInicio(),
                 request.vigenciaFim(),
-                request.metas());
+                metas,
+                request.percentuais());
         plano.getRefeicoes().clear();
         plano.getRefeicoes().addAll(novas);
     }
@@ -394,6 +396,43 @@ public class PrescricaoService {
         validarNumero(
                 metas.carboidratos(), new BigDecimal("999999.99"), true, "Meta de carboidratos");
         validarNumero(metas.gorduras(), new BigDecimal("999999.99"), true, "Meta de gorduras");
+    }
+
+    private Nutrientes calcularMetas(Nutrientes metas, DistribuicaoMacros percentuais) {
+        if (percentuais == null) {
+            validarMetas(metas);
+            return metas;
+        }
+        if (metas == null || metas.kcal() == null) {
+            throw new IllegalArgumentException("Informe a meta de calorias para calcular os macronutrientes.");
+        }
+        validarNumero(metas.kcal(), new BigDecimal("999999.99"), false, "Meta de calorias");
+        validarPercentual(percentuais.proteinas(), "Percentual de proteínas");
+        validarPercentual(percentuais.carboidratos(), "Percentual de carboidratos");
+        validarPercentual(percentuais.gorduras(), "Percentual de gorduras");
+        BigDecimal total = percentuais.proteinas().add(percentuais.carboidratos()).add(percentuais.gorduras());
+        if (total.compareTo(new BigDecimal("100")) != 0) {
+            throw new IllegalArgumentException("Os percentuais de proteínas, carboidratos e gorduras devem somar 100%.");
+        }
+        BigDecimal kcal = metas.kcal();
+        return new Nutrientes(
+                kcal,
+                gramas(kcal, percentuais.proteinas(), new BigDecimal("4")),
+                gramas(kcal, percentuais.carboidratos(), new BigDecimal("4")),
+                gramas(kcal, percentuais.gorduras(), new BigDecimal("9")));
+    }
+
+    private void validarPercentual(BigDecimal valor, String campo) {
+        if (valor == null || valor.signum() < 0 || valor.compareTo(new BigDecimal("100")) > 0
+                || valor.stripTrailingZeros().scale() > 2) {
+            throw new IllegalArgumentException(campo + " deve ficar entre 0 e 100, com no máximo duas casas decimais.");
+        }
+    }
+
+    private BigDecimal gramas(BigDecimal kcal, BigDecimal percentual, BigDecimal kcalPorGrama) {
+        return kcal.multiply(percentual)
+                .divide(new BigDecimal("100"), 8, RoundingMode.HALF_UP)
+                .divide(kcalPorGrama, 2, RoundingMode.HALF_UP);
     }
 
     private void validarNumero(
@@ -501,6 +540,10 @@ public class PrescricaoService {
                                 plano.getMetaProteina(),
                                 plano.getMetaCarboidratos(),
                                 plano.getMetaGordura());
+        DistribuicaoMacros percentuais = plano.getPercentualProteina() == null
+                ? null
+                : new DistribuicaoMacros(plano.getPercentualProteina(),
+                        plano.getPercentualCarboidratos(), plano.getPercentualGordura());
         return new PlanoDTO(
                 plano.getId(),
                 plano.getPaciente().getId(),
@@ -514,6 +557,7 @@ public class PrescricaoService {
                 plano.getVigenciaFim(),
                 plano.getPublicadoEm(),
                 metas,
+                percentuais,
                 totais,
                 refeicoes,
                 plano.getConsulta() == null ? null : plano.getConsulta().getId());

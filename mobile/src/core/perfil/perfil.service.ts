@@ -48,6 +48,16 @@ export function listarSolicitacoesVinculo(): Promise<SolicitacaoVinculo[]> {
   return apiClient.get<SolicitacaoVinculo[]>('/usuarios/me/solicitacoes-vinculo');
 }
 
+export interface NutricionistaEncontrado { id: number; nome: string }
+
+export function pesquisarNutricionistas(nome: string): Promise<NutricionistaEncontrado[]> {
+  return apiClient.get(`/usuarios/me/solicitacoes-vinculo/nutricionistas?nome=${encodeURIComponent(nome)}`);
+}
+
+export function solicitarVinculo(id: number): Promise<void> {
+  return apiClient.post(`/usuarios/me/solicitacoes-vinculo/nutricionistas/${id}`, {});
+}
+
 export function decidirSolicitacaoVinculo(
   solicitacao: SolicitacaoVinculo,
   aceitar: boolean

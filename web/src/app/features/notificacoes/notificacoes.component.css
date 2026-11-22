@@ -1,0 +1,17 @@
+.notificacoes { max-width: 980px; margin: 0 auto; padding: 2rem; }
+.cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+.cabecalho h1 { margin: 0; color: #17391f; }
+.cabecalho p { margin: .35rem 0 0; color: #64748b; }
+button { border: 1px solid #006f1e; border-radius: .65rem; padding: .7rem 1rem; background: #fff; color: #006f1e; font-weight: 700; cursor: pointer; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+ul { display: grid; gap: .75rem; list-style: none; padding: 0; margin: 0; }
+li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid #dbe4dc; border-radius: 1rem; background: #fff; }
+.icone { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 50%; background: #e8f5e9; color: #006f1e; font-size: 1.25rem; }
+.conteudo { display: grid; gap: .2rem; }
+.conteudo time, .conteudo span { color: #64748b; font-size: .9rem; }
+.acoes { display: flex; gap: .5rem; }
+.confirmar { background: #006f1e; color: #fff; }
+.recusar { border-color: #cbd5e1; color: #475569; }
+.vazio { padding: 4rem 1rem; text-align: center; color: #64748b; border: 1px dashed #cbd5e1; border-radius: 1rem; }
+.vazio i { font-size: 2.5rem; color: #006f1e; }
+@media (max-width: 680px) { .notificacoes { padding: 1rem; } li { grid-template-columns: auto 1fr; } .acoes { grid-column: 1 / -1; justify-content: flex-end; } }

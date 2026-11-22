@@ -2,7 +2,8 @@ export type AppointmentStatus =
   | 'AGUARDANDO_CONFIRMACAO'
   | 'CONFIRMADA'
   | 'REALIZADA'
-  | 'CANCELADA';
+  | 'CANCELADA'
+  | 'RECUSADA';
 
 export interface Appointment {
   id: number;

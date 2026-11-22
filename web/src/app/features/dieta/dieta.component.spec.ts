@@ -5,6 +5,8 @@ import { of, Subject, throwError } from 'rxjs';
 import { Paciente } from '../../core/models/paciente.models';
 import { PacientesService } from '../../core/services/pacientes.service';
 import { AtendimentosService } from '../clinico/consultas/consultas.service';
+import { ClinicoService } from '../clinico/clinico.service';
+import { AnamneseService } from '../anamnese/anamnese.service';
 import { DietaComponent } from './dieta.component';
 import { DietaService } from './dieta.service';
 import { Alimento, ItemEdicao, Nutrientes, PaginaAlimentos, Plano } from './dieta.models';
@@ -18,7 +20,9 @@ describe('DietaComponent', () => {
   const paciente: Paciente = {
     id: 12,
     nome: 'Paciente de teste',
-    email: 'paciente@example.test'
+    email: 'paciente@example.test',
+    dataNascimento: '2000-01-01',
+    sexo: 'Masculino'
   };
   const alimento: Alimento = {
     id: 40,
@@ -122,6 +126,11 @@ describe('DietaComponent', () => {
         },
         { provide: PacientesService, useValue: pacientes },
         { provide: AtendimentosService, useValue: jasmine.createSpyObj('AtendimentosService', ['buscar']) },
+        { provide: ClinicoService, useValue: { historico: () => of({ consultas: [], avaliacoes: [] }) } },
+        { provide: AnamneseService, useValue: { get: () => of({ paciente, versao: 1, status: 'FINALIZADA',
+            respostas: { weight: 72.5, height: 1.75, physicalActivity: 'Sim', weeklyFrequency: '3 vezes por semana', intensity: 'Moderada' },
+            rascunho: null, finalizadaEm: '2026-01-01T12:00:00Z', atualizadaEm: '2026-01-01T12:00:00Z' })
+        } },
         { provide: DietaService, useValue: dieta }
       ]
     }).compileComponents();
@@ -153,9 +162,9 @@ describe('DietaComponent', () => {
     fixture.detectChanges();
 
     await preencherNumero('#meta-kcal', 1800);
-    await preencherNumero('#meta-proteinas', 100);
-    await preencherNumero('#meta-carboidratos', 200);
-    await preencherNumero('#meta-gorduras', 50);
+    await preencherNumero('#meta-percentual-proteinas', 50);
+    await preencherNumero('#meta-percentual-carboidratos', 30);
+    await preencherNumero('#meta-percentual-gorduras', 20);
     await preencherNumero('#gramas-2', 125.5);
 
     expect(typeof component.form.metas.kcal).toBe('number');
@@ -166,7 +175,8 @@ describe('DietaComponent', () => {
     component.salvar();
 
     expect(dieta.criarPlano).toHaveBeenCalledWith(paciente.id, jasmine.objectContaining({
-      metas: { kcal: 1800, proteinas: 100, carboidratos: 200, gorduras: 50 },
+      metas: { kcal: 1800, proteinas: 225, carboidratos: 135, gorduras: 40 },
+      percentuais: { proteinas: 50, carboidratos: 30, gorduras: 20 },
       refeicoes: [{
         nome: 'Café da manhã',
         horario: '08:00',
@@ -424,12 +434,72 @@ describe('DietaComponent', () => {
 
   it('exige confirmação para excluir refeições', () => {
     component.abrirNovoRascunho(); component.adicionarRefeicao();
-    spyOn(window, 'confirm').and.returnValue(false);
     component.removerRefeicao(component.form.refeicoes[0]);
     expect(component.form.refeicoes.length).toBe(1);
-    (window.confirm as jasmine.Spy).and.returnValue(true);
+    component.cancelarConfirmacaoDestrutiva();
+    expect(component.form.refeicoes.length).toBe(1);
     component.removerRefeicao(component.form.refeicoes[0]);
+    component.confirmarAcaoDestrutiva();
     expect(component.form.refeicoes.length).toBe(0);
+  });
+
+  it('completa e mantém inteligente o terceiro percentual de macronutrientes', () => {
+    component.abrirNovoRascunho();
+    component.atualizarPercentual('percentualProteinas', 40);
+    component.atualizarPercentual('percentualCarboidratos', 40);
+    expect(component.form.metas.percentualGorduras).toBe(20);
+
+    component.atualizarPercentual('percentualProteinas', 35);
+    expect(component.form.metas.percentualGorduras).toBe(25);
+  });
+
+  it('calcula metas em g por kg e usa a gordura para completar as calorias', () => {
+    component.abrirNovoRascunho();
+    component.form.metas.kcal = 2000;
+    component.alterarMetodoMacros('G_POR_KG');
+    component.form.metas.proteinasGKg = 1.6;
+    component.form.metas.carboidratosGKg = 3;
+
+    expect(component.referenciaEnergetica?.peso).toBe(72.5);
+    expect(component.referenciaEnergetica?.faSugerido).toBe(1.55);
+    expect(component.metasCalculadas?.proteinas).toBeCloseTo(116);
+    expect(component.metasCalculadas?.carboidratos).toBeCloseTo(217.5);
+    expect(component.percentuaisCalculados?.proteinas).toBe(23.2);
+    const percentuais = component.percentuaisCalculados!;
+    expect(percentuais.proteinas + percentuais.carboidratos + percentuais.gorduras).toBe(100);
+  });
+
+  it('exibe as metas diárias com o percentual em destaque e as gramas como valor secundário', () => {
+    const resumo = component.resumoMetas({ kcal: 1700, proteinas: 213, carboidratos: 128, gorduras: 38 }, { proteinas: 50, carboidratos: 30, gorduras: 20 });
+    expect(resumo.energia).toBe(1700);
+    expect(resumo.macros.map(macro => [macro.nome, macro.percentual, macro.gramas]))
+      .toEqual([['Carboidratos', 30, 128], ['Proteínas', 50, 213], ['Gorduras', 20, 38]]);
+
+    component.abrirNovoRascunho();
+    component.form.metas.kcal = 1700;
+    component.atualizarPercentual('percentualProteinas', 50);
+    component.atualizarPercentual('percentualCarboidratos', 30);
+    fixture.detectChanges();
+
+    const bloco = fixture.nativeElement.querySelector('[data-testid="metas-diarias-editor"]') as HTMLElement;
+    const linhas = Array.from(bloco.querySelectorAll('.goal-row')) as HTMLElement[];
+    expect(linhas[0].textContent).toContain('Calorias');
+    expect(linhas[0].querySelector('.goal-main')?.textContent).toContain('1.700,00 kcal');
+    const proteinas = linhas.find(linha => linha.textContent?.includes('Proteínas'))!;
+    expect(proteinas.querySelector('.goal-main')?.textContent?.trim()).toBe('50,00%');
+    expect(proteinas.querySelector('.goal-secondary')?.textContent).toContain('212,50 g');
+  });
+
+  it('usa o modal visual para confirmar a saída com alterações', () => {
+    component.abrirNovoRascunho();
+    component.form.titulo = 'Alterado';
+    let resposta: boolean | undefined;
+    (component.podeSair() as import('rxjs').Observable<boolean>).subscribe(valor => resposta = valor);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-paciente-dialog [role="dialog"]')).not.toBeNull();
+    component.confirmarDescarte();
+    expect(resposta).toBeTrue();
   });
 
 });

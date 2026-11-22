@@ -6,12 +6,16 @@ import { ApiService } from '../../core/services/api.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
 import { ConsultasAvulsasComponent } from './consultas-avulsas.component';
+import { UiSelectComponent } from '../../shared/components/ui-select/ui-select.component';
+import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
+import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog/paciente-dialog.component';
+import { Observable, Subject, take } from 'rxjs';
 
 interface Horario { diaSemana: number; horario: string }
 
 @Component({
   selector: 'app-agenda',
-  imports: [FormsModule, FormAlertComponent, ConsultasAvulsasComponent],
+  imports: [FormsModule, FormAlertComponent, ConsultasAvulsasComponent, UiSelectComponent, UiButtonComponent, PacienteDialogComponent],
   templateUrl: './agenda.component.html',
   styleUrl: './agenda.component.css'
 })
@@ -19,8 +23,9 @@ export class AgendaComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly destroyRef = inject(DestroyRef);
   readonly dias = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
+  readonly opcoesDias = this.dias.map((label, indice) => ({ label, value: String(indice + 1) }));
   horarios: Horario[] = [];
-  dia = 1;
+  dia = '1';
   hora = '08:00';
   carregando = true;
   carregado = false;
@@ -28,6 +33,8 @@ export class AgendaComponent implements OnInit {
   erro = '';
   mensagem = '';
   private original = '[]';
+  modalSaida = false;
+  private respostaSaida: Subject<boolean> | null = null;
 
   ngOnInit() { this.carregar(); }
   carregar() {
@@ -65,7 +72,19 @@ export class AgendaComponent implements OnInit {
       });
   }
   get alterado() { return JSON.stringify(this.horarios) !== this.original; }
-  podeSair() { return !this.salvando && (!this.alterado || window.confirm('Descartar as alterações da agenda?')); }
+  podeSair(): boolean | Observable<boolean> {
+    if (this.salvando) return false;
+    if (!this.alterado) return true;
+    this.respostaSaida ??= new Subject<boolean>();
+    this.modalSaida = true;
+    return this.respostaSaida.asObservable().pipe(take(1));
+  }
+  responderSaida(confirmar: boolean) {
+    this.modalSaida = false;
+    this.respostaSaida?.next(confirmar);
+    this.respostaSaida?.complete();
+    this.respostaSaida = null;
+  }
   @HostListener('window:beforeunload', ['$event'])
   antesDeFechar(event: BeforeUnloadEvent) { if (this.alterado || this.salvando) event.preventDefault(); }
 }

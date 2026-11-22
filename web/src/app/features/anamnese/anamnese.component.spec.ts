@@ -54,15 +54,17 @@ describe('AnamneseComponent', () => {
     expect(form().querySelector('#profession')).not.toBeNull();
   });
 
-  it('cancels local edits without overwriting the saved draft', () => {
+  it('cancels local edits without overwriting the saved draft', async () => {
     component.data = { ...empty, versao: 2, status: 'RASCUNHO', rascunho: { profession: 'Professor' } };
     component.startEditing();
     component.change(component.fields[0], 'Outra profissão');
-    const confirm = spyOn(window, 'confirm').and.returnValue(false);
-    component.cancel();
+    const primeira = component.cancel();
+    component.responderConfirmacao(false);
+    await primeira;
     expect(component.editing).toBeTrue();
-    confirm.and.returnValue(true);
-    component.cancel();
+    const segunda = component.cancel();
+    component.responderConfirmacao(true);
+    await segunda;
     expect(component.editing).toBeFalse();
     expect(component.data.rascunho?.['profession']).toBe('Professor');
     expect(api.save).not.toHaveBeenCalled();

@@ -17,7 +17,8 @@ const statusLabels: Record<Appointment['status'], string> = {
   AGUARDANDO_CONFIRMACAO: 'AGUARDANDO CONFIRMAÇÃO',
   CONFIRMADA: 'CONFIRMADO',
   REALIZADA: 'REALIZADA',
-  CANCELADA: 'CANCELADA'
+  CANCELADA: 'CANCELADA',
+  RECUSADA: 'RECUSADA'
 };
 
 export function AppointmentCard({
@@ -28,7 +29,7 @@ export function AppointmentCard({
 }: AppointmentCardProps) {
   const confirmed = appointment.status === 'CONFIRMADA' && !appointment.iniciadaEm;
   const pending = appointment.status === 'AGUARDANDO_CONFIRMACAO';
-  const canceled = appointment.status === 'CANCELADA';
+  const canceled = appointment.status === 'CANCELADA' || appointment.status === 'RECUSADA';
 
   return (
     <View style={styles.card}>

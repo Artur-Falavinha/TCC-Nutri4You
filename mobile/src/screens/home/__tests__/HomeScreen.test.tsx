@@ -36,6 +36,21 @@ describe('HomeScreen', () => {
     (atualizarPerfil as jest.Mock).mockResolvedValue({ nome: 'Paciente Atualizado' });
   });
 
+  it('abre a tela existente de troca de senha a partir dos dados pessoais', async () => {
+    const navigation = { navigate: jest.fn(), dispatch: jest.fn() };
+    let tree: renderer.ReactTestRenderer;
+    await act(async () => {
+      tree = renderer.create(
+        <HomeScreen navigation={navigation as never}
+          route={{ key: 'DadosPessoais', name: 'DadosPessoais', params: undefined } as never} />
+      );
+    });
+    const botao = tree!.root.findAll(item => typeof item.props.onPress === 'function'
+      && item.findAllByType(Text).some(label => label.props.children === 'Trocar senha'))[0];
+    await act(async () => { botao.props.onPress(); });
+    expect(navigation.navigate).toHaveBeenCalledWith('TrocarSenha');
+  }, 120000);
+
   it('limpa a confirmação anterior quando a validação seguinte falha', async () => {
     const navigation = { navigate: jest.fn(), dispatch: jest.fn() };
     let tree: renderer.ReactTestRenderer;

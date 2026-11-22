@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -40,7 +40,7 @@ export function EvolucaoScreen({ navigation }: Props) {
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoHistorico[]>([]);
   const [graficoAba, setGraficoAba] = useState<0 | 1>(0); // 0: Peso, 1: Gordura Corporal
   const [chartWidth, setChartWidth] = useState(Dimensions.get('window').width - 64);
-  const chartScrollRef = useRef<ScrollView>(null);
+  const chartScrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
 
   const buscarDados = useCallback(async () => {
     const [historicoResp, perfilResp] = await Promise.all([

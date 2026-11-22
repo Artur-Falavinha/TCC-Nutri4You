@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -28,6 +29,19 @@ public class SolicitacaoVinculoController {
     @GetMapping
     public ApiResponse<List<SolicitacaoVinculoDTO>> listar(Authentication auth) {
         return ApiResponse.ok(solicitacoes.listar(paciente(auth)), "Solicitações de vínculo carregadas.");
+    }
+
+    @GetMapping("/nutricionistas")
+    public ApiResponse<List<SolicitacaoVinculoService.Profissional>> pesquisar(
+            Authentication auth, @RequestParam String nome) {
+        paciente(auth);
+        return ApiResponse.ok(solicitacoes.pesquisar(nome), "Nutricionistas carregados.");
+    }
+
+    @PostMapping("/nutricionistas/{id}")
+    public ApiResponse<Void> solicitar(Authentication auth, @PathVariable Integer id) {
+        solicitacoes.solicitar(paciente(auth), id);
+        return ApiResponse.ok(null, "Solicitação enviada ao nutricionista.");
     }
 
     @PostMapping("/{id}/decisao")

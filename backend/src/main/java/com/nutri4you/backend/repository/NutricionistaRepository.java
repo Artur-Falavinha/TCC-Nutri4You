@@ -6,6 +6,7 @@ import com.nutri4you.backend.model.StatusRelacaoClinica;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
@@ -20,6 +21,8 @@ public interface NutricionistaRepository extends JpaRepository<Nutricionista, In
     Optional<Nutricionista> findByEmailIgnoreCase(String email);
 
     boolean existsByEmail(String email);
+
+    List<Nutricionista> findByNomeContainingIgnoreCaseOrderByNomeAscIdAsc(String nome, Pageable pagina);
 
     @Query("""
             select new com.nutri4you.backend.dto.NutricionistaAgendaDTO(

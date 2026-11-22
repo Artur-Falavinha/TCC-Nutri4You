@@ -12,8 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -23,30 +23,32 @@ import java.util.stream.Collectors;
 @Service
 public class ConsultaService {
     private static final Set<String> STATUS = Set.of(
-            "AGUARDANDO_CONFIRMACAO", "CONFIRMADA", "REALIZADA", "CANCELADA");
-    private final JanelaConsulta janela;
+            "AGUARDANDO_CONFIRMACAO", "CONFIRMADA", "REALIZADA", "CANCELADA", "RECUSADA");
+    private final Clock clock;
     private final com.nutri4you.backend.repository.NutricionistaRepository nutricionistas;
     private final GestaoPacienteService pacientes;
     private final ConsultaRepository consultas;
     private final AvaliacaoAntropometricaRepository avaliacoes;
     private final HorarioConsultaService horarios;
+    private final AnamneseService anamneses;
 
     public ConsultaService(GestaoPacienteService pacientes, ConsultaRepository consultas,
-                           AvaliacaoAntropometricaRepository avaliacoes, JanelaConsulta janela,
+                           AvaliacaoAntropometricaRepository avaliacoes, Clock clock,
                            com.nutri4you.backend.repository.NutricionistaRepository nutricionistas,
-                           HorarioConsultaService horarios) {
+                           HorarioConsultaService horarios, AnamneseService anamneses) {
         this.pacientes = pacientes;
         this.consultas = consultas;
         this.avaliacoes = avaliacoes;
-        this.janela = janela;
+        this.clock = clock;
         this.nutricionistas = nutricionistas;
         this.horarios = horarios;
+        this.anamneses = anamneses;
 
     }
 
     @Transactional(readOnly = true)
     public ConsultasResponse listar(Nutricionista nutricionista, Integer pacienteId, int pagina) {
-        pacientes.exigirAcessoAoHistoricoDeConsultas(nutricionista, pacienteId);
+        pacientes.exigirAcesso(nutricionista, pacienteId);
         if (pagina < 0 || pagina > 100000) throw new IllegalArgumentException("Pagina invalida.");
         var page = consultas.findByPaciente_IdAndNutricionista_IdAndAvulsaFalse(pacienteId, nutricionista.getId(),
                 PageRequest.of(pagina, 10, Sort.by(Sort.Direction.DESC, "dataHora", "id")));
@@ -59,14 +61,14 @@ public class ConsultaService {
 
     @Transactional(readOnly = true)
     public ConsultaResponse buscar(Nutricionista nutricionista, Integer pacienteId, Integer id) {
-        pacientes.exigirAcessoAoHistoricoDeConsultas(nutricionista, pacienteId);
+        pacientes.exigirAcesso(nutricionista, pacienteId);
         return respostaComMedidas(exigirConsulta(nutricionista, pacienteId, id));
     }
 
     @Transactional
     public ConsultaResponse criar(Nutricionista nutricionista, Integer pacienteId, ConsultaRequest request) {
         pacientes.exigirAcesso(nutricionista, pacienteId);
-        throw new IllegalArgumentException("Solicite um agendamento e use Iniciar Consulta no horário permitido.");
+        throw new IllegalArgumentException("Solicite um agendamento e use Iniciar Consulta após a confirmação.");
     }
 
     @Transactional
@@ -83,10 +85,7 @@ public class ConsultaService {
         if (!"CONFIRMADA".equals(consulta.getStatus()) || consulta.getIniciadaEm() != null) {
             throw new IllegalArgumentException("Somente consultas confirmadas e ainda não iniciadas podem começar.");
         }
-        if (!janela.permite(consulta.getDataHora())) {
-            throw new IllegalArgumentException("A consulta está fora da janela permitida para início.");
-        }
-        consulta.iniciar(janela.agora());
+        consulta.iniciar(LocalDateTime.now(clock));
         consultas.flush();
     }
 
@@ -101,6 +100,8 @@ public class ConsultaService {
 
     @Transactional
     public ConsultaResponse cancelar(Nutricionista nutricionista, Integer pacienteId, Integer id, Long versao) {
+        bloquearAgenda(nutricionista.getId());
+        pacientes.exigirAcesso(nutricionista, pacienteId);
         Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
         cancelarConsulta(consulta, versao);
         return resposta(consulta, null);
@@ -118,7 +119,23 @@ public class ConsultaService {
 
     @Transactional(readOnly = true)
     public List<SolicitacaoAvulsaDTO> listarAvulsasPendentes(Nutricionista nutricionista) {
-        return consultas.listarAvulsasPendentes(nutricionista.getId(), janela.agora());
+        return consultas.listarAvulsasPendentes(nutricionista.getId(), LocalDateTime.now(clock));
+    }
+
+    @Transactional(readOnly = true)
+    public List<NotificacaoConsultaDTO> listarNotificacoes(Nutricionista nutricionista) {
+        return consultas.listarNotificacoesPendentes(nutricionista.getId(), LocalDateTime.now(clock));
+    }
+
+    @Transactional
+    public void decidirNotificacao(Nutricionista nutricionista, Integer id, DecisaoConsultaRequest decisao) {
+        if (decisao == null || decisao.aceitar() == null) {
+            throw new IllegalArgumentException("Informe se deseja confirmar ou recusar a consulta.");
+        }
+        bloquearAgenda(nutricionista.getId());
+        Consulta consulta = consultas.findByIdAndNutricionista_Id(id, nutricionista.getId())
+                .orElseThrow(ConsultaNaoEncontradaException::new);
+        decidirSolicitacao(consulta, decisao.versao(), decisao.aceitar());
     }
 
     @Transactional
@@ -136,30 +153,30 @@ public class ConsultaService {
 
     private void decidirSolicitacao(Consulta consulta, Long versao, boolean aceitar) {
         exigirVersao(consulta, versao);
-        if (!"AGUARDANDO_CONFIRMACAO".equals(consulta.getStatus()) || !consulta.getDataHora().isAfter(janela.agora())) {
+        if (!"AGUARDANDO_CONFIRMACAO".equals(consulta.getStatus()) || !consulta.getDataHora().isAfter(LocalDateTime.now(clock))) {
             throw new IllegalArgumentException("Somente solicitações futuras pendentes podem ser decididas.");
         }
         if (aceitar) {
             exigirSemConflito(consulta);
             consulta.atualizar(consulta.getDataHora(), "CONFIRMADA", consulta.getObservacao());
         } else {
-            consulta.cancelar();
+            consulta.recusar();
         }
         consultas.flush();
     }
 
     private void exigirVersao(Consulta c, Long versao) {
         if (versao == null) throw new IllegalArgumentException("Versão da consulta obrigatória.");
-        if (versao != c.getVersao()) throw new ConsultaConflitoException();
+        if (!versao.equals(c.getVersao())) throw new ConsultaConflitoException();
     }
 
-    private void bloquearAgenda(Integer nutricionistaId) {
+    void bloquearAgenda(Integer nutricionistaId) {
         nutricionistas.findByIdForUpdate(nutricionistaId).orElseThrow();
     }
 
     private void exigirSemConflito(Consulta c) {
-        var proximas = consultas.findByNutricionista_IdAndStatusNotAndDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraAsc(
-                c.getNutricionista().getId(), "CANCELADA", c.getDataHora().minusMinutes(45), c.getDataHora().plusMinutes(45));
+        var proximas = consultas.listarOcupadas(
+                c.getNutricionista().getId(), c.getDataHora().minusMinutes(45), c.getDataHora().plusMinutes(45));
         if (proximas.stream().anyMatch(outra -> !outra.getId().equals(c.getId())
                 && outra.getDataHora().plusMinutes(45).isAfter(c.getDataHora()))) {
             throw new ConsultaConflitoException("O horário selecionado já está ocupado.");
@@ -169,12 +186,13 @@ public class ConsultaService {
     @Transactional
     public ConsultaResponse atualizar(Nutricionista nutricionista, Integer pacienteId, Integer id,
                                       ConsultaRequest request) {
+        bloquearAgenda(nutricionista.getId());
         pacientes.exigirAcesso(nutricionista, pacienteId);
         return atualizarConsulta(exigirConsulta(nutricionista, pacienteId, id), request);
     }
 
     ConsultaResponse atualizarConsulta(Consulta consulta, ConsultaRequest request) {
-        validar(request);
+        validar(request, consulta);
         if (!request.dataHora().equals(consulta.getDataHora())) {
             throw new IllegalArgumentException("Use o fluxo de reagendamento para alterar o horário.");
         }
@@ -183,7 +201,7 @@ public class ConsultaService {
         }
         if (!("CONFIRMADA".equals(request.status()) || "REALIZADA".equals(request.status()))
                 || ("REALIZADA".equals(consulta.getStatus()) && !"REALIZADA".equals(request.status()))
-                || "CANCELADA".equals(consulta.getStatus())) {
+                || "CANCELADA".equals(consulta.getStatus()) || "RECUSADA".equals(consulta.getStatus())) {
             throw new IllegalArgumentException("Transição de status inválida. Use as ações da agenda.");
         }
         exigirVersao(consulta, request.versao());
@@ -195,7 +213,7 @@ public class ConsultaService {
         consulta.atualizar(request.dataHora(), request.status(), observacao(request));
         AvaliacaoAntropometrica avaliacao = salvarMedidas(consulta, request.avaliacao(), existente);
         consultas.flush();
-        return resposta(consulta, avaliacao);
+        return resposta(consulta, avaliacao, true);
     }
 
     private Consulta exigirConsulta(Nutricionista nutricionista, Integer pacienteId, Integer id) {
@@ -209,11 +227,11 @@ public class ConsultaService {
         AvaliacaoAntropometrica avaliacao = existente == null
                 ? new AvaliacaoAntropometrica(consulta.getPaciente(), consulta.getDataHora()) : existente;
         avaliacao.vincularConsulta(consulta);
-        MedidasAntropometricas.aplicar(avaliacao, request);
+        MedidasAntropometricas.aplicar(avaliacao, request, consulta.getPaciente());
         return avaliacoes.save(avaliacao);
     }
 
-    private void validar(ConsultaRequest request) {
+    private void validar(ConsultaRequest request, Consulta consulta) {
         if (request == null || request.dataHora() == null) {
             throw new IllegalArgumentException("Informe a data e a hora da consulta.");
         }
@@ -223,8 +241,8 @@ public class ConsultaService {
         if (request.status() == null || !STATUS.contains(request.status())) {
             throw new IllegalArgumentException("Status da consulta invalido.");
         }
-        if ("REALIZADA".equals(request.status())
-                && request.dataHora().isAfter(janela.agora())) {
+        if ("REALIZADA".equals(request.status()) && consulta.getIniciadaEm() == null
+                && request.dataHora().isAfter(LocalDateTime.now(clock))) {
             throw new IllegalArgumentException("Uma consulta futura nao pode ser concluida.");
         }
         if (request.observacao() != null && request.observacao().length() > 5000) {
@@ -234,8 +252,9 @@ public class ConsultaService {
         if (a != null || "REALIZADA".equals(request.status())) {
             MedidasAntropometricas.validarMedidas(a);
             for (BigDecimal valor : Arrays.asList(a.peso(), a.altura(), a.percentualGordura(),
-                    a.massaMuscularKg(), a.pregaBicipital(), a.pregaTricipital(), a.pregaSubescapular(),
-                    a.pregaSuprailiaca(), a.circunferenciaCintura(), a.circunferenciaQuadril(),
+                    a.massaMuscularKg(), a.pregaBicipital(), a.pregaPeitoral(), a.pregaAxilarMedia(),
+                    a.pregaTricipital(), a.pregaSubescapular(), a.pregaAbdominal(),
+                    a.pregaSuprailiaca(), a.pregaCoxa(), a.circunferenciaCintura(), a.circunferenciaQuadril(),
                     a.circunferenciaBraco())) {
                 if (valor != null && valor.stripTrailingZeros().scale() > 2) {
                     throw new IllegalArgumentException("As medidas aceitam no maximo duas casas decimais; altura em centimetros inteiros.");
@@ -249,20 +268,29 @@ public class ConsultaService {
     }
 
     private void validarHorarioLivre(Integer nutricionistaId, ConsultaRequest request, Integer ignorarConsultaId) {
-        if (!"CANCELADA".equals(request.status())) {
+        if (!("CANCELADA".equals(request.status()) || "RECUSADA".equals(request.status()))) {
             horarios.exigirHorarioLivre(nutricionistaId, request.dataHora(), ignorarConsultaId);
         }
     }
 
     ConsultaResponse respostaComMedidas(Consulta consulta) {
-        return resposta(consulta, avaliacoes.findByConsulta_Id(consulta.getId()).orElse(null));
+        return resposta(consulta, avaliacoes.findByConsulta_Id(consulta.getId()).orElse(null), true);
     }
 
     ConsultaResponse resposta(Consulta c, AvaliacaoAntropometrica a) {
+        return resposta(c, a, false);
+    }
+
+    private ConsultaResponse resposta(Consulta c, AvaliacaoAntropometrica a, boolean incluirContexto) {
+        boolean emAndamento = c.getIniciadaEm() != null && "CONFIRMADA".equals(c.getStatus());
+        ConsultaResponse.ContextoClinico contexto = incluirContexto && emAndamento
+                ? new ConsultaResponse.ContextoClinico(
+                        c.getPaciente().getDataNascimento(), c.getPaciente().getSexo(),
+                        anamneses.respostasFinalizadas(c.getPaciente().getId()))
+                : null;
         return new ConsultaResponse(c.getId(), c.getPaciente().getId(), c.getDataHora(), c.getStatus(),
                 c.getObservacao(), c.getVersao(), a == null ? null : MedidasAntropometricas.paraResposta(a),
-                c.getIniciadaEm(), janela.inicio(c.getDataHora()).atZone(ZoneId.of("America/Sao_Paulo")).toOffsetDateTime(),
-                janela.fim(c.getDataHora()).atZone(ZoneId.of("America/Sao_Paulo")).toOffsetDateTime(),
-                "CONFIRMADA".equals(c.getStatus()) && c.getIniciadaEm() == null && janela.permite(c.getDataHora()));
+                c.getIniciadaEm(), "CONFIRMADA".equals(c.getStatus()) && c.getIniciadaEm() == null,
+                contexto);
     }
 }

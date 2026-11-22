@@ -16,18 +16,25 @@ Criação/edição:
 
 ```json
 {
-  "idConsulta": null,
+  "consultaId": null,
   "vigenciaInicio": "2030-01-01",
   "vigenciaFim": null,
-  "metaKcal": 2000,
-  "metaProteina": 100,
-  "metaCarboidratos": 250,
-  "metaGordura": 65,
+  "metas": {
+    "kcal": 1700,
+    "proteinas": 212.50,
+    "carboidratos": 127.50,
+    "gorduras": 37.78
+  },
+  "percentuais": {
+    "proteinas": 50,
+    "carboidratos": 30,
+    "gorduras": 20
+  },
   "versao": 0
 }
 ```
 
-Versão obrigatória na edição, ignorada na criação. Metas diárias comuns aos sete dias, opcionais, de 0 a 9999,99. Fim da vigência inclusivo. Publicação exige início hoje ou no futuro no fuso da clínica. Rascunhos podem ter vigência incompleta. A consulta vinculada é opcional, deve pertencer ao mesmo atendimento e não pode ter outro plano.
+Versão obrigatória na edição, ignorada na criação. Metas diárias comuns aos sete dias e opcionais. Quando `percentuais` é informado, os três valores devem ficar entre 0 e 100 e somar exatamente 100%. O servidor recalcula os gramas a partir das kcal usando 4 kcal/g para proteínas e carboidratos e 9 kcal/g para gorduras; os gramas enviados pelo cliente não são a fonte de verdade. Fim da vigência inclusivo. Publicação exige início hoje ou no futuro no fuso da clínica. Rascunhos podem ter vigência incompleta. A consulta vinculada é opcional, deve pertencer ao mesmo atendimento e não pode ter outro plano.
 
 A publicação serializa pelo paciente: encerra o plano anterior na véspera, ou o substitui quando os inícios são iguais; rejeita sobreposição com plano futuro. Publicados são imutáveis. Revisões exigem novo rascunho. O dashboard também ignora rascunhos e planos expirados.
 

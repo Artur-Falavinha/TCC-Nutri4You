@@ -16,8 +16,11 @@ export function NutritionistCatalog({ nutritionists, selected, onSelect }: Nutri
         <>
           <View style={styles.option}>
             <Text style={styles.name}>{selected.nome}</Text>
-            <Text style={styles.description}>{selected.vinculado ? 'Em acompanhamento' : 'Consulta avulsa'}</Text>
+            <Text style={styles.description}>{selected.vinculado ? 'Em acompanhamento' : 'Consulta inicial sem vínculo'}</Text>
           </View>
+          {!selected.vinculado && <Text style={styles.description}>
+            Faça uma consulta inicial com este profissional. Para marcar a próxima, será preciso ter um vínculo ativo.
+          </Text>}
           {nutritionists.length > 1 && (
             <Pressable
               style={styles.change}
@@ -41,7 +44,7 @@ export function NutritionistCatalog({ nutritionists, selected, onSelect }: Nutri
             >
               <Text style={styles.name}>{nutritionist.nome}</Text>
               <Text style={styles.description}>
-                {nutritionist.vinculado ? 'Em acompanhamento' : 'Consulta avulsa'}
+                {nutritionist.vinculado ? 'Em acompanhamento' : 'Consulta inicial sem vínculo'}
               </Text>
             </Pressable>
           ))}

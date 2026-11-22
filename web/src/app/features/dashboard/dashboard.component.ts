@@ -1,17 +1,24 @@
-import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+﻿import { DatePipe } from '@angular/common';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
+import { catchError, of, switchMap, timer } from 'rxjs';
+import { NotificationBellComponent } from '../../shared/components/notification-bell/notification-bell.component';
 
 import { Agenda, ClinicoService, Contagem } from '../clinico/clinico.service';
+import { NotificacoesService } from '../notificacoes/notificacoes.service';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [DatePipe, RouterLink],
+  imports: [DatePipe, NotificationBellComponent, RouterLink],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent implements OnInit {
   private readonly clinico = inject(ClinicoService);
+  private readonly notificacoes = inject(NotificacoesService);
+  private readonly destroyRef = inject(DestroyRef);
+  solicitacoesPendentes = 0;
 
   readonly raio = 68;
   readonly circunferencia = 2 * Math.PI * 68;
@@ -22,6 +29,10 @@ export class DashboardComponent implements OnInit {
   erro = '';
 
   ngOnInit(): void {
+    timer(0, 30_000).pipe(
+      switchMap(() => this.notificacoes.listar().pipe(catchError(() => of([])))),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(itens => { this.solicitacoesPendentes = itens.length; });
     this.clinico.agenda().subscribe({
       next: agenda => {
         this.agenda = agenda;

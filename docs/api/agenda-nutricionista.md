@@ -9,6 +9,8 @@ Base `/api/v1`. JWT de nutricionista obrigatório. Horários civis da clínica e
 | GET e PUT | `/agenda-nutricionista/preferencias` | Consulta ou altera `aceitaConsultasAvulsas` |
 | GET | `/agenda-nutricionista/solicitacoes-avulsas` | Lista os pedidos avulsos futuros do próprio profissional |
 | POST | `/agenda-nutricionista/solicitacoes-avulsas/{id}/decisao` | Confirma ou recusa com `{ "aceitar": true, "versao": 0 }` |
+| GET | `/agenda-nutricionista/notificacoes` | Lista todas as solicitações futuras pendentes, vinculadas ou avulsas |
+| POST | `/agenda-nutricionista/notificacoes/{id}/decisao` | Confirma ou recusa uma solicitação exibida na central |
 
 ```json
 [
@@ -25,5 +27,7 @@ Lista vazia fecha a agenda. Alterar disponibilidade não cancela nem desloca res
 A edição de disponibilidade, a preferência de consultas avulsas e a reserva usam o mesmo bloqueio do nutricionista. Solicitações exigem horário futuro cadastrado e ausência de sobreposição. A API retorna 409 para horário ocupado ou versão antiga.
 
 A preferência começa desabilitada. Com a preferência ativa e horários cadastrados, o profissional aparece no catálogo de pacientes sem vínculo. A fila de avulsas pendentes retorna `id`, `pacienteNome`, `dataHora` e `versao`. O pedido pendente não concede acesso à ficha clínica. Confirmar marca a consulta avulsa. Recusar cancela e libera o horário.
+
+A central web `/notificacoes` usa a fila unificada e o sino atualiza a contagem a cada 30 segundos. Assim, uma solicitação feita pelo paciente aparece para o nutricionista sem depender da abertura prévia da ficha do paciente. Consultas confirmadas oferecem um link local do Google Agenda com duração de 45 minutos e fuso `America/Sao_Paulo`; esse fluxo não usa OAuth nem armazena credenciais do Google.
 
 O acompanhamento e o início da consulta continuam na listagem de cada paciente. Veja [consultas](consultas.md). O mobile consulta automaticamente a disponibilidade configurada. Esta entrega cobre recorrência semanal, sem exceções por data, feriados ou duração variável.
