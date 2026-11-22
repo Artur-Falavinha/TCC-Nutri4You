@@ -6,7 +6,7 @@ Antes de tratar dados reais, a organização responsável precisa identificar os
 
 ## Operação dos direitos do titular
 
-A área **Privacidade** informa o contato de suporte em TI `suporte@ufpr.br` e encaminha às orientações oficiais da UFPR para exercício dos direitos do titular. O sistema não recebe novas solicitações nem apresenta protocolos. Instalações que aplicaram a migração V24 podem conter solicitações anteriores na tabela `pedido_privacidade`: preserve-as e providencie sua análise e atendimento pelo responsável antes de qualquer decisão sobre sua destinação.
+A área **Privacidade** exibe os termos, o aceite e as orientações da ANPD. Falta criar um Gmail exclusivo do Nutri4U e divulgar o canal oficial antes da operação com dados reais. O sistema não recebe novas solicitações nem apresenta protocolos. Instalações que aplicaram a migração V24 podem conter solicitações anteriores na tabela `pedido_privacidade`: preserve-as e providencie sua análise e atendimento pelo responsável antes de qualquer decisão sobre sua destinação.
 
 Para eliminação, identifique o conjunto exato de registros e seus vínculos no banco, arquivos clínicos e cópias de segurança. Classifique os dados conforme a finalidade e as obrigações legais de guarda. Informe ao titular o que puder ser eliminado e o que precisar ficar protegido, com a justificativa. Se houver dados elegíveis, valide a exclusão ou anonimização primeiro em ambiente isolado, verifique o encadeamento das referências e execute em transação aprovada. Concilie arquivos e backups com a política do controlador, inclusive após restaurações. Confira que os dados conservados continuam inacessíveis a usuários sem escopo. Só marque o pedido como atendido após verificar o resultado. Não há exclusão física automática nem tarefa de descarte por idade nesta versão.
 
@@ -16,6 +16,5 @@ A guarda de prontuário segue a classificação e as obrigações aplicáveis à
 
 - [LGPD, arts. 9º, 11, 15 a 19 e 46](https://www.gov.br/saude/pt-br/acesso-a-informacao/lgpd/legislacao/lei-no-13-709-18)
 - [ANPD — Direitos dos titulares](https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares)
-- [UFPR — Direitos do titular](https://ufpr.br/lgpd/direitos-do-titular/)
 - [Lei 13.787/2018, art. 6º](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13787.htm)
 - [Resolução CFN 594/2017](https://www.cfn.org.br/wp-content/uploads/resolucoes/DOU_594.pdf)

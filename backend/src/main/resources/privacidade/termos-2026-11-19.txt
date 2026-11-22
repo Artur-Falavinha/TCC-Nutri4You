@@ -1,0 +1,90 @@
+# Termos de uso e aviso de privacidade
+
+O Nutri4You organiza o acompanhamento nutricional entre pacientes e nutricionistas. A primeira parte explica as regras de uso. As demais descrevem o tratamento de dados e como exercer seus direitos.
+
+! Versão para revisão local. Antes do uso com dados reais, a operação precisa identificar o controlador, definir o contato do encarregado quando aplicável e criar um Gmail exclusivo do Nutri4U para contato e privacidade. Use dados fictícios nos testes.
+
+## 1. O que a plataforma oferece
+
+Pacientes podem pedir vínculos e consultas, acompanhar a agenda, preencher a anamnese, enviar exames e consultar a evolução e os planos alimentares publicados. Nutricionistas podem administrar a agenda, registrar atendimentos, avaliar exames e publicar planos dentro do seu escopo de acesso.
+
+A plataforma apoia a organização do atendimento. Avaliação, diagnóstico nutricional, prescrição e acompanhamento são atribuições do profissional habilitado. Em caso de urgência, procure o serviço de saúde adequado.
+
+## 2. Conta e conduta
+
+Use uma conta individual, informe dados corretos e mantenha a senha e os códigos de verificação em sigilo. Encerre a sessão ao usar um dispositivo compartilhado. Se suspeitar de acesso indevido, troque a senha e informe o responsável pelo atendimento ou pela operação.
+
+Nutricionistas devem manter o registro profissional regular, respeitar o sigilo e acessar apenas os dados necessários à assistência. Use a plataforma para sua finalidade e envie apenas arquivos que você tem direito de compartilhar. É vedado usar credenciais de terceiros, divulgar dados clínicos sem autorização ou tentar acessar registros fora do seu escopo.
+
+## 3. Aceite, agenda e vínculo são etapas distintas
+
+A criação da conta exige o aceite da versão apresentada dos termos. A plataforma registra a versão e a data do aceite. Pedir consulta, solicitar vínculo ou aceitar convite são ações separadas. O aceite dos termos não constitui consentimento genérico para tratamento de dados pessoais ou de saúde.
+
+---
+
+# Dados e finalidades
+
+## 4. Quais dados entram no sistema
+
+- Cadastro do paciente: nome, e-mail e credencial de acesso. CPF, nascimento, sexo e telefone são registrados quando informados. Dados opcionais podem ser deixados em branco no cadastro.
+- Cadastro do nutricionista: nome, e-mail, credencial de acesso e número do CRN. A identificação profissional é usada no catálogo e nas interações com pacientes, conforme a funcionalidade.
+- Agenda e vínculo: identificação das partes, horários, solicitações, confirmações, cancelamentos e estado do vínculo. A plataforma gera os registros ao processar essas ações.
+- Dados clínicos: respostas de anamnese, medidas, evolução, notas, exames e anexos, planos alimentares e registros de consumo. Podem ser fornecidos pelo paciente, registrados pelo nutricionista ou gerados no acompanhamento.
+- Operação da conta: estado da confirmação de e-mail, registros de aceite e dados necessários à autenticação, recuperação de senha, notificações e funcionamento técnico da sessão.
+
+## 5. Para que os dados são usados
+
+Cadastro, autenticação e confirmação de e-mail viabilizam o acesso à conta. Os dados de agenda e vínculo permitem organizar consultas e delimitar o acesso entre paciente e profissional. Anamnese, exames, avaliações e hábitos alimentares subsidiam a avaliação, a prescrição e o acompanhamento. O envio de mensagens sobre a conta depende do serviço de e-mail configurado na instalação.
+
+## 6. Bases legais e dados de saúde
+
+O controlador deve informar a base de cada finalidade antes da operação com dados reais. Para dados comuns, podem se aplicar as hipóteses do art. 7º da LGPD, como execução de contrato ou de procedimento solicitado pelo titular, quando cabível, e cumprimento de obrigação legal. Dados de saúde são sensíveis e requerem hipótese do art. 11. A tutela da saúde se aplica apenas nas condições legais e em procedimento realizado por profissional ou serviço de saúde ou autoridade sanitária.
+
+Se a base adotada for consentimento, ele deve ser solicitado de forma específica e pode ser revogado. Para crianças e adolescentes, o melhor interesse prevalece. A operação deve definir as condições de uso, a participação dos responsáveis e as verificações aplicáveis antes de aceitar dados desse público.
+
+---
+
+# Acesso, armazenamento e guarda
+
+## 7. Quem pode acessar os dados
+
+O paciente consulta as informações liberadas em sua conta. O nutricionista acessa os dados clínicos no escopo permitido pela relação clínica ou pelo atendimento aplicável. Dados cadastrais usados para identificação e agenda não dão, por si só, acesso integral ao histórico.
+
+Você pode encerrar o vínculo em Dados pessoais. Isso encerra o acesso baseado naquele vínculo e não elimina o histórico nem o prontuário. A guarda e o acesso a registros de atendimentos anteriores seguem as obrigações aplicáveis. O paciente mantém o acesso às informações disponibilizadas à sua conta e ao plano publicado enquanto estiver vigente, conforme as regras do recurso.
+
+## 8. Serviços externos e segurança
+
+O atalho opcional Adicionar ao Google Agenda abre o serviço do Google com o nome do paciente, o título, a descrição e os horários da consulta. O contexto do evento pode revelar que há acompanhamento nutricional. O envio ocorre ao abrir o link, mesmo que o evento não seja salvo. Confira também com quem seu calendário é compartilhado.
+
+A operação precisa identificar os fornecedores de hospedagem, e-mail e outros serviços que tratem dados em seu nome, bem como os eventuais destinatários e mecanismos de transferência internacional. O acesso por fornecedor deve se limitar ao necessário para a finalidade informada.
+
+A plataforma usa autenticação e controles de acesso. O navegador guarda a sessão localmente. O app nativo usa armazenamento seguro do dispositivo quando disponível. Na web, o rascunho de cadastro também pode ficar no navegador durante o fluxo. Fazer logout encerra a sessão no dispositivo, mas não apaga dados do servidor.
+
+## 9. Por quanto tempo os dados ficam guardados
+
+A retenção depende do tipo de dado, da finalidade e das obrigações de guarda. O controlador precisa definir os critérios para cadastro, registros técnicos e cópias de segurança. Para prontuários abrangidos pela Lei nº 13.787/2018 ou pela Resolução CFN nº 594/2017, a referência de 20 anos para eventual descarte é contada do último registro. O descarte não é automático e pode haver obrigação de conservar por mais tempo. Dados mantidos por obrigação de guarda continuam protegidos.
+
+---
+
+# Seus direitos e canais
+
+## 10. O que você pode solicitar
+
+Nos termos da LGPD, você pode pedir confirmação do tratamento, acesso, correção de dados e informações sobre compartilhamento. Conforme o caso, pode pedir anonimização, bloqueio ou eliminação de dados desnecessários, excessivos ou tratados irregularmente, e portabilidade conforme regulamentação.
+
+Se o tratamento for baseado no consentimento, você pode pedir sua revogação e a eliminação dos dados correspondentes, observadas as hipóteses legais de conservação. Você pode saber se o consentimento é opcional e quais são os efeitos da recusa. Também pode se opor a tratamento sem consentimento em desconformidade com a lei e pedir revisão e informações sobre decisões exclusivamente automatizadas que afetem seus interesses, quando houver.
+
+O exercício dos direitos é gratuito e pode ser feito por você ou por representante legal. O responsável pode confirmar a identidade para proteger seus dados. Para confirmação ou acesso, a LGPD prevê resposta simplificada imediata ou declaração completa em até 15 dias, conforme o pedido. Se necessário, você pode peticionar à ANPD após buscar atendimento junto ao controlador.
+
+## 11. Contato e exercício de direitos
+
+O Gmail exclusivo do Nutri4U ainda precisa ser criado. A identificação do controlador, o contato de privacidade e, quando aplicável, o encarregado devem constar da versão de produção. A área Privacidade permite consultar o documento e o aceite. Ela não recebe pedidos de acesso ou exclusão nem gera protocolo de atendimento. Evite enviar senha, códigos de recuperação ou exames por e-mail comum.
+
+## 12. Alterações e referências
+
+Cada edição dos termos tem uma versão própria. Mudanças relevantes nas regras de uso ou no tratamento devem ser informadas aos usuários, e um novo aceite pode ser solicitado. A atualização do documento não substitui consentimento específico quando for exigido.
+
+- [LGPD - Lei nº 13.709/2018, arts. 7º a 11, 14, 15 a 20, 33 e 46](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm)
+- [ANPD - orientações sobre direitos do titular](https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares)
+- [Lei nº 13.787/2018 - guarda de prontuários](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13787.htm)
+- [Resolução CFN nº 594/2017 - prontuário nutricional](https://cfn.org.br/wp-content/uploads/resolucoes/DOU_594.pdf)

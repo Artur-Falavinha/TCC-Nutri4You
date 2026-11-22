@@ -1,62 +1,127 @@
-"""Gera o PDF versionado distribuído pela API do Nutri4You."""
+"""Gera o PDF distribuído pela API a partir do texto da versão informada."""
 
+import argparse
+import re
+from functools import partial
 from pathlib import Path
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape, quoteattr
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import Paragraph, SimpleDocTemplate
+from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate
 
 
-ROOT = Path(__file__).resolve().parent.parent
-DESTINO = ROOT / 'backend/src/main/resources/privacidade/termos-2026-11-16.2.pdf'
-fontes = [
-    (Path('C:/Windows/Fonts/arial.ttf'), Path('C:/Windows/Fonts/arialbd.ttf')),
-    (Path('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'), Path('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf')),
-]
-regular, negrito = next((par for par in fontes if all(arquivo.is_file() for arquivo in par)), (None, None))
-if regular is None:
+ROOT = Path(__file__).resolve().parents[1]
+RECURSOS = ROOT / 'backend/src/main/resources/privacidade'
+LOGO = ROOT / 'web/public/auth/logo-nutri4u.webp'
+MARGEM = 22 * mm
+VERDE = colors.HexColor('#005414')
+TEXTO = colors.HexColor('#223128')
+SECUNDARIA = colors.HexColor('#53625a')
+LINHA = colors.HexColor('#dbe7de')
+FONTES = (
+    (Path('C:/Windows/Fonts'), 'arial.ttf', 'arialbd.ttf'),
+    (Path('/usr/share/fonts/truetype/dejavu'), 'DejaVuSans.ttf', 'DejaVuSans-Bold.ttf'),
+)
+LINK = re.compile(r'\[([^\]]+)\]\((https://[^\s)]+)\)')
+
+
+def registrar_fontes():
+    for pasta, regular, negrito in FONTES:
+        if (pasta / regular).is_file() and (pasta / negrito).is_file():
+            pdfmetrics.registerFont(TTFont('NutriSans', str(pasta / regular)))
+            pdfmetrics.registerFont(TTFont('NutriSans-Bold', str(pasta / negrito)))
+            return
     raise SystemExit('Instale as fontes Arial ou DejaVu Sans para gerar o documento.')
-pdfmetrics.registerFont(TTFont('NutriSans', str(regular)))
-pdfmetrics.registerFont(TTFont('NutriSans-Bold', str(negrito)))
 
-estilos = getSampleStyleSheet()
-titulo = ParagraphStyle('TituloNutri', parent=estilos['Title'], fontName='NutriSans-Bold',
-                         fontSize=19, leading=25, textColor=colors.HexColor('#006f1e'), spaceAfter=6)
-subtitulo = ParagraphStyle('SubtituloNutri', fontName='NutriSans', fontSize=9, leading=14,
-                            textColor=colors.HexColor('#64748b'), spaceAfter=20)
-secao = ParagraphStyle('SecaoNutri', fontName='NutriSans-Bold', fontSize=11, leading=16,
-                       textColor=colors.HexColor('#17391f'), spaceBefore=9, spaceAfter=5, keepWithNext=True)
-corpo = ParagraphStyle('CorpoNutri', fontName='NutriSans', fontSize=9.5, leading=15,
-                       textColor=colors.HexColor('#26352c'), spaceAfter=7)
 
-conteudo = [
-    ('Uso da plataforma', 'O Nutri4You permite agendar consultas e acompanhar atendimentos nutricionais. Use uma conta individual, mantenha suas credenciais em sigilo e informe dados corretos. O sistema não substitui avaliação profissional ou serviços de urgência.'),
-    ('Tratamento de dados', 'O sistema trata dados cadastrais e de contato para operar a conta e a agenda. Medidas, anamnese, exames, prescrições e demais informações clínicas são dados sensíveis tratados para atendimento e acompanhamento nutricional. O acesso deve ser limitado a quem precisar dos dados para a finalidade informada.'),
-    ('Vínculo e acompanhamento', 'Ao solicitar vínculo ou aceitar um convite, o paciente autoriza o vínculo operacional com o profissional identificado. O vínculo pode ser encerrado em Dados pessoais. O encerramento não é um pedido de eliminação do prontuário. Dados clínicos podem ser conservados para cumprir obrigações legais ou regulatórias. O paciente continua com acesso aos seus dados e à dieta publicada durante a vigência.'),
-    ('Google Agenda', 'Se o usuário escolher abrir um evento no Google Agenda, os dados exibidos no evento serão enviados ao Google. O uso desse recurso é opcional.'),
-    ('Contato e direitos do titular', 'Para dúvidas sobre o sistema e seus dados pessoais, entre em contato com a informática da UFPR pelo e-mail suporte@ufpr.br. Para exercer direitos de titular perante a UFPR, consulte as orientações em https://ufpr.br/lgpd/direitos-do-titular/. A eliminação depende da finalidade, da base legal e das obrigações de conservação aplicáveis.'),
-    ('Referências', 'Lei nº 13.709/2018 (LGPD), Lei nº 13.787/2018 e Resolução CFN nº 594/2017.'),
-]
+CORPO = ParagraphStyle('Corpo', fontName='NutriSans', fontSize=10.5, leading=15,
+                       textColor=TEXTO, spaceAfter=8, splitLongWords=False)
+TITULO = ParagraphStyle('Titulo', parent=CORPO, fontName='NutriSans-Bold', fontSize=23,
+                        leading=28, textColor=VERDE, spaceAfter=13, keepWithNext=True)
+SECAO = ParagraphStyle('Secao', parent=CORPO, fontName='NutriSans-Bold', fontSize=12,
+                       leading=17, textColor=VERDE, spaceBefore=7, spaceAfter=5,
+                       keepWithNext=True)
+ITEM = ParagraphStyle('Item', parent=CORPO, leftIndent=13, bulletIndent=1, spaceAfter=5)
+AVISO = ParagraphStyle('Aviso', parent=CORPO, fontName='NutriSans-Bold', fontSize=10,
+                       leading=14, backColor=colors.HexColor('#edf5ee'), borderPadding=9,
+                       spaceBefore=5, spaceAfter=14)
 
-documento = SimpleDocTemplate(str(DESTINO), pagesize=A4, leftMargin=24 * mm, rightMargin=24 * mm,
-                               topMargin=20 * mm, bottomMargin=20 * mm, title='Nutri4You - Termos de uso e aviso de privacidade', author='Nutri4You')
-elementos = [Paragraph('Nutri4You', titulo), Paragraph('Termos de uso e aviso de privacidade | Versão 2026-11-16.2', subtitulo)]
-for cabecalho, texto in conteudo:
-    elementos.extend([Paragraph(escape(cabecalho), secao), Paragraph(escape(texto), corpo)])
 
-def desenhar_rodape(canvas, doc):
+def formatar_links(texto):
+    partes = []
+    inicio = 0
+    for link in LINK.finditer(texto):
+        partes.append(escape(texto[inicio:link.start()]))
+        rotulo, url = link.groups()
+        partes.append(f'<link href={quoteattr(url)} color="#005414"><u>{escape(rotulo)}</u></link>')
+        inicio = link.end()
+    partes.append(escape(texto[inicio:]))
+    return ''.join(partes)
+
+
+def montar_conteudo(texto):
+    elementos = []
+    for bloco in re.split(r'\n\s*\n', texto.strip()):
+        if bloco == '---':
+            elementos.append(PageBreak())
+        elif bloco.startswith('## '):
+            elementos.append(Paragraph(escape(bloco[3:]), SECAO))
+        elif bloco.startswith('# '):
+            elementos.append(Paragraph(escape(bloco[2:]), TITULO))
+        elif bloco.startswith('! '):
+            elementos.append(Paragraph(escape(bloco[2:]), AVISO))
+        elif bloco.startswith('- '):
+            for linha in bloco.splitlines():
+                elementos.append(Paragraph(formatar_links(linha.removeprefix('- ')), ITEM, bulletText='•'))
+        else:
+            elementos.append(Paragraph(formatar_links(bloco), CORPO))
+    return elementos
+
+
+def decoracao_pagina(canvas, documento, *, logo):
+    largura, altura = A4
+    largura_logo = 34 * mm
+    largura_original, altura_original = logo.getSize()
+    altura_logo = largura_logo * altura_original / largura_original
     canvas.saveState()
-    canvas.setStrokeColor(colors.HexColor('#dbe7de'))
-    canvas.line(24 * mm, 16 * mm, A4[0] - 24 * mm, 16 * mm)
+    canvas.setStrokeColor(LINHA)
+    canvas.line(MARGEM, altura - 17 * mm, largura - MARGEM, altura - 17 * mm)
+    canvas.line(MARGEM, 16 * mm, largura - MARGEM, 16 * mm)
+    canvas.drawImage(logo, MARGEM, altura - 15 * mm, largura_logo, altura_logo, mask='auto')
+    canvas.setFillColor(SECUNDARIA)
     canvas.setFont('NutriSans', 8)
-    canvas.setFillColor(colors.HexColor('#64748b'))
-    canvas.drawCentredString(A4[0] / 2, 10 * mm, f'Nutri4You | Termos de uso e privacidade | {doc.page}')
+    canvas.drawRightString(largura - MARGEM, altura - 13 * mm, 'TERMOS E PRIVACIDADE')
+    canvas.drawString(MARGEM, 11 * mm, f'Versão {documento.versao} | Para revisão')
+    canvas.drawRightString(largura - MARGEM, 11 * mm, str(documento.page))
     canvas.restoreState()
 
-documento.build(elementos, onFirstPage=desenhar_rodape, onLaterPages=desenhar_rodape)
-print(DESTINO)
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('versao', help='Versão usada nos nomes dos arquivos .txt e .pdf')
+    args = parser.parse_args()
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}(?:\.\d+)?', args.versao):
+        parser.error('Informe a versão no formato AAAA-MM-DD ou AAAA-MM-DD.N.')
+
+    registrar_fontes()
+    fonte = RECURSOS / f'termos-{args.versao}.txt'
+    destino = fonte.with_suffix('.pdf')
+    documento = SimpleDocTemplate(str(destino), pagesize=A4, leftMargin=MARGEM, rightMargin=MARGEM,
+                                   topMargin=23 * mm, bottomMargin=21 * mm,
+                                   title='Nutri4You - Termos de uso e aviso de privacidade',
+                                   author='Nutri4You', invariant=True)
+    documento.versao = args.versao
+    desenhar_pagina = partial(decoracao_pagina, logo=ImageReader(str(LOGO)))
+    documento.build(montar_conteudo(fonte.read_text(encoding='utf-8')),
+                    onFirstPage=desenhar_pagina, onLaterPages=desenhar_pagina)
+    print(destino)
+
+
+if __name__ == '__main__':
+    main()

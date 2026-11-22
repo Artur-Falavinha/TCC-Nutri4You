@@ -29,7 +29,7 @@ class NutricionistaControllerTest {
                                   "nome": "Nova Nutricionista",
                                   "email": "nova.nutri@teste.com",
                                   "senha": "senhaSegura123",
-                                  "crn": "CRN8-55555", "versaoTermos": "2026-11-16.2"
+                                  "crn": "CRN8-55555", "versaoTermos": "2026-11-19"
                                 }
                                 """))
                 .andExpect(status().isCreated())

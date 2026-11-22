@@ -1,7 +1,7 @@
 import { apiClient } from '../api/api-client';
 import { env } from '../config/env';
 
-export const VERSAO_TERMOS = '2026-11-16.2';
+export const VERSAO_TERMOS = '2026-11-19';
 export const URL_TERMOS = `${env.apiBaseUrl.replace(/\/$/, '')}/privacidade/termos`;
 export function formatarVersaoTermos(versao: string): string {
   const partes = /^(\d{4})-(\d{2})-(\d{2})(?:\.(\d+))?$/.exec(versao);

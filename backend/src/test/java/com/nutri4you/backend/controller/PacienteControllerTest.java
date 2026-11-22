@@ -33,7 +33,7 @@ class PacienteControllerTest {
                                 {
                                   "nome": "Maria Nova",
                                   "email": "maria.nova@teste.com",
-                                  "senha": "senhaSegura8", "versaoTermos": "2026-11-16.2"
+                                  "senha": "senhaSegura8", "versaoTermos": "2026-11-19"
                                 }
                                 """))
                 .andExpect(status().isCreated())

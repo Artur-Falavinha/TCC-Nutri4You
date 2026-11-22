@@ -4,7 +4,7 @@ import { finalize } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiService } from '../../core/services/api.service';
 
-export const VERSAO_TERMOS = '2026-11-16.2';
+export const VERSAO_TERMOS = '2026-11-19';
 export const URL_TERMOS = `${environment.apiBaseUrl}/privacidade/termos`;
 interface Aceite { versao: string; aceito: boolean; aceitoEm: string | null }
 
@@ -13,7 +13,7 @@ interface Aceite { versao: string; aceito: boolean; aceitoEm: string | null }
   template: `
     <section class="card" aria-labelledby="privacidade-titulo">
       <div class="section-heading"><span class="icon" aria-hidden="true"><i class="ph ph-shield-check"></i></span>
-        <div><h2 id="privacidade-titulo">Privacidade</h2><p>Consulte os termos e entre em contato sobre seus dados pessoais.</p></div>
+        <div><h2 id="privacidade-titulo">Privacidade</h2><p>Consulte os termos e veja como exercer seus direitos.</p></div>
       </div>
       <a class="terms-link" [href]="urlTermos" target="_blank" rel="noopener"><i class="ph ph-file-pdf" aria-hidden="true"></i> Ler termos e aviso de privacidade (PDF)</a>
       @if (aceite; as termos) {
@@ -25,8 +25,8 @@ interface Aceite { versao: string; aceito: boolean; aceitoEm: string | null }
           @if (termos.aceitoEm && formatarDataAceite(termos.aceitoEm); as data) { <p>Aceito em {{ data }}.</p> }
         }
       }
-      <p>Para solicitações sobre seus dados pessoais, entre em contato com a informática da UFPR pelo e-mail <a href="mailto:suporte@ufpr.br">suporte&#64;ufpr.br</a>.</p>
-      <a class="terms-link" href="https://ufpr.br/lgpd/direitos-do-titular/" target="_blank" rel="noopener">Como exercer seus direitos na UFPR <i class="ph ph-arrow-square-out" aria-hidden="true"></i></a>
+      <p>O canal de privacidade do Nutri4U está sendo definido.</p>
+      <a class="terms-link" href="https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares" target="_blank" rel="noopener">Orientações da ANPD para titulares <i class="ph ph-arrow-square-out" aria-hidden="true"></i></a>
       @if (mensagem) { <p class="message" role="status">{{ mensagem }}</p> }
     </section>
   `,

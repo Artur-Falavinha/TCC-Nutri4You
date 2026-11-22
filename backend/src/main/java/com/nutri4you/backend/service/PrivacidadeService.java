@@ -12,7 +12,7 @@ import java.time.Instant;
 
 @Service
 public class PrivacidadeService {
-    public static final String VERSAO = "2026-11-16.2";
+    public static final String VERSAO = "2026-11-19";
     private final JdbcTemplate jdbc;
 
     public PrivacidadeService(JdbcTemplate jdbc) { this.jdbc = jdbc; }

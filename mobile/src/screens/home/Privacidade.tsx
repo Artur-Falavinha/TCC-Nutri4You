@@ -19,17 +19,14 @@ export function Privacidade() {
 
   return <View style={styles.section}>
     <Text style={styles.title} accessibilityRole="header">Privacidade</Text>
-    <Text style={styles.description}>Consulte os termos e entre em contato sobre seus dados pessoais.</Text>
+    <Text style={styles.description}>Consulte os termos e veja como exercer seus direitos.</Text>
     <Pressable style={styles.link} accessibilityRole="link" disabled={ocupado}
       onPress={() => void executar(() => Linking.openURL(URL_TERMOS))}>
       <Feather name="file-text" size={16} color={colors.brand} /><Text style={styles.linkText}>Ler termos e aviso de privacidade (PDF)</Text>
     </Pressable>
-    <Text style={styles.description}>Para solicitações sobre seus dados pessoais, entre em contato com a informática da UFPR por e-mail.</Text>
-    <Pressable style={styles.link} accessibilityRole="link" onPress={() => void executar(() => Linking.openURL('mailto:suporte@ufpr.br'))}>
-      <Feather name="mail" size={16} color={colors.brand} /><Text style={styles.linkText}>suporte@ufpr.br</Text>
-    </Pressable>
-    <Pressable style={styles.link} accessibilityRole="link" onPress={() => void executar(() => Linking.openURL('https://ufpr.br/lgpd/direitos-do-titular/'))}>
-      <Feather name="external-link" size={16} color={colors.brand} /><Text style={styles.linkText}>Como exercer seus direitos na UFPR</Text>
+    <Text style={styles.description}>O canal de privacidade do Nutri4U está sendo definido.</Text>
+    <Pressable style={styles.link} accessibilityRole="link" onPress={() => void executar(() => Linking.openURL('https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares'))}>
+      <Feather name="external-link" size={16} color={colors.brand} /><Text style={styles.linkText}>Orientações da ANPD para titulares</Text>
     </Pressable>
     <Pressable style={[styles.secondary, ocupado && styles.disabled]} accessibilityRole="button" disabled={ocupado}
       onPress={() => {
