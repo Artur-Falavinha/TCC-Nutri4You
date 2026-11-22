@@ -8,7 +8,7 @@ Registro de viabilidade e riscos para integrações previstas nas sprints futura
 | --- | --- |
 | **Fonte** | Tabela TACO (UNICAMP) — base nutricional de alimentos |
 | **Formato** | CSV/JSON para importação em lote na tabela `Alimento` |
-| **Implementação** | V13 importa 597 alimentos da planilha oficial; `scripts/importar-taco.py` gera e confere a carga |
+| **Implementação** | A [migração V9](../../backend/src/main/resources/db/migration/V9__catalogo_taco.sql) carrega 597 alimentos da planilha oficial |
 | **Busca** | Paginada por nome/preparo, com normalização de acentos e pontuação |
 | **Riscos** | Qualidade dos dados, unidades (100g), alimentos composto vs simples, licenciamento de uso acadêmico |
 | **Mitigação** | Validar amostra manualmente; normalizar para `kcal_100g`, `proteina_100g`, `carboidratos_100g` |

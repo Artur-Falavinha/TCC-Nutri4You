@@ -65,11 +65,11 @@ Dias ISO de 1 a 7; até 140 refeições por plano e 50 alimentos distintos por r
 
 Cada refeição/item retorna `kcal`, `proteina`, `carboidratos`, `gordura`. Nutrientes ausentes são `null`, inclusive no total, sem conversão em zero.
 
-V13 importa os 597 alimentos da TACO, 4ª edição revisada e ampliada (NEPA/UNICAMP, 2011), da [planilha oficial](https://nepa.unicamp.br/publicacoes/tabela-taco-excel/). A busca retorna `codigoTaco`, categoria e os quatro nutrientes por 100 g. O código identifica a fonte; não deve ser usado como `alimentoId`. As páginas têm ordem estável por nome e ID; uma página com menos de 30 itens indica o fim da busca.
+A migração V9 importa os 597 alimentos da TACO, 4ª edição revisada e ampliada (NEPA/UNICAMP, 2011), da [planilha oficial](https://nepa.unicamp.br/publicacoes/tabela-taco-excel/). A busca retorna `codigoTaco`, categoria e os quatro nutrientes por 100 g. O código identifica a fonte; não deve ser usado como `alimentoId`. As páginas têm ordem estável por nome e ID; uma página com menos de 30 itens indica o fim da busca.
 
 Os valores numéricos da planilha são arredondados em duas casas (HALF_UP). `Tr` (traços), `NA`, `*` e células vazias permanecem `null`: não representam zero. Os carboidratos negativos nos códigos 288, 322, 337 e 400 também ficam `null`, pendentes de revisão da fonte. Por isso, alguns totais podem continuar sem informação mesmo com o catálogo completo.
 
-Os cinco exemplos anteriores permanecem com os mesmos IDs e nutrientes para preservar refeições existentes, mas deixam de aparecer em novas buscas. A migration não altera alimentos de planos históricos. O gerador `scripts/importar-taco.py` verifica o SHA256 da fonte; execute com `--check` para comparar integralmente os 597 registros da migration com a planilha. Atualizações futuras devem usar nova migration, sem reescrever V13 já aplicada.
+Os cinco exemplos anteriores permanecem com os mesmos IDs e nutrientes para preservar refeições existentes, mas deixam de aparecer em novas buscas. A migration não altera alimentos de planos históricos. A [migração V9](../../backend/src/main/resources/db/migration/V9__catalogo_taco.sql) registra o SHA-256 da planilha usada na importação. Atualizações futuras do catálogo devem ser feitas em novas migrações.
 
 A web soma apenas refeições do dia selecionado. Exceder metas não bloqueia inclusão/publicação. O percentual pode superar 100%; a barra é limitada visualmente. Esse progresso representa planejamento prescrito, não consumo. Exclusão pede confirmação; busca cancela respostas antigas durante a digitação.
 
