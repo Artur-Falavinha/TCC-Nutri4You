@@ -1,7 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, map, of, switchMap, throwError } from 'rxjs';
 
-import {
+import {
+  CadastroEmailConfirmado,
+  ConfirmacaoEmailResponse,
   LoginResponse,
   MensagemResponse,
   NutricionistaCadastroPayload,
@@ -58,6 +60,18 @@ export class AuthService {
       .pipe(map((response) => response.mensagem ?? 'Solicitação enviada.'));
   }
 
+  iniciarCadastro(email: string): Observable<MensagemResponse> {
+    return this.api.post<MensagemResponse>('/cadastros/iniciar', { email, tipoUsuario: 'NUTRICIONISTA' });
+  }
+
+  confirmarCadastro(token: string): Observable<CadastroEmailConfirmado> {
+    return this.api.post<CadastroEmailConfirmado>('/cadastros/confirmar', { token });
+  }
+
+  confirmarEmail(token: string): Observable<ConfirmacaoEmailResponse> {
+    return this.api.post<ConfirmacaoEmailResponse>('/auth/confirmar-email', { token });
+  }
+
   redefinirSenha(token: string, senha: string): Observable<string> {
     return this.api
       .post<MensagemResponse>('/auth/redefinir-senha', { token, senha })
@@ -67,7 +81,7 @@ export class AuthService {
   autocadastrarNutricionista(payload: NutricionistaCadastroPayload): Observable<string> {
     return this.api
       .post<MensagemResponse>('/nutricionistas/autocadastro', payload)
-      .pipe(map((response) => response.mensagem ?? 'Nutricionista cadastrado com sucesso.'));
+      .pipe(map((response) => response.mensagem ?? 'Conta criada com sucesso!'));
   }
 
   isAuthenticatedNutricionista(): boolean {

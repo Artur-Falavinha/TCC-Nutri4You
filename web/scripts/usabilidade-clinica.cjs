@@ -1,11 +1,12 @@
 // Browser journeys against a REAL API and a disposable PostgreSQL database.
-// Requires Angular on 127.0.0.1:14200, API on 127.0.0.1:18080 with Flyway V13,
+// Requires Angular on 127.0.0.1:14200, API on 127.0.0.1:18080 with Flyway V26 and Mailpit,
 // and CLINICO_TEST_ISOLATED=1. Creates synthetic accounts/plans; never use real data.
 // NODE_PATH must contain playwright. Screenshots stay in backend/target.
 const { chromium, request } = require('playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { confirmarCadastroTeste } = require('../../scripts/cadastro-email-teste.cjs');
 
 (async () => {
   assert.equal(process.env.CLINICO_TEST_ISOLATED, '1', 'Use only with a disposable API/database.');
@@ -16,8 +17,12 @@ const path = require('node:path');
   const http = await request.newContext();
   const email = `usabilidade-${Date.now()}@example.invalid`;
   const senha = 'TesteLocal123!';
+  const confirmacao = await confirmarCadastroTeste(async (rota, data) => {
+    const resposta = await http.post(api + rota, { data });
+    assert.ok(resposta.ok(), await resposta.text());
+  }, email, 'NUTRICIONISTA');
   const cadastro = await http.post(`${api}/nutricionistas/autocadastro`, {
-    data: { nome: 'Nutricionista de teste', email, senha, crn: `TESTE-${Date.now()}` }
+    data: { ...confirmacao, crnDeclarado: true, nome: 'Nutricionista de teste', email, senha, crn: `TESTE-${Date.now()}` }
   });
   assert.equal(cadastro.status(), 201, await cadastro.text());
   const login = await http.post(`${api}/auth/login`, { data: { email, senha } });

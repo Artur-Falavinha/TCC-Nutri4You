@@ -1,12 +1,13 @@
 // End-to-end journeys of the Expo app against a disposable API/PostgreSQL.
 // Start Expo with EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:18080/api/v1 on 18081.
-// Set CLINICO_TEST_ISOLATED=1; NODE_PATH must include playwright.
+// Use Flyway V26 and Mailpit. Set CLINICO_TEST_ISOLATED=1; NODE_PATH must include playwright.
 // --setup creates synthetic users for manual/native emulator testing only.
 /* global __dirname */
 const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { confirmarCadastroTeste } = require('../../scripts/cadastro-email-teste.cjs');
 const API = 'http://127.0.0.1:18080/api/v1';
 const output = path.resolve(__dirname, '../../backend/target/qa-agenda-mobile');
 async function api(route, method = 'GET', data, token) {
@@ -26,8 +27,11 @@ function dateKey(date) { return date.toLocaleDateString('en-CA', { timeZone: 'Am
   const senha = 'TesteLocal123!';
   const email = `paciente-${suffix}@example.invalid`;
   const nutriEmail = `nutri-${suffix}@example.invalid`;
-  await api('/nutricionistas/autocadastro', 'POST', { nome: 'Nutri Teste Agenda', email: nutriEmail, senha, crn: `TESTE-${suffix}` });
-  await api('/pacientes/autocadastro', 'POST', { nome: 'Paciente Teste Agenda', email, senha });
+  const post = (rota, dados) => api(rota, 'POST', dados);
+  const confirmacaoNutri = await confirmarCadastroTeste(post, nutriEmail, 'NUTRICIONISTA');
+  const confirmacaoPaciente = await confirmarCadastroTeste(post, email, 'PACIENTE');
+  await api('/nutricionistas/autocadastro', 'POST', { ...confirmacaoNutri, crnDeclarado: true, nome: 'Nutri Teste Agenda', email: nutriEmail, senha, crn: `TESTE-${suffix}` });
+  await api('/pacientes/autocadastro', 'POST', { ...confirmacaoPaciente, nome: 'Paciente Teste Agenda', email, senha });
   const nutriToken = (await api('/auth/login', 'POST', { email: nutriEmail, senha })).token;
   const token = (await api('/auth/login', 'POST', { email, senha })).token;
   const nutri = await api('/usuarios/me', 'GET', undefined, nutriToken);

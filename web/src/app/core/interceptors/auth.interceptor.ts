@@ -11,6 +11,8 @@ const PUBLIC_PATHS = [
   '/auth/recuperar-senha',
   '/auth/redefinir-senha',
   '/auth/confirmar-email',
+  '/cadastros/iniciar',
+  '/cadastros/confirmar',
   '/pacientes/autocadastro',
   '/nutricionistas/autocadastro',
   '/health'

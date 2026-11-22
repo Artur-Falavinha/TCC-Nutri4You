@@ -1,4 +1,5 @@
 import {
+  ConfirmacaoCadastroPaciente,
   LoginResponse,
   MensagemPayload,
   PacienteAutocadastroPayload
@@ -37,6 +38,14 @@ export async function login(email: string, senha: string): Promise<LoginResponse
   return data;
 }
 
+export function iniciarCadastroPaciente(email: string): Promise<MensagemPayload> {
+  return apiClient.post('/cadastros/iniciar', { email: email.trim(), tipoUsuario: 'PACIENTE' });
+}
+
+export function confirmarCadastroPaciente(token: string): Promise<ConfirmacaoCadastroPaciente> {
+  return apiClient.post('/cadastros/confirmar', { token, tipoUsuario: 'PACIENTE' });
+}
+
 export async function autocadastrarPaciente(
   payload: PacienteAutocadastroPayload
 ): Promise<MensagemPayload> {
@@ -44,6 +53,7 @@ export async function autocadastrarPaciente(
     nome: payload.nome.trim(),
     email: payload.email.trim().toLowerCase(),
     senha: payload.senha,
+    tokenCadastro: payload.tokenCadastro,
     cpf: payload.cpf?.trim() || undefined,
     telefone: payload.telefone?.trim() || undefined,
     sexo: payload.sexo?.trim() || undefined,

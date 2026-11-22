@@ -40,6 +40,14 @@ services:
       - APP_CORS_ALLOWED_ORIGINS=${APP_CORS_ALLOWED_ORIGINS:-http://localhost:4200,http://127.0.0.1:4200,http://localhost:8081,http://127.0.0.1:8081}
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
       - EMAIL_PROVIDER=${EMAIL_PROVIDER:-console}
+      - EMAIL_FROM
+      - APP_EMAIL_WEB_BASE_URL
+      - SPRING_MAIL_HOST
+      - SPRING_MAIL_PORT
+      - SPRING_MAIL_USERNAME
+      - SPRING_MAIL_PASSWORD
+      - MAIL_SMTP_AUTH
+      - MAIL_SMTP_STARTTLS
     volumes:
       - ./backend:/app
       - maven-repo:/root/.m2

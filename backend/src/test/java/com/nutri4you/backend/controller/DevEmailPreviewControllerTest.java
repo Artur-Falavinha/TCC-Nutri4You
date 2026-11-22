@@ -1,26 +1,28 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.TipoTokenEmail;
+import com.nutri4you.backend.model.TokenEmail;
+import com.nutri4you.backend.repository.PacienteRepository;
 import com.nutri4you.backend.repository.TokenEmailRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("dev")
-@TestPropertySource(properties = "app.email.auto-confirm=false")
 @Transactional
 class DevEmailPreviewControllerTest {
 
@@ -30,27 +32,23 @@ class DevEmailPreviewControllerTest {
     @Autowired
     private TokenEmailRepository tokenEmailRepository;
 
+    @Autowired
+    private PacienteRepository pacientes;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @Test
     void previewRetornaLinksDoToken() throws Exception {
-        mockMvc.perform(post("/api/v1/pacientes/autocadastro")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "nome": "Preview Dev",
-                                  "email": "preview@teste.com",
-                                  "senha": "senhaSegura123", "versaoTermos": "2026-11-19"
-                                }
-                                """))
-                .andExpect(status().isCreated());
-
-        var token = tokenEmailRepository.findAll().stream()
-                .filter(t -> t.getTipo() == TipoTokenEmail.CONFIRMACAO_EMAIL)
-                .findFirst()
-                .orElseThrow();
+        var paciente = pacientes.save(new Paciente("Preview Dev", null, null, null, null,
+                "preview@teste.com", passwordEncoder.encode("senhaSegura123")));
+        var token = tokenEmailRepository.save(TokenEmail.criarParaPaciente(
+                paciente, TipoTokenEmail.CONFIRMACAO_EMAIL, LocalDateTime.now().plusHours(1)));
 
         mockMvc.perform(get("/api/v1/dev/email-preview/{token}", token.getToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.emailDestinatario").value("preview@teste.com"))
-                .andExpect(jsonPath("$.data.linkConfirmacao").exists());
+                .andExpect(jsonPath("$.data.linkConfirmacao").value(
+                        "http://localhost:4200/confirmar-email#token=" + token.getToken()));
     }
 }

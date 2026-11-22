@@ -1,6 +1,7 @@
 package com.nutri4you.backend.dto;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 public record PacienteCadastroDTO(
         String nome,
@@ -10,5 +11,6 @@ public record PacienteCadastroDTO(
         String telefone,
         String email,
         String senha,
-        String versaoTermos) {
+        String versaoTermos,
+        UUID tokenCadastro) {
 }

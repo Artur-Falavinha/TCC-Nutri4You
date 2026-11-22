@@ -40,8 +40,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/confirmar-email").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/confirmar-email").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/recuperar-senha").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/redefinir-senha").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/cadastros/iniciar", "/api/v1/cadastros/confirmar").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/pacientes/autocadastro").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/nutricionistas/autocadastro").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/nutricionistas/cadastro").hasRole("NUTRICIONISTA")

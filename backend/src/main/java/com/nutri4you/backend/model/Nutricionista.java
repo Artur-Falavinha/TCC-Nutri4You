@@ -34,6 +34,9 @@ public class Nutricionista implements UserDetails {
     @Column(nullable = false, unique = true, length = 20)
     private String crn;
 
+    @Column(name = "email_confirmado", nullable = false)
+    private boolean emailConfirmado;
+
     @Column(name = "aceita_consultas_avulsas", nullable = false)
     private boolean aceitaConsultasAvulsas;
 
@@ -69,6 +72,15 @@ public class Nutricionista implements UserDetails {
 
     public void setSenha(String senha) {
         this.senha = senha;
+    }
+
+    public void confirmarEmail() {
+        emailConfirmado = true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return emailConfirmado;
     }
 
     @Override

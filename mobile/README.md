@@ -31,7 +31,7 @@ Em celular físico, `localhost` não funciona — use o IP da máquina na LAN.
 Fluxo do paciente:
 
 1. **Login** — `POST /auth/login`; só `PACIENTE` entra (nutricionista é bloqueado).
-2. **Criar conta** — `POST /pacientes/autocadastro` (nome, e-mail, senha ≥ 8; opcionais CPF/telefone/sexo/data ISO).
+2. **Criar conta** — Informe o e-mail, cole o código recebido e depois preencha os dados e a senha. A conta é criada somente no fim do formulário.
 3. **Esqueci a senha** — `POST /auth/recuperar-senha` (mensagem genérica RNF02) → cole o UUID (log do console Docker) → `NovaSenha` → `POST /auth/redefinir-senha`.
 
 Seed local: `arthur@email.com` / `password`.

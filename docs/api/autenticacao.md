@@ -95,11 +95,14 @@ Configuradas em `SecurityConfig`:
 | Rota | Método | Acesso |
 | --- | --- | --- |
 | `/api/v1/auth/login` | POST | Público |
-| `/api/v1/auth/confirmar-email` | GET | Público |
+| `/api/v1/auth/confirmar-email` | POST | Público, com token de confirmação |
+| `/api/v1/auth/confirmar-email` | GET | Público, compatibilidade com links antigos |
 | `/api/v1/auth/recuperar-senha` | POST | Público |
 | `/api/v1/auth/redefinir-senha` | POST | Público |
 | `/api/v1/dev/email-preview/{token}` | GET | Público *(perfil dev)* |
-| `/api/v1/pacientes/autocadastro` | POST | Público |
+| `/api/v1/cadastros/iniciar` | POST | Público |
+| `/api/v1/cadastros/confirmar` | POST | Público, com token do e-mail |
+| `/api/v1/pacientes/autocadastro` | POST | Público, com confirmação prévia |
 | `/api/v1/nutricionistas/autocadastro` | POST | Público *(Q29)* |
 | `/api/v1/health` | GET | Público |
 | `/api/v1/nutricionistas/cadastro` | POST | `ROLE_NUTRICIONISTA` *(cadastro assistido — HU019)* |
@@ -129,10 +132,10 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ## E-mail (S2-B3)
 
-| Perfil | Provider | Auto-confirma | Uso |
-| --- | --- | --- | --- |
-| `dev` (Docker local) | `console` | Sim (Q20) | Log + `/dev/email-preview` |
-| `demo` (Sprint Review) | `smtp` (Mailtrap) | Não | Fluxo completo na caixa de testes |
+| Perfil | Provider | Uso |
+| --- | --- | --- |
+| `dev` (Docker local) | `console` por padrão | Log de e-mail |
+| `demo` (Sprint Review) | `smtp` (Mailtrap) | Fluxo na caixa de testes |
 
 Adapter: `EmailSender` → `ConsoleEmailSender` ou `SmtpEmailSender`.
 
@@ -146,8 +149,9 @@ Adapter: `EmailSender` → `ConsoleEmailSender` ou `SmtpEmailSender`.
 
 ## Autocadastro nutricionista (Q29)
 
-- Wizard web: dados → senha → `POST /nutricionistas/autocadastro` → login.
-- Nutricionista **não** exige `email_confirmado` na S2 — login imediato após autocadastro.
+- Web e mobile iniciam o cadastro com o e-mail. Após confirmar pelo link ou pelo código do aplicativo, a pessoa preenche os dados e escolhe a senha.
+- A V26 adiciona a tabela de solicitações temporárias. Contas e links de confirmação anteriores continuam válidos conforme suas regras originais.
+- O aceite no web inclui a declaração de validade do CRN, com checagem de duplicidade no Nutri4You.
 
 ## Próximos passos (Sprint 2)
 

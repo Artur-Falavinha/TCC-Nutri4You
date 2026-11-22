@@ -26,7 +26,7 @@ class PacienteControllerTest {
     private PacienteRepository pacienteRepository;
 
     @Test
-    void autocadastroCriaPacienteComEmailNaoConfirmado() throws Exception {
+    void autocadastroDePacienteExigeConfirmacaoPrevia() throws Exception {
         mockMvc.perform(post("/api/v1/pacientes/autocadastro")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -36,11 +36,9 @@ class PacienteControllerTest {
                                   "senha": "senhaSegura8", "versaoTermos": "2026-11-19"
                                 }
                                 """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.mensagem").value("Paciente cadastrado com sucesso!"));
+                .andExpect(status().isBadRequest());
 
-        var paciente = pacienteRepository.findByEmail("maria.nova@teste.com").orElseThrow();
-        assertThat(paciente.isEmailConfirmado()).isFalse();
+        assertThat(pacienteRepository.existsByEmail("maria.nova@teste.com")).isFalse();
     }
 
     @Test

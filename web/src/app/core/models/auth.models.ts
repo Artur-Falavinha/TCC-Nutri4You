@@ -5,6 +5,19 @@ export interface LoginResponse {
   tipoUsuario: UserProfile;
 }
 
+export interface ConfirmacaoEmailResponse {
+  tipoUsuario: UserProfile;
+}
+
+export interface CadastroEmailConfirmado extends ConfirmacaoEmailResponse {
+  email: string;
+  expiraEm: string;
+}
+
+export interface ComprovanteCadastro extends CadastroEmailConfirmado {
+  token: string;
+}
+
 export interface UsuarioInfo {
   id: number;
   nome: string;
@@ -17,7 +30,9 @@ export interface MensagemResponse {
 }
 
 export interface NutricionistaCadastroPayload {
-  versaoTermos?: string;
+  tokenCadastro: string;
+  crnDeclarado: boolean;
+  versaoTermos: string;
   nome: string;
   email: string;
   senha: string;

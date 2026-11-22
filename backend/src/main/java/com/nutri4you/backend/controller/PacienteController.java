@@ -24,8 +24,8 @@ public class PacienteController {
     @PostMapping("/autocadastro")
     public ResponseEntity<ApiResponse<MensagemResponse>> autocadastro(@RequestBody PacienteCadastroDTO dto) {
         pacienteService.cadastrarPaciente(dto);
+        String mensagem = "Conta criada com sucesso! Você já pode entrar.";
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(
-                new MensagemResponse("Paciente cadastrado com sucesso!"),
-                "Paciente cadastrado com sucesso!"));
+                new MensagemResponse(mensagem), mensagem));
     }
 }

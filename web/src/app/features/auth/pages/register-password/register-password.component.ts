@@ -58,11 +58,16 @@ export class RegisterPasswordComponent implements OnInit {
 
   ngOnInit(): void {
     if (!this.registerFlow.getDraft()) {
-      void this.router.navigate(['/cadastro']);
+      void this.router.navigate(['/cadastro/dados']);
     }
   }
 
   submit(): void {
+    const confirmacao = this.registerFlow.getEmailConfirmado();
+    if (!confirmacao) {
+      void this.router.navigate(['/cadastro']);
+      return;
+    }
     this.submitted = true;
 
     if (this.form.invalid) {
@@ -89,7 +94,9 @@ export class RegisterPasswordComponent implements OnInit {
     this.authService
       .autocadastrarNutricionista({
         nome: draft.nome,
-        email: draft.email,
+        email: confirmacao.email,
+        tokenCadastro: confirmacao.token,
+        crnDeclarado: draft.termsAccepted,
         senha,
         crn: normalizeCrnForApi(draft.crn),
         versaoTermos: draft.versaoTermos

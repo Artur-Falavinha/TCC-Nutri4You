@@ -65,7 +65,7 @@ class AtendimentoClinicoControllerTest {
     @BeforeEach
     void preparar() {
         nutricionista = nutricionistas.save(TestDataFactory.nutricionista(encoder));
-        outraNutricionista = nutricionistas.save(new Nutricionista("Outra nutricionista",
+        outraNutricionista = nutricionistas.save(TestDataFactory.nutricionistaConfirmado("Outra nutricionista",
                 "outra@teste.com", encoder.encode("senha123"), "CRN8-22222"));
         paciente = pacientes.save(TestDataFactory.pacienteConfirmado(encoder));
         token = bearer(nutricionista.getEmail());

@@ -68,7 +68,7 @@ class AnamneseControllerTest {
     }
 
     @Test void unrelatedNutritionistCannotReadOrWrite() throws Exception {
-        var other = nutritionists.save(new Nutricionista("Outro", "other@example.test", encoder.encode("secret"), "CRN-OTHER"));
+        var other = nutritionists.save(TestDataFactory.nutricionistaConfirmado("Outro", "other@example.test", encoder.encode("secret"), "CRN-OTHER"));
         String otherToken = "Bearer " + tokens.gerarToken(other.getEmail());
         mvc.perform(get(path).header("Authorization", otherToken)).andExpect(status().isForbidden());
         mvc.perform(put(path + "/rascunho").header("Authorization", otherToken)

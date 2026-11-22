@@ -5,7 +5,17 @@ export interface LoginResponse {
   tipoUsuario: UserProfile | string;
 }
 
+export interface ConfirmacaoCadastroPaciente {
+  email: string;
+  expiraEm: string;
+}
+
+export interface ComprovanteCadastro extends ConfirmacaoCadastroPaciente {
+  token: string;
+}
+
 export interface PacienteAutocadastroPayload {
+  tokenCadastro: string;
   versaoTermos: string;
   nome: string;
   email: string;

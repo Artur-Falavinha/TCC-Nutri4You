@@ -36,8 +36,7 @@ public class DevEmailPreviewController {
         TokenEmail tokenEmail = tokenEmailRepository.findByToken(token)
                 .orElseThrow(() -> new IllegalArgumentException("Token não encontrado."));
 
-        String linkConfirmacao = emailProperties.getApiBaseUrl()
-                + "/auth/confirmar-email?token=" + tokenEmail.getToken();
+        String linkConfirmacao = emailProperties.linkConfirmacao(tokenEmail.getToken());
         String linkRecuperacao = emailProperties.getWebBaseUrl()
                 + "/redefinir-senha?token=" + tokenEmail.getToken();
 

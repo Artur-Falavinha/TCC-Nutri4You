@@ -38,14 +38,21 @@ public class AuthEmailService {
     }
 
     @Transactional
-    public void confirmarEmail(UUID token) {
+    public String confirmarEmail(UUID token) {
         TokenEmail tokenEmail = tokenEmailService.consumirToken(token, TipoTokenEmail.CONFIRMACAO_EMAIL);
+        Nutricionista nutricionista = tokenEmail.getNutricionista();
+        if (nutricionista != null) {
+            nutricionista.confirmarEmail();
+            nutricionistaRepository.save(nutricionista);
+            return "NUTRICIONISTA";
+        }
         Paciente paciente = tokenEmail.getPaciente();
         if (paciente == null) {
             throw new IllegalArgumentException(TokenEmailService.MENSAGEM_TOKEN_INVALIDO);
         }
         paciente.setEmailConfirmado(true);
         pacienteRepository.save(paciente);
+        return "PACIENTE";
     }
 
     public String solicitarRecuperacaoSenha(String email) {
