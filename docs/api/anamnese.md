@@ -93,22 +93,6 @@ npm start -- --port 4200
 
 A API usa <http://localhost:8080/api/v1> e o frontend <http://localhost:4200/anamnese>.
 
-Em outro terminal, na raiz, executar opcionalmente:
-
-```powershell
-./scripts/seed-anamnese.ps1
-```
-
-O script cria apenas contas fictícias dedicadas, prepara rascunho/finalizada pela API e não substitui anamneses já preenchidas.
-
-- Nutricionista: `anamnese@nutri4you.test`
-- Senha: `NutriTeste@123`
-- Amanda: cadastro inicialmente vazio.
-- Bruno: rascunho parcial.
-- Carla: cadastro finalizado.
-
-As contas e senhas acima são exclusivamente para desenvolvimento. Não executar o seed em produção. Os IDs são obtidos do banco, sem depender de numeração fixa.
-
 ## Verificações
 
 Backend:
