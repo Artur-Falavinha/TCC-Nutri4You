@@ -1,6 +1,8 @@
 <app-auth-page-layout>
-  <app-auth-form-card title="Criar conta">
+  <app-auth-form-card title="Dados do cadastro">
     <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <p>E-mail confirmado: <strong>{{ emailConfirmado }}</strong></p>
+
       <app-ui-input
         label="Nome completo"
         placeholder="Seu nome"
@@ -20,20 +22,10 @@
         [errorMessage]="fieldError('crn')"
       />
 
-      <app-ui-input
-        label="E-mail"
-        placeholder="seu@email.com"
-        type="email"
-        autocomplete="email"
-        [required]="true"
-        formControlName="email"
-        [errorMessage]="fieldError('email')"
-      />
-
       <a [href]="urlTermos" target="_blank" rel="noopener">Ler termos de uso e aviso de privacidade</a>
       <app-ui-checkbox
         checkboxId="terms"
-        label="Li e aceito os termos de uso e declaro que os dados profissionais informados, incluindo meu CRN, são verdadeiros."
+        label="Li e aceito os termos de uso e declaro que meus dados profissionais são verdadeiros e que meu CRN é válido."
         [required]="true"
         formControlName="termsAccepted"
         [errorMessage]="termsError()"

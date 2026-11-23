@@ -92,155 +92,51 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
 
 ---
 
+## POST /cadastros/iniciar
+
+Envia um link de confirmação ao endereço informado e responde `202` com uma mensagem genérica. Envie `email` e `tipoUsuario` (`PACIENTE` ou `NUTRICIONISTA`). Apenas a solicitação temporária é registrada.
+
+## POST /cadastros/confirmar
+
+Envie o `token` recebido no e-mail. O mobile informa também `tipoUsuario: "PACIENTE"` para aceitar apenas códigos de paciente. A resposta `200` traz `email`, `tipoUsuario` e `expiraEm`. A confirmação libera 30 minutos para concluir o cadastro.
+
 ## POST /pacientes/autocadastro
 
-Cadastra um novo paciente no sistema.
-
-**Autenticação:** não requerida
-
-### Autocadastro — corpo da requisição
+Cria a conta após confirmar o endereço. Envie o mesmo e-mail e token da confirmação.
 
 ```json
 {
   "nome": "Maria Silva",
-  "cpf": "123.456.789-00",
-  "dataNascimento": "1995-03-15",
-  "sexo": "Feminino",
-  "telefone": "41999998888",
-  "email": "maria@email.com",
-  "senha": "senhaSegura123"
+  "email": "maria@example.test",
+  "senha": "senhaSegura123",
+  "tokenCadastro": "550e8400-e29b-41d4-a716-446655440000",
+  "versaoTermos": "2026-11-19"
 }
 ```
 
-| Campo | Tipo | Obrigatório | Descrição |
-| --- | --- | --- | --- |
-| `nome` | string | Sim | Nome completo |
-| `cpf` | string | Não | CPF (único na tabela) |
-| `dataNascimento` | string (ISO date) | Não | Formato `YYYY-MM-DD` |
-| `sexo` | string | Não | Ex.: `Masculino`, `Feminino` |
-| `telefone` | string | Não | Telefone de contato |
-| `email` | string | Sim | Normalizado para minúsculas; único no sistema |
-| `senha` | string | Sim | Criptografada com BCrypt antes de persistir |
-
-### Regras de negócio
-
-- `nome`, `email` e `senha` são obrigatórios.
-- E-mail é normalizado (`trim` + `toLowerCase`).
-- E-mail duplicado (Paciente ou Nutricionista) retorna `400`.
-- Senha nunca é armazenada em texto plano.
-- Paciente nasce com `email_confirmado=false` (confirmação em S2-B3).
-
-### Autocadastro — resposta 201
-
-```json
-{
-  "data": {
-    "mensagem": "Paciente cadastrado com sucesso!"
-  },
-  "message": "Paciente cadastrado com sucesso!",
-  "timestamp": "2026-09-09T14:00:00Z"
-}
-```
-
-### Autocadastro — resposta 400
-
-```json
-{
-  "status": 400,
-  "error": "REQUISICAO_INVALIDA",
-  "message": "Nome, e-mail e senha são obrigatórios.",
-  "path": "/api/v1/pacientes/autocadastro",
-  "timestamp": "2026-09-09T14:00:00Z"
-}
-```
-
-### Autocadastro — exemplo curl
-
-```bash
-curl -X POST http://localhost:8080/api/v1/pacientes/autocadastro \
-  -H "Content-Type: application/json" \
-  -d '{
-    "nome": "Maria Silva",
-    "email": "maria@email.com",
-    "senha": "senhaSegura123"
-  }'
-```
-
----
+CPF, telefone, sexo e data de nascimento em formato ISO são opcionais. A resposta `201` indica que a conta está pronta para login.
 
 ## POST /nutricionistas/autocadastro
 
-Cadastro público de nutricionista (Q29). Paridade com `POST /pacientes/autocadastro`. Após sucesso, o nutricionista pode fazer login imediatamente — **não** exige confirmação de e-mail na Sprint 2.
-
-**Autenticação:** não requerida
-
-### Autocadastro nutri — corpo
+Cria a conta após confirmar o endereço. No aceite dos termos, o nutricionista declara a validade do CRN informado. A API checa a duplicidade do número no Nutri4You.
 
 ```json
 {
   "nome": "Novo Nutricionista",
-  "email": "novo@nutri.com",
+  "email": "novo@example.test",
   "senha": "senhaSegura123",
-  "crn": "CRN8-54321"
+  "crn": "CRN8-54321",
+  "crnDeclarado": true,
+  "tokenCadastro": "550e8400-e29b-41d4-a716-446655440000",
+  "versaoTermos": "2026-11-19"
 }
 ```
 
-| Campo | Obrigatório | Regras |
-| --- | --- | --- |
-| `nome` | Sim | — |
-| `email` | Sim | Único entre nutricionistas e pacientes |
-| `senha` | Sim | Mínimo 8 caracteres |
-| `crn` | Sim | Formato CRN |
-
-### Autocadastro nutri — resposta 201
-
-Envelope padrão com `data.mensagem`.
-
-### Autocadastro nutri — erros
-
-| Código | Motivo |
-| --- | --- |
-| `400` | Campos obrigatórios ausentes, senha fraca ou e-mail já cadastrado |
-
-### Autocadastro nutri — exemplo curl
-
-```bash
-curl -X POST http://localhost:8080/api/v1/nutricionistas/autocadastro \
-  -H "Content-Type: application/json" \
-  -d '{
-    "nome": "Novo Nutricionista",
-    "email": "novo@nutri.com",
-    "senha": "senhaSegura123",
-    "crn": "CRN8-54321"
-  }'
-```
-
----
+A resposta `201` indica que a conta está pronta para login. Código inválido, expirado, usado ou de outro perfil retorna `400`.
 
 ## POST /nutricionistas/cadastro
 
-Cadastro assistido de nutricionista por outro nutricionista autenticado (backlog HU019). **Não é rota pública** — exige JWT de nutricionista logado.
-
-**Autenticação:** `ROLE_NUTRICIONISTA`
-
-### Cadastro nutri — corpo
-
-```json
-{
-  "nome": "Novo Nutricionista",
-  "email": "novo@nutri.com",
-  "senha": "senhaSegura123",
-  "crn": "CRN8-54321"
-}
-```
-
-### Cadastro nutri — resposta 201
-
-Envelope padrão com `data.mensagem`.
-
-### Cadastro nutri — resposta 403
-
-Sem token ou token de paciente.
+Cadastro assistido com o mesmo corpo e a mesma confirmação prévia do autocadastro. Exige um JWT com `ROLE_NUTRICIONISTA`.
 
 ---
 
@@ -628,23 +524,21 @@ Consultas já persistidas do nutricionista. Não cria consulta.
 
 ---
 
-## GET /auth/confirmar-email
+## POST /auth/confirmar-email
 
-Confirma o e-mail do paciente após autocadastro.
+O link do e-mail abre a página de confirmação do web. Ao selecionar **Confirmar e-mail**, a página envia o token e apresenta a próxima ação para o paciente ou nutricionista. O token expira e pode ser usado uma vez.
 
 **Autenticação:** não requerida
 
-### Confirmar e-mail — query params
+### Confirmar e-mail — corpo
 
-| Param | Obrigatório | Descrição |
-| --- | --- | --- |
-| `token` | Sim | UUID do `Token_Email` (tipo `CONFIRMACAO_EMAIL`) |
+Envie `token` no corpo JSON com o UUID do `Token_Email` de tipo `CONFIRMACAO_EMAIL`.
 
 ### Confirmar e-mail — resposta 200
 
 ```json
 {
-  "data": { "mensagem": "E-mail confirmado com sucesso." },
+  "data": { "mensagem": "E-mail confirmado com sucesso.", "tipoUsuario": "NUTRICIONISTA" },
   "message": "E-mail confirmado com sucesso."
 }
 ```
@@ -654,6 +548,8 @@ Confirma o e-mail do paciente após autocadastro.
 | Código | Motivo |
 | --- | --- |
 | `400` | `Token inválido ou expirado.` *(mensagem unificada — Q7)* |
+
+O GET anterior continua aceitando `?token=…` para clientes JSON. No navegador, o mesmo link abre a página de confirmação.
 
 ---
 

@@ -135,8 +135,13 @@ sequenceDiagram
     B-->>W: "API is running and connected!"
 
     Note over W,P: Autocadastro
+    W->>B: POST /api/v1/cadastros/iniciar
+    B->>P: Registra solicitação temporária de e-mail
+    B-->>W: 202
+    W->>B: POST /api/v1/cadastros/confirmar
+    B-->>W: Libera a conclusão
     W->>B: POST /api/v1/pacientes/autocadastro
-    B->>P: INSERT Paciente
+    B->>P: INSERT Paciente e consome o comprovante
     P-->>B: OK
     B-->>W: 201 { mensagem }
 

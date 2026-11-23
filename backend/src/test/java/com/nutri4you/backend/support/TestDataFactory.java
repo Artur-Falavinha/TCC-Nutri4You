@@ -15,11 +15,17 @@ public final class TestDataFactory {
     }
 
     public static Nutricionista nutricionista(PasswordEncoder encoder) {
-        return new Nutricionista(
+        return nutricionistaConfirmado(
                 "Nutricionista Teste",
                 "nutri@teste.com",
                 encoder.encode("senha123"),
                 "CRN8-99999");
+    }
+
+    public static Nutricionista nutricionistaConfirmado(String nome, String email, String senha, String crn) {
+        Nutricionista nutricionista = new Nutricionista(nome, email, senha, crn);
+        nutricionista.confirmarEmail();
+        return nutricionista;
     }
 
     public static Paciente pacienteConfirmado(PasswordEncoder encoder) {

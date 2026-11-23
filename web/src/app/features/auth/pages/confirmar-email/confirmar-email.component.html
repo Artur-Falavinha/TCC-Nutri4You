@@ -1,0 +1,31 @@
+<app-auth-page-layout>
+  <app-auth-form-card
+    [title]="perfil() ? 'E-mail confirmado' : podeConfirmar() ? 'Confirme seu e-mail' : 'Link indisponível'"
+  >
+    <div class="confirmacao">
+      @if (perfil() === 'PACIENTE') {
+        @if (ehCadastro) {
+          <p role="status">E-mail confirmado. Volte ao aplicativo Nutri4You e cole o código do e-mail para continuar.</p>
+        } @else {
+          <p role="status">Seu cadastro está confirmado. Volte ao aplicativo Nutri4You para entrar.</p>
+        }
+      } @else if (perfil() === 'NUTRICIONISTA') {
+        <p role="status">Seu cadastro está confirmado. Você já pode entrar no Nutri4You.</p>
+        <app-ui-link label="Ir para o login" route="/login" icon="arrow-right" [centered]="true" />
+      } @else {
+        @if (podeConfirmar()) {
+          <p>Confirme o endereço para continuar seu cadastro.</p>
+        }
+        <app-form-alert [message]="erro()" />
+        @if (podeConfirmar()) {
+          <app-ui-button label="Confirmar e-mail" icon="check" [loading]="emAndamento()" (click)="confirmar()" />
+        } @else {
+          @if (ehCadastro) {
+            <app-ui-link label="Solicitar outro link no web" route="/cadastro" icon="arrow-right" [centered]="true" />
+          }
+          <app-ui-link label="Ir para o login web" route="/login" icon="arrow-right" [centered]="true" />
+        }
+      }
+    </div>
+  </app-auth-form-card>
+</app-auth-page-layout>

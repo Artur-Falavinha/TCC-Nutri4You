@@ -19,9 +19,11 @@ import {
 } from 'react-native';
 
 import { AuthScreenLayout } from '../components/auth/AuthScreenLayout';
+import { ConfirmarEmailCadastro } from '../components/auth/ConfirmarEmailCadastro';
 import { authFormStyles } from '../components/auth/authFormStyles';
 import { useAppAlert } from '../components/feedback/AppAlertProvider';
 import { autocadastrarPaciente } from '../core/auth/auth.service';
+import type { ComprovanteCadastro } from '../core/auth/auth.models';
 import { URL_TERMOS, VERSAO_TERMOS } from '../core/perfil/privacidade';
 import { ApiError } from '../core/api/api-response.types';
 import { formatCpfDisplay, isCpfComplete, normalizeCpf } from '../core/utils/cpf-mask.util';
@@ -54,11 +56,27 @@ function toHtmlDateValue(date: Date): string {
 
 export default function CriarContaScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [confirmacao, setConfirmacao] = useState<ComprovanteCadastro | null>(null);
+
+  return confirmacao ? (
+    <DadosCadastroPaciente confirmacao={confirmacao} aoExpirar={() => setConfirmacao(null)} />
+  ) : (
+    <ConfirmarEmailCadastro aoConfirmar={setConfirmacao} aoVoltar={() => navigation.goBack()} />
+  );
+}
+
+interface DadosCadastroPacienteProps {
+  confirmacao: ComprovanteCadastro;
+  aoExpirar: () => void;
+}
+
+function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPacienteProps) {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { showAlert } = useAppAlert();
   const webDateInputRef = useRef<HTMLInputElement | null>(null);
   const [nome, setNome] = useState('');
   const [aceitouTermos, setAceitouTermos] = useState(false);
-  const [email, setEmail] = useState('');
+  const email = confirmacao.email;
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [cpf, setCpf] = useState('');
@@ -125,12 +143,17 @@ export default function CriarContaScreen() {
   };
 
   const handleRegister = async () => {
+    if (Date.parse(confirmacao.expiraEm) <= Date.now()) {
+      showAlert('Confirmação expirada', 'Solicite outro e-mail para continuar.');
+      aoExpirar();
+      return;
+    }
     if (!aceitouTermos) {
       showAlert('Atenção', 'Leia e aceite os termos de uso para criar a conta.');
       return;
     }
-    if (!nome.trim() || !email.trim() || !senha || !confirmarSenha) {
-      showAlert('Atenção', 'Preencha nome, e-mail e senha.');
+    if (!nome.trim() || !senha || !confirmarSenha) {
+      showAlert('Atenção', 'Preencha nome e senha.');
       return;
     }
 
@@ -158,9 +181,10 @@ export default function CriarContaScreen() {
     setIsLoading(true);
 
     try {
-      await autocadastrarPaciente({
+      const cadastro = await autocadastrarPaciente({
         nome,
         email,
+        tokenCadastro: confirmacao.token,
         senha,
         cpf: normalizeCpf(cpf),
         telefone: normalizePhone(telefone),
@@ -169,7 +193,7 @@ export default function CriarContaScreen() {
         versaoTermos: VERSAO_TERMOS
       });
 
-      showAlert('Sucesso', 'Conta criada com sucesso! Faça login para continuar.', [
+      showAlert('Sucesso', cadastro?.mensagem ?? 'Conta criada com sucesso!', [
         {
           text: 'OK',
           onPress: () =>
@@ -199,7 +223,7 @@ export default function CriarContaScreen() {
         <View style={authFormStyles.card}>
           <View style={authFormStyles.header}>
             <Text style={authFormStyles.title} accessibilityRole="header">Crie sua conta</Text>
-            <Text style={authFormStyles.description}>Cadastro de paciente no Nutri4You</Text>
+            <Text style={authFormStyles.description}>E-mail confirmado: {email}</Text>
           </View>
 
           <View style={authFormStyles.inputGroup}>
@@ -212,22 +236,6 @@ export default function CriarContaScreen() {
                 placeholderTextColor="#94a3b8"
                 value={nome}
                 onChangeText={setNome}
-              />
-            </View>
-          </View>
-
-          <View style={authFormStyles.inputGroup}>
-            <Text style={authFormStyles.label}>E-MAIL *</Text>
-            <View style={authFormStyles.inputContainer}>
-              <Feather name="mail" size={20} color="#64748b" style={authFormStyles.inputIcon} />
-              <TextInput
-                style={authFormStyles.input}
-                placeholder="seuemail@exemplo.com"
-                placeholderTextColor="#94a3b8"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={email}
-                onChangeText={setEmail}
               />
             </View>
           </View>

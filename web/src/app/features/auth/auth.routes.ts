@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { guestGuard } from '../../core/guards/guest.guard';
+import { cadastroConfirmadoGuard } from './services/cadastro-confirmado.guard';
 
 export const AUTH_ROUTES: Routes = [
   {
@@ -27,11 +28,26 @@ export const AUTH_ROUTES: Routes = [
     title: 'Nova senha — Nutri4You'
   },
   {
+    path: 'confirmar-email',
+    loadComponent: () =>
+      import('./pages/confirmar-email/confirmar-email.component').then(
+        (m) => m.ConfirmarEmailComponent
+      ),
+    title: 'Confirmar e-mail — Nutri4You'
+  },
+  {
     path: 'cadastro',
     loadComponent: () =>
-      import('./pages/register/register.component').then((m) => m.RegisterComponent),
+      import('./pages/cadastro-email/cadastro-email.component').then((m) => m.CadastroEmailComponent),
     title: 'Criar conta — Nutri4You',
     canActivate: [guestGuard]
+  },
+  {
+    path: 'cadastro/dados',
+    loadComponent: () =>
+      import('./pages/register/register.component').then((m) => m.RegisterComponent),
+    title: 'Dados do cadastro — Nutri4You',
+    canActivate: [guestGuard, cadastroConfirmadoGuard]
   },
   {
     path: 'cadastro/senha',
@@ -40,6 +56,6 @@ export const AUTH_ROUTES: Routes = [
         (m) => m.RegisterPasswordComponent
       ),
     title: 'Criar senha — Nutri4You',
-    canActivate: [guestGuard]
+    canActivate: [guestGuard, cadastroConfirmadoGuard]
   }
 ];

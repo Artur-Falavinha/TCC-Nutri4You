@@ -188,7 +188,7 @@ class FluxosClinicosControllerTest {
         mvc.perform(multipart("/api/v1/usuarios/me/exames/" + id + "/arquivo")
                 .file(new MockMultipartFile("arquivo", "x.pdf", "application/pdf", "%PDF-1.7".getBytes()))
                 .param("versao", "0").header("Authorization", outroToken)).andExpect(status().isNotFound());
-        Nutricionista outroNutri = nutris.save(new Nutricionista("Outro", "outro@teste.com", encoder.encode("senha123"), "CRN8-98765"));
+        Nutricionista outroNutri = nutris.save(TestDataFactory.nutricionistaConfirmado("Outro", "outro@teste.com", encoder.encode("senha123"), "CRN8-98765"));
         relacoes.save(RelacaoClinica.criar(p, outroNutri));
         mvc.perform(get(base + "/exames/" + id + "/arquivo").header("Authorization", login(outroNutri.getEmail()))).andExpect(status().isNotFound());
         mvc.perform(get(base + "/exames").header("Authorization", login(outroNutri.getEmail())))

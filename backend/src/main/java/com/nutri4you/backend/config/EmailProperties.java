@@ -2,29 +2,25 @@ package com.nutri4you.backend.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.UUID;
+
 @ConfigurationProperties(prefix = "app.email")
 public class EmailProperties {
 
-    private boolean autoConfirm = false;
-    private String apiBaseUrl = "http://localhost:8080/api/v1";
     private String webBaseUrl = "http://localhost:4200";
     private long confirmacaoTtlHoras = 24;
     private long recuperacaoTtlHoras = 1;
 
-    public boolean isAutoConfirm() {
-        return autoConfirm;
+    public String linkConfirmacao(UUID token) {
+        return paginaConfirmacao() + "#token=" + token;
     }
 
-    public void setAutoConfirm(boolean autoConfirm) {
-        this.autoConfirm = autoConfirm;
+    public String linkCadastro(UUID token) {
+        return paginaConfirmacao() + "#cadastro=" + token;
     }
 
-    public String getApiBaseUrl() {
-        return apiBaseUrl;
-    }
-
-    public void setApiBaseUrl(String apiBaseUrl) {
-        this.apiBaseUrl = apiBaseUrl;
+    private String paginaConfirmacao() {
+        return webBaseUrl.replaceFirst("/+$", "") + "/confirmar-email";
     }
 
     public String getWebBaseUrl() {

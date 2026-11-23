@@ -65,7 +65,7 @@ class PrescricaoControllerTest {
         nutri = nutricionistas.save(TestDataFactory.nutricionista(encoder));
         segundo =
                 nutricionistas.save(
-                        new Nutricionista(
+                        TestDataFactory.nutricionistaConfirmado(
                                 "Outro Nutri",
                                 "segundo@teste.com",
                                 encoder.encode("senha123"),

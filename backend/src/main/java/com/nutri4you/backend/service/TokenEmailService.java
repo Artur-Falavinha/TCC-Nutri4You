@@ -26,11 +26,6 @@ public class TokenEmailService {
     }
 
     @Transactional
-    public TokenEmail criarTokenConfirmacao(Paciente paciente) {
-        return salvarTokenPaciente(paciente, TipoTokenEmail.CONFIRMACAO_EMAIL, emailProperties.getConfirmacaoTtlHoras());
-    }
-
-    @Transactional
     public TokenEmail criarTokenRecuperacao(Paciente paciente) {
         invalidarRecuperacaoPendente(paciente.getId(), null);
         return salvarTokenPaciente(paciente, TipoTokenEmail.RECUPERACAO_SENHA, emailProperties.getRecuperacaoTtlHoras());

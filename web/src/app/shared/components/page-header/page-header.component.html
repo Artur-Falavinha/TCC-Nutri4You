@@ -1,0 +1,9 @@
+<header class="cabecalho">
+  <h1>{{ titulo() }}</h1>
+  <div class="acoes">
+    <ng-content />
+    @if (mostrarSino()) {
+      <app-notification-bell />
+    }
+  </div>
+</header>

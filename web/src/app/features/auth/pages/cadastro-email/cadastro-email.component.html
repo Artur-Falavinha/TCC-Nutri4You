@@ -1,0 +1,26 @@
+<app-auth-page-layout>
+  <app-auth-form-card
+    title="Crie sua conta"
+    description="Confirme seu e-mail para continuar o cadastro de nutricionista."
+  >
+    <form class="auth-form" [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
+      <app-ui-input
+        label="E-mail"
+        placeholder="seu@email.com"
+        type="email"
+        autocomplete="email"
+        [required]="true"
+        formControlName="email"
+      />
+      <app-form-alert [message]="erro()" />
+      <app-form-alert [message]="orientacao()" type="success" />
+      <app-ui-button
+        [label]="orientacao() ? 'Reenviar link' : 'Enviar link de confirmação'"
+        icon="envelope"
+        type="submit"
+        [loading]="enviando()"
+      />
+      <app-ui-link label="Voltar ao login" route="/login" icon="arrow-left" [centered]="true" />
+    </form>
+  </app-auth-form-card>
+</app-auth-page-layout>

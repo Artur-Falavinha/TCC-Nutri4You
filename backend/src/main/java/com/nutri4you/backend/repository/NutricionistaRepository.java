@@ -16,6 +16,8 @@ import java.util.Optional;
 
 public interface NutricionistaRepository extends JpaRepository<Nutricionista, Integer> {
 
+    boolean existsByCrnIgnoreCase(String crn);
+
     Optional<Nutricionista> findByEmail(String email);
 
     Optional<Nutricionista> findByEmailIgnoreCase(String email);

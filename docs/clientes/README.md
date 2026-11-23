@@ -47,7 +47,9 @@ web/src/app/
 | Path | Componente | Descrição |
 | --- | --- | --- |
 | `/login` | `LoginComponent` | Login nutricionista |
-| `/cadastro` | `RegisterComponent` | Dados (nome, CRN, e-mail) |
+| `/cadastro` | `CadastroEmailComponent` | Iniciar com o e-mail |
+| `/confirmar-email` | `ConfirmarEmailComponent` | Confirmar o endereço pelo link |
+| `/cadastro/dados` | `RegisterComponent` | Nome, CRN e aceite após a confirmação |
 | `/cadastro/senha` | `RegisterPasswordComponent` | Senha → `POST /nutricionistas/autocadastro` |
 | `/esqueci-senha` | `ForgotPasswordComponent` | Solicitar link |
 | `/redefinir-senha` | `ResetPasswordComponent` | Nova senha via token |

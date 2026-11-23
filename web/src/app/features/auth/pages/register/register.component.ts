@@ -33,16 +33,22 @@ export class RegisterComponent {
   private readonly router = inject(Router);
   private readonly registerFlow = inject(RegisterFlowService);
 
+  readonly emailConfirmado = this.registerFlow.getEmailConfirmado()?.email ?? '';
+  private readonly dadosAnteriores = this.registerFlow.getDraft();
   submitted = false;
 
   form = this.fb.nonNullable.group({
-    nome: ['', [Validators.required, Validators.minLength(3)]],
-    crn: ['', [Validators.required, crnValidator()]],
-    email: ['', [Validators.required, Validators.email]],
-    termsAccepted: [false, [Validators.requiredTrue]]
+    nome: [this.dadosAnteriores?.nome ?? '', [Validators.required, Validators.minLength(3)]],
+    crn: [this.dadosAnteriores?.crn ?? '', [Validators.required, crnValidator()]],
+    termsAccepted: [this.dadosAnteriores?.termsAccepted ?? false, [Validators.requiredTrue]]
   });
 
   submit(): void {
+    const confirmacao = this.registerFlow.getEmailConfirmado();
+    if (!confirmacao) {
+      void this.router.navigate(['/cadastro']);
+      return;
+    }
     this.submitted = true;
 
     if (this.form.invalid) {
@@ -53,17 +59,17 @@ export class RegisterComponent {
     const draft = this.form.getRawValue();
     this.registerFlow.saveDraft({
       ...draft,
+      email: confirmacao.email,
       versaoTermos: VERSAO_TERMOS,
       crn: normalizeCrnForApi(draft.crn)
     });
     void this.router.navigate(['/cadastro/senha']);
   }
 
-  fieldError(field: 'nome' | 'crn' | 'email'): string {
+  fieldError(field: 'nome' | 'crn'): string {
     return resolveFieldError(this.form.controls[field], this.submitted, {
-      email: 'Informe um e-mail válido.',
       minlength: 'Informe ao menos 3 caracteres.',
-      crn: 'Informe um CRN válido (ex.: CRN-8 12345).'
+      crn: 'Use o formato CRN-8 12345.'
     });
   }
 

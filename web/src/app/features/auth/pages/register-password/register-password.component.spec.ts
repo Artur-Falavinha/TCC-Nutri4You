@@ -24,6 +24,13 @@ describe('RegisterPasswordComponent', () => {
     router = TestBed.inject(Router);
     spyOn(router, 'navigate').and.returnValue(Promise.resolve(true));
 
+    registerFlow.guardarEmailConfirmado({
+      email: 'nutri@teste.com',
+      tipoUsuario: 'NUTRICIONISTA',
+      token: '550e8400-e29b-41d4-a716-446655440000',
+      expiraEm: new Date(Date.now() + 3600000).toISOString()
+    });
+
     registerFlow.saveDraft({
       nome: 'Nutri Teste',
       crn: 'CRN8-12345',
@@ -45,6 +52,9 @@ describe('RegisterPasswordComponent', () => {
     });
     fixture.componentInstance.submit();
 
+    expect(authService.autocadastrarNutricionista).toHaveBeenCalledWith(jasmine.objectContaining({
+      email: 'nutri@teste.com', tokenCadastro: '550e8400-e29b-41d4-a716-446655440000', crnDeclarado: true
+    }));
     expect(router.navigate).toHaveBeenCalledWith(['/login'], { queryParams: { cadastro: 'ok' } });
   });
 

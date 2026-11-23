@@ -30,6 +30,8 @@ $v21 = Get-Content (Join-Path $migrations 'V21__percentuais_macronutrientes.sql'
 $v22 = Get-Content (Join-Path $migrations 'V22__reativar_medidas_opcionais_anamnese.sql') -Raw
 $v23 = Get-Content (Join-Path $migrations 'V23__solicitacao_de_vinculo_pelo_paciente.sql') -Raw
 $v24 = Get-Content (Join-Path $migrations 'V24__termos_e_direitos_do_titular.sql') -Raw
+$v25 = Get-Content (Join-Path $migrations 'V25__confirmacao_email_nutricionista.sql') -Raw
+$v26 = Get-Content (Join-Path $migrations 'V26__cadastro_pendente.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
 
 # Every scenario uses a new schema inside a transaction, rolled back even on
@@ -285,6 +287,18 @@ $v21
 $v22
 $v23
 $v24
+$v25
+$v26
+DO `$`$
+BEGIN
+    IF to_regclass('cadastro_pendente') IS NULL OR EXISTS (SELECT 1 FROM cadastro_pendente) THEN
+        RAISE EXCEPTION 'V26 must create an empty table for email verification requests';
+    END IF;
+    IF EXISTS (SELECT 1 FROM Nutricionista WHERE NOT email_confirmado) THEN
+        RAISE EXCEPTION 'V25 must preserve access for existing nutritionists';
+    END IF;
+END;
+`$`$;
 DO `$`$
 BEGIN
     IF EXISTS (SELECT 1 FROM Relacao_Clinica WHERE solicitada_pelo_paciente) THEN
@@ -336,6 +350,15 @@ DO `$`$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM Exame WHERE nome_exame = 'Teste isolado' AND octet_length(arquivo) = 5 AND versao = 0) THEN
         RAISE EXCEPTION 'V15 binary storage or version failed';
+    END IF;
+END;
+`$`$;
+INSERT INTO Nutricionista (nome, email, senha, crn)
+VALUES ('Novo nutricionista', 'novo@example.test', 'hash', 'CRN8-10101');
+DO `$`$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM Nutricionista WHERE email = 'novo@example.test' AND NOT email_confirmado) THEN
+        RAISE EXCEPTION 'V25 must require confirmation for newly inserted nutritionists';
     END IF;
 END;
 `$`$;

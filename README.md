@@ -33,10 +33,21 @@ docker compose up --build
 | 2 | Aguarde `nutri4you-web` com `Compiled successfully` / `Application bundle generation complete` |
 | 3 | Abra **[http://localhost:4200/login](http://localhost:4200/login)** |
 | 4 | Login nutricionista seed: `nutri@nutri4you.com` / senha `password` |
-| 4b | Autocadastro nutri: **[http://localhost:4200/cadastro](http://localhost:4200/cadastro)** → senha → login |
+| 4b | Autocadastro nutri: **[http://localhost:4200/cadastro](http://localhost:4200/cadastro)** → confirmar e-mail → dados e senha → login |
 | 5 | Após login → redirect para **/dashboard** |
 
 Health check da API: **[http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/health)**
+
+### Entrega de e-mail por SMTP
+
+O backend envia as confirmações de cadastro do web e do mobile com o mesmo remetente. Copie o [`.env.example`](.env.example) para `.env` na raiz do projeto. Esse arquivo é ignorado pelo Git.
+
+* **Gmail do projeto.** Use uma conta exclusiva do Nutri4You e ative a verificação em duas etapas. Para os testes em equipe, o responsável pode gerar uma senha de app do Nutri4You e compartilhá-la pelo gerenciador de senhas da equipe. Cada membro coloca a credencial em `SPRING_MAIL_PASSWORD` no seu `.env` local. Se a senha compartilhada for revogada, atualize a configuração de todos os ambientes que a utilizam. Use o Gmail do projeto em `SPRING_MAIL_USERNAME` e o mesmo endereço com o nome Nutri4You em `EMAIL_FROM`. O modelo já usa o servidor do Gmail. [Senhas de app do Google](https://support.google.com/mail/answer/185833?hl=pt-BR)
+* **Domínio do projeto.** Para usar um endereço como `contas@nutri4you.com.br`, verifique um domínio que a equipe controle em um provedor de envio. Por exemplo, com Resend use `smtp.resend.com` na porta 587, `resend` como usuário e uma chave restrita a envio no domínio como senha SMTP. Cada membro pode usar uma chave revogável própria. [Configuração SMTP do Resend](https://resend.com/docs/send-with-smtp) · [Domínios verificados](https://resend.com/docs/dashboard/domains/introduction)
+
+Preencha as variáveis SMTP e mude `EMAIL_PROVIDER` para `smtp` para ativar a entrega. O SMTP usa autenticação e STARTTLS por padrão. Se já houver variáveis SMTP exportadas no terminal, atualize-as ou remova-as dessa sessão, pois o Compose prioriza o ambiente do terminal sobre o `.env`.
+
+No desenvolvimento local, mantenha `APP_EMAIL_WEB_BASE_URL=http://localhost:4200`. Abra o link de confirmação no computador que roda o web. No mobile, cole no app o código recebido por e-mail. Em um ambiente já iniciado, aplique a configuração com `docker compose up -d --no-deps --force-recreate backend`.
 
 ### Solução de problemas
 

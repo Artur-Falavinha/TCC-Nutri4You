@@ -4,11 +4,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, forkJoin } from 'rxjs';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
 import { NotificacaoConsulta, NotificacaoVinculo, NotificacoesService } from './notificacoes.service';
 
 @Component({
   selector: 'app-notificacoes',
-  imports: [DatePipe, FormAlertComponent],
+  imports: [DatePipe, FormAlertComponent, PageHeaderComponent, UiButtonComponent],
   templateUrl: './notificacoes.component.html',
   styleUrl: './notificacoes.component.css'
 })

@@ -102,7 +102,7 @@ export class LoginComponent implements OnInit {
 
     if (this.route.snapshot.queryParamMap.get('cadastro') === 'ok') {
 
-      this.successMessage = 'Conta criada com sucesso! Faça login para continuar.';
+      this.successMessage = 'Conta criada! Entre com o e-mail e a senha que você definiu.';
 
     }
 

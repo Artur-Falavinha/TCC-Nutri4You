@@ -31,7 +31,7 @@ interface Aceite { versao: string; aceito: boolean; aceitoEm: string | null }
     </section>
   `,
   styles: `
-    :host { display:block; margin-top:24px; } .card { max-width:760px; padding:28px; background:var(--color-surface-card, #fff); border:1px solid var(--color-border-default, #dbe4dc); border-radius:var(--radius-lg, 16px); }
+    :host { display:block; margin-top:24px; } .card { padding:28px; background:var(--color-surface-card, #fff); border:1px solid var(--color-border-default, #dbe4dc); border-radius:var(--radius-lg, 16px); }
     .section-heading { display:flex; gap:16px; align-items:flex-start; margin-bottom:16px; } .icon { display:grid; place-items:center; width:44px; height:44px; flex:none; border-radius:12px; color:#006f1e; background:#eaf4ed; font-size:23px; }
     h2 { margin:0 0 6px; font-size:21px; } p { color:var(--color-text-secondary, #64748b); line-height:1.5; } .section-heading p { margin:0; }
     a { color:#006f1e; font-weight:700; } .terms-link { display:inline-flex; align-items:center; gap:8px; text-decoration:none; min-height:44px; }

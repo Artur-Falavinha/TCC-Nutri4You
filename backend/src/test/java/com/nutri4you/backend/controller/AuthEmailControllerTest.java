@@ -1,5 +1,6 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.TipoTokenEmail;
 import com.nutri4you.backend.model.TokenEmail;
 import com.nutri4you.backend.repository.NutricionistaRepository;
@@ -58,16 +59,7 @@ class AuthEmailControllerTest {
 
     @Test
     void loginPacienteNaoConfirmadoRetornaMensagemEspecifica() throws Exception {
-        mockMvc.perform(post("/api/v1/pacientes/autocadastro")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "nome": "Novo Paciente",
-                                  "email": "nao.confirmado@teste.com",
-                                  "senha": "senhaSegura123", "versaoTermos": "2026-11-19"
-                                }
-                                """))
-                .andExpect(status().isCreated());
+        criarPacientePendenteLegado("Novo Paciente", "nao.confirmado@teste.com", "senhaSegura123");
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -80,16 +72,7 @@ class AuthEmailControllerTest {
 
     @Test
     void confirmarEmailAtivaConta() throws Exception {
-        mockMvc.perform(post("/api/v1/pacientes/autocadastro")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "nome": "Confirmar Email",
-                                  "email": "confirmar@teste.com",
-                                  "senha": "senhaSegura123", "versaoTermos": "2026-11-19"
-                                }
-                                """))
-                .andExpect(status().isCreated());
+        criarPacientePendenteLegado("Confirmar Email", "confirmar@teste.com", "senhaSegura123");
 
         var token = tokenEmailRepository.findAll().stream()
                 .filter(t -> t.getTipo() == TipoTokenEmail.CONFIRMACAO_EMAIL)
@@ -113,16 +96,7 @@ class AuthEmailControllerTest {
 
     @Test
     void jwtContaNaoConfirmadaNaoAutenticaRequisicao() throws Exception {
-        mockMvc.perform(post("/api/v1/pacientes/autocadastro")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "nome": "JWT Bloqueado",
-                                  "email": "jwt.bloqueado@teste.com",
-                                  "senha": "senhaSegura123", "versaoTermos": "2026-11-19"
-                                }
-                                """))
-                .andExpect(status().isCreated());
+        criarPacientePendenteLegado("JWT Bloqueado", "jwt.bloqueado@teste.com", "senhaSegura123");
 
         String token = tokenService.gerarToken("jwt.bloqueado@teste.com");
 
@@ -133,16 +107,7 @@ class AuthEmailControllerTest {
 
     @Test
     void redefinirSenhaConfirmaEmailDePacienteNaoConfirmado() throws Exception {
-        mockMvc.perform(post("/api/v1/pacientes/autocadastro")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "nome": "Recuperar Confirmacao",
-                                  "email": "recuperar.confirmacao@teste.com",
-                                  "senha": "senhaSegura123", "versaoTermos": "2026-11-19"
-                                }
-                                """))
-                .andExpect(status().isCreated());
+        criarPacientePendenteLegado("Recuperar Confirmacao", "recuperar.confirmacao@teste.com", "senhaSegura123");
 
         mockMvc.perform(post("/api/v1/auth/recuperar-senha")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -352,4 +317,10 @@ class AuthEmailControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(TokenEmailService.MENSAGEM_TOKEN_INVALIDO));
     }
+    private void criarPacientePendenteLegado(String nome, String email, String senha) {
+        var paciente = pacienteRepository.save(new Paciente(nome, null, null, null, null, email, passwordEncoder.encode(senha)));
+        tokenEmailRepository.save(TokenEmail.criarParaPaciente(
+                paciente, TipoTokenEmail.CONFIRMACAO_EMAIL, LocalDateTime.now().plusHours(1)));
+    }
+
 }
