@@ -21,7 +21,9 @@ import java.util.Locale;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -67,6 +69,25 @@ class CadastroEmailControllerTest {
         confirmar(token, perfil).andExpect(status().isBadRequest());
     }
 
+    @ParameterizedTest
+    @EnumSource(TipoCadastro.class)
+    void cadastroMobileRecusaEmailDeQualquerContaExistente(TipoCadastro perfilExistente) throws Exception {
+        String email = "email-em-uso-" + perfilExistente.name().toLowerCase(Locale.ROOT) + "@example.test";
+        UUID token = iniciar(email, perfilExistente);
+        confirmar(token, perfilExistente).andExpect(status().isOk());
+        concluir(perfilExistente, email, token, true).andExpect(status().isCreated());
+
+        solicitarInicio(email.toUpperCase(Locale.ROOT), TipoCadastro.PACIENTE)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("EMAIL_EM_USO"))
+                .andExpect(jsonPath("$.message").value("Já existe uma conta com esse e-mail."));
+        solicitarInicio(email, TipoCadastro.NUTRICIONISTA)
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.data.token").doesNotExist());
+
+        verify(notificacoes, times(1)).agendarInicioCadastro(eq(email), any(TipoCadastro.class), any(UUID.class));
+    }
+
     @Test
     void cadastroDeNutricionistaExigeConfirmacaoPrevia() throws Exception {
         String email = "sem-confirmacao@example.test";
@@ -97,15 +118,19 @@ class CadastroEmailControllerTest {
     }
 
     private UUID iniciar(String email, TipoCadastro perfil) throws Exception {
-        enviar("/api/v1/cadastros/iniciar", """
-                {"email":"%s","tipoUsuario":"%s"}
-                """.formatted(email, perfil))
+        solicitarInicio(email, perfil)
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.data.token").doesNotExist());
 
         var captura = ArgumentCaptor.forClass(UUID.class);
         verify(notificacoes).agendarInicioCadastro(eq(email), eq(perfil), captura.capture());
         return captura.getValue();
+    }
+
+    private ResultActions solicitarInicio(String email, TipoCadastro perfil) throws Exception {
+        return enviar("/api/v1/cadastros/iniciar", """
+                {"email":"%s","tipoUsuario":"%s"}
+                """.formatted(email, perfil));
     }
 
     private ResultActions confirmar(UUID token, TipoCadastro perfil) throws Exception {

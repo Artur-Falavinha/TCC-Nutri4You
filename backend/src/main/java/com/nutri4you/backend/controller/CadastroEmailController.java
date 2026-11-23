@@ -1,10 +1,13 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.dto.ApiErrorResponse;
 import com.nutri4you.backend.dto.ApiResponse;
 import com.nutri4you.backend.dto.MensagemResponse;
 import com.nutri4you.backend.model.TipoCadastro;
 import com.nutri4you.backend.service.CadastroEmailService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,9 +30,14 @@ public class CadastroEmailController {
     }
 
     @PostMapping("/iniciar")
-    public ResponseEntity<ApiResponse<MensagemResponse>> iniciar(@RequestBody InicioCadastro request) {
+    public ResponseEntity<?> iniciar(@RequestBody InicioCadastro request, HttpServletRequest requisicao) {
         try {
-            cadastros.iniciar(request.email(), request.tipoUsuario());
+            var resultado = cadastros.iniciar(request.email(), request.tipoUsuario());
+            if (resultado == CadastroEmailService.ResultadoInicio.EMAIL_EM_USO && request.tipoUsuario() == TipoCadastro.PACIENTE) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(
+                        HttpStatus.CONFLICT.value(), "EMAIL_EM_USO", "Já existe uma conta com esse e-mail.",
+                        requisicao.getRequestURI()));
+            }
         } catch (DataIntegrityViolationException exception) {
             if (!(exception.getMostSpecificCause() instanceof SQLException sql)
                     || !"23505".equals(sql.getSQLState())) {

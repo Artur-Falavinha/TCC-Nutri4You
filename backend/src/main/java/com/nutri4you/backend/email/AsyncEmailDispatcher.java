@@ -18,8 +18,17 @@ public class AsyncEmailDispatcher {
 
     @Async
     public void enviar(String destinatario, String assunto, String corpo) {
+        despachar(destinatario, () -> emailSender.enviar(destinatario, assunto, corpo));
+    }
+
+    @Async
+    public void enviarFormatado(String destinatario, String assunto, String texto, String html) {
+        despachar(destinatario, () -> emailSender.enviarFormatado(destinatario, assunto, texto, html));
+    }
+
+    private void despachar(String destinatario, Runnable envio) {
         try {
-            emailSender.enviar(destinatario, assunto, corpo);
+            envio.run();
         } catch (Exception exception) {
             log.error("Falha ao enviar e-mail para {}: {}", destinatario, exception.getMessage());
         }

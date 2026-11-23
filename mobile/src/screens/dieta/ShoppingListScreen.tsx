@@ -190,7 +190,7 @@ export function ShoppingListScreen({ navigation }: Props) {
   const retry = () => void loadList(days);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
       <AppHeader onOpenMenu={() => setMenuVisible(true)} />
       <SideMenu
         visible={menuVisible}

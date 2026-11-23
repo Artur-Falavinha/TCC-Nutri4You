@@ -53,7 +53,7 @@ public class CadastroEmailService {
     }
 
     @Transactional
-    public void iniciar(String endereco, TipoCadastro tipoUsuario) {
+    public ResultadoInicio iniciar(String endereco, TipoCadastro tipoUsuario) {
         if (tipoUsuario == null) {
             throw new IllegalArgumentException("Informe o tipo de cadastro.");
         }
@@ -61,8 +61,11 @@ public class CadastroEmailService {
         Instant agora = relogio.instant();
         cadastros.removerExpirados(agora);
         var existente = cadastros.findByEmail(email);
-        if (emailEmUso(email) || existente.filter(cadastro -> !cadastro.podeEnviar(agora, INTERVALO_REENVIO)).isPresent()) {
-            return;
+        if (emailEmUso(email)) {
+            return ResultadoInicio.EMAIL_EM_USO;
+        }
+        if (existente.filter(cadastro -> !cadastro.podeEnviar(agora, INTERVALO_REENVIO)).isPresent()) {
+            return ResultadoInicio.ACEITO;
         }
         UUID token = UUID.randomUUID();
         CadastroPendente cadastro = existente.orElseGet(() -> new CadastroPendente(email));
@@ -73,6 +76,7 @@ public class CadastroEmailService {
         }
         cadastros.flush();
         notificacoes.agendarInicioCadastro(email, tipoUsuario, token);
+        return ResultadoInicio.ACEITO;
     }
 
     @Transactional
@@ -134,6 +138,11 @@ public class CadastroEmailService {
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 indisponível.", exception);
         }
+    }
+
+    public enum ResultadoInicio {
+        ACEITO,
+        EMAIL_EM_USO
     }
 
     public record Confirmacao(String email, TipoCadastro tipoUsuario, Instant expiraEm) {

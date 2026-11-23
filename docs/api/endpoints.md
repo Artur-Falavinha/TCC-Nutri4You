@@ -94,7 +94,9 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
 
 ## POST /cadastros/iniciar
 
-Envia um link de confirmação ao endereço informado e responde `202` com uma mensagem genérica. Envie `email` e `tipoUsuario` (`PACIENTE` ou `NUTRICIONISTA`). Apenas a solicitação temporária é registrada.
+Envie `email` e `tipoUsuario` (`PACIENTE` ou `NUTRICIONISTA`). Para um endereço disponível, o endpoint inicia uma solicitação temporária, envia o e-mail de confirmação e responde `202`.
+
+No fluxo `PACIENTE`, um endereço que já tem conta retorna `409` com o código `EMAIL_EM_USO`. O fluxo `NUTRICIONISTA` mantém a resposta genérica `202` para endereços cadastrados.
 
 ## POST /cadastros/confirmar
 

@@ -217,7 +217,7 @@ export function EvolucaoScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
       <AppHeader onOpenMenu={() => setMenuVisible(true)} />
 
       <ScrollView
