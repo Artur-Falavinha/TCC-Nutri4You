@@ -10,19 +10,37 @@
   />
 </app-page-header>
 
-<div class="notificacoes" [attr.aria-busy]="carregando">
-  <p class="descricao">Solicitações de consulta e de vínculo que aguardam sua decisão.</p>
-  <app-form-alert [message]="erro" type="error" />
-  <app-form-alert [message]="mensagem" type="success" />
-  @if (carregando) {
-    <p role="status">Carregando notificações...</p>
-  } @else if (!itens.length && !vinculos.length && !erro) {
-    <section class="vazio">
-      <i class="ph ph-bell-slash" aria-hidden="true"></i>
-      <h2>Tudo em dia</h2>
-      <p>Nenhuma solicitação pendente.</p>
-    </section>
-  } @else if (itens.length || vinculos.length) {
+<div class="notificacoes">
+  <div role="status">
+    @if (mensagem) {
+      <p class="retorno retorno--sucesso">
+        <i class="ph ph-check-circle" aria-hidden="true"></i>
+        <span>{{ mensagem }}</span>
+      </p>
+    }
+  </div>
+  @if (erro) {
+    <p class="retorno retorno--erro" role="alert">
+      <i class="ph ph-warning-circle" aria-hidden="true"></i>
+      <span>{{ erro }}</span>
+    </p>
+  }
+
+  @let temPendencias = itens.length > 0 || vinculos.length > 0;
+  @if (carregando || (!temPendencias && !erro)) {
+    <div class="estado" [attr.role]="carregando ? 'status' : null">
+      <span class="icone" aria-hidden="true">
+        <i class="ph" [class.ph-hourglass]="carregando" [class.ph-tray]="!carregando"></i>
+      </span>
+      @if (carregando) {
+        <p>Carregando notificações…</p>
+      } @else {
+        <h2>Nenhuma solicitação pendente</h2>
+        <p>Novas solicitações de consulta e de vínculo aparecerão aqui.</p>
+      }
+    </div>
+  } @else if (temPendencias) {
+    <p class="descricao">Solicitações de consulta e de vínculo que aguardam sua decisão.</p>
     <ul>
       @for (item of vinculos; track item.id) {
         <li>

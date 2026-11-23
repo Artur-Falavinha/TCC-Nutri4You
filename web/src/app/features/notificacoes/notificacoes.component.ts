@@ -3,7 +3,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, forkJoin } from 'rxjs';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { AuthService } from '../../core/services/auth.service';
-import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
 import { DataHoraClinicaPipe } from '../../shared/pipes/data-hora-clinica.pipe';
@@ -11,7 +10,7 @@ import { NotificacaoConsulta, NotificacaoVinculo, NotificacoesService, TipoNotif
 
 @Component({
   selector: 'app-notificacoes',
-  imports: [DataHoraClinicaPipe, FormAlertComponent, PageHeaderComponent, UiButtonComponent],
+  imports: [DataHoraClinicaPipe, PageHeaderComponent, UiButtonComponent],
   templateUrl: './notificacoes.component.html',
   styleUrl: './notificacoes.component.css'
 })
