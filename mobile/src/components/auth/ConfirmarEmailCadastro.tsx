@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
+import { useAppAlert } from '../feedback/AppAlertProvider';
 import { ApiError } from '../../core/api/api-response.types';
 import { confirmarCadastroPaciente, iniciarCadastroPaciente } from '../../core/auth/auth.service';
 import { ComprovanteCadastro } from '../../core/auth/auth.models';
@@ -15,6 +16,7 @@ interface ConfirmarEmailCadastroProps {
 }
 
 export function ConfirmarEmailCadastro({ aoConfirmar, aoVoltar }: ConfirmarEmailCadastroProps) {
+  const { showAlert } = useAppAlert();
   const [email, setEmail] = useState('');
   const [codigo, setCodigo] = useState('');
   const [enviado, setEnviado] = useState(false);
@@ -33,10 +35,21 @@ export function ConfirmarEmailCadastro({ aoConfirmar, aoVoltar }: ConfirmarEmail
       await iniciarCadastroPaciente(email);
       setEnviado(true);
     } catch (falha) {
+      if (falha instanceof ApiError && falha.error === 'EMAIL_EM_USO') {
+        voltarParaEmail();
+        showAlert(falha.message);
+        return;
+      }
       setErro(falha instanceof ApiError ? falha.message : 'Não foi possível enviar. Tente novamente.');
     } finally {
       setOcupado(false);
     }
+  }
+
+  function voltarParaEmail() {
+    setEnviado(false);
+    setCodigo('');
+    setErro('');
   }
 
   async function confirmar() {
@@ -66,7 +79,7 @@ export function ConfirmarEmailCadastro({ aoConfirmar, aoVoltar }: ConfirmarEmail
           </Text>
           <Text style={authFormStyles.description}>
             {enviado
-              ? 'Confira sua caixa de entrada e cole o código do e-mail para continuar.'
+              ? 'Cole abaixo o código recebido por e-mail para continuar.'
               : 'Informe seu e-mail para iniciar o cadastro de paciente.'}
           </Text>
         </View>
@@ -119,20 +132,36 @@ export function ConfirmarEmailCadastro({ aoConfirmar, aoVoltar }: ConfirmarEmail
 
         {enviado && (
           <>
-            <TouchableOpacity accessibilityRole="button" disabled={ocupado} onPress={() => void enviar()}>
-              <Text style={authFormStyles.description}>Reenviar e-mail</Text>
+            <TouchableOpacity
+              style={authFormStyles.secondaryAction}
+              onPress={() => void enviar()}
+              disabled={ocupado}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+            >
+              <Text style={authFormStyles.secondaryActionText}>Reenviar e-mail</Text>
             </TouchableOpacity>
-            <TouchableOpacity accessibilityRole="button" disabled={ocupado} onPress={() => {
-              setEnviado(false);
-              setCodigo('');
-              setErro('');
-            }}>
-              <Text style={authFormStyles.description}>Trocar endereço de e-mail</Text>
+            <TouchableOpacity
+              style={authFormStyles.secondaryAction}
+              onPress={voltarParaEmail}
+              disabled={ocupado}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+            >
+              <Text style={authFormStyles.secondaryActionText}>Trocar endereço de e-mail</Text>
             </TouchableOpacity>
           </>
         )}
-        <TouchableOpacity accessibilityRole="button" disabled={ocupado} onPress={aoVoltar}>
-          <Text style={authFormStyles.description}>Voltar ao login</Text>
+        <TouchableOpacity
+          style={authFormStyles.secondaryAction}
+          onPress={aoVoltar}
+          disabled={ocupado}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar para o login"
+        >
+          <Feather name="arrow-left" size={16} color="#005414" />
+          <Text style={authFormStyles.secondaryActionText}>Voltar para o login</Text>
         </TouchableOpacity>
       </View>
     </AuthScreenLayout>

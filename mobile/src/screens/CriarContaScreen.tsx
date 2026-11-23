@@ -61,7 +61,7 @@ export default function CriarContaScreen() {
   return confirmacao ? (
     <DadosCadastroPaciente confirmacao={confirmacao} aoExpirar={() => setConfirmacao(null)} />
   ) : (
-    <ConfirmarEmailCadastro aoConfirmar={setConfirmacao} aoVoltar={() => navigation.goBack()} />
+    <ConfirmarEmailCadastro aoConfirmar={setConfirmacao} aoVoltar={() => navigation.popTo('Login')} />
   );
 }
 
