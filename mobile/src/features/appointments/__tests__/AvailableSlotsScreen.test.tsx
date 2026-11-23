@@ -10,7 +10,10 @@ jest.mock('../appointments.service', () => ({
   listAgendaNutritionists: jest.fn().mockResolvedValue([{ id: 1, nome: 'Nutri', vinculado: false }]),
   listAppointments: jest.fn().mockResolvedValue([])
 }));
-jest.mock('@expo/vector-icons', () => ({ Feather: () => null }));
+jest.mock('../../../core/perfil/foto-perfil.service', () => ({
+  carregarFotoNutricionistaNaAgenda: jest.fn().mockResolvedValue(null)
+}));
+jest.mock('@expo/vector-icons', () => ({ Feather: () => null, Ionicons: () => null }));
 jest.mock('react-native-safe-area-context', () => ({ SafeAreaView: 'SafeAreaView' }));
 
 describe('Horários disponíveis', () => {

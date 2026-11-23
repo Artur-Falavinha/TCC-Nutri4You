@@ -14,6 +14,10 @@ export function carregarFotoNutricionista(id: number): Promise<string | null> {
   return carregarFoto(`/usuarios/me/nutricionistas/${id}/foto`);
 }
 
+export function carregarFotoNutricionistaNaAgenda(id: number): Promise<string | null> {
+  return carregarFoto(`/agenda/nutricionistas/${id}/foto`);
+}
+
 async function carregarFoto(rota: string): Promise<string | null> {
   const foto = await apiClient.getBlob(rota);
   return foto?.size ? lerFoto(foto) : null;

@@ -4,6 +4,7 @@ import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AvatarFoto } from '../../components/layout/AvatarFoto';
 import { SectionCardHeader, sectionCardStyles } from '../../components/layout/SectionCardHeader';
 import { ApiError } from '../../core/api/api-response.types';
 import { dataIsoDaClinica, formatarDataCivil, formatDateFromDate, toIsoDate } from '../../core/utils/date-mask.util';
@@ -16,6 +17,7 @@ import {
 import { AgendaNutritionist, Appointment, AppointmentAvailability } from '../../features/appointments/appointments.models';
 import { AppointmentRequestReceipt } from '../../features/appointments/components/AppointmentRequestReceipt';
 import { AppointmentSteps } from '../../features/appointments/components/AppointmentSteps';
+import { useFotoNutricionistaNaAgenda } from '../../features/appointments/components/AvatarNutricionistaAgenda';
 import { CalendarCard } from '../../features/appointments/components/CalendarCard';
 import { RootStackParamList } from '../../navigation/types';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
@@ -111,6 +113,7 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
 
   const voltar = () => navigation.popTo('Agenda');
   const nome = disponibilidade?.nutricionistaNome ?? profissional?.nome;
+  const foto = useFotoNutricionistaNaAgenda(rotaValida && nome ? nutricionistaId : null);
   const duracao = disponibilidade?.duracaoMinutos ?? 45;
   const escolherData = calendarioAberto || !dataSelecionada;
   const periodos = groupSlotsByPeriod(disponibilidade?.horarios ?? []);
@@ -143,14 +146,14 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
           </View>
         ) : solicitacao ? (
           <>
-            <AppointmentRequestReceipt consulta={solicitacao} reagendamento={reagendamento} duracao={duracao} />
+            <AppointmentRequestReceipt consulta={solicitacao} reagendamento={reagendamento} duracao={duracao} foto={foto} />
             {voltarAgenda}
           </>
         ) : (
           <>
             {nome && (
               <View style={[sectionCardStyles.superficie, styles.perfil]}>
-                <SectionCardHeader icone="user" titulo={nome} />
+                <SectionCardHeader icone="user" titulo={nome} avatar={<AvatarFoto foto={foto} tamanho={40} />} />
                 {disponibilidade?.especialidade && <Text style={styles.descricao}>{disponibilidade.especialidade}</Text>}
               </View>
             )}

@@ -6,6 +6,7 @@ import { SectionCardHeader, sectionCardStyles } from '../../../components/layout
 import { colors, fontFamily, radius, shadows, spacing } from '../../../theme/tokens';
 import { AgendaNutritionist } from '../appointments.models';
 import { AppointmentSteps } from './AppointmentSteps';
+import { AvatarNutricionistaAgenda } from './AvatarNutricionistaAgenda';
 
 const LIMITE_SUGESTOES = 4;
 
@@ -59,6 +60,7 @@ export function NutritionistCatalog({ nutritionists, onSelect, children }: Nutri
             accessibilityRole="button"
             onPress={() => selecionar(vinculado.id)}
           >
+            <AvatarNutricionistaAgenda id={vinculado.id} />
             <View style={styles.dados}>
               <Text style={styles.nome}>{vinculado.nome}</Text>
               <Text style={styles.descricao}>Escolher data e horário</Text>
@@ -148,6 +150,7 @@ export function NutritionistCatalog({ nutritionists, onSelect, children }: Nutri
                   accessibilityHint="Abre a escolha da data e do horário"
                   onPress={() => selecionar(nutricionista.id)}
                 >
+                  <AvatarNutricionistaAgenda id={nutricionista.id} />
                   <View style={styles.dados}>
                     <Text style={styles.nome}>{nutricionista.nome}</Text>
                     <Text style={styles.descricao}>

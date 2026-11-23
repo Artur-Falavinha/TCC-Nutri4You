@@ -41,6 +41,12 @@ public class FotoPerfilController {
         return resposta(fotos.buscarFotoNutricionista(principal, nutricionistaId));
     }
 
+    @GetMapping("/agenda/nutricionistas/{nutricionistaId}/foto")
+    public ResponseEntity<byte[]> fotoNutricionistaNaAgenda(
+            @AuthenticationPrincipal Object principal, @PathVariable Integer nutricionistaId) {
+        return resposta(fotos.buscarFotoNutricionistaNaAgenda(principal, nutricionistaId));
+    }
+
     @PostMapping(value = "/usuarios/me/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<byte[]> salvar(@AuthenticationPrincipal Object principal, @RequestParam MultipartFile arquivo) {
         return imagem(fotos.salvar(principal, arquivo));

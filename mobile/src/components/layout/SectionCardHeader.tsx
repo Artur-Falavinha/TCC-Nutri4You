@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, fontFamily, radius, shadows, spacing } from '../../theme/tokens';
@@ -7,14 +7,17 @@ import { colors, fontFamily, radius, shadows, spacing } from '../../theme/tokens
 type Props = {
   icone: ComponentProps<typeof Feather>['name'];
   titulo: string;
+  avatar?: ReactNode;
 };
 
-export function SectionCardHeader({ icone, titulo }: Props) {
+export function SectionCardHeader({ icone, titulo, avatar }: Props) {
   return (
     <View style={estilos.cabecalho}>
-      <View style={estilos.marca} aria-hidden>
-        <Feather name={icone} size={20} color={colors.brandDark} />
-      </View>
+      {avatar ?? (
+        <View style={estilos.marca} aria-hidden>
+          <Feather name={icone} size={20} color={colors.brandDark} />
+        </View>
+      )}
       <Text style={estilos.titulo} accessibilityRole="header">{titulo}</Text>
     </View>
   );

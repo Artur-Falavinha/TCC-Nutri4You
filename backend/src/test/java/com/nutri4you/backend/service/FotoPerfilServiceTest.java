@@ -7,6 +7,7 @@ import com.nutri4you.backend.model.RelacaoClinica;
 import com.nutri4you.backend.model.StatusRelacaoClinica;
 import com.nutri4you.backend.repository.FotoPerfilRepository;
 import com.nutri4you.backend.repository.FotoPerfilRepository.TipoTitular;
+import com.nutri4you.backend.repository.NutricionistaRepository;
 import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
@@ -31,7 +32,8 @@ class FotoPerfilServiceTest {
     private final FotoPerfilRepository repositorio = mock(FotoPerfilRepository.class);
     private final GestaoPacienteService gestao = mock(GestaoPacienteService.class);
     private final RelacaoClinicaRepository relacoes = mock(RelacaoClinicaRepository.class);
-    private final FotoPerfilService servico = new FotoPerfilService(repositorio, gestao, relacoes);
+    private final NutricionistaRepository nutricionistas = mock(NutricionistaRepository.class);
+    private final FotoPerfilService servico = new FotoPerfilService(repositorio, gestao, relacoes, nutricionistas);
 
     @Test
     void usaOEscopoDoTitularMesmoQuandoOsIdsCoincidem() throws IOException {
@@ -98,6 +100,25 @@ class FotoPerfilServiceTest {
         assertThatThrownBy(() -> servico.buscarFotoPaciente(paciente, 8)).isInstanceOf(AcessoNegadoException.class);
         verifyNoInteractions(repositorio);
         assertThat(servico.buscarFotoNutricionista(paciente, 8)).contains(foto);
+    }
+
+    @Test
+    void permiteFotoNaAgendaSomenteParaPacienteEProfissionalVisivel() {
+        var paciente = new Paciente("Paciente", "paciente@example.test", "hash");
+        ReflectionTestUtils.setField(paciente, "id", 7);
+        var nutricionista = new Nutricionista("Nutricionista", "nutri@example.test", "hash", "1234");
+        when(nutricionistas.buscarIdNaAgenda(7, StatusRelacaoClinica.ATIVA, 8)).thenReturn(Optional.of(8));
+        byte[] foto = {1, 2};
+        when(repositorio.buscar(TipoTitular.NUTRICIONISTA, 8)).thenReturn(Optional.of(foto));
+
+        assertThatThrownBy(() -> servico.buscarFotoNutricionistaNaAgenda(paciente, 9))
+                .isInstanceOf(AcessoNegadoException.class);
+        assertThatThrownBy(() -> servico.buscarFotoNutricionistaNaAgenda(nutricionista, 8))
+                .isInstanceOf(AcessoNegadoException.class);
+        assertThatThrownBy(() -> servico.buscarFotoNutricionista(paciente, 8))
+                .isInstanceOf(AcessoNegadoException.class);
+        verifyNoInteractions(repositorio);
+        assertThat(servico.buscarFotoNutricionistaNaAgenda(paciente, 8)).contains(foto);
     }
 
     private static MockMultipartFile png(int largura, int altura) throws IOException {

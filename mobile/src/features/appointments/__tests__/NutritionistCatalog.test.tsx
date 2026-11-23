@@ -4,7 +4,10 @@ import { StyleSheet, TextInput } from 'react-native';
 
 import { NutritionistCatalog } from '../components/NutritionistCatalog';
 
-jest.mock('@expo/vector-icons', () => ({ Feather: () => null }));
+jest.mock('../../../core/perfil/foto-perfil.service', () => ({
+  carregarFotoNutricionistaNaAgenda: jest.fn().mockResolvedValue(null)
+}));
+jest.mock('@expo/vector-icons', () => ({ Feather: () => null, Ionicons: () => null }));
 
 describe('Catálogo de nutricionistas da agenda', () => {
   function medirCampo(tree: renderer.ReactTestRenderer) {

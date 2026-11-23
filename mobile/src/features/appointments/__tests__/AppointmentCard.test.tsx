@@ -3,6 +3,10 @@ import renderer, { act } from 'react-test-renderer';
 import { AppointmentCard } from '../components/AppointmentCard';
 import { Appointment } from '../appointments.models';
 
+jest.mock('../../../core/perfil/foto-perfil.service', () => ({
+  carregarFotoNutricionistaNaAgenda: jest.fn().mockResolvedValue(null)
+}));
+
 jest.mock('../../../assets/appointments/calendar-date.svg', () => 'CalendarDateIcon');
 jest.mock('../../../assets/appointments/clock.svg', () => 'ClockIcon');
 

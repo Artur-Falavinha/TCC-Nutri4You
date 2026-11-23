@@ -6,6 +6,7 @@ import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.StatusRelacaoClinica;
 import com.nutri4you.backend.repository.FotoPerfilRepository;
 import com.nutri4you.backend.repository.FotoPerfilRepository.TipoTitular;
+import com.nutri4you.backend.repository.NutricionistaRepository;
 import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,11 +19,14 @@ public class FotoPerfilService {
     private final GestaoPacienteService gestaoPacientes;
     private final RelacaoClinicaRepository relacoes;
 
+    private final NutricionistaRepository nutricionistas;
+
     public FotoPerfilService(FotoPerfilRepository fotos, GestaoPacienteService gestaoPacientes,
-                             RelacaoClinicaRepository relacoes) {
+                            RelacaoClinicaRepository relacoes, NutricionistaRepository nutricionistas) {
         this.fotos = fotos;
         this.gestaoPacientes = gestaoPacientes;
         this.relacoes = relacoes;
+        this.nutricionistas = nutricionistas;
     }
 
     public Optional<byte[]> buscar(Object principal) {
@@ -43,6 +47,15 @@ public class FotoPerfilService {
                 || relacoes.findByPaciente_IdAndNutricionista_IdAndStatus(
                         paciente.getId(), nutricionistaId, StatusRelacaoClinica.ATIVA).isEmpty()) {
             throw new AcessoNegadoException("Acesso restrito ao paciente vinculado.");
+        }
+        return fotos.buscar(TipoTitular.NUTRICIONISTA, nutricionistaId);
+    }
+
+    public Optional<byte[]> buscarFotoNutricionistaNaAgenda(Object principal, Integer nutricionistaId) {
+        if (!(principal instanceof Paciente paciente)
+                || nutricionistas.buscarIdNaAgenda(
+                        paciente.getId(), StatusRelacaoClinica.ATIVA, nutricionistaId).isEmpty()) {
+            throw new AcessoNegadoException("Nutricionista indisponível na sua agenda.");
         }
         return fotos.buscar(TipoTitular.NUTRICIONISTA, nutricionistaId);
     }

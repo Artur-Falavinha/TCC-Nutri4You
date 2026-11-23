@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, fontFamily, radius, spacing } from '../../../theme/tokens';
 import { appointmentDateLabel, timeRangeLabel } from '../appointments-date.util';
 import { Appointment } from '../appointments.models';
+import { AvatarNutricionistaAgenda } from './AvatarNutricionistaAgenda';
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -33,7 +34,10 @@ export function AppointmentCard({
   return (
     <View style={styles.card}>
       <View style={styles.resumo}>
-        <Text style={styles.professionalName}>{appointment.nutricionistaNome}</Text>
+        <View style={styles.identidade}>
+          <AvatarNutricionistaAgenda id={appointment.nutricionistaId} />
+          <Text style={styles.professionalName}>{appointment.nutricionistaNome}</Text>
+        </View>
         <Text
           style={[
             styles.status,
@@ -133,6 +137,9 @@ const styles = StyleSheet.create({
   canceledStatus: {
     backgroundColor: colors.subtle,
     color: colors.text
+  },
+  identidade: {
+    flexDirection: 'row', alignItems: 'center', flexShrink: 1, minWidth: 0, gap: spacing.xs
   },
   professionalName: {
     flexShrink: 1,
