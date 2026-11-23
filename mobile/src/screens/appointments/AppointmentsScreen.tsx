@@ -178,7 +178,7 @@ export function AppointmentsScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <AppHeader onOpenMenu={() => setMenuVisible(true)} />
 
       <ScrollView

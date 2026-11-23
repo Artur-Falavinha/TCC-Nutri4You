@@ -254,7 +254,7 @@ export default function TrocarSenhaScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       <AppHeader onOpenMenu={() => setMenuVisible(true)} />
       <SideMenu
         visible={menuVisible}

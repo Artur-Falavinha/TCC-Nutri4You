@@ -188,7 +188,7 @@ export function DashboardScreen({ navigation }: Props) {
     : 'Nenhuma consulta agendada';
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       <AppHeader onOpenMenu={() => setMenuVisible(true)} />
       <SideMenu
         visible={menuVisible}
