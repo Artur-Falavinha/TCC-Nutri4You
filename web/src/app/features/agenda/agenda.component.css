@@ -1,15 +1,19 @@
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  min-width: 0;
   --agenda-verde-claro: color-mix(in srgb, var(--color-brand-primary) 8%, white);
   --agenda-borda-verde: color-mix(in srgb, var(--color-brand-primary) 35%, white);
 }
 
 .agenda {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
   gap: var(--space-24);
-  width: min(100%, 78rem);
-  margin-inline: auto;
-  padding: var(--space-24) var(--space-40);
+  min-width: 0;
+  padding: var(--space-24) var(--space-24) var(--space-12);
 }
 
 .introducao {
@@ -71,8 +75,8 @@ h3 { font-size: 1.125rem; }
 
 .editor {
   display: grid;
+  flex: 1 0 auto;
   grid-template-columns: minmax(12.5rem, 15rem) minmax(0, 1fr);
-  align-items: start;
   gap: var(--space-16);
   min-inline-size: 0;
   padding: 0;
@@ -87,6 +91,9 @@ h3 { font-size: 1.125rem; }
   background: var(--color-surface-card);
 }
 .dias, .detalhe__corpo, .estado { display: grid; gap: var(--space-16); padding: var(--space-24); }
+.dias, .detalhe__corpo { align-content: start; }
+.detalhe { display: flex; flex-direction: column; }
+.detalhe__corpo { flex: 1; }
 .dias__lista, .horarios { display: flex; gap: var(--space-8); padding: 0; margin: 0; list-style: none; }
 .dias__lista { flex-direction: column; }
 
@@ -207,18 +214,24 @@ h3 { font-size: 1.125rem; }
 .visualmente-oculto { position: absolute; clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; white-space: nowrap; }
 
 @media (max-width: 64rem) {
-  .agenda { padding: var(--space-16); }
   .editor { grid-template-columns: minmax(11rem, 13rem) minmax(0, 1fr); }
 }
 
 @media (max-width: 50rem) {
   .agenda, .editor { gap: var(--space-16); }
-  .editor { grid-template-columns: minmax(0, 1fr); }
+  .editor {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(min-content, 1fr);
+  }
   .introducao, .dias, .detalhe__corpo, .salvar, .estado { padding: var(--space-16); }
   .dias__lista { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-2); }
   .dia { flex-direction: column; justify-content: center; gap: var(--space-2); padding-inline: 0; font-size: var(--text-xs); }
   .dia__nome { display: none; }
   .dia__curto { display: inline; }
+}
+
+@media (max-width: 720px) {
+  .agenda { padding-inline: var(--space-16); }
 }
 
 @media (prefers-reduced-motion: reduce) {
