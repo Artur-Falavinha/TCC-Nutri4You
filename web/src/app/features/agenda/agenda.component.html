@@ -1,42 +1,159 @@
 <app-page-header titulo="Agenda" />
 
 <div class="agenda" [attr.aria-busy]="carregando || salvando">
-  <p>Configure os horários de início disponíveis a cada semana. Cada consulta dura 45 minutos, no horário de Brasília.</p>
-  <p>Consultas já solicitadas ou confirmadas são preservadas. Um dia sem horários fica fechado para novas solicitações.</p>
-  <app-form-alert [message]="erro" type="error" />
-  <app-form-alert [message]="mensagem" type="success" />
-  @if (carregando) { <p role="status">Carregando disponibilidade...</p> }
-  @else if (!carregado) {
-    <app-ui-button label="Tentar novamente" variant="secondary" [fullWidth]="false" (click)="carregar()" />
-  }
-  @else {
-    <fieldset [disabled]="salvando">
-      <legend>Disponibilidade semanal</legend>
-      <form class="adicionar" (ngSubmit)="adicionar()">
-        <app-ui-select label="Dia da semana" selectId="dia-da-semana" name="dia" [options]="opcoesDias" [(ngModel)]="dia" />
-        <label>Horário de início<input name="hora" type="time" max="23:15" required [(ngModel)]="hora" /></label>
-        <app-ui-button type="submit" label="Adicionar horário" variant="secondary" [fullWidth]="false" />
-      </form>
-      <div class="semana">
-        @for (nome of dias; track nome; let i = $index) {
-          <section><h2>{{ nome }}</h2><div class="horarios">
-            @for (h of doDia(i + 1); track h.horario) {
-              <button type="button" class="horario" (click)="remover(h)" [attr.aria-label]="'Remover ' + nome + ' às ' + h.horario">{{ h.horario }} <span aria-hidden="true">×</span></button>
-            } @empty { <span class="fechado">Sem horários disponíveis</span> }
-          </div></section>
-        }
+  <section class="introducao" aria-labelledby="titulo-disponibilidade">
+    <div class="introducao__texto">
+      <div class="introducao__titulo">
+        <span class="icone"><i class="ph ph-calendar-check" aria-hidden="true"></i></span>
+        <h2 id="titulo-disponibilidade">Disponibilidade semanal</h2>
       </div>
-      <app-ui-button
-        [label]="salvando ? 'Salvando...' : 'Salvar disponibilidade'"
-        [fullWidth]="false"
-        [disabled]="!alterado"
-        [loading]="salvando"
-        (click)="salvar()"
-        class="salvar"
-      />
+      <p>Defina os horários de início que se repetem a cada semana.</p>
+      <p class="duracao"><i class="ph ph-clock" aria-hidden="true"></i> 45 min por consulta · horário de Brasília</p>
+    </div>
+    @if (carregado) {
+      <dl class="resumo">
+        <div><dt>Dias com horários</dt><dd>{{ diasAbertos() }} de 7</dd></div>
+        <div><dt>Horários na semana</dt><dd>{{ totalHorarios() }}</dd></div>
+      </dl>
+    }
+  </section>
+
+  @if (carregando) {
+    <p class="estado" role="status">Carregando disponibilidade…</p>
+  } @else if (!carregado) {
+    <div class="estado">
+      <app-form-alert [message]="erro" type="error" />
+      <app-ui-button label="Tentar novamente" variant="secondary" [fullWidth]="false" (click)="carregar()" />
+    </div>
+  } @else {
+    @let dia = diaSelecionado();
+    <fieldset class="editor" [disabled]="salvando">
+      <legend class="visualmente-oculto">Configurar disponibilidade semanal</legend>
+
+      <section class="painel dias" aria-labelledby="titulo-dias">
+        <h3 id="titulo-dias">Dias da semana</h3>
+        <ul class="dias__lista">
+          @for (item of semana(); track item.numero) {
+            @let total = item.horarios.length;
+            <li>
+              <button
+                type="button"
+                class="dia"
+                [attr.aria-pressed]="item.numero === dia.numero"
+                [attr.aria-label]="item.nome + ', ' + (total ? total + (total === 1 ? ' horário' : ' horários') : 'fechado')"
+                (click)="selecionarDia(item.numero)"
+              >
+                <span class="dia__nome">{{ item.nome }}</span>
+                <span class="dia__curto">{{ item.curto }}</span>
+                <span class="dia__total">{{ total || '–' }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+        <p class="ajuda dia__ajuda">Dias sem horários ficam fechados para novas solicitações.</p>
+      </section>
+
+      <section class="painel detalhe" aria-labelledby="titulo-dia">
+        <div class="detalhe__corpo">
+          <header class="detalhe__topo">
+            <div>
+              <h3 id="titulo-dia">{{ dia.nome }}</h3>
+              <p class="ajuda" role="status">
+                @if (dia.horarios.length) {
+                  {{ dia.horarios.length }} {{ dia.horarios.length === 1 ? 'horário disponível' : 'horários disponíveis' }}
+                } @else { Fechado para novas consultas }
+              </p>
+            </div>
+            @if (dia.horarios.length) {
+              <button
+                #botaoCopia
+                type="button"
+                class="acao"
+                [attr.aria-controls]="copiando ? 'copia-horarios' : null"
+                [attr.aria-expanded]="copiando"
+                (click)="alternarCopia()"
+              >
+                <i class="ph ph-copy" aria-hidden="true"></i>
+                {{ copiando ? 'Fechar cópia' : 'Copiar para outros dias' }}
+              </button>
+            }
+          </header>
+
+          <form class="novo-horario" (ngSubmit)="adicionar()">
+            <div class="novo-horario__campos">
+              <div class="campo">
+                <label for="agenda-hora">Horário de início</label>
+                <input #campoHora id="agenda-hora" name="hora" type="time" max="23:15" required
+                  [attr.aria-invalid]="erroHorario ? 'true' : null"
+                  [attr.aria-describedby]="erroHorario ? 'agenda-hora-erro' : null"
+                  [(ngModel)]="hora"
+                  (ngModelChange)="erroHorario = ''" />
+              </div>
+              <app-ui-button type="submit" label="Adicionar horário" icon="plus" variant="secondary" [fullWidth]="false" />
+            </div>
+            @if (erroHorario) {
+              <p id="agenda-hora-erro" class="erro-horario" role="alert">{{ erroHorario }}</p>
+            }
+          </form>
+
+          @if (dia.horarios.length) {
+            <ul class="horarios" [attr.aria-label]="'Horários de ' + dia.nome">
+              @for (item of dia.horarios; track item.horario) {
+                <li class="horario">
+                  <time>{{ item.horario }}</time>
+                  <button type="button" [attr.aria-label]="'Remover ' + dia.nome + ' às ' + item.horario"
+                    (click)="remover(item); campoHora.focus()">
+                    <i class="ph ph-x" aria-hidden="true"></i>
+                  </button>
+                </li>
+              }
+            </ul>
+          } @else {
+            <div class="vazio">
+              <span class="icone"><i class="ph ph-calendar-plus" aria-hidden="true"></i></span>
+              <p>Adicione um horário de início para abrir este dia.</p>
+            </div>
+          }
+
+          @if (copiando) {
+            <fieldset class="copia" id="copia-horarios">
+              <legend>Dias de destino</legend>
+              <p class="ajuda">Os horários que já existem nesses dias serão mantidos.</p>
+              <div class="copia__dias">
+                @for (destino of semana(); track destino.numero) {
+                  @if (destino.numero !== dia.numero) {
+                    <label>
+                      <input #marcador type="checkbox" [checked]="destinos.has(destino.numero)"
+                        (change)="selecionarDestino(destino.numero, marcador.checked)" />
+                      {{ destino.nome }}
+                    </label>
+                  }
+                }
+              </div>
+              <app-ui-button label="Copiar horários" icon="copy" variant="secondary" [fullWidth]="false"
+                [disabled]="!destinos.size" (click)="copiarHorarios()" />
+            </fieldset>
+          }
+          @if (retornoCopia) { <p class="ajuda" role="status">{{ retornoCopia }}</p> }
+        </div>
+
+        <footer class="salvar">
+          <app-form-alert [message]="erro" type="error" />
+          <div class="salvar__linha">
+            <p class="salvar__estado" role="status">
+              <i class="ph" [class.ph-pencil-simple]="alterado()" [class.ph-check-circle]="!alterado()" aria-hidden="true"></i>
+              {{ mensagem || (alterado() ? 'Alterações não salvas' : 'Horários sincronizados') }}
+            </p>
+            <app-ui-button [label]="salvando ? 'Salvando…' : 'Salvar disponibilidade'"
+              icon="floppy-disk" [fullWidth]="false" [disabled]="!alterado()" [loading]="salvando" (click)="salvar()" />
+          </div>
+        </footer>
+      </section>
     </fieldset>
+    <p class="nota"><i class="ph ph-info" aria-hidden="true"></i> Consultas já solicitadas ou confirmadas são preservadas.</p>
   }
 </div>
+
 @if (modalSaida) {
   <app-paciente-dialog title="Sair da agenda?" description="As alterações não salvas da disponibilidade serão descartadas." (fechar)="responderSaida(false)">
     <app-ui-button dialogActions label="Continuar editando" variant="outline" (click)="responderSaida(false)" />
