@@ -3,7 +3,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  ImageBackground,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -12,7 +11,6 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
 
 import { AppHeader } from '../../components/layout/AppHeader';
 import { useAppAlert } from '../../components/feedback/AppAlertProvider';
@@ -22,13 +20,14 @@ import {
   calcularPercentualMeta,
   carregarDashboardPaciente,
   DashboardPacienteDados,
-  extrairPrimeiroNome,
-  formatarDataHoraConsulta
+  extrairPrimeiroNome
 } from '../../core/evolucao/evolucao.service';
 import { RootStackParamList } from '../../navigation/types';
-import { colors, fontFamily, radius, shadows, spacing } from '../../theme/tokens';
+import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 import { DailyIntakeCard } from './components/DailyIntakeCard';
 import { DailyMealsCard } from './components/DailyMealsCard';
+import { NextAppointmentCard } from './components/NextAppointmentCard';
+import { PersonalDietCard } from './components/PersonalDietCard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
@@ -152,14 +151,6 @@ export function DashboardScreen({ navigation }: Props) {
     }
   };
 
-  const handlePressProximaConsulta = () => {
-    navigation.navigate('Agenda');
-  };
-
-  const handlePressAcessarDieta = () => {
-    navigation.navigate('Dieta');
-  };
-
   const primeiroNome = extrairPrimeiroNome(dados?.nomePaciente);
   const consumo = dados?.consumo ?? null;
 
@@ -174,10 +165,6 @@ export function DashboardScreen({ navigation }: Props) {
   const carboConsumido = consumo?.carboidratos ?? 0;
   const metaCarbo = consumo?.metaCarboidratos ?? dados?.dietaAtiva?.metaCarboidratos ?? 0;
   const percCarbo = calcularPercentualMeta(carboConsumido, metaCarbo);
-
-  const textoProximaConsulta = dados?.proximaConsulta?.dataHora
-    ? formatarDataHoraConsulta(dados.proximaConsulta.dataHora)
-    : 'Nenhuma consulta agendada';
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
@@ -238,78 +225,11 @@ export function DashboardScreen({ navigation }: Props) {
             carboidratos={{ valor: carboConsumido, percentual: percCarbo }}
           />
 
-          {/* Card: Próxima Consulta */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.consultaCard,
-              pressed && styles.cardPressed
-            ]}
-            onPress={handlePressProximaConsulta}
-            accessibilityRole="button"
-            accessibilityLabel={`Próxima Consulta: ${textoProximaConsulta}`}
-            testID="dashboard-proxima-consulta-card"
-          >
-            <View style={styles.consultaIconBox}>
-              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                <Path
-                  d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-8.53 9.47L7.4 14.4l1.41-1.41 1.66 1.66 4.24-4.24 1.41 1.41-5.65 5.65z"
-                  fill="#86efac"
-                />
-              </Svg>
-            </View>
-
-            <View style={styles.consultaTextContainer}>
-              <Text style={styles.consultaLabel}>Próxima Consulta</Text>
-              <Text style={styles.consultaDate} testID="dashboard-proxima-consulta-texto">
-                {textoProximaConsulta}
-              </Text>
-            </View>
-
-            <View style={styles.consultaChevronBox}>
-              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                <Path
-                  d="M9.29 6.71a.996.996 0 0 0 0 1.41L13.17 12l-3.88 3.88a.996.996 0 1 0 1.41 1.41l4.59-4.59a.996.996 0 0 0 0-1.41L10.7 6.7c-.38-.38-1.02-.38-1.41.01z"
-                  fill="#ffffff"
-                />
-              </Svg>
-            </View>
-          </Pressable>
-
-          {/* Card: Sua dieta personalizada */}
-          <View style={styles.dietaCardWrapper} testID="dashboard-dieta-card">
-            <ImageBackground
-              source={require('../../../assets/diet-card-bg.png')}
-              style={styles.dietaImageBg}
-              imageStyle={styles.dietaImageStyle}
-              resizeMode="cover"
-            >
-              <View style={styles.dietaOverlay}>
-                <Text style={styles.dietaTitle}>Sua dieta personalizada</Text>
-                <Text style={styles.dietaDescription}>
-                  Confira o plano de refeições atualizado pela sua nutricionista para hoje.
-                </Text>
-
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.dietaButton,
-                    pressed && styles.cardPressed
-                  ]}
-                  onPress={handlePressAcessarDieta}
-                  accessibilityRole="button"
-                  accessibilityLabel="Acessar Dieta"
-                  testID="dashboard-acessar-dieta-btn"
-                >
-                  <Text style={styles.dietaButtonText}>Acessar Dieta</Text>
-                  <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                    <Path
-                      d="M5 13h11.17l-4.88 4.88c-.39.39-.39 1.03 0 1.42.39.39 1.02.39 1.41 0l6.59-6.59a.996.996 0 0 0 0-1.41l-6.58-6.6a.996.996 0 1 0-1.41 1.41L16.17 11H5c-.55 0-1 .45-1 1s.45 1 1 1z"
-                      fill="#bbf7d0"
-                    />
-                  </Svg>
-                </Pressable>
-              </View>
-            </ImageBackground>
-          </View>
+          <NextAppointmentCard
+            dataHora={dados?.proximaConsulta?.dataHora}
+            abrirAgenda={() => navigation.navigate('Agenda')}
+          />
+          <PersonalDietCard abrirDieta={() => navigation.navigate('Dieta')} />
         </ScrollView>
       )}
     </SafeAreaView>
@@ -382,104 +302,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginTop: 2
-  },
-  consultaCard: {
-    backgroundColor: '#1b3b2b',
-    borderRadius: radius.xl,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    ...shadows.card
-  },
-  cardPressed: {
-    opacity: 0.88
-  },
-  consultaIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  consultaTextContainer: {
-    flex: 1,
-    marginHorizontal: 14
-  },
-  consultaLabel: {
-    color: 'rgba(255, 255, 255, 0.78)',
-    fontFamily: fontFamily.regular,
-    fontSize: 12,
-    marginBottom: 2
-  },
-  consultaDate: {
-    color: colors.white,
-    fontFamily: fontFamily.bold,
-    fontSize: 15,
-    fontWeight: '700'
-  },
-  consultaChevronBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  dietaCardWrapper: {
-    borderRadius: radius.xl,
-    overflow: 'hidden',
-    minHeight: 300,
-    ...shadows.card
-  },
-  dietaImageBg: {
-    flex: 1,
-    minHeight: 300,
-    justifyContent: 'flex-end'
-  },
-  dietaImageStyle: {
-    borderRadius: radius.xl,
-    width: '100%',
-    height: '100%'
-  },
-  dietaOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    padding: spacing.xl,
-    backgroundColor: 'rgba(15, 23, 42, 0.42)'
-  },
-  dietaTitle: {
-    color: colors.white,
-    fontFamily: fontFamily.extrabold,
-    fontSize: 24,
-    lineHeight: 30,
-    fontWeight: '800',
-    marginBottom: 8
-  },
-  dietaDescription: {
-    color: 'rgba(255, 255, 255, 0.92)',
-    fontFamily: fontFamily.regular,
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 18
-  },
-  dietaButton: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.brand,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: radius.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    ...shadows.button
-  },
-  dietaButtonText: {
-    color: '#bbf7d0',
-    fontFamily: fontFamily.bold,
-    fontSize: 14,
-    fontWeight: '700'
   }
 });

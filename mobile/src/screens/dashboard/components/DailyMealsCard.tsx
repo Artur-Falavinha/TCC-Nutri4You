@@ -5,7 +5,8 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from '
 
 import { dataIsoDaClinica, formatarDataCivil } from '../../../core/utils/date-mask.util';
 import { DailyConsumption, getConsumption, markMeal } from '../../../features/dieta/consumo.service';
-import { colors, fontFamily, radius, shadows, spacing } from '../../../theme/tokens';
+import { colors, fontFamily, radius, spacing } from '../../../theme/tokens';
+import { DashboardCardHeader, dashboardCardStyles } from './DashboardCardHeader';
 
 export function DailyMealsCard({ onChanged }: { onChanged: () => Promise<void> }) {
   const [registro, setRegistro] = useState<DailyConsumption | null>(null);
@@ -60,13 +61,8 @@ export function DailyMealsCard({ onChanged }: { onChanged: () => Promise<void> }
   }
 
   return (
-    <View style={styles.card} testID="daily-meals-card" aria-busy={ocupado}>
-      <View style={styles.cabecalho}>
-        <View style={styles.marca}>
-          <Feather name="check-square" size={20} color={colors.brandDark} aria-hidden />
-        </View>
-        <Text style={styles.titulo} accessibilityRole="header">Refeições consumidas</Text>
-      </View>
+    <View style={dashboardCardStyles.superficie} testID="daily-meals-card" aria-busy={ocupado}>
+      <DashboardCardHeader titulo="Refeições consumidas" icone="check-square" />
 
       <View style={styles.navegacao}>
         <Pressable
@@ -170,25 +166,6 @@ export function DailyMealsCard({ onChanged }: { onChanged: () => Promise<void> }
 }
 
 const styles = StyleSheet.create({
-  card: {
-    ...shadows.card,
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radius.xl,
-    padding: spacing.md,
-    gap: spacing.md
-  },
-  cabecalho: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  marca: {
-    backgroundColor: colors.brandSoft,
-    borderRadius: radius.md,
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  titulo: { flex: 1, color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 18, lineHeight: 25 },
   navegacao: {
     flexDirection: 'row',
     flexWrap: 'wrap',

@@ -4,7 +4,8 @@ import Svg, { Circle } from 'react-native-svg';
 
 import DietIcon from '../../../assets/appointments/nav-diet.svg';
 import { formatarNumeroMilhar } from '../../../core/evolucao/evolucao.service';
-import { colors, fontFamily, radius, shadows, spacing } from '../../../theme/tokens';
+import { colors, fontFamily, radius, spacing } from '../../../theme/tokens';
+import { DashboardCardHeader, dashboardCardStyles } from './DashboardCardHeader';
 
 type MedidaConsumo = { valor: number; percentual: number };
 
@@ -24,13 +25,8 @@ export function DailyIntakeCard({ calorias, proteinas, carboidratos }: Props) {
   const progressoCalorias = Math.min(calorias.percentual, 100) / 100;
 
   return (
-    <View style={styles.card} testID="dashboard-consumo-card">
-      <View style={styles.cabecalho}>
-        <View style={styles.marca} aria-hidden>
-          <Feather name="activity" size={20} color={colors.brandDark} />
-        </View>
-        <Text style={styles.titulo} accessibilityRole="header">Consumo diário</Text>
-      </View>
+    <View style={dashboardCardStyles.superficie} testID="dashboard-consumo-card">
+      <DashboardCardHeader titulo="Consumo diário" icone="activity" />
 
       <View style={styles.resumo}>
         <View style={styles.calorias}>
@@ -111,25 +107,6 @@ function MacroConsumo({ rotulo, medida }: { rotulo: 'Proteínas' | 'Carbos'; med
 }
 
 const styles = StyleSheet.create({
-  card: {
-    ...shadows.card,
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radius.xl,
-    padding: spacing.md,
-    gap: spacing.md
-  },
-  cabecalho: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  marca: {
-    backgroundColor: colors.brandSoft,
-    borderRadius: radius.md,
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  titulo: { flex: 1, color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 18, lineHeight: 25 },
   resumo: {
     flexDirection: 'row',
     alignItems: 'center',
