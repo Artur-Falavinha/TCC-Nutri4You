@@ -4,6 +4,14 @@ Base URL: `http://localhost:8080/api/v1`
 
 ---
 
+## Datas e horários
+
+Os campos de entrada de data, no JSON e nos parâmetros de consulta, aceitam `dd/mm/aaaa` ou `aaaa-mm-dd`. Os campos de data e hora locais aceitam `dd/mm/aaaa HH:mm`, com segundos opcionais, e o formato ISO usado nos exemplos abaixo. Uma data impossível, como `31/02/2026`, retorna HTTP 400.
+
+As respostas mantêm o formato ISO para preservar a compatibilidade. Datas sem hora representam o dia do calendário, e os horários de consulta seguem o fuso da clínica, `America/Sao_Paulo`.
+
+---
+
 ## GET /health
 
 Verifica se a API está em execução.
@@ -116,7 +124,7 @@ Cria a conta após confirmar o endereço. Envie o mesmo e-mail e token da confir
 }
 ```
 
-CPF, telefone, sexo e data de nascimento em formato ISO são opcionais. A resposta `201` indica que a conta está pronta para login.
+CPF, telefone, sexo e data de nascimento são opcionais. A data de nascimento aceita `dd/mm/aaaa` e `aaaa-mm-dd`. A resposta `201` indica que a conta está pronta para login.
 
 ## POST /nutricionistas/autocadastro
 

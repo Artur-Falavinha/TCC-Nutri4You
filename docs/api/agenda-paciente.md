@@ -15,6 +15,8 @@ aberto a agenda para consultas avulsas.
 | `PUT` | `/consultas/{id}/reagendamento` | Altera uma consulta confirmada e volta o status para aguardando confirmação |
 | `POST` | `/consultas/{id}/cancelamento` | Cancela uma consulta confirmada e libera o horário |
 
+A disponibilidade aceita `data` como `dd/mm/aaaa` ou `aaaa-mm-dd`. Para solicitar ou reagendar, também é possível enviar `dataHora` como `dd/mm/aaaa HH:mm`, no horário de São Paulo.
+
 ## Solicitar consulta
 
 ```json

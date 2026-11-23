@@ -26,6 +26,8 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
 
+import static com.nutri4you.backend.config.FormatoDataConfig.DATA_BRASILEIRA;
+
 @RestController
 @RequestMapping("/api/v1/agenda")
 public class AgendaPacienteController {
@@ -50,7 +52,8 @@ public class AgendaPacienteController {
     public ApiResponse<DisponibilidadeConsultaResponse> disponibilidade(
             Authentication authentication,
             @RequestParam Integer nutricionistaId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE, fallbackPatterns = DATA_BRASILEIRA) LocalDate data,
             @RequestParam(required = false) Integer consultaId) {
         Paciente paciente = paciente(authentication);
         DisponibilidadeConsultaResponse disponibilidade = consultaId == null

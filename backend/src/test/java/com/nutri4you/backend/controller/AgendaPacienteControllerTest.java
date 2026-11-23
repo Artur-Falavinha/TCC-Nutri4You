@@ -13,6 +13,8 @@ import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import com.nutri4you.backend.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -120,6 +122,49 @@ class AgendaPacienteControllerTest {
                         .content(solicitacao(horario)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("CONFLITO"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"dd/MM/uuuu HH:mm", "dd/MM/uuuu HH:mm:ss"})
+    void solicitaConsultaComDataHoraBrasileira(String formato) throws Exception {
+        LocalDateTime horario = proximoDiaAtendimento(5).atTime(10, 15);
+        String dataHora = horario.format(DateTimeFormatter.ofPattern(formato));
+
+        mvc.perform(post("/api/v1/agenda/consultas")
+                        .header("Authorization", tokenPaciente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nutricionistaId":%d,"dataHora":"%s"}
+                                """.formatted(nutricionista.getId(), dataHora)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.dataHora").value(jsonDateTime(horario)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"29/02/2027 10:15", "29/02/2028 24:00"})
+    void rejeitaDataHoraInvalidaDoCorpo(String dataHora) throws Exception {
+        mvc.perform(post("/api/v1/agenda/consultas")
+                        .header("Authorization", tokenPaciente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nutricionistaId":%d,"dataHora":"%s"}
+                                """.formatted(nutricionista.getId(), dataHora)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("REQUISICAO_INVALIDA"))
+                .andExpect(jsonPath("$.message").value("Confira os formatos de datas e valores informados."));
+    }
+
+    @Test
+    void consultaDisponibilidadeComDataBrasileira() throws Exception {
+        LocalDate dia = proximoDiaAtendimento(6);
+
+        mvc.perform(get("/api/v1/agenda/disponibilidade")
+                        .header("Authorization", tokenPaciente)
+                        .param("nutricionistaId", nutricionista.getId().toString())
+                        .param("data", dia.format(DateTimeFormatter.ofPattern("dd/MM/uuuu"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.data").value(dia.toString()))
+                .andExpect(jsonPath("$.data.horarios", hasItem(jsonDateTime(dia.atTime(10, 15)))));
     }
 
     @Test
@@ -252,6 +297,11 @@ class AgendaPacienteControllerTest {
     @Test
     void errosDeConversaoEmParametrosRetornamEnvelopeDeRequisicaoInvalida() throws Exception {
         String path = "/api/v1/agenda/disponibilidade";
+
+        assertRequisicaoInvalida(get(path)
+                .header("Authorization", tokenPaciente)
+                .param("nutricionistaId", nutricionista.getId().toString())
+                .param("data", "29/02/2027"), path);
         String nutricionistaId = nutricionista.getId().toString();
 
         assertRequisicaoInvalida(get(path)
