@@ -73,7 +73,7 @@
                   <dl>
                     @for (field of fieldsFor(section); track field.key) {
                       @if (visible(field, data.respostas)) {
-                        <div><dt>{{ field.label }}</dt><dd>{{ display(data.respostas[field.key]) }}</dd></div>
+                        <div><dt>{{ field.label }}</dt><dd>{{ display(field.key, data.respostas[field.key]) }}</dd></div>
                       }
                     }
                   </dl>

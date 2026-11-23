@@ -15,6 +15,7 @@ import { UiSelectComponent } from '../../../shared/components/ui-select/ui-selec
 import { DataHoraClinicaPipe } from '../../../shared/pipes/data-hora-clinica.pipe';
 import { PacienteDialogComponent } from '../../pacientes/components/paciente-dialog/paciente-dialog.component';
 import { AnamneseField } from '../../anamnese/anamnese.models';
+import { rotuloOpcaoAnamnese } from '../../anamnese/anamnese-rotulos';
 import { AnamneseService } from '../../anamnese/anamnese.service';
 import { DietaService } from '../../dieta/dieta.service';
 import { CAMPOS_MEDIDAS, CampoMedida, ConsultaForm, STATUS_CONSULTA, decimal } from './consulta-form';
@@ -253,7 +254,7 @@ export class ConsultasComponent implements OnInit {
       if (!texto.trim()) continue;
       let secao = secoes.find(item => item.secao === campo.section);
       if (!secao) { secao = { secao: campo.section, campos: [] }; secoes.push(secao); }
-      secao.campos.push({ label: campo.label, valor: texto });
+      secao.campos.push({ label: campo.label, valor: rotuloOpcaoAnamnese(campo.key, texto) });
     }
     return secoes;
   }

@@ -13,6 +13,7 @@ import { UiSelectComponent, UiSelectOption } from '../../shared/components/ui-se
 import { PatientTabsComponent } from '../../shared/components/patient-tabs/patient-tabs.component';
 import { AnamneseService } from './anamnese.service';
 import { Anamnese, AnamneseField, Answers, Answer, Patient } from './anamnese.models';
+import { rotuloOpcaoAnamnese } from './anamnese-rotulos';
 import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog/paciente-dialog.component';
 
 @Component({
@@ -146,7 +147,7 @@ export class AnamneseComponent implements OnInit {
   fieldsFor(section: string): AnamneseField[] { return this.fields.filter(f => f.section === section); }
 
   selectOptions(field: AnamneseField): UiSelectOption[] {
-    return (field.options ?? []).map(option => ({ label: option, value: option }));
+    return (field.options ?? []).map(valor => ({ label: rotuloOpcaoAnamnese(field.key, valor), value: valor }));
   }
 
   get patientOptions(): UiSelectOption[] {
@@ -222,10 +223,10 @@ export class AnamneseComponent implements OnInit {
     this.change(field, value);
   }
 
-  display(value: Answer | undefined): string {
-    if (Array.isArray(value)) return value.join(', ');
-    if (typeof value === 'number') return new Intl.NumberFormat('pt-BR').format(value);
-    return value === null || value === undefined || value === '' ? 'Não informado' : String(value);
+  display(campo: string, valor: Answer | undefined): string {
+    if (Array.isArray(valor)) return valor.join(', ');
+    if (typeof valor === 'number') return new Intl.NumberFormat('pt-BR').format(valor);
+    return valor ? rotuloOpcaoAnamnese(campo, valor) : 'Não informado';
   }
 
   async save(draft: boolean, form: HTMLFormElement): Promise<void> {
