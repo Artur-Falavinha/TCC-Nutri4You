@@ -3,6 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { PacientesService } from '../../../core/services/pacientes.service';
+import { EstadoVazioComponent } from '../../../shared/components/estado-vazio/estado-vazio.component';
 import { PatientTabsComponent } from '../../../shared/components/patient-tabs/patient-tabs.component';
 import { formatarDataBr } from '../../../shared/utils/data-br.util';
 import { Avaliacao, ClinicoService, Historico } from '../clinico.service';
@@ -44,7 +45,7 @@ interface Barra {
 
 @Component({
   selector: 'app-historico-paciente',
-  imports: [PatientTabsComponent],
+  imports: [EstadoVazioComponent, PatientTabsComponent],
   templateUrl: './historico.component.html',
   styleUrl: './historico.component.css'
 })

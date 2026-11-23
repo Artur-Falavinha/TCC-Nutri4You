@@ -32,7 +32,6 @@ app-consultas, app-dieta { flex-shrink: 0; }
 
 app-dieta .week-days { display: flex; gap: 8px; flex-wrap: wrap; margin-block: 18px; }
 app-dieta .week-days [aria-pressed="true"] { background: var(--color-brand-primary); color: white; }
-app-dieta .empty-state { background: transparent; padding-top: 12px; }
 
 app-dieta .daily-progress { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
 app-dieta .daily-progress > div { background: var(--color-surface-card); padding: 16px; border-radius: 12px; }

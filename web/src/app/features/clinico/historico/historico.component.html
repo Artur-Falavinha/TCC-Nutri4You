@@ -9,17 +9,11 @@
     } @else if (!historico) {
       <p role="status">Carregando...</p>
     } @else if (!temEvolucao) {
-      <div class="vazio">
-        <img class="vazio__arte" src="/historico/sem-consultas.svg" alt="" width="420" height="375" />
-        <h2>{{ semConsulta ? 'Nenhuma consulta realizada' : 'Nenhuma medida registrada' }}</h2>
-        <p>
-          @if (semConsulta) {
-            Os indicadores de evolução aparecem após a primeira consulta registrada. A anamnese segue disponível como referência inicial.
-          } @else {
-            Os indicadores de evolução aparecem após o registro das medidas da consulta. A anamnese segue disponível como referência inicial.
-          }
-        </p>
-      </div>
+      <app-estado-vazio
+        [imagem]="{ url: '/historico/sem-consultas.svg', largura: 421, altura: 376 }"
+        [titulo]="semConsulta ? 'Nenhuma consulta realizada' : 'Nenhuma medida registrada'"
+        descricao="Os indicadores de evolução aparecem após {{ semConsulta ? 'a primeira consulta registrada' : 'o registro das medidas da consulta' }}. A anamnese segue disponível como referência inicial."
+      />
     } @else {
       <header class="intro">
         <h2>Histórico do paciente</h2>

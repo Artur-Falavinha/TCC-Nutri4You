@@ -8,6 +8,7 @@ import { EMPTY, Observable, Subject, catchError, forkJoin, of, switchMap, take, 
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { Paciente } from '../../core/models/paciente.models';
 import { PacientesService } from '../../core/services/pacientes.service';
+import { EstadoVazioComponent } from '../../shared/components/estado-vazio/estado-vazio.component';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
 import { PatientTabsComponent } from '../../shared/components/patient-tabs/patient-tabs.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
@@ -60,7 +61,7 @@ const FORMATO_DATA_CLINICA = new Intl.DateTimeFormat('sv-SE', {
 @Component({
   selector: 'app-dieta',
   imports: [DatePipe, NgTemplateOutlet, FormsModule, RouterLink, PatientTabsComponent, FormAlertComponent,
-    UiButtonComponent, UiInputComponent, UiSelectComponent, BuscaAlimentosComponent, PacienteDialogComponent],
+    EstadoVazioComponent, UiButtonComponent, UiInputComponent, UiSelectComponent, BuscaAlimentosComponent, PacienteDialogComponent],
   templateUrl: './dieta.component.html',
   styleUrl: './dieta.component.css'
 })

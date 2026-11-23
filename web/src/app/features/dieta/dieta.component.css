@@ -5,13 +5,15 @@ h1 { margin-bottom: var(--space-8); font-size: 2.25rem; font-weight: 700; line-h
 h2 { font-size: 24px; line-height: 1.35; }
 h3 { font-size: 18px; line-height: 1.4; }
 h4 { font-size: 16px; line-height: 1.4; }
-.subtitle, .section-help, .state, .retry-state, .empty-state p, .empty-inline, .plan-card__meta, dt, .guidance p, .section-heading > span, .meal-card__heading time, th, .field small, .counter, .optional, .goal-secondary, .food-name small, .food-preview small, .food-preview span { color: var(--color-text-secondary); }
+.subtitle, .section-help, .state, .retry-state, .empty-inline, .plan-card__meta, dt, .guidance p, .section-heading > span, .meal-card__heading time, th, .field small, .counter, .optional, .goal-secondary, .food-name small, .food-preview small, .food-preview span { color: var(--color-text-secondary); }
 .page-header { padding: var(--space-24) var(--space-40); background: var(--color-surface-card); border-bottom: 1px solid var(--color-border-default); }
 .canvas { flex: 1; width: 100%; padding: var(--space-24) var(--space-32) var(--space-40); }
+.canvas:has(> app-estado-vazio) { display: flex; flex-direction: column; }
+.canvas > .page-back-action { align-self: flex-start; }
 app-form-alert.form-alert-host--visible { display: block; margin-bottom: 16px; }
 .toolbar, .section-heading, .plan-card, .meal-card__heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .toolbar { margin-bottom: 28px; }
-.subtitle, .section-help, .empty-state p, .empty-inline { line-height: 1.5; }
+.subtitle, .section-help, .empty-inline { line-height: 1.5; }
 .subtitle { margin-top: 6px; }
 .section-help { margin: 6px 0 16px; }
 .actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
@@ -22,10 +24,7 @@ app-form-alert.form-alert-host--visible { display: block; margin-bottom: 16px; }
 button:disabled { opacity: .52; cursor: not-allowed; }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--color-brand-primary); outline-offset: 2px; }
 .state { padding: 54px 16px; text-align: center; }
-.retry-state, .empty-state { display: grid; justify-items: center; gap: 14px; text-align: center; }
-.retry-state { padding: 48px 16px; }
-.empty-state { max-width: 540px; margin: 34px auto; padding: 32px; border-radius: var(--radius-lg); background: var(--color-surface-card); }
-.empty-state img { width: min(240px, 70vw); height: auto; }
+.retry-state { display: grid; justify-items: center; gap: 14px; padding: 48px 16px; text-align: center; }
 .plan-list, .editor-meals, .meal-list { display: grid; gap: 14px; }
 .plan-card, .summary-card, .meal-card, .form-section { min-width: 0; padding: 20px 24px; border-radius: 12px; background: var(--color-surface-card); box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
 .plan-card__main, .field, fieldset { min-width: 0; }

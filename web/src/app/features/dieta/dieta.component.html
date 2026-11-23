@@ -42,23 +42,27 @@
       <app-ui-button label="Tentar novamente" icon="arrow-clockwise" [fullWidth]="false" (click)="carregar()" />
     </section>
   } @else if (tela === 'lista') {
-    <div class="toolbar">
-      <div>
-        <h2>Planos alimentares</h2>
-        <p class="subtitle">{{ planos.length }} plano(s) registrado(s)</p>
-      </div>
-      @if (planos.length > 0 && (atendimentoId === null || podeEditarAtendimento)) { <app-ui-button label="Novo plano" icon="plus-circle" [fullWidth]="false" (click)="abrirNovoRascunho()" /> }
-    </div>
-
+    @let podeCriarPlano = atendimentoId === null || podeEditarAtendimento;
     @if (planos.length === 0) {
-      <section class="empty-state" aria-labelledby="empty-title">
-        <img src="/dieta/prescricao-vazia.png" alt="Ilustração de uma prescrição alimentar" width="240" height="180" />
-        <h3 id="empty-title">Nenhum plano alimentar</h3>
-        @if (atendimentoId === null || podeEditarAtendimento) {
-        <p>Crie um rascunho para organizar refeições e alimentos deste paciente.</p>
-        <app-ui-button label="Criar primeiro plano" icon="plus-circle" [fullWidth]="false" (click)="abrirNovoRascunho()" /> }
-      </section>
+      <app-estado-vazio
+        [imagem]="{ url: '/dieta/prescricao-vazia.png', largura: 401, altura: 378 }"
+        titulo="Nenhum plano alimentar"
+        [descricao]="podeCriarPlano ? 'Crie um rascunho para organizar as refeições e os alimentos deste paciente.' : ''"
+      >
+        @if (podeCriarPlano) {
+          <app-ui-button label="Criar primeiro plano" icon="plus-circle" [fullWidth]="false" (click)="abrirNovoRascunho()" />
+        }
+      </app-estado-vazio>
     } @else {
+      <div class="toolbar">
+        <div>
+          <h2>Planos alimentares</h2>
+          <p class="subtitle">{{ planos.length }} plano(s) registrado(s)</p>
+        </div>
+        @if (podeCriarPlano) {
+          <app-ui-button label="Novo plano" icon="plus-circle" [fullWidth]="false" (click)="abrirNovoRascunho()" />
+        }
+      </div>
       <section class="plan-list" aria-label="Planos alimentares do paciente">
         @for (plano of planos; track plano.id) {
           <article class="plan-card">

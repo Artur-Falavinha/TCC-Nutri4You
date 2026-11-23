@@ -39,8 +39,7 @@
 }
 
 .intro h2,
-.grafico h2,
-.vazio h2 {
+.grafico h2 {
   margin: 0;
   font-family: var(--font-heading);
   font-weight: 700;
@@ -60,8 +59,7 @@
   text-transform: uppercase;
 }
 
-.intro p:last-child,
-.vazio p {
+.intro p:last-child {
   margin: 0;
   color: var(--color-text-secondary);
   font-size: var(--text-sm);
@@ -343,32 +341,6 @@
 .legenda__quadril { background: #7dcea0; border-radius: 2px; }
 .legenda__braco { background: #94a3b8; border-radius: 2px; }
 .legenda__supra { background: #94a3b8; }
-
-.vazio {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-height: 28rem;
-  padding: 48px 24px;
-  text-align: center;
-}
-
-.vazio__arte {
-  width: min(420px, 85%);
-  height: auto;
-  margin-bottom: 8px;
-}
-
-.vazio h2 {
-  font-size: 1.375rem;
-}
-
-.vazio p {
-  max-width: 34rem;
-}
 
 .alert {
   color: var(--color-error);
