@@ -1,5 +1,7 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.service.PrivacidadeService;
+import com.nutri4you.backend.support.TestDataFactory;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.TipoTokenEmail;
 import com.nutri4you.backend.model.TokenEmail;
@@ -27,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Transactional
 class NutricionistaControllerTest {
+    @Autowired PrivacidadeService privacidade;
 
     @Autowired
     private MockMvc mockMvc;
@@ -47,6 +50,7 @@ class NutricionistaControllerTest {
     void cadastroLegadoBloqueiaAcessoAteConfirmarEmail() throws Exception {
         var cadastroLegado = nutricionistas.save(new Nutricionista("Nova Nutricionista",
                 "nova.nutri@teste.com", passwordEncoder.encode("senhaSegura123"), "CRN8-55555"));
+        TestDataFactory.registrarAceite(privacidade, cadastroLegado);
         tokenEmailRepository.save(TokenEmail.criarParaNutricionista(
                 cadastroLegado, TipoTokenEmail.CONFIRMACAO_EMAIL, LocalDateTime.now().plusHours(1)));
 

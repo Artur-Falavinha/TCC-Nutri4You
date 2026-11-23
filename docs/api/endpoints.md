@@ -34,7 +34,7 @@ curl http://localhost:8080/api/v1/health
 
 ## POST /auth/login
 
-Autentica um paciente ou nutricionista e retorna um token JWT.
+Autentica um paciente ou nutricionista e retorna um token JWT. O acesso exige o e-mail confirmado e um aceite dos termos registrado. A API preserva a data e a versão de aceites anteriores.
 
 **Autenticação:** não requerida
 
@@ -104,7 +104,7 @@ Envie o `token` recebido no e-mail. O mobile informa também `tipoUsuario: "PACI
 
 ## POST /pacientes/autocadastro
 
-Cria a conta após confirmar o endereço. Envie o mesmo e-mail e token da confirmação.
+Cria a conta após confirmar o endereço. Envie o mesmo e-mail e token da confirmação e informe a versão dos termos aceita no cadastro.
 
 ```json
 {
@@ -112,7 +112,7 @@ Cria a conta após confirmar o endereço. Envie o mesmo e-mail e token da confir
   "email": "maria@example.test",
   "senha": "senhaSegura123",
   "tokenCadastro": "550e8400-e29b-41d4-a716-446655440000",
-  "versaoTermos": "2026-11-19"
+  "versaoTermos": "2026-11-22"
 }
 ```
 
@@ -130,7 +130,7 @@ Cria a conta após confirmar o endereço. No aceite dos termos, o nutricionista 
   "crn": "CRN8-54321",
   "crnDeclarado": true,
   "tokenCadastro": "550e8400-e29b-41d4-a716-446655440000",
-  "versaoTermos": "2026-11-19"
+  "versaoTermos": "2026-11-22"
 }
 ```
 
@@ -139,6 +139,14 @@ A resposta `201` indica que a conta está pronta para login. Código inválido, 
 ## POST /nutricionistas/cadastro
 
 Cadastro assistido com o mesmo corpo e a mesma confirmação prévia do autocadastro. Exige um JWT com `ROLE_NUTRICIONISTA`.
+
+## GET /privacidade/termos
+
+Abre o PDF público da versão atual. Para abrir uma edição específica, use `GET /privacidade/termos/{versao}`.
+
+## GET /privacidade/me/termos
+
+Consulta o aceite mais recente do usuário autenticado. A resposta inclui `versao`, `aceito` e `aceitoEm`.
 
 ---
 

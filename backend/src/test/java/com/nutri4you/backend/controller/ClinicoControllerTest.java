@@ -1,5 +1,6 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.service.PrivacidadeService;
 import com.jayway.jsonpath.JsonPath;
 import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.Nutricionista;
@@ -35,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Transactional
 class ClinicoControllerTest {
+    @Autowired PrivacidadeService privacidade;
 
     @Autowired
     private MockMvc mockMvc;
@@ -58,6 +60,7 @@ class ClinicoControllerTest {
         Nutricionista nutricionista = nutricionistaRepository.save(TestDataFactory.nutricionista(passwordEncoder));
         paciente = pacienteRepository.save(TestDataFactory.pacienteConfirmado(passwordEncoder));
         oculto = pacienteRepository.save(TestDataFactory.outroPaciente(passwordEncoder));
+        TestDataFactory.registrarAceite(privacidade, nutricionista, paciente);
         consulta = consultaRepository.save(TestDataFactory.consulta(paciente, nutricionista));
         relacoes.save(RelacaoClinica.criar(paciente, nutricionista));
     }

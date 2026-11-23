@@ -22,7 +22,7 @@ async function confirmarCadastroTeste(post, email, tipoUsuario) {
       const tokenCadastro = /#cadastro=([0-9a-f-]{36})/i.exec(Text)?.[1];
       assert.ok(tokenCadastro, 'Link de confirmação ausente no e-mail de teste.');
       await post('/cadastros/confirmar', { token: tokenCadastro, tipoUsuario });
-      return { tokenCadastro, versaoTermos: '2026-11-19' };
+      return { tokenCadastro, versaoTermos: '2026-11-22' };
     }
     await aguardar(500);
   } while (Date.now() < limite);

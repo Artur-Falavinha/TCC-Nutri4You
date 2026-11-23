@@ -1,5 +1,6 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.service.PrivacidadeService;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.TipoTokenEmail;
 import com.nutri4you.backend.model.TokenEmail;
@@ -51,10 +52,14 @@ class AuthEmailControllerTest {
     @Autowired
     private TokenService tokenService;
 
+    @Autowired
+    private PrivacidadeService privacidade;
+
     @BeforeEach
     void seed() {
-        nutricionistaRepository.save(TestDataFactory.nutricionista(passwordEncoder));
-        pacienteRepository.save(TestDataFactory.pacienteConfirmado(passwordEncoder));
+        var nutricionista = nutricionistaRepository.save(TestDataFactory.nutricionista(passwordEncoder));
+        var paciente = pacienteRepository.save(TestDataFactory.pacienteConfirmado(passwordEncoder));
+        TestDataFactory.registrarAceite(privacidade, nutricionista, paciente);
     }
 
     @Test
@@ -319,6 +324,7 @@ class AuthEmailControllerTest {
     }
     private void criarPacientePendenteLegado(String nome, String email, String senha) {
         var paciente = pacienteRepository.save(new Paciente(nome, null, null, null, null, email, passwordEncoder.encode(senha)));
+        TestDataFactory.registrarAceite(privacidade, paciente);
         tokenEmailRepository.save(TokenEmail.criarParaPaciente(
                 paciente, TipoTokenEmail.CONFIRMACAO_EMAIL, LocalDateTime.now().plusHours(1)));
     }

@@ -1,5 +1,6 @@
 package com.nutri4you.backend.support;
 
+import com.nutri4you.backend.service.PrivacidadeService;
 import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
@@ -56,5 +57,11 @@ public final class TestDataFactory {
 
     public static Consulta consulta(Paciente paciente, Nutricionista nutricionista) {
         return new Consulta(paciente, nutricionista, LocalDateTime.now(FUSO_HORARIO));
+    }
+
+    public static void registrarAceite(PrivacidadeService privacidade, Object... titulares) {
+        for (Object titular : titulares) {
+            privacidade.aceitar(titular, PrivacidadeService.VERSAO);
+        }
     }
 }

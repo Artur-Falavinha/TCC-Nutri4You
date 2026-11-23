@@ -37,12 +37,13 @@ class VinculoEPrivacidadeTest extends ClinicalServiceTestSupport {
         assertThat(privacidade.aceitou(paciente)).isFalse();
         assertThatThrownBy(() -> privacidade.aceitar(paciente, "invalida")).isInstanceOf(IllegalArgumentException.class);
         privacidade.aceitar(paciente, PrivacidadeService.VERSAO);
-        var dataOriginal = privacidade.dataAceite(paciente);
-        assertThat(dataOriginal).isNotNull();
+        var aceiteOriginal = privacidade.consultarAceite(paciente);
+        assertThat(aceiteOriginal.versao()).isEqualTo(PrivacidadeService.VERSAO);
+        assertThat(aceiteOriginal.aceitoEm()).isNotNull();
         privacidade.aceitar(paciente, PrivacidadeService.VERSAO);
-        assertThat(privacidade.dataAceite(paciente)).isEqualTo(dataOriginal);
+        assertThat(privacidade.consultarAceite(paciente)).isEqualTo(aceiteOriginal);
         assertThat(privacidade.aceitou(paciente)).isTrue();
         assertThat(privacidade.aceitou(outro)).isFalse();
-        assertThat(privacidade.dataAceite(outro)).isNull();
+        assertThat(privacidade.consultarAceite(outro)).isNull();
     }
 }

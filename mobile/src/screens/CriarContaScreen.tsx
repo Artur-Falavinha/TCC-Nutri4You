@@ -443,9 +443,9 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
             </View>
           </View>
 
-          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(URL_TERMOS).catch(() =>
-            showAlert('Atenção', 'Não foi possível abrir os termos.'))}>
-            <Text style={styles.termosLink}>Ler termos de uso e aviso de privacidade</Text>
+          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`${URL_TERMOS}/${VERSAO_TERMOS}`)
+            .catch(() => showAlert('Atenção', 'Não foi possível abrir os termos.'))}>
+            <Text style={styles.termosLink}>Ler termos de uso e aviso de privacidade (PDF)</Text>
           </Pressable>
           <Pressable style={styles.termosAceite} accessibilityRole="checkbox" accessibilityState={{ checked: aceitouTermos }}
             onPress={() => setAceitouTermos(valor => !valor)}>

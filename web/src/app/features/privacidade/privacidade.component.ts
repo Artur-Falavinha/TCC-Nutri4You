@@ -1,10 +1,9 @@
 import { ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { finalize } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiService } from '../../core/services/api.service';
 
-export const VERSAO_TERMOS = '2026-11-19';
+export const VERSAO_TERMOS = '2026-11-22';
 export const URL_TERMOS = `${environment.apiBaseUrl}/privacidade/termos`;
 interface Aceite { versao: string; aceito: boolean; aceitoEm: string | null }
 
@@ -17,16 +16,15 @@ interface Aceite { versao: string; aceito: boolean; aceitoEm: string | null }
       </div>
       <a class="terms-link" [href]="urlTermos" target="_blank" rel="noopener"><i class="ph ph-file-pdf" aria-hidden="true"></i> Ler termos e aviso de privacidade (PDF)</a>
       @if (aceite; as termos) {
-        @if (!termos.aceito) {
-          <p>Depois de ler os termos, registre seu aceite.</p>
-          <button class="secondary" type="button" [disabled]="ocupado" (click)="aceitar(termos)">Li e aceito os termos</button>
-        } @else {
+        @if (termos.aceito) {
           <p>Termos aceitos - versão {{ formatarVersao(termos.versao) }}.</p>
           @if (termos.aceitoEm && formatarDataAceite(termos.aceitoEm); as data) { <p>Aceito em {{ data }}.</p> }
+        } @else {
+          <p>Nenhum aceite registrado.</p>
         }
       }
-      <p>O canal de privacidade do Nutri4U está sendo definido.</p>
-      <a class="terms-link" href="https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares" target="_blank" rel="noopener">Orientações da ANPD para titulares <i class="ph ph-arrow-square-out" aria-hidden="true"></i></a>
+      <p>Para solicitações sobre seus dados pessoais, entre em contato com a informática da UFPR pelo e-mail <a href="mailto:suporte@ufpr.br">suporte&#64;ufpr.br</a>.</p>
+      <a class="terms-link" href="https://ufpr.br/lgpd/direitos-do-titular/" target="_blank" rel="noopener">Como exercer seus direitos na UFPR <i class="ph ph-arrow-square-out" aria-hidden="true"></i></a>
       @if (mensagem) { <p class="message" role="status">{{ mensagem }}</p> }
     </section>
   `,
@@ -35,8 +33,7 @@ interface Aceite { versao: string; aceito: boolean; aceitoEm: string | null }
     .section-heading { display:flex; gap:16px; align-items:flex-start; margin-bottom:16px; } .icon { display:grid; place-items:center; width:44px; height:44px; flex:none; border-radius:12px; color:#006f1e; background:#eaf4ed; font-size:23px; }
     h2 { margin:0 0 6px; font-size:21px; } p { color:var(--color-text-secondary, #64748b); line-height:1.5; } .section-heading p { margin:0; }
     a { color:#006f1e; font-weight:700; } .terms-link { display:inline-flex; align-items:center; gap:8px; text-decoration:none; min-height:44px; }
-    button { min-height:44px; padding:10px 18px; border-radius:8px; font:inherit; font-weight:700; cursor:pointer; } button:disabled { opacity:.5; cursor:not-allowed; }
-    .secondary { background:white; color:#006f1e; border:1px solid #cbd5d0; } button:focus-visible,a:focus-visible { outline:3px solid #76a785; outline-offset:3px; } .message { color:#b42318; }
+    a:focus-visible { outline:3px solid #76a785; outline-offset:3px; } .message { color:#b42318; }
     @media(max-width:600px) { .card { padding:20px; } }
   `
 })
@@ -46,7 +43,6 @@ export class PrivacidadeComponent implements OnInit {
   private readonly changeDetector = inject(ChangeDetectorRef);
   readonly urlTermos = URL_TERMOS;
   aceite: Aceite | null = null;
-  ocupado = false;
   mensagem = '';
 
   formatarVersao(versao: string): string {
@@ -70,14 +66,4 @@ export class PrivacidadeComponent implements OnInit {
     });
   }
 
-  aceitar(termos: Aceite) {
-    this.ocupado = true;
-    this.mensagem = '';
-    this.api.post<Aceite>('/privacidade/me/termos', { versao: termos.versao, aceito: true })
-      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.ocupado = false; this.changeDetector.markForCheck(); }))
-      .subscribe({
-        next: aceite => { this.aceite = aceite; },
-        error: () => { this.mensagem = 'Não foi possível registrar o aceite. Tente novamente.'; }
-      });
-  }
 }

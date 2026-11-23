@@ -1,6 +1,9 @@
 package com.nutri4you.backend.controller;
 
 import com.nutri4you.backend.security.TokenService;
+import com.nutri4you.backend.service.PrivacidadeService;
+import com.nutri4you.backend.support.TestDataFactory;
+import org.junit.jupiter.api.BeforeEach;
 import com.nutri4you.backend.support.ClinicalServiceTestSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +17,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PlanoAlimentarControllerTest extends ClinicalServiceTestSupport {
     @Autowired MockMvc mvc;
     @Autowired TokenService tokens;
+    @Autowired PrivacidadeService privacidade;
+
+    @BeforeEach
+    void registrarAceites() {
+        TestDataFactory.registrarAceite(privacidade, nutri, paciente);
+    }
+
     @Test void aliasesCompartilhamContratoEAutorizacao() throws Exception {
         var plano = rascunho(hoje(), hoje());
         String nutriToken = "Bearer " + tokens.gerarToken(nutri.getEmail());

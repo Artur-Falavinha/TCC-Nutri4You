@@ -1,5 +1,6 @@
 package com.nutri4you.backend.security;
 
+import com.nutri4you.backend.service.PrivacidadeService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,10 +18,13 @@ public class SecurityFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
     private final DatabaseUserDetailsService userDetailsService;
+    private final PrivacidadeService privacidade;
 
-    public SecurityFilter(TokenService tokenService, DatabaseUserDetailsService userDetailsService) {
+    public SecurityFilter(TokenService tokenService, DatabaseUserDetailsService userDetailsService,
+            PrivacidadeService privacidade) {
         this.tokenService = tokenService;
         this.userDetailsService = userDetailsService;
+        this.privacidade = privacidade;
     }
 
     @Override
@@ -36,7 +40,7 @@ public class SecurityFilter extends OncePerRequestFilter {
             if (!email.isBlank()) {
                 try {
                     UserDetails user = userDetailsService.loadUserByUsername(email);
-                    if (user.isEnabled()) {
+                    if (user.isEnabled() && privacidade.aceitou(user)) {
                         var authentication = new UsernamePasswordAuthenticationToken(
                                 user,
                                 null,

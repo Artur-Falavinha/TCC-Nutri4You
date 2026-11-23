@@ -36,7 +36,7 @@ describe('RegisterPasswordComponent', () => {
       crn: 'CRN8-12345',
       email: 'nutri@teste.com',
       termsAccepted: true,
-      versaoTermos: '2026-11-19'
+      versaoTermos: '2026-11-22'
     });
 
     fixture = TestBed.createComponent(RegisterPasswordComponent);

@@ -1,5 +1,6 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.service.PrivacidadeService;
 import com.nutri4you.backend.model.*;
 import com.nutri4you.backend.repository.*;
 import com.nutri4you.backend.security.TokenService;
@@ -24,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Transactional
 class AnamneseControllerTest {
+    @Autowired PrivacidadeService privacidade;
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
     @Autowired AnamneseCatalog catalog;
@@ -44,6 +46,7 @@ class AnamneseControllerTest {
     @BeforeEach void seed() {
         nutritionist = nutritionists.save(TestDataFactory.nutricionista(encoder));
         patient = patients.save(TestDataFactory.pacienteConfirmado(encoder));
+        TestDataFactory.registrarAceite(privacidade, nutritionist, patient);
         consultations.save(TestDataFactory.consulta(patient, nutritionist));
         relations.save(RelacaoClinica.criar(patient, nutritionist));
         token = "Bearer " + tokens.gerarToken(nutritionist.getEmail());
@@ -69,6 +72,7 @@ class AnamneseControllerTest {
 
     @Test void unrelatedNutritionistCannotReadOrWrite() throws Exception {
         var other = nutritionists.save(TestDataFactory.nutricionistaConfirmado("Outro", "other@example.test", encoder.encode("secret"), "CRN-OTHER"));
+        TestDataFactory.registrarAceite(privacidade, other);
         String otherToken = "Bearer " + tokens.gerarToken(other.getEmail());
         mvc.perform(get(path).header("Authorization", otherToken)).andExpect(status().isForbidden());
         mvc.perform(put(path + "/rascunho").header("Authorization", otherToken)

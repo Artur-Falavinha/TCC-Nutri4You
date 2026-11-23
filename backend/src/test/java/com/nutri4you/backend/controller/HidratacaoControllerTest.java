@@ -1,5 +1,6 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.service.PrivacidadeService;
 import com.nutri4you.backend.model.ConsumoDiario;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.repository.ConsumoDiarioRepository;
@@ -29,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Transactional
 class HidratacaoControllerTest {
+    @Autowired PrivacidadeService privacidade;
     @Autowired MockMvc mvc;
     @Autowired PacienteRepository pacientes;
     @Autowired PasswordEncoder encoder;
@@ -43,6 +45,7 @@ class HidratacaoControllerTest {
     @BeforeEach
     void preparar() {
         paciente = pacientes.save(TestDataFactory.pacienteConfirmado(encoder));
+        TestDataFactory.registrarAceite(privacidade, paciente);
         token = tokens.gerarToken(paciente.getEmail());
     }
 

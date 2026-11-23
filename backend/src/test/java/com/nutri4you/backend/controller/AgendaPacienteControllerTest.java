@@ -1,5 +1,6 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.service.PrivacidadeService;
 import com.jayway.jsonpath.JsonPath;
 import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.Nutricionista;
@@ -40,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Transactional
 class AgendaPacienteControllerTest {
+    @Autowired PrivacidadeService privacidade;
 
     private static final ZoneId FUSO_HORARIO = ZoneId.of("America/Sao_Paulo");
     private static final DateTimeFormatter JSON_DATE_TIME =
@@ -62,6 +64,7 @@ class AgendaPacienteControllerTest {
     void preparar() throws Exception {
         nutricionista = nutricionistas.save(TestDataFactory.nutricionista(encoder));
         paciente = pacientes.save(TestDataFactory.pacienteConfirmado(encoder));
+        TestDataFactory.registrarAceite(privacidade, nutricionista, paciente);
         relacoes.save(RelacaoClinica.criar(paciente, nutricionista));
         var configuracao = new java.util.ArrayList<com.nutri4you.backend.dto.HorarioAtendimentoDTO>();
         for (int dia = 1; dia <= 6; dia++) {

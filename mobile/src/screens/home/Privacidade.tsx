@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { Aceite, URL_TERMOS, aceitarTermos, formatarDataAceite, formatarVersaoTermos, lerAceite } from '../../core/perfil/privacidade';
+import { Aceite, URL_TERMOS, formatarDataAceite, formatarVersaoTermos, lerAceite } from '../../core/perfil/privacidade';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 
 export function Privacidade() {
@@ -24,9 +24,14 @@ export function Privacidade() {
       onPress={() => void executar(() => Linking.openURL(URL_TERMOS))}>
       <Feather name="file-text" size={16} color={colors.brand} /><Text style={styles.linkText}>Ler termos e aviso de privacidade (PDF)</Text>
     </Pressable>
-    <Text style={styles.description}>O canal de privacidade do Nutri4U está sendo definido.</Text>
-    <Pressable style={styles.link} accessibilityRole="link" onPress={() => void executar(() => Linking.openURL('https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares'))}>
-      <Feather name="external-link" size={16} color={colors.brand} /><Text style={styles.linkText}>Orientações da ANPD para titulares</Text>
+    <Text style={styles.description}>
+      Para solicitações sobre seus dados pessoais, entre em contato com a informática da UFPR pelo e-mail{' '}
+      <Text style={styles.linkText} accessibilityRole="link"
+        onPress={() => void executar(() => Linking.openURL('mailto:suporte@ufpr.br'))}>suporte@ufpr.br</Text>.
+    </Text>
+    <Pressable style={styles.link} accessibilityRole="link"
+      onPress={() => void executar(() => Linking.openURL('https://ufpr.br/lgpd/direitos-do-titular/'))}>
+      <Feather name="external-link" size={16} color={colors.brand} /><Text style={styles.linkText}>Como exercer seus direitos na UFPR</Text>
     </Pressable>
     <Pressable style={[styles.secondary, ocupado && styles.disabled]} accessibilityRole="button" disabled={ocupado}
       onPress={() => {
@@ -36,13 +41,9 @@ export function Privacidade() {
       <Text style={styles.secondaryText}>{aceite ? 'Ocultar aceite dos termos' : 'Consultar aceite dos termos'}</Text>
     </Pressable>
     {aceite && <>
-      <Text style={styles.description}>{aceite.aceito ? `Termos aceitos - versão ${formatarVersaoTermos(aceite.versao)}.` : 'Após ler os termos, registre seu aceite.'}</Text>
+      <Text style={styles.description}>{aceite.aceito ? `Termos aceitos - versão ${formatarVersaoTermos(aceite.versao)}.` : 'Nenhum aceite registrado.'}</Text>
       {aceite.aceito && aceite.aceitoEm && formatarDataAceite(aceite.aceitoEm) ?
         <Text style={styles.description}>Aceito em {formatarDataAceite(aceite.aceitoEm)}.</Text> : null}
-      {!aceite.aceito && <Pressable style={styles.primary} accessibilityRole="button" disabled={ocupado}
-        onPress={() => void executar(async () => {
-          setAceite(await aceitarTermos(aceite.versao));
-        })}><Text style={styles.primaryText}>Li e aceito os termos</Text></Pressable>}
     </>}
     {mensagem ? <Text style={styles.description} accessibilityLiveRegion="polite">{mensagem}</Text> : null}
   </View>;
@@ -56,7 +57,5 @@ const styles = StyleSheet.create({
   linkText: { flexShrink: 1, fontFamily: fontFamily.bold, color: colors.brand, fontSize: 14 },
   secondary: { minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center', paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, backgroundColor: colors.white },
   secondaryText: { color: colors.brand, fontFamily: fontFamily.bold },
-  primary: { minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center', paddingHorizontal: spacing.md, borderRadius: radius.sm, backgroundColor: colors.brand },
-  primaryText: { color: colors.white, fontFamily: fontFamily.bold },
   disabled: { opacity: 0.5 }
 });

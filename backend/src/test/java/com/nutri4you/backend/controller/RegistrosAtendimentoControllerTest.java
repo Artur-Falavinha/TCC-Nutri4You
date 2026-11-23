@@ -5,9 +5,11 @@ import com.nutri4you.backend.model.Alimento;
 import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.security.TokenService;
+import com.nutri4you.backend.service.PrivacidadeService;
 import com.nutri4you.backend.support.ClinicalServiceTestSupport;
 import com.nutri4you.backend.support.TestDataFactory;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
@@ -24,6 +26,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class RegistrosAtendimentoControllerTest extends ClinicalServiceTestSupport {
     @Autowired MockMvc mvc;
     @Autowired TokenService tokens;
+    @Autowired PrivacidadeService privacidade;
+
+    @BeforeEach
+    void registrarAceites() {
+        TestDataFactory.registrarAceite(privacidade, nutri, paciente);
+    }
 
     @Test
     void exameFicaNoAtendimentoMesmoComVinculoEPermiteAnaliseAposConclusao() throws Exception {
@@ -91,6 +99,7 @@ class RegistrosAtendimentoControllerTest extends ClinicalServiceTestSupport {
     @Test
     void planoAvulsoNaoPodeMudarDeConsultaEContinuaVisivelAoPaciente() throws Exception {
         var avulso = pacientes.saveAndFlush(TestDataFactory.outroPaciente(encoder));
+        TestDataFactory.registrarAceite(privacidade, avulso);
         var atendimento = avulsa(avulso, 0, true);
         var outroAtendimento = avulsa(avulso, 60, true);
         var alimento = alimentos.saveAndFlush(new Alimento("Feijão", BigDecimal.TEN,

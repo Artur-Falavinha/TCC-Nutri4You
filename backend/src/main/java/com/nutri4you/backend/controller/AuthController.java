@@ -10,6 +10,7 @@ import com.nutri4you.backend.dto.RedefinirSenhaRequest;
 import com.nutri4you.backend.exception.UnauthorizedException;
 import com.nutri4you.backend.security.TokenService;
 import com.nutri4you.backend.service.AuthEmailService;
+import com.nutri4you.backend.service.PrivacidadeService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -43,16 +44,19 @@ public class AuthController {
     private final TokenService tokenService;
     private final AuthEmailService authEmailService;
     private final EmailProperties emailProperties;
+    private final PrivacidadeService privacidade;
 
     public AuthController(
             AuthenticationManager authenticationManager,
             TokenService tokenService,
             AuthEmailService authEmailService,
-            EmailProperties emailProperties) {
+            EmailProperties emailProperties,
+            PrivacidadeService privacidade) {
         this.authenticationManager = authenticationManager;
         this.tokenService = tokenService;
         this.authEmailService = authEmailService;
         this.emailProperties = emailProperties;
+        this.privacidade = privacidade;
     }
 
     @PostMapping("/login")
@@ -61,6 +65,9 @@ public class AuthController {
             var credentials = new UsernamePasswordAuthenticationToken(
                     normalizarEmail(dados.email()), dados.senha());
             var authentication = authenticationManager.authenticate(credentials);
+            if (!privacidade.aceitou(authentication.getPrincipal())) {
+                throw new UnauthorizedException("Sua conta não tem um aceite dos termos de uso registrado.");
+            }
             String tipoUsuario = authentication.getAuthorities().stream()
                     .findFirst()
                     .map(authority -> authority.getAuthority().replace("ROLE_", ""))

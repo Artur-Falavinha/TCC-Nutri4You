@@ -1,5 +1,6 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.service.PrivacidadeService;
 import com.jayway.jsonpath.JsonPath;
 import com.nutri4you.backend.dto.PrescricaoDTO.Nutrientes;
 import com.nutri4you.backend.model.Consulta;
@@ -48,6 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Transactional
 class UsuarioControllerTest {
+    @Autowired PrivacidadeService privacidade;
 
     private static final ZoneId FUSO_HORARIO = ZoneId.of("America/Sao_Paulo");
 
@@ -88,6 +90,7 @@ class UsuarioControllerTest {
     void seed() {
         nutricionista = nutricionistaRepository.save(TestDataFactory.nutricionista(passwordEncoder));
         paciente = pacienteRepository.save(TestDataFactory.pacienteConfirmado(passwordEncoder));
+        TestDataFactory.registrarAceite(privacidade, nutricionista, paciente);
         relacaoClinicaRepository.save(RelacaoClinica.criar(paciente, nutricionista));
     }
 

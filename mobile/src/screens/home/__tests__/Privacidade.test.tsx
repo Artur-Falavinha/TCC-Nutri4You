@@ -6,8 +6,7 @@ import { Privacidade } from '../Privacidade';
 
 jest.mock('../../../core/perfil/privacidade', () => ({
   ...jest.requireActual('../../../core/perfil/privacidade'),
-  lerAceite: jest.fn(),
-  aceitarTermos: jest.fn()
+  lerAceite: jest.fn()
 }));
 
 it('mostra a data registrada e permite ocultar e consultar o aceite novamente', async () => {

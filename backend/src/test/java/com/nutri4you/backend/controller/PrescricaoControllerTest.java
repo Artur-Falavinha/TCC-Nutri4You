@@ -1,5 +1,6 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.service.PrivacidadeService;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -40,6 +41,7 @@ import java.time.ZoneId;
 @AutoConfigureMockMvc
 @Transactional
 class PrescricaoControllerTest {
+    @Autowired PrivacidadeService privacidade;
     @Autowired MockMvc mvc;
     @Autowired PacienteRepository pacientes;
     @Autowired NutricionistaRepository nutricionistas;
@@ -72,6 +74,7 @@ class PrescricaoControllerTest {
                                 "CRN8-88888"));
         paciente = pacientes.save(TestDataFactory.pacienteConfirmado(encoder));
         outro = pacientes.save(TestDataFactory.outroPaciente(encoder));
+        TestDataFactory.registrarAceite(privacidade, nutri, segundo, paciente, outro);
         consultas.save(TestDataFactory.consulta(paciente, nutri));
         consultas.save(TestDataFactory.consulta(paciente, segundo));
         relacoes.save(RelacaoClinica.criar(paciente, nutri));
