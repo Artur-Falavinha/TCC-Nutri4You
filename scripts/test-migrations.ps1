@@ -37,6 +37,8 @@ $v28 = Get-Content (Join-Path $migrations 'V28__exclusao_planos_alimentares.sql'
 $v29 = Get-Content (Join-Path $migrations 'V29__vinculo_por_agendamento_e_nutricionista_demo.sql') -Raw
 $v30 = Get-Content (Join-Path $migrations 'V30__remover_pedido_privacidade.sql') -Raw
 $v31 = Get-Content (Join-Path $migrations 'V31__integridade_escopo_clinico_e_precisao_consumo.sql') -Raw
+$v32 = Get-Content (Join-Path $migrations 'V32__identificar_reagendamento_consulta.sql') -Raw
+$v33 = Get-Content (Join-Path $migrations 'V33__foto_de_perfil.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
 
 $dadosLegadosCpfEPlano = @'
@@ -356,6 +358,23 @@ END;
 $v29
 $v30
 $v31
+$v32
+$v33
+DO `$`$
+BEGIN
+    IF EXISTS (SELECT 1 FROM foto_perfil) THEN
+        RAISE EXCEPTION 'V33 created photos for existing accounts';
+    END IF;
+    INSERT INTO foto_perfil (paciente_id, arquivo) VALUES (1, decode('01', 'hex'));
+    INSERT INTO foto_perfil (nutricionista_id, arquivo) VALUES (1, decode('02', 'hex'));
+    BEGIN
+        INSERT INTO foto_perfil (paciente_id, nutricionista_id, arquivo)
+        VALUES (2, 1, decode('03', 'hex'));
+        RAISE EXCEPTION 'V33 accepted an ambiguous owner';
+    EXCEPTION WHEN check_violation THEN NULL;
+    END;
+END;
+`$`$;
 DO `$`$
 BEGIN
     IF EXISTS (SELECT 1 FROM Relacao_Clinica WHERE solicitada_pelo_paciente) THEN

@@ -8,6 +8,7 @@ import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.c
 import { DataHoraClinicaPipe } from '../../shared/pipes/data-hora-clinica.pipe';
 import { ClinicoService, ConsultaResumo } from '../clinico/clinico.service';
 import { PrivacidadeComponent } from '../privacidade/privacidade.component';
+import { FotoPerfilComponent } from './foto-perfil.component';
 
 interface PreferenciasNotificacao {
   lembretesConsulta: boolean;
@@ -18,7 +19,7 @@ const PADRAO: PreferenciasNotificacao = { lembretesConsulta: true };
 
 @Component({
   selector: 'app-configuracoes',
-  imports: [RouterLink, DataHoraClinicaPipe, PageHeaderComponent, UiButtonComponent, PrivacidadeComponent],
+  imports: [RouterLink, DataHoraClinicaPipe, PageHeaderComponent, UiButtonComponent, PrivacidadeComponent, FotoPerfilComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './configuracoes.component.html',
   styleUrl: './configuracoes.component.css'

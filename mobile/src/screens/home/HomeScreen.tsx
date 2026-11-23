@@ -31,6 +31,7 @@ import { AppHeader } from '../../components/layout/AppHeader';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { SolicitacoesVinculo } from './SolicitacoesVinculo';
 import { Privacidade } from './Privacidade';
+import { FotoPerfil } from './FotoPerfil';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DadosPessoais'>;
 
@@ -176,6 +177,7 @@ export function HomeScreen({ navigation }: Props) {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.titulo}>Dados pessoais</Text>
           <Text style={styles.subtitulo}>Altere nome, telefone, sexo e data de nascimento.</Text>
+          <FotoPerfil />
 
           {carregando ? <ActivityIndicator color="#006f1e" /> : null}
           {erro ? (

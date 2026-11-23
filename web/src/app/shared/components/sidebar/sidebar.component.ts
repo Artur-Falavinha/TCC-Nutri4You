@@ -2,10 +2,11 @@ import { Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
+import { AvatarPerfilComponent } from '../avatar-perfil/avatar-perfil.component';
 
 @Component({
   selector: 'app-sidebar',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, AvatarPerfilComponent],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.css'
 })

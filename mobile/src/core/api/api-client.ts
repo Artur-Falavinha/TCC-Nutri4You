@@ -34,6 +34,10 @@ class ApiClient {
     return this.request<T>(path, { method: 'POST', body });
   }
 
+  async postFormBlob(path: string, body: FormData): Promise<Blob> {
+    return this.request<Blob>(path, { method: 'POST', body }, true);
+  }
+
   async put<T>(path: string, body: unknown): Promise<T> {
     return this.request<T>(path, {
       method: 'PUT',
