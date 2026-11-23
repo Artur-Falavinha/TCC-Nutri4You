@@ -7,12 +7,13 @@ import { finalize, forkJoin, switchMap, throwError } from 'rxjs';
 import { PacientesService } from '../../core/services/pacientes.service';
 import { EstadoVazioComponent } from '../../shared/components/estado-vazio/estado-vazio.component';
 import { PatientTabsComponent } from '../../shared/components/patient-tabs/patient-tabs.component';
+import { TituloPacienteComponent } from '../../shared/components/avatar-paciente/titulo-paciente.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
 import { AtendimentosService } from '../clinico/consultas/consultas.service';
 import { Exame, ExamesService, PaginaExames } from './exames.service';
 
 @Component({
-  selector: 'app-exames', imports: [FormsModule, DatePipe, EstadoVazioComponent, PatientTabsComponent, RouterLink, UiButtonComponent],
+  selector: 'app-exames', imports: [FormsModule, DatePipe, EstadoVazioComponent, PatientTabsComponent, TituloPacienteComponent, RouterLink, UiButtonComponent],
   templateUrl: './exames.component.html', styleUrl: './exames.component.css'
 })
 export class ExamesComponent implements OnInit {

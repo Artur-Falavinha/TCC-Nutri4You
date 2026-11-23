@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { PacientesService } from '../../core/services/pacientes.service';
 import { AnamneseComponent } from './anamnese.component';
 import { AnamneseService } from './anamnese.service';
 import { Anamnese, AnamneseField } from './anamnese.models';
@@ -28,7 +29,12 @@ describe('AnamneseComponent', () => {
     api = jasmine.createSpyObj('AnamneseService', ['fields', 'patients', 'user', 'get', 'save', 'discard']);
     await TestBed.configureTestingModule({
       imports: [AnamneseComponent],
-      providers: [provideRouter([]), { provide: AuthService, useValue: auth }, { provide: AnamneseService, useValue: api }]
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: auth },
+        { provide: AnamneseService, useValue: api },
+        { provide: PacientesService, useValue: { carregarFoto: () => of(null) } }
+      ]
     }).compileComponents();
     fixture = TestBed.createComponent(AnamneseComponent);
     component = fixture.componentInstance;

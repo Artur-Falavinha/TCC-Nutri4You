@@ -1,4 +1,4 @@
-<header class="page-header"><h1>{{ nomePaciente || 'Paciente' }}</h1>@if (atendimentoId === null) { <app-patient-tabs [patientId]="patientId" /> } @else { <a [routerLink]="['/agenda/atendimentos', atendimentoId]">Voltar ao atendimento</a> }</header>
+<header class="page-header"><app-titulo-paciente [nome]="nomePaciente || 'Paciente'" [pacienteId]="nomePaciente ? patientId : null" />@if (atendimentoId === null) { <app-patient-tabs [patientId]="patientId" /> } @else { <a [routerLink]="['/agenda/atendimentos', atendimentoId]">Voltar ao atendimento</a> }</header>
 @let podeAbrirFormulario = atendimentoId === null || podeSolicitar;
 @let semExames = dados?.total === 0;
 @let exibirEstadoVazio = semExames && !carregando && !erro && !formularioAberto;

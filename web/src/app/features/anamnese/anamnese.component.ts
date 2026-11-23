@@ -11,6 +11,7 @@ import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.c
 import { UiCheckboxComponent } from '../../shared/components/ui-checkbox/ui-checkbox.component';
 import { UiSelectComponent, UiSelectOption } from '../../shared/components/ui-select/ui-select.component';
 import { PatientTabsComponent } from '../../shared/components/patient-tabs/patient-tabs.component';
+import { TituloPacienteComponent } from '../../shared/components/avatar-paciente/titulo-paciente.component';
 import { AnamneseService } from './anamnese.service';
 import { Anamnese, AnamneseField, Answers, Answer, Patient } from './anamnese.models';
 import { rotuloOpcaoAnamnese } from './anamnese-rotulos';
@@ -20,7 +21,7 @@ import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog
   selector: 'app-anamnese',
   standalone: true,
   imports: [FormsModule, DatePipe, EstadoVazioComponent, UiButtonComponent, UiCheckboxComponent, UiSelectComponent,
-    PatientTabsComponent, PacienteDialogComponent],
+    PatientTabsComponent, TituloPacienteComponent, PacienteDialogComponent],
   templateUrl: './anamnese.component.html',
   styleUrl: './anamnese.component.css'
 })

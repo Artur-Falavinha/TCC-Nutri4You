@@ -1,6 +1,6 @@
 <section class="workspace workspace--ficha">
   <header class="page-header">
-    <h1>{{ paciente?.nome || 'Paciente' }}</h1>
+    <app-titulo-paciente [nome]="paciente?.nome || 'Paciente'" [pacienteId]="paciente?.id ?? null" />
     @if (paciente) { <app-patient-tabs [patientId]="paciente.id" /> }
   </header>
   <div class="canvas">
@@ -8,10 +8,6 @@
     @else if (!paciente) { <p role="status">Carregando...</p> }
     @else {
       <article class="ficha">
-        <header class="ficha__perfil">
-          <app-avatar-perfil class="ficha__avatar" [url]="fotoUrl" />
-          <p class="ficha__nome">{{ paciente.nome }}</p>
-        </header>
         <section class="ficha__bloco">
           <h2>Última consulta</h2>
           @if (consultaIndisponivel) {

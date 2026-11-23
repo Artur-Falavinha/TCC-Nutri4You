@@ -1,4 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
+import { AvatarPacienteComponent } from '../../shared/components/avatar-paciente/avatar-paciente.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { DataHoraClinicaPipe } from '../../shared/pipes/data-hora-clinica.pipe';
 
@@ -6,7 +7,7 @@ import { Agenda, ClinicoService, Contagem } from '../clinico/clinico.service';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [DataHoraClinicaPipe, PageHeaderComponent],
+  imports: [DataHoraClinicaPipe, PageHeaderComponent, AvatarPacienteComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })

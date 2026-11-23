@@ -78,7 +78,7 @@ describe('ConsultasComponent', () => {
             }
           }
         },
-        { provide: PacientesService, useValue: jasmine.createSpyObj('PacientesService', ['buscarPorId']) },
+        { provide: PacientesService, useValue: jasmine.createSpyObj('PacientesService', { buscarPorId: undefined, carregarFoto: of(null) }) },
         { provide: ConsultasService, useValue: jasmine.createSpyObj('ConsultasService', ['buscar', 'listar', 'salvar', 'acao', 'verificarAcesso']) },
         { provide: AtendimentosService, useValue: atendimentos },
         { provide: AnamneseService, useValue: anamnese },

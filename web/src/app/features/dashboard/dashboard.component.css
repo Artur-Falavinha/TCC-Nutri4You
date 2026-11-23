@@ -114,6 +114,7 @@
 
 .hoje li {
   display: flex;
+  align-items: center;
   gap: 12px;
   padding: 9px 12px;
   border: 1px solid var(--color-border-default);
@@ -123,7 +124,7 @@
 }
 
 .hoje time {
-  width: 48px;
+  flex: 0 0 48px;
   color: var(--color-text-muted);
 }
 

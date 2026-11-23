@@ -1,6 +1,6 @@
 <section class="workspace">
   <header class="page-header">
-    <h1>{{ nome || 'Paciente' }}</h1>
+    <app-titulo-paciente [nome]="nome || 'Paciente'" [pacienteId]="nome ? patientId : null" />
     @if (patientId) { <app-patient-tabs [patientId]="patientId" /> }
   </header>
   <div class="canvas">

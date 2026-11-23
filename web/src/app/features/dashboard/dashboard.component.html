@@ -15,6 +15,7 @@
                 @for (item of agenda.hoje; track item.id) {
                   <li>
                     <time [attr.datetime]="item.dataHora">{{ item.dataHora | dataHoraClinica:'hora' }}</time>
+                    <app-avatar-paciente [pacienteId]="item.pacienteId ?? null" />
                     <span>{{ item.pacienteNome }}</span>
                   </li>
                 }

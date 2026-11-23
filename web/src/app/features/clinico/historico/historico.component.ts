@@ -5,6 +5,7 @@ import { forkJoin } from 'rxjs';
 import { PacientesService } from '../../../core/services/pacientes.service';
 import { EstadoVazioComponent } from '../../../shared/components/estado-vazio/estado-vazio.component';
 import { PatientTabsComponent } from '../../../shared/components/patient-tabs/patient-tabs.component';
+import { TituloPacienteComponent } from '../../../shared/components/avatar-paciente/titulo-paciente.component';
 import { formatarDataBr } from '../../../shared/utils/data-br.util';
 import { Avaliacao, ClinicoService, Historico } from '../clinico.service';
 
@@ -45,7 +46,7 @@ interface Barra {
 
 @Component({
   selector: 'app-historico-paciente',
-  imports: [EstadoVazioComponent, PatientTabsComponent],
+  imports: [EstadoVazioComponent, PatientTabsComponent, TituloPacienteComponent],
   templateUrl: './historico.component.html',
   styleUrl: './historico.component.css'
 })

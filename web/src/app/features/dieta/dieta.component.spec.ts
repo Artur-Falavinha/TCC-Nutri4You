@@ -88,8 +88,9 @@ describe('DietaComponent', () => {
   }
 
   beforeEach(async () => {
-    pacientes = jasmine.createSpyObj('PacientesService', ['buscarPorId']);
+    pacientes = jasmine.createSpyObj('PacientesService', ['buscarPorId', 'carregarFoto']);
     pacientes.buscarPorId.and.returnValue(of(paciente));
+    pacientes.carregarFoto.and.returnValue(of(null));
 
     dieta = jasmine.createSpyObj('DietaService', [
       'listarAlimentos',

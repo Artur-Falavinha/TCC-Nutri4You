@@ -1,7 +1,7 @@
 <section class="workspace">
     <header class="patient-header page-header">
       <div>
-        <h1>{{ data?.paciente?.nome || 'Pacientes' }}</h1>
+        <app-titulo-paciente [nome]="data?.paciente?.nome || 'Pacientes'" [pacienteId]="data?.paciente ? patientId : null" />
         @if (hasRoutePatient && patientId) {
           <app-patient-tabs [patientId]="patientId" />
         }

@@ -347,6 +347,7 @@ public class ClinicoService {
     private ConsultaResumoDTO paraConsulta(Consulta consulta) {
         return new ConsultaResumoDTO(
                 consulta.getId(),
+                consulta.getPaciente().getId(),
                 consulta.getPaciente().getNome(),
                 consulta.getDataHora());
     }
