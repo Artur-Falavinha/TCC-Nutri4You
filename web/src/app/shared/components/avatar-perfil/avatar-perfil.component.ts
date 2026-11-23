@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { FotoPerfilService } from '../../../core/services/foto-perfil.service';
 
 @Component({
@@ -8,6 +8,8 @@ import { FotoPerfilService } from '../../../core/services/foto-perfil.service';
   template: `
     @if (foto.url(); as url) {
       <img [src]="url" alt="" />
+    } @else if (iniciais()) {
+      <span>{{ iniciais() }}</span>
     } @else {
       <i class="ph ph-user"></i>
     }
@@ -21,13 +23,21 @@ import { FotoPerfilService } from '../../../core/services/foto-perfil.service';
       place-items: center;
       overflow: hidden;
       border-radius: 50%;
-      background: var(--color-surface-page);
+      background: var(--fundo-avatar, var(--color-surface-page));
       color: var(--color-brand-primary);
       font-size: calc(var(--tamanho-avatar, 2rem) / 2);
     }
     img { width: 100%; height: 100%; object-fit: cover; }
+    span { font-family: var(--font-heading); font-size: 0.85em; font-weight: 700; }
   `
 })
 export class AvatarPerfilComponent {
+  readonly nome = input('');
   protected readonly foto = inject(FotoPerfilService);
+  protected readonly iniciais = computed(() => {
+    const partes = this.nome().trim().split(/\s+/);
+    const primeira = Array.from(partes[0] ?? '')[0] ?? '';
+    const ultima = partes.length > 1 ? (Array.from(partes.at(-1) ?? '')[0] ?? '') : '';
+    return (primeira + ultima).toLocaleUpperCase('pt-BR');
+  });
 }

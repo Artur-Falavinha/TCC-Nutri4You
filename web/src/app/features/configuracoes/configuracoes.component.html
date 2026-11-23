@@ -8,12 +8,7 @@
     </header>
 
     @if (conta(); as usuario) {
-      <app-foto-perfil />
-      <dl class="dados">
-        <div><dt>Nome</dt><dd>{{ usuario.nome }}</dd></div>
-        <div><dt>E-mail</dt><dd>{{ usuario.email }}</dd></div>
-        <div><dt>Perfil</dt><dd><span class="etiqueta">Nutricionista</span></dd></div>
-      </dl>
+      <app-foto-perfil [nome]="usuario.nome" [email]="usuario.email" />
     } @else if (carregandoConta()) {
       <p class="estado" role="status">Carregando seus dados…</p>
     } @else if (erroConta()) {

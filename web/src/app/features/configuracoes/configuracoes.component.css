@@ -47,31 +47,8 @@
 h2, h3 { font-family: var(--font-heading); line-height: var(--leading-tight); }
 h2 { font-size: var(--text-md); }
 h3 { font-size: 1rem; }
-.secundario, .estado, dt { color: var(--color-text-secondary); line-height: 1.5; }
-
-.dados {
-  margin: 0;
-  border-radius: var(--radius-md);
-  background: var(--color-surface-page);
-}
-
-.dados > div {
-  display: grid;
-  grid-template-columns: minmax(4rem, .35fr) minmax(0, 1fr);
-  gap: var(--space-12);
-  align-items: baseline;
-  padding: var(--space-12) var(--space-16);
-}
-
-.dados > div + div, .acao + .acao, .consultas__lista li + li { border-top: 1px solid var(--color-border-default); }
-dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
-.etiqueta {
-  display: inline-block;
-  padding: var(--space-2) var(--space-8);
-  border-radius: var(--radius-sm);
-  color: var(--color-brand-primary-hover);
-  background: var(--config-verde-claro);
-}
+.secundario, .estado { color: var(--color-text-secondary); line-height: 1.5; }
+.acao + .acao, .consultas__lista li + li { border-top: 1px solid var(--color-border-default); }
 
 .acao, .preferencia, .consultas__cabecalho {
   display: flex;
