@@ -1,0 +1,140 @@
+<app-page-header titulo="Configurações" />
+
+<div class="settings">
+  <section class="card" aria-labelledby="conta-titulo" [attr.aria-busy]="carregandoConta()">
+    <header class="card__cabecalho">
+      <span class="icone" aria-hidden="true"><i class="ph ph-user-circle"></i></span>
+      <h2 id="conta-titulo">Dados da conta</h2>
+    </header>
+
+    @if (conta(); as usuario) {
+      <dl class="dados">
+        <div><dt>Nome</dt><dd>{{ usuario.nome }}</dd></div>
+        <div><dt>E-mail</dt><dd>{{ usuario.email }}</dd></div>
+        <div><dt>Perfil</dt><dd><span class="etiqueta">Nutricionista</span></dd></div>
+      </dl>
+    } @else if (carregandoConta()) {
+      <p class="estado" role="status">Carregando seus dados…</p>
+    } @else if (erroConta()) {
+      <p class="feedback feedback--erro" role="alert">{{ erroConta() }}</p>
+      <app-ui-button label="Tentar novamente" variant="secondary" [fullWidth]="false" (click)="carregarConta()" />
+    }
+  </section>
+
+  <section class="card" aria-labelledby="acesso-titulo">
+    <header class="card__cabecalho">
+      <span class="icone" aria-hidden="true"><i class="ph ph-lock-key"></i></span>
+      <h2 id="acesso-titulo">Acesso e agenda</h2>
+    </header>
+
+    <div class="acoes">
+      <div class="acao">
+        <div>
+          <h3>Senha da conta</h3>
+          <p class="secundario">Receba um link de redefinição no e-mail da sua conta.</p>
+        </div>
+        <app-ui-button
+          [label]="enviandoSenha() ? 'Enviando…' : 'Enviar link'"
+          icon="envelope-simple"
+          variant="secondary"
+          [fullWidth]="false"
+          [disabled]="!conta()"
+          [loading]="enviandoSenha()"
+          (click)="solicitarRedefinicao()"
+        />
+        @if (mensagemSenha()) {
+          <p class="feedback feedback--sucesso" role="status">{{ mensagemSenha() }}</p>
+        }
+        @if (erroSenha()) {
+          <p class="feedback feedback--erro" role="alert">{{ erroSenha() }}</p>
+        }
+      </div>
+
+      <div class="acao">
+        <div>
+          <h3>Horários de atendimento</h3>
+          <p class="secundario">Defina quando pacientes podem solicitar consultas.</p>
+        </div>
+        <a class="botao-link" routerLink="/agenda">
+          Editar horários <i class="ph ph-arrow-right" aria-hidden="true"></i>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="notificacoes" aria-labelledby="lembretes-titulo">
+    <header class="card__cabecalho">
+      <span class="icone" aria-hidden="true"><i class="ph ph-bell-ringing"></i></span>
+      <h2 id="lembretes-titulo">Lembretes</h2>
+    </header>
+
+    <label class="preferencia">
+      <span class="preferencia__texto">
+        <strong id="lembretes-rotulo">Lembretes de consulta</strong>
+        <span class="secundario" id="lembretes-descricao">Mostra as consultas de hoje nesta página.</span>
+      </span>
+      <span class="interruptor">
+        <input
+          type="checkbox"
+          role="switch"
+          aria-labelledby="lembretes-rotulo"
+          aria-describedby="lembretes-descricao"
+          [checked]="preferencias.lembretesConsulta"
+          (change)="atualizarLembretes($event)"
+        />
+        <span class="interruptor__trilho" aria-hidden="true"></span>
+        <span class="interruptor__estado" aria-hidden="true">
+          {{ preferencias.lembretesConsulta ? 'Ativado' : 'Desativado' }}
+        </span>
+      </span>
+    </label>
+
+    @if (mensagemPreferencia) {
+      <p class="feedback feedback--sucesso" role="status">{{ mensagemPreferencia }}</p>
+    }
+    @if (erroPreferencia) {
+      <p class="feedback feedback--erro" role="alert">{{ erroPreferencia }}</p>
+    }
+
+    @if (preferencias.lembretesConsulta) {
+      <div class="consultas" [attr.aria-busy]="carregando()">
+        <div class="consultas__cabecalho">
+          <h3>Consultas de hoje</h3>
+          <app-ui-button
+            label="Atualizar"
+            icon="arrow-clockwise"
+            variant="secondary"
+            [fullWidth]="false"
+            [loading]="carregando()"
+            (click)="carregar()"
+          />
+        </div>
+        @if (carregando()) {
+          <p class="estado" role="status">Carregando consultas…</p>
+        } @else if (erro()) {
+          <p class="feedback feedback--erro" role="alert">{{ erro() }}</p>
+        } @else if (!consultas().length) {
+          <p class="estado">Nenhuma consulta marcada para hoje.</p>
+        } @else {
+          <ul class="consultas__lista">
+            @for (consulta of consultas(); track consulta.id) {
+              <li>
+                <time [attr.datetime]="consulta.dataHora">{{ consulta.dataHora | dataHoraClinica:'hora' }}</time>
+                <span>{{ consulta.pacienteNome }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    }
+    <p class="secundario">A preferência vale neste navegador.</p>
+  </section>
+
+  <section class="card" aria-labelledby="privacidade-titulo">
+    <header class="card__cabecalho">
+      <span class="icone" aria-hidden="true"><i class="ph ph-shield-check"></i></span>
+      <h2 id="privacidade-titulo">Privacidade</h2>
+    </header>
+    <app-privacidade />
+  </section>
+</div>

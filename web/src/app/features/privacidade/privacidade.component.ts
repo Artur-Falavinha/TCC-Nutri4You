@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { environment } from '../../../environments/environment';
 import { ApiService } from '../../core/services/api.service';
@@ -9,41 +9,16 @@ interface Aceite { versao: string; aceito: boolean; aceitoEm: string | null }
 
 @Component({
   selector: 'app-privacidade',
-  template: `
-    <section class="card" aria-labelledby="privacidade-titulo">
-      <div class="section-heading"><span class="icon" aria-hidden="true"><i class="ph ph-shield-check"></i></span>
-        <div><h2 id="privacidade-titulo">Privacidade</h2><p>Consulte os termos e veja como exercer seus direitos.</p></div>
-      </div>
-      <a class="terms-link" [href]="urlTermos" target="_blank" rel="noopener"><i class="ph ph-file-pdf" aria-hidden="true"></i> Ler termos e aviso de privacidade (PDF)</a>
-      @if (aceite; as termos) {
-        @if (termos.aceito) {
-          <p>Termos aceitos - versão {{ formatarVersao(termos.versao) }}.</p>
-          @if (termos.aceitoEm && formatarDataAceite(termos.aceitoEm); as data) { <p>Aceito em {{ data }}.</p> }
-        } @else {
-          <p>Nenhum aceite registrado.</p>
-        }
-      }
-      <p>Para solicitações sobre seus dados pessoais, entre em contato com a informática da UFPR pelo e-mail <a href="mailto:suporte@ufpr.br">suporte&#64;ufpr.br</a>.</p>
-      <a class="terms-link" href="https://ufpr.br/lgpd/direitos-do-titular/" target="_blank" rel="noopener">Como exercer seus direitos na UFPR <i class="ph ph-arrow-square-out" aria-hidden="true"></i></a>
-      @if (mensagem) { <p class="message" role="status">{{ mensagem }}</p> }
-    </section>
-  `,
-  styles: `
-    :host { display:block; margin-top:24px; } .card { padding:28px; background:var(--color-surface-card, #fff); border:1px solid var(--color-border-default, #dbe4dc); border-radius:var(--radius-lg, 16px); }
-    .section-heading { display:flex; gap:16px; align-items:flex-start; margin-bottom:16px; } .icon { display:grid; place-items:center; width:44px; height:44px; flex:none; border-radius:12px; color:#006f1e; background:#eaf4ed; font-size:23px; }
-    h2 { margin:0 0 6px; font-size:21px; } p { color:var(--color-text-secondary, #64748b); line-height:1.5; } .section-heading p { margin:0; }
-    a { color:#006f1e; font-weight:700; } .terms-link { display:inline-flex; align-items:center; gap:8px; text-decoration:none; min-height:44px; }
-    a:focus-visible { outline:3px solid #76a785; outline-offset:3px; } .message { color:#b42318; }
-    @media(max-width:600px) { .card { padding:20px; } }
-  `
+  templateUrl: './privacidade.component.html',
+  styleUrl: './privacidade.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PrivacidadeComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly changeDetector = inject(ChangeDetectorRef);
   readonly urlTermos = URL_TERMOS;
-  aceite: Aceite | null = null;
-  mensagem = '';
+  readonly aceite = signal<Aceite | null>(null);
+  readonly erro = signal('');
 
   formatarVersao(versao: string): string {
     const partes = /^(\d{4})-(\d{2})-(\d{2})(?:\.(\d+))?$/.exec(versao);
@@ -59,10 +34,10 @@ export class PrivacidadeComponent implements OnInit {
     }).format(data);
   }
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.api.get<Aceite>('/privacidade/me/termos').pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: aceite => { this.aceite = aceite; this.changeDetector.markForCheck(); },
-      error: () => { this.mensagem = 'Não foi possível consultar o aceite dos termos.'; this.changeDetector.markForCheck(); }
+      next: aceite => this.aceite.set(aceite),
+      error: () => this.erro.set('Não foi possível consultar o aceite dos termos.')
     });
   }
 
