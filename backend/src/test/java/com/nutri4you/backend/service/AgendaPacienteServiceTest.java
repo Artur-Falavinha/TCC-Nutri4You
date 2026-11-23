@@ -36,6 +36,7 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
                     assertThat(item.id()).isEqualTo(reserva.id());
                     assertThat(item.pacienteId()).isEqualTo(paciente.getId());
                     assertThat(item.avulsa()).isFalse();
+                    assertThat(item.getTipo()).isEqualTo(NotificacaoConsultaDTO.Tipo.ACOMPANHAMENTO);
                 });
     }
     @Test void recusaFicaVisivelAoPacienteELiberaOHorario() {
@@ -65,6 +66,9 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
         var nova = service.reagendar(paciente, reserva.id(), new ReagendarConsultaRequest(dia.plusWeeks(1).atTime(9, 45), confirmada.versao()));
         assertThat(nova.status()).isEqualTo("AGUARDANDO_CONFIRMACAO");
         assertThat(nova.versao()).isGreaterThan(confirmada.versao());
+        assertThat(atendimento.listarNotificacoes(nutri))
+                .singleElement().extracting(NotificacaoConsultaDTO::getTipo)
+                .isEqualTo(NotificacaoConsultaDTO.Tipo.REAGENDAMENTO);
         assertThat(service.disponibilidade(paciente, nutri.getId(), dia).horarios()).contains(dia.atTime(9, 0));
     }
 
@@ -192,6 +196,9 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
         var reserva = service.solicitar(semVinculo, new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 0)));
         assertThat(reserva.status()).isEqualTo("AGUARDANDO_CONFIRMACAO");
         assertThat(reserva.avulsa()).isTrue();
+        assertThat(atendimento.listarNotificacoes(nutri))
+                .singleElement().extracting(NotificacaoConsultaDTO::getTipo)
+                .isEqualTo(NotificacaoConsultaDTO.Tipo.PRIMEIRA_CONSULTA);
         assertThat(service.listar(semVinculo)).singleElement().satisfies(pendente -> {
             assertThat(pendente.status()).isEqualTo("AGUARDANDO_CONFIRMACAO");
             assertThat(pendente.avulsa()).isTrue();

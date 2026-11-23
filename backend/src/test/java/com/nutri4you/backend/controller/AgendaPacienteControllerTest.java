@@ -110,6 +110,16 @@ class AgendaPacienteControllerTest {
                 .andExpect(jsonPath("$.data.status").value("AGUARDANDO_CONFIRMACAO"))
                 .andExpect(jsonPath("$.data.dataHora").value(jsonDateTime(horario)));
 
+        mvc.perform(get("/api/v1/agenda-nutricionista/notificacoes")
+                        .header("Authorization", tokenNutricionista))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].pacienteNome").value(paciente.getNome()))
+                .andExpect(jsonPath("$.data[0].tipo").value("ACOMPANHAMENTO"))
+                .andExpect(jsonPath("$.data[0].duracaoMinutos").value(45))
+                .andExpect(jsonPath("$.data[0].cpf").doesNotExist())
+                .andExpect(jsonPath("$.data[0].email").doesNotExist())
+                .andExpect(jsonPath("$.data[0].reagendada").doesNotExist());
+
         mvc.perform(post("/api/v1/agenda/consultas")
                         .header("Authorization", tokenPaciente)
                         .contentType(MediaType.APPLICATION_JSON)

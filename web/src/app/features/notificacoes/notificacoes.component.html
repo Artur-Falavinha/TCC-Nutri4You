@@ -41,14 +41,26 @@
           <div class="icone"><i class="ph ph-calendar-plus" aria-hidden="true"></i></div>
           <div class="conteudo">
             <strong>{{ item.pacienteNome }} solicitou uma consulta</strong>
-            <time [attr.datetime]="item.dataHora">{{ item.dataHora | dataHoraClinica }}</time>
-            <span>Solicitação de agendamento</span>
+            <span class="tipo-consulta">{{ rotulosConsulta[item.tipo] || rotulosConsulta.CONSULTA }}</span>
+            <div class="horario-consulta">
+              <time [attr.datetime]="item.dataHora">{{ item.dataHora | dataHoraClinica }}</time>
+              @if (item.duracaoMinutos) {
+                <span><i class="ph ph-clock" aria-hidden="true"></i> {{ item.duracaoMinutos }} min</span>
+              }
+            </div>
           </div>
-          <div class="acoes">
-            <app-ui-button label="Recusar" variant="secondary" [fullWidth]="false"
-              [disabled]="decidindo !== null" (click)="decidir(item, false)" />
-            <app-ui-button label="Confirmar" [fullWidth]="false"
-              [disabled]="decidindo !== null" (click)="decidir(item, true)" />
+          <div class="decisao-consulta">
+            @if (item.avulsa) {
+              <p class="aviso-vinculo"><i class="ph ph-link" aria-hidden="true"></i>
+                <span>Ao confirmar a consulta, você também ativa o vínculo com o paciente.</span>
+              </p>
+            }
+            <div class="acoes">
+              <app-ui-button label="Recusar" variant="secondary" [fullWidth]="false"
+                [disabled]="decidindo !== null" (click)="decidir(item, false)" />
+              <app-ui-button label="Confirmar" [fullWidth]="false"
+                [disabled]="decidindo !== null" (click)="decidir(item, true)" />
+            </div>
           </div>
         </li>
       }

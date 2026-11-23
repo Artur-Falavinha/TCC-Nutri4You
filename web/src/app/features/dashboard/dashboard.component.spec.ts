@@ -14,7 +14,8 @@ const agendaVazia: Agenda = {
   hoje: [], semana: [], totalSemana: 0, sexo: [], faixaEtaria: [], ultimos12Meses: [], totalConsultas12Meses: 0
 };
 const consulta: NotificacaoConsulta = {
-  id: 1, pacienteId: 1, pacienteNome: 'Paciente de teste', dataHora: '2026-11-20T09:00:00', versao: 0
+  id: 1, pacienteId: 1, pacienteNome: 'Paciente de teste', dataHora: '2026-11-20T09:00:00', versao: 0,
+  avulsa: true, tipo: 'PRIMEIRA_CONSULTA', duracaoMinutos: 45
 };
 const vinculo: NotificacaoVinculo = { id: 1, pacienteNome: 'Outro paciente', versao: 0 };
 
@@ -99,6 +100,23 @@ describe('Badge de notificações do nutricionista', () => {
     indisponivel = false;
     const tela = abrir(DashboardComponent);
     expect(tela.nativeElement.querySelector('.badge')?.textContent?.trim()).toBe('2');
+    tela.destroy();
+  }));
+
+  it('distingue as consultas e avisa sobre o vínculo antes do aceite', fakeAsync(() => {
+    consultas = [
+      consulta,
+      { ...consulta, id: 2, avulsa: false, tipo: 'ACOMPANHAMENTO' },
+      { ...consulta, id: 3, avulsa: false, tipo: 'REAGENDAMENTO' },
+      { ...consulta, id: 4, avulsa: false, tipo: 'CONSULTA' }
+    ];
+    const tela = abrir(NotificacoesComponent);
+    const painel: HTMLElement = tela.nativeElement;
+    const rotulos = [...painel.querySelectorAll('.tipo-consulta')].map(item => item.textContent?.trim());
+    expect(rotulos).toEqual(['Primeira consulta', 'Consulta de acompanhamento', 'Reagendamento', 'Solicitação de consulta']);
+    expect(painel.querySelector('.horario-consulta')?.textContent).toContain('45 min');
+    expect(painel.querySelectorAll('.aviso-vinculo').length).toBe(1);
+    expect(painel.querySelector('.aviso-vinculo')?.textContent).toContain('ativa o vínculo com o paciente');
     tela.destroy();
   }));
 });

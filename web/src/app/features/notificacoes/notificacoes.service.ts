@@ -2,12 +2,17 @@ import { Injectable, inject } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 
+export type TipoNotificacaoConsulta = 'PRIMEIRA_CONSULTA' | 'ACOMPANHAMENTO' | 'REAGENDAMENTO' | 'CONSULTA';
+
 export interface NotificacaoConsulta {
   id: number;
   pacienteId: number;
   pacienteNome: string;
   dataHora: string;
   versao: number;
+  avulsa: boolean;
+  tipo: TipoNotificacaoConsulta;
+  duracaoMinutos: number;
 }
 
 export interface NotificacaoVinculo { id: number; pacienteNome: string; versao: number }

@@ -60,6 +60,32 @@ li {
   gap: var(--space-8);
 }
 
+.conteudo .tipo-consulta {
+  justify-self: start;
+  padding: var(--space-2) var(--space-8);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-brand-primary) 8%, white);
+  color: var(--color-brand-primary-hover);
+  font-weight: 600;
+}
+
+.horario-consulta {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-16);
+  row-gap: var(--space-2);
+}
+
+.decisao-consulta { display: grid; justify-items: end; gap: var(--space-8); }
+.aviso-vinculo {
+  display: flex;
+  align-items: start;
+  gap: var(--space-6);
+  max-width: 17rem;
+  color: var(--color-brand-primary-hover);
+  font-size: var(--text-sm);
+}
+
 .vazio {
   padding: var(--space-40) var(--space-16);
   border: var(--border-width-hairline) solid var(--color-border-default);
@@ -84,5 +110,6 @@ li {
 @media (max-width: 48rem) {
   .notificacoes { padding: var(--space-16); }
   li { grid-template-columns: auto minmax(0, 1fr); }
-  .acoes { grid-column: 1 / -1; }
+  .acoes, .decisao-consulta { grid-column: 1 / -1; }
+  .decisao-consulta { justify-items: start; }
 }

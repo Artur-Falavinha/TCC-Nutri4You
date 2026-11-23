@@ -68,7 +68,7 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Integer> {
 
     @Query("""
             select new com.nutri4you.backend.dto.NotificacaoConsultaDTO(
-                c.id, p.id, p.nome, c.dataHora, c.versao, c.avulsa)
+                c.id, p.id, p.nome, c.dataHora, c.versao, c.avulsa, c.reagendada)
             from Consulta c join c.paciente p
             where c.nutricionista.id = :nutricionistaId
             and c.status = 'AGUARDANDO_CONFIRMACAO' and c.dataHora > :agora

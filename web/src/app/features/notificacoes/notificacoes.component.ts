@@ -7,7 +7,7 @@ import { FormAlertComponent } from '../../shared/components/form-alert/form-aler
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
 import { DataHoraClinicaPipe } from '../../shared/pipes/data-hora-clinica.pipe';
-import { NotificacaoConsulta, NotificacaoVinculo, NotificacoesService } from './notificacoes.service';
+import { NotificacaoConsulta, NotificacaoVinculo, NotificacoesService, TipoNotificacaoConsulta } from './notificacoes.service';
 
 @Component({
   selector: 'app-notificacoes',
@@ -19,6 +19,12 @@ export class NotificacoesComponent implements OnInit {
   private readonly service = inject(NotificacoesService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly rotulosConsulta: Record<TipoNotificacaoConsulta, string> = {
+    PRIMEIRA_CONSULTA: 'Primeira consulta',
+    ACOMPANHAMENTO: 'Consulta de acompanhamento',
+    REAGENDAMENTO: 'Reagendamento',
+    CONSULTA: 'Solicitação de consulta'
+  };
   itens: NotificacaoConsulta[] = [];
   vinculos: NotificacaoVinculo[] = [];
   carregando = true;
