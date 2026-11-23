@@ -15,7 +15,8 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
-  Linking
+  Linking,
+  type LayoutRectangle
 } from 'react-native';
 
 import { AuthScreenLayout } from '../components/auth/AuthScreenLayout';
@@ -83,8 +84,10 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
   const [telefone, setTelefone] = useState('');
   const [sexo, setSexo] = useState<SexoOption['value'] | null>(null);
   const [dataNascimento, setDataNascimento] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [sexoMenuOpen, setSexoMenuOpen] = useState(false);
+  const [senhaVisivel, setSenhaVisivel] = useState(false);
+  const [confirmacaoSenhaVisivel, setConfirmacaoSenhaVisivel] = useState(false);
+  const [seletorSexoAberto, setSeletorSexoAberto] = useState(false);
+  const [areaCampoSexo, setAreaCampoSexo] = useState<LayoutRectangle | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -248,16 +251,18 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
                 style={authFormStyles.input}
                 placeholder="Mínimo 8 caracteres"
                 placeholderTextColor="#94a3b8"
-                secureTextEntry={!showPassword}
+                secureTextEntry={!senhaVisivel}
                 value={senha}
                 onChangeText={setSenha}
               />
               <TouchableOpacity
                 style={styles.iconRight}
-                onPress={() => setShowPassword(!showPassword)}
+                onPress={() => setSenhaVisivel((visivel) => !visivel)}
+                accessibilityRole="button"
+                accessibilityLabel={senhaVisivel ? 'Ocultar senha' : 'Mostrar senha'}
               >
                 <Feather
-                  name={showPassword ? 'eye-off' : 'eye'}
+                  name={senhaVisivel ? 'eye-off' : 'eye'}
                   size={20}
                   color="#64748b"
                 />
@@ -273,10 +278,22 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
                 style={authFormStyles.input}
                 placeholder="Repita a senha"
                 placeholderTextColor="#94a3b8"
-                secureTextEntry={!showPassword}
+                secureTextEntry={!confirmacaoSenhaVisivel}
                 value={confirmarSenha}
                 onChangeText={setConfirmarSenha}
               />
+              <TouchableOpacity
+                style={styles.iconRight}
+                onPress={() => setConfirmacaoSenhaVisivel((visivel) => !visivel)}
+                accessibilityRole="button"
+                accessibilityLabel={confirmacaoSenhaVisivel ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+              >
+                <Feather
+                  name={confirmacaoSenhaVisivel ? 'eye-off' : 'eye'}
+                  size={20}
+                  color="#64748b"
+                />
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -312,12 +329,18 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
             </View>
           </View>
 
-          <View style={authFormStyles.inputGroup}>
+          <View
+            style={authFormStyles.inputGroup}
+            onLayout={(evento) => setAreaCampoSexo(evento.nativeEvent.layout)}
+          >
             <Text style={authFormStyles.label}>SEXO</Text>
             <TouchableOpacity
               style={authFormStyles.inputContainer}
-              onPress={() => setSexoMenuOpen(true)}
+              onPress={() => setSeletorSexoAberto((aberto) => !aberto)}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={`Sexo, ${sexoLabel}`}
+              aria-expanded={seletorSexoAberto}
             >
               <Text
                 style={[
@@ -329,9 +352,46 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
               >
                 {sexoLabel}
               </Text>
-              <Feather name="chevron-down" size={20} color="#64748b" />
+              <Feather name={seletorSexoAberto ? 'chevron-up' : 'chevron-down'} size={20} color="#64748b" />
             </TouchableOpacity>
           </View>
+
+          {seletorSexoAberto && areaCampoSexo && (
+            <View
+              style={[
+                styles.opcoesSexo,
+                {
+                  left: areaCampoSexo.x,
+                  top: areaCampoSexo.y + areaCampoSexo.height + 4,
+                  width: areaCampoSexo.width
+                }
+              ]}
+              accessibilityRole="radiogroup"
+              accessibilityLabel="Opções de sexo"
+            >
+              {SEXO_OPTIONS.map((opcao) => {
+                const selecionada = sexo === opcao.value;
+                return (
+                  <TouchableOpacity
+                    key={opcao.value}
+                    style={[styles.opcaoSexo, selecionada && styles.opcaoSexoSelecionada]}
+                    onPress={() => {
+                      setSexo(opcao.value);
+                      setSeletorSexoAberto(false);
+                    }}
+                    accessibilityRole="radio"
+                    accessibilityLabel={opcao.label}
+                    aria-checked={selecionada}
+                  >
+                    <Text style={[styles.textoOpcaoSexo, selecionada && styles.textoOpcaoSexoSelecionada]}>
+                      {opcao.label}
+                    </Text>
+                    {selecionada && <Feather name="check" size={18} color="#006f1e" />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
 
           <View style={authFormStyles.inputGroup}>
             <Text style={authFormStyles.label}>DATA NASCIMENTO</Text>
@@ -422,39 +482,6 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
         </View>
       </AuthScreenLayout>
 
-      <Modal
-        visible={sexoMenuOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSexoMenuOpen(false)}
-      >
-        <Pressable style={styles.modalBackdrop} onPress={() => setSexoMenuOpen(false)}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Sexo</Text>
-            {SEXO_OPTIONS.map((option) => {
-              const selected = sexo !== null && sexo === option.value;
-              return (
-                <TouchableOpacity
-                  key={option.label}
-                  style={[styles.modalOption, selected && styles.modalOptionSelected]}
-                  onPress={() => {
-                    setSexo(option.value);
-                    setSexoMenuOpen(false);
-                  }}
-                >
-                  <Text
-                    style={[styles.modalOptionText, selected && styles.modalOptionTextSelected]}
-                  >
-                    {option.label}
-                  </Text>
-                  {selected ? <Feather name="check" size={18} color="#006f1e" /> : null}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </Pressable>
-      </Modal>
-
       {showDatePicker && Platform.OS === 'ios' ? (
         <Modal transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
           <Pressable style={styles.modalBackdrop} onPress={() => setShowDatePicker(false)}>
@@ -513,38 +540,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24
   },
-  modalCard: {
+  opcoesSexo: {
+    position: 'absolute',
+    zIndex: 3,
+    elevation: 4,
     backgroundColor: '#ffffff',
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    maxWidth: 440,
-    width: '100%',
-    alignSelf: 'center'
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    padding: 4
   },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#006f1e',
-    paddingHorizontal: 12,
-    paddingVertical: 10
-  },
-  modalOption: {
+  opcaoSexo: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 44,
     paddingHorizontal: 12,
-    paddingVertical: 14,
-    borderRadius: 10
+    paddingVertical: 8,
+    borderRadius: 8
   },
-  modalOptionSelected: {
+  opcaoSexoSelecionada: {
     backgroundColor: 'rgba(0, 111, 30, 0.08)'
   },
-  modalOptionText: {
+  textoOpcaoSexo: {
+    flexShrink: 1,
     fontSize: 15,
     color: '#2d3335'
   },
-  modalOptionTextSelected: {
+  textoOpcaoSexoSelecionada: {
     fontWeight: '700',
     color: '#006f1e'
   },
