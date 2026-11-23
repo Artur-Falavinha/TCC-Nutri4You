@@ -64,11 +64,11 @@ public class GestaoPacienteService {
             paciente = pacienteRepository.findByEmailIgnoreCase(email.trim())
                     .orElseThrow(PacienteNaoEncontradoException::new);
         } else {
-            String cpfDigitos = normalizarCpf(cpf);
-            if (cpfDigitos.isEmpty()) {
+            String cpfDigitos = Paciente.normalizarCpf(cpf);
+            if (cpfDigitos == null) {
                 throw new IllegalArgumentException("CPF inválido.");
             }
-            paciente = pacienteRepository.findByCpfDigitos(cpfDigitos)
+            paciente = pacienteRepository.findByCpfAndCpfOriginalConflitanteIsNull(cpfDigitos)
                     .orElseThrow(PacienteNaoEncontradoException::new);
         }
 
@@ -172,7 +172,4 @@ public class GestaoPacienteService {
                 paciente.getCpf());
     }
 
-    private String normalizarCpf(String cpf) {
-        return cpf.replaceAll("\\D", "");
-    }
 }

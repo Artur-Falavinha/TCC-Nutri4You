@@ -34,6 +34,12 @@ public class ApiExceptionHandler {
                 409, "CONFLITO", exception.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(CpfEmUsoException.class)
+    public ResponseEntity<ApiErrorResponse> handleCpfEmUso(CpfEmUsoException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(
+                409, "CPF_EM_USO", exception.getMessage(), request.getRequestURI()));
+    }
+
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<ApiErrorResponse> handleEdicaoConcorrente(
             ObjectOptimisticLockingFailureException exception, HttpServletRequest request) {

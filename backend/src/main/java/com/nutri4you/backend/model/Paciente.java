@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,8 +16,10 @@ import java.util.Collection;
 import java.util.List;
 
 @Entity
-@Table(name = "Paciente")
+@Table(name = "Paciente", uniqueConstraints = @UniqueConstraint(name = Paciente.RESTRICAO_CPF_UNICO, columnNames = "cpf"))
 public class Paciente implements UserDetails {
+
+    public static final String RESTRICAO_CPF_UNICO = "uq_paciente_cpf";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,8 +29,11 @@ public class Paciente implements UserDetails {
     @Column(nullable = false, length = 150)
     private String nome;
 
-    @Column(length = 14, unique = true)
+    @Column(length = 14)
     private String cpf;
+
+    @Column(name = "cpf_original_conflitante", length = 14, insertable = false, updatable = false)
+    private String cpfOriginalConflitante;
 
     @Column(name = "data_nascimento")
     private LocalDate dataNascimento;
@@ -59,7 +65,7 @@ public class Paciente implements UserDetails {
     public Paciente(String nome, String cpf, LocalDate dataNascimento, String sexo,
                     String telefone, String email, String senha) {
         this.nome = nome;
-        this.cpf = cpf;
+        this.cpf = normalizarCpf(cpf);
         this.dataNascimento = dataNascimento;
         this.sexo = sexo;
         this.telefone = telefone;
@@ -92,7 +98,15 @@ public class Paciente implements UserDetails {
     }
 
     public String getCpf() {
-        return cpf;
+        return cpfOriginalConflitante == null ? cpf : cpfOriginalConflitante;
+    }
+
+    public static String normalizarCpf(String cpf) {
+        if (cpf == null) {
+            return null;
+        }
+        String digitos = cpf.replaceAll("[^0-9]", "");
+        return digitos.isEmpty() ? null : digitos;
     }
 
     public LocalDate getDataNascimento() {

@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -44,6 +45,9 @@ class GestaoPacienteControllerTest {
 
     @Autowired
     private ConsultaRepository consultaRepository;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     @Autowired
     private RelacaoClinicaRepository relacaoClinicaRepository;
@@ -98,10 +102,30 @@ class GestaoPacienteControllerTest {
         String token = loginComoNutricionista();
 
         mockMvc.perform(get("/api/v1/gestao-pacientes/busca")
-                        .param("cpf", "98765432100")
+                        .param("cpf", "987.654.321-00")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.nome").value("Outro Paciente"));
+    }
+
+    @Test
+    void buscaPorCpfLegadoEmConflitoNaoIdentificaConta() throws Exception {
+        jdbc.update("""
+                INSERT INTO paciente (nome, email, senha, cpf, cpf_original_conflitante, email_confirmado)
+                VALUES ('Paciente A', 'cpf-legado-a@example.test', 'senha', '00123456789', '001.234.567-89', TRUE),
+                       ('Paciente B', 'cpf-legado-b@example.test', 'senha', NULL, '00123456789', TRUE)
+                """);
+        String token = loginComoNutricionista();
+
+        mockMvc.perform(get("/api/v1/gestao-pacientes/busca")
+                        .param("cpf", "00123456789")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/v1/gestao-pacientes/busca")
+                        .param("email", "cpf-legado-a@example.test")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.cpf").value("001.234.567-89"));
     }
 
     @Test

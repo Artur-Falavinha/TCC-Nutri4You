@@ -42,21 +42,7 @@ public interface PacienteRepository extends JpaRepository<Paciente, Integer> {
 
 
 
-    Optional<Paciente> findByCpf(String cpf);
-
-
-
-    @Query("""
-
-            SELECT p FROM Paciente p
-
-            WHERE p.cpf IS NOT NULL
-
-              AND REPLACE(REPLACE(REPLACE(p.cpf, '.', ''), '-', ''), ' ', '') = :cpfDigitos
-
-            """)
-
-    Optional<Paciente> findByCpfDigitos(@Param("cpfDigitos") String cpfDigitos);
+    Optional<Paciente> findByCpfAndCpfOriginalConflitanteIsNull(String cpf);
 
 
 

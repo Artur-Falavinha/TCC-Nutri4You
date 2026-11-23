@@ -1,9 +1,12 @@
 package com.nutri4you.backend.service;
 
 import com.nutri4you.backend.dto.PacienteCadastroDTO;
+import com.nutri4you.backend.exception.CpfEmUsoException;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.TipoCadastro;
 import com.nutri4you.backend.repository.PacienteRepository;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,15 +36,31 @@ public class PacienteService {
         PrivacidadeService.exigirVersao(dto.versaoTermos());
         String email = cadastroEmail.consumir(dto.tokenCadastro(), TipoCadastro.PACIENTE, dto.email());
 
-        if (dto.cpf() != null && !dto.cpf().isBlank() && pacientes.existsByCpf(dto.cpf())) {
-            throw new IllegalArgumentException("CPF já está em uso no sistema.");
+        String cpf = Paciente.normalizarCpf(dto.cpf());
+        if (cpf == null && dto.cpf() != null && !dto.cpf().isBlank()) {
+            throw new IllegalArgumentException("CPF inválido.");
+        }
+        if (cpf != null && pacientes.existsByCpf(cpf)) {
+            throw new CpfEmUsoException();
         }
 
-        Paciente paciente = new Paciente(dto.nome().trim(), dto.cpf(), dto.dataNascimento(), dto.sexo(), dto.telefone(),
+        Paciente paciente = new Paciente(dto.nome().trim(), cpf, dto.dataNascimento(), dto.sexo(), dto.telefone(),
                 email, passwordEncoder.encode(dto.senha()));
         paciente.setEmailConfirmado(true);
-        Paciente cadastrado = pacientes.save(paciente);
+        Paciente cadastrado = salvarPaciente(paciente);
         privacidade.aceitar(cadastrado, dto.versaoTermos());
         return cadastrado;
+    }
+
+    private Paciente salvarPaciente(Paciente paciente) {
+        try {
+            return pacientes.saveAndFlush(paciente);
+        } catch (DataIntegrityViolationException erro) {
+            if (erro.getCause() instanceof ConstraintViolationException violacao
+                    && Paciente.RESTRICAO_CPF_UNICO.equals(violacao.getConstraintName())) {
+                throw new CpfEmUsoException();
+            }
+            throw erro;
+        }
     }
 }

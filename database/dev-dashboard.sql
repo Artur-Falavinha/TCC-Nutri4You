@@ -25,22 +25,22 @@ DELETE FROM paciente WHERE email ~ '^paciente[0-9]+@teste\.com$';
 
 INSERT INTO paciente (nome, cpf, data_nascimento, sexo, telefone, email, senha, email_confirmado)
 VALUES
-    ('Ana Paula Souza', '900.111.222-01', DATE '2010-05-01', 'Feminino', '41990000001', 'paciente1@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-    ('Carlos Mendes', '900.111.222-02', DATE '2009-03-12', 'Masculino', '41990000002', 'paciente2@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-    ('Mariana Rocha', '900.111.222-03', DATE '2001-01-15', 'Feminino', '41990000003', 'paciente3@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-    (U&'Jo\00e3o Pedro Lima', '900.111.222-04', DATE '1998-06-20', 'Masculino', '41990000004', 'paciente4@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-    ('Fernanda Dias', '900.111.222-05', DATE '1992-02-02', 'Feminino', '41990000005', 'paciente5@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-    ('Ricardo Alves', '900.111.222-06', DATE '1988-11-11', 'Masculino', '41990000006', 'paciente6@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-    ('Beatriz Nunes', '900.111.222-07', DATE '1982-04-04', 'Feminino', '41990000007', 'paciente7@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-    ('Paulo Henrique', '900.111.222-08', DATE '1978-08-08', 'Masculino', '41990000008', 'paciente8@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-    (U&'L\00facia Ferreira', '900.111.222-09', DATE '1972-07-07', 'Feminino', '41990000009', 'paciente9@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-    (U&'S\00e9rgio Martins', '900.111.222-10', DATE '1968-09-09', 'Masculino', '41990000010', 'paciente10@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-    ('Helena Costa', '900.111.222-11', DATE '1962-01-21', 'Feminino', '41990000011', 'paciente11@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-    (U&'Ant\00f4nio Ribeiro', '900.111.222-12', DATE '1958-12-12', 'Masculino', '41990000012', 'paciente12@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-    ('Irene Barbosa', '900.111.222-13', DATE '1952-03-03', 'Feminino', '41990000013', 'paciente13@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-    ('Miguel Torres', '900.111.222-14', DATE '1948-05-05', 'Masculino', '41990000014', 'paciente14@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-    ('Olga Pires', '900.111.222-15', DATE '1940-10-10', 'Feminino', '41990000015', 'paciente15@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
-    (U&'Jos\00e9 Carvalho', '900.111.222-16', DATE '1936-02-14', 'Masculino', '41990000016', 'paciente16@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE);
+    ('Ana Paula Souza', '90011122201', DATE '2010-05-01', 'Feminino', '41990000001', 'paciente1@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+    ('Carlos Mendes', '90011122202', DATE '2009-03-12', 'Masculino', '41990000002', 'paciente2@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+    ('Mariana Rocha', '90011122203', DATE '2001-01-15', 'Feminino', '41990000003', 'paciente3@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+    (U&'Jo\00e3o Pedro Lima', '90011122204', DATE '1998-06-20', 'Masculino', '41990000004', 'paciente4@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+    ('Fernanda Dias', '90011122205', DATE '1992-02-02', 'Feminino', '41990000005', 'paciente5@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+    ('Ricardo Alves', '90011122206', DATE '1988-11-11', 'Masculino', '41990000006', 'paciente6@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+    ('Beatriz Nunes', '90011122207', DATE '1982-04-04', 'Feminino', '41990000007', 'paciente7@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+    ('Paulo Henrique', '90011122208', DATE '1978-08-08', 'Masculino', '41990000008', 'paciente8@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+    (U&'L\00facia Ferreira', '90011122209', DATE '1972-07-07', 'Feminino', '41990000009', 'paciente9@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+    (U&'S\00e9rgio Martins', '90011122210', DATE '1968-09-09', 'Masculino', '41990000010', 'paciente10@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+    ('Helena Costa', '90011122211', DATE '1962-01-21', 'Feminino', '41990000011', 'paciente11@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+    (U&'Ant\00f4nio Ribeiro', '90011122212', DATE '1958-12-12', 'Masculino', '41990000012', 'paciente12@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+    ('Irene Barbosa', '90011122213', DATE '1952-03-03', 'Feminino', '41990000013', 'paciente13@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+    ('Miguel Torres', '90011122214', DATE '1948-05-05', 'Masculino', '41990000014', 'paciente14@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+    ('Olga Pires', '90011122215', DATE '1940-10-10', 'Feminino', '41990000015', 'paciente15@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE),
+    (U&'Jos\00e9 Carvalho', '90011122216', DATE '1936-02-14', 'Masculino', '41990000016', 'paciente16@teste.com', '$2a$10$XURPShQNCsLjp1ESc2laoObo9QZDhxz73hJPaEv7/cBha4pk0AgP.', TRUE);
 
 INSERT INTO relacao_clinica (id_paciente, id_nutricionista, status)
 SELECT p.id_paciente, n.id_nutricionista, 'ATIVA'
