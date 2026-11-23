@@ -1,59 +1,104 @@
-import { discardPeriodicTasks, fakeAsync, TestBed, tick } from '@angular/core/testing';
+import { Type } from '@angular/core';
+import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
+import { ApiService } from '../../core/services/api.service';
+import { AuthService } from '../../core/services/auth.service';
 import { Agenda, ClinicoService } from '../clinico/clinico.service';
-import { NotificacaoConsulta, NotificacoesService } from '../notificacoes/notificacoes.service';
+import { NotificacoesComponent } from '../notificacoes/notificacoes.component';
+import { NotificacaoConsulta, NotificacaoVinculo } from '../notificacoes/notificacoes.service';
 import { DashboardComponent } from './dashboard.component';
 
 const agendaVazia: Agenda = {
   hoje: [], semana: [], totalSemana: 0, sexo: [], faixaEtaria: [], ultimos12Meses: [], totalConsultas12Meses: 0
 };
+const consulta: NotificacaoConsulta = {
+  id: 1, pacienteId: 1, pacienteNome: 'Paciente de teste', dataHora: '2026-11-20T09:00:00', versao: 0
+};
+const vinculo: NotificacaoVinculo = { id: 1, pacienteNome: 'Outro paciente', versao: 0 };
 
-function solicitacao(id: number): NotificacaoConsulta {
-  return { id, pacienteId: id, pacienteNome: `Paciente ${id}`, dataHora: '2026-11-20T09:00:00', versao: 0 };
-}
+describe('Badge de notificações do nutricionista', () => {
+  let usuarioId: number;
+  let consultas: NotificacaoConsulta[];
+  let vinculos: NotificacaoVinculo[];
+  let indisponivel: boolean;
 
-describe('DashboardComponent — solicitações de consulta pendentes', () => {
-  function criar(itens: NotificacaoConsulta[]) {
+  beforeEach(() => {
+    usuarioId = 910761;
+    consultas = [consulta];
+    vinculos = [vinculo];
+    indisponivel = false;
     TestBed.configureTestingModule({
-      imports: [DashboardComponent],
+      imports: [DashboardComponent, NotificacoesComponent],
       providers: [
         provideRouter([]),
         { provide: ClinicoService, useValue: { agenda: () => of(agendaVazia) } },
-        { provide: NotificacoesService, useValue: { listar: () => of(itens), listarVinculos: () => of([]) } }
+        { provide: AuthService, useValue: { fetchMe: () => of({ id: usuarioId }) } },
+        { provide: ApiService, useValue: {
+          get: (rota: string) => indisponivel
+            ? throwError(() => ({ message: 'Notificações indisponíveis' }))
+            : of(rota.endsWith('/vinculos') ? vinculos : consultas)
+        } }
       ]
     });
-    const fixture = TestBed.createComponent(DashboardComponent);
-    fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    for (const id of [910761, 910762]) {
+      localStorage.removeItem(`nutri4you.notificacoes.vistas.${id}`);
+    }
+  });
+
+  function abrir<T>(componente: Type<T>) {
+    const tela = TestBed.createComponent(componente);
+    tela.detectChanges();
     tick(0);
-    fixture.detectChanges();
-    return fixture;
+    tela.detectChanges();
+    return tela;
   }
 
-  it('destaca na tela inicial o aviso com link para as notificações quando há solicitações pendentes', fakeAsync(() => {
-    const fixture = criar([solicitacao(1), solicitacao(2)]);
-
-    const aviso = fixture.nativeElement.querySelector('[data-testid="solicitacoes-pendentes"]') as HTMLAnchorElement;
-    expect(aviso).not.toBeNull();
-    expect(aviso.textContent).toContain('2 solicitações de consulta aguardando sua confirmação');
-    expect(aviso.getAttribute('href')).toBe('/notificacoes');
-    discardPeriodicTasks();
+  it('concentra o aviso no sino com a contagem de consultas e vínculos não vistos', fakeAsync(() => {
+    const tela = abrir(DashboardComponent);
+    const sino: HTMLAnchorElement = tela.nativeElement.querySelector('app-notification-bell a');
+    expect(tela.nativeElement.querySelector('[data-testid="solicitacoes-pendentes"]')).toBeNull();
+    expect(sino.getAttribute('href')).toBe('/notificacoes');
+    expect(sino.getAttribute('aria-label')).toBe('Notificações, 2 não lidas');
+    expect(sino.querySelector('.badge')?.textContent?.trim()).toBe('2');
+    tela.destroy();
   }));
 
-  it('usa o singular quando existe uma única solicitação', fakeAsync(() => {
-    const fixture = criar([solicitacao(1)]);
+  it('limpa o badge após carregar a lista e indica uma nova versão de consulta', fakeAsync(() => {
+    const notificacoes = abrir(NotificacoesComponent);
+    expect(notificacoes.nativeElement.textContent).toContain('Paciente de teste solicitou uma consulta');
+    expect(notificacoes.nativeElement.textContent).toContain('Outro paciente solicitou um vínculo');
+    notificacoes.destroy();
 
-    expect(fixture.nativeElement.querySelector('[data-testid="solicitacoes-pendentes"]').textContent)
-      .toContain('1 solicitação de consulta aguardando sua confirmação');
-    discardPeriodicTasks();
+    const tela = abrir(DashboardComponent);
+    const sino: HTMLAnchorElement = tela.nativeElement.querySelector('app-notification-bell a');
+    expect(sino.querySelector('.badge')).toBeNull();
+    consultas = [{ ...consulta, versao: 1 }];
+    tick(30_000);
+    tela.detectChanges();
+    expect(sino.querySelector('.badge')?.textContent?.trim()).toBe('1');
+    expect(sino.getAttribute('aria-label')).toBe('Notificações, 1 não lida');
+    tela.destroy();
+
+    usuarioId = 910762;
+    const outraConta = abrir(DashboardComponent);
+    expect(outraConta.nativeElement.querySelector('.badge')?.textContent?.trim()).toBe('2');
+    outraConta.destroy();
   }));
 
-  it('não exibe o aviso quando não há solicitações pendentes', fakeAsync(() => {
-    const fixture = criar([]);
+  it('preserva o aviso quando a página de notificações falha ao carregar', fakeAsync(() => {
+    indisponivel = true;
+    const notificacoes = abrir(NotificacoesComponent);
+    expect(notificacoes.nativeElement.textContent).toContain('Notificações indisponíveis');
+    notificacoes.destroy();
 
-    expect(fixture.nativeElement.querySelector('[data-testid="solicitacoes-pendentes"]')).toBeNull();
-    discardPeriodicTasks();
+    indisponivel = false;
+    const tela = abrir(DashboardComponent);
+    expect(tela.nativeElement.querySelector('.badge')?.textContent?.trim()).toBe('2');
+    tela.destroy();
   }));
 });
-

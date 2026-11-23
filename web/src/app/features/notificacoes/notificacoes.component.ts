@@ -2,6 +2,7 @@ import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, forkJoin } from 'rxjs';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
+import { AuthService } from '../../core/services/auth.service';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
@@ -16,6 +17,7 @@ import { NotificacaoConsulta, NotificacaoVinculo, NotificacoesService } from './
 })
 export class NotificacoesComponent implements OnInit {
   private readonly service = inject(NotificacoesService);
+  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   itens: NotificacaoConsulta[] = [];
   vinculos: NotificacaoVinculo[] = [];
@@ -29,10 +31,14 @@ export class NotificacoesComponent implements OnInit {
   carregar(): void {
     this.carregando = true;
     this.erro = '';
-    forkJoin({ consultas: this.service.listar(), vinculos: this.service.listarVinculos() })
+    forkJoin({ usuario: this.auth.fetchMe(), pendentes: this.service.listarPendentes() })
       .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.carregando = false; }))
       .subscribe({
-        next: ({ consultas, vinculos }) => { this.itens = consultas; this.vinculos = vinculos; },
+        next: ({ usuario, pendentes }) => {
+          this.itens = pendentes.consultas;
+          this.vinculos = pendentes.vinculos;
+          this.service.marcarComoVistas(usuario.id, pendentes);
+        },
         error: (erro: ApiErrorResponse) => { this.erro = erro.message || 'Não foi possível carregar as notificações.'; }
       });
   }

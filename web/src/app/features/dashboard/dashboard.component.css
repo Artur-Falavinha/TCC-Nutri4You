@@ -28,47 +28,6 @@
   row-gap: 10px;
 }
 
-.pending-alert {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
-  border: 1px solid #f5c26b;
-  border-radius: 12px;
-  background: #fff7e6;
-  color: #5c3d00;
-  text-decoration: none;
-}
-
-.pending-alert:hover,
-.pending-alert:focus-visible {
-  border-color: #d98e04;
-}
-
-.pending-alert > i {
-  font-size: 1.6rem;
-}
-
-.pending-alert__text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.pending-alert__text small {
-  color: #7a5a1a;
-}
-
-.pending-alert__cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
 .card {
   display: flex;
   flex-direction: column;
