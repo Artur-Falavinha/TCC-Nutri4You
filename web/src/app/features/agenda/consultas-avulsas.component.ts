@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
@@ -10,6 +9,7 @@ import { FormAlertComponent } from '../../shared/components/form-alert/form-aler
 import { criarLinkGoogleAgenda } from './google-calendar-link';
 import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog/paciente-dialog.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
+import { DataHoraClinicaPipe } from '../../shared/pipes/data-hora-clinica.pipe';
 
 interface PreferenciaAgenda {
   aceitaConsultasAvulsas: boolean;
@@ -27,7 +27,7 @@ const SOLICITACOES = '/agenda-nutricionista/solicitacoes-avulsas';
 
 @Component({
   selector: 'app-consultas-avulsas',
-  imports: [DatePipe, FormAlertComponent, RouterLink, PacienteDialogComponent, UiButtonComponent],
+  imports: [DataHoraClinicaPipe, FormAlertComponent, RouterLink, PacienteDialogComponent, UiButtonComponent],
   templateUrl: './consultas-avulsas.component.html',
   styleUrl: './consultas-avulsas.component.css'
 })

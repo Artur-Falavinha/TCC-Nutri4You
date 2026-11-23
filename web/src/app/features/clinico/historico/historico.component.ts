@@ -4,6 +4,7 @@ import { forkJoin } from 'rxjs';
 
 import { PacientesService } from '../../../core/services/pacientes.service';
 import { PatientTabsComponent } from '../../../shared/components/patient-tabs/patient-tabs.component';
+import { formatarDataBr } from '../../../shared/utils/data-br.util';
 import { Avaliacao, ClinicoService, Historico } from '../clinico.service';
 
 type Campo = keyof Pick<Avaliacao,
@@ -148,7 +149,7 @@ export class HistoricoComponent implements OnInit {
   eixo(): { x: number; texto: string }[] {
     return this.cronologica().map((item, index, serie) => ({
       x: this.x(index, serie.length),
-      texto: this.dataCurta(item.dataAvaliacao)
+      texto: formatarDataBr(item.dataAvaliacao.slice(0, 10)).slice(0, 5)
     }));
   }
 
@@ -193,7 +194,7 @@ export class HistoricoComponent implements OnInit {
         acima: y > 48,
         inicio: index === 0,
         fim: index === serie.length - 1,
-        rotulo: this.dataCurta(item.dataAvaliacao),
+        rotulo: formatarDataBr(item.dataAvaliacao.slice(0, 10)),
         valor: texto.valor,
         serie: texto.serie
       }];
@@ -237,7 +238,7 @@ export class HistoricoComponent implements OnInit {
         acima: y > 48,
         inicio: index === 0,
         fim: index === serie.length - 1,
-        rotulo: this.dataCurta(item.dataAvaliacao),
+        rotulo: formatarDataBr(item.dataAvaliacao.slice(0, 10)),
         valor: texto.valor,
         serie: texto.serie,
         cor: this.cores[campo]
@@ -302,14 +303,5 @@ export class HistoricoComponent implements OnInit {
       minimumFractionDigits: casas,
       maximumFractionDigits: casas
     }).format(valor);
-  }
-
-  private dataCurta(iso: string): string {
-    const data = new Date(iso);
-    if (Number.isNaN(data.getTime())) {
-      return iso;
-    }
-    const meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-    return `${String(data.getDate()).padStart(2, '0')}/${meses[data.getMonth()]}`;
   }
 }

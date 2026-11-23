@@ -6,6 +6,7 @@ import { Paciente } from '../../../core/models/paciente.models';
 import { AuthService } from '../../../core/services/auth.service';
 import { PacientesService } from '../../../core/services/pacientes.service';
 import { PatientTabsComponent } from '../../../shared/components/patient-tabs/patient-tabs.component';
+import { formatarDataBr } from '../../../shared/utils/data-br.util';
 import { AnamneseService } from '../../anamnese/anamnese.service';
 import { Answers } from '../../anamnese/anamnese.models';
 import { Consulta, ConsultasService, PaginaConsultas } from '../consultas/consultas.service';
@@ -51,7 +52,7 @@ export class DadosComponent implements OnInit {
         this.consultaIndisponivel = consulta.falhou;
         if (consulta.consulta) {
           this.ultimaConsulta = {
-            data: this.dataPorExtenso(consulta.consulta.dataHora),
+            data: formatarDataBr(consulta.consulta.dataHora.slice(0, 10)) || 'não informada',
             profissional: nutricionista?.nome ?? ''
           };
         }
@@ -75,12 +76,7 @@ export class DadosComponent implements OnInit {
   }
 
   get nascimento(): string {
-    const iso = this.paciente?.dataNascimento;
-    if (!iso) {
-      return 'não informado';
-    }
-    const [ano, mes, dia] = iso.slice(0, 10).split('-');
-    return ano && mes && dia ? `${dia}/${mes}/${ano}` : 'não informado';
+    return formatarDataBr(this.paciente?.dataNascimento) || 'não informado';
   }
 
   get metaPrincipal(): string {
@@ -168,18 +164,6 @@ export class DadosComponent implements OnInit {
     return this.consultas.listar(pacienteId, pagina.pagina + 1).pipe(
       switchMap(seguinte => this.procurarRealizada(pacienteId, seguinte, indice + 1))
     );
-  }
-
-  private dataPorExtenso(iso: string): string {
-    const data = new Date(iso);
-    if (Number.isNaN(data.getTime())) {
-      return iso;
-    }
-    return new Intl.DateTimeFormat('pt-BR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    }).format(data);
   }
 
   private itens(valor: unknown): string[] {

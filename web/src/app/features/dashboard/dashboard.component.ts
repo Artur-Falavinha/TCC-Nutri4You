@@ -1,16 +1,16 @@
-import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { catchError, of, switchMap, timer } from 'rxjs';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { DataHoraClinicaPipe } from '../../shared/pipes/data-hora-clinica.pipe';
 
 import { Agenda, ClinicoService, Contagem } from '../clinico/clinico.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [DatePipe, PageHeaderComponent, RouterLink],
+  imports: [DataHoraClinicaPipe, PageHeaderComponent, RouterLink],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })

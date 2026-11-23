@@ -11,7 +11,9 @@ import { PacientesService } from '../../core/services/pacientes.service';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
 import { PatientTabsComponent } from '../../shared/components/patient-tabs/patient-tabs.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
+import { UiInputComponent } from '../../shared/components/ui-input/ui-input.component';
 import { UiSelectComponent } from '../../shared/components/ui-select/ui-select.component';
+import { dataIsoValida, formatarDataBr } from '../../shared/utils/data-br.util';
 import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog/paciente-dialog.component';
 import { BuscaAlimentosComponent } from './busca-alimentos.component';
 import {
@@ -57,7 +59,8 @@ const FORMATO_DATA_CLINICA = new Intl.DateTimeFormat('sv-SE', {
 
 @Component({
   selector: 'app-dieta',
-  imports: [DatePipe, NgTemplateOutlet, FormsModule, RouterLink, PatientTabsComponent, FormAlertComponent, UiButtonComponent, UiSelectComponent, BuscaAlimentosComponent, PacienteDialogComponent],
+  imports: [DatePipe, NgTemplateOutlet, FormsModule, RouterLink, PatientTabsComponent, FormAlertComponent,
+    UiButtonComponent, UiInputComponent, UiSelectComponent, BuscaAlimentosComponent, PacienteDialogComponent],
   templateUrl: './dieta.component.html',
   styleUrl: './dieta.component.css'
 })
@@ -747,8 +750,9 @@ export class DietaComponent implements OnInit {
   }
 
   formatarPeriodo(plano: Plano): string {
-    if (!plano.vigenciaInicio || !plano.vigenciaFim) return 'período sem vigência definida';
-    return `${this.dataLocal(plano.vigenciaInicio)} a ${this.dataLocal(plano.vigenciaFim)}`;
+    const inicio = formatarDataBr(plano.vigenciaInicio);
+    const fim = formatarDataBr(plano.vigenciaFim);
+    return inicio && fim ? `${inicio} a ${fim}` : 'período sem vigência definida';
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -824,7 +828,8 @@ export class DietaComponent implements OnInit {
 
   get vigenciaFimMinima(): string {
     const minima = this.dataMinimaVigencia(this.form.vigenciaFim, this.planoSelecionado?.vigenciaFim);
-    return this.form.vigenciaInicio > minima ? this.form.vigenciaInicio : minima;
+    const inicio = this.form.vigenciaInicio;
+    return dataIsoValida(inicio) && inicio > minima ? inicio : minima;
   }
 
   private dataMinimaVigencia(data: string, original?: string | null): string {
@@ -836,20 +841,31 @@ export class DietaComponent implements OnInit {
     return FORMATO_DATA_CLINICA.format(new Date());
   }
 
+  private validarVigencia(errors: Record<string, string>): void {
+    const { vigenciaInicio, vigenciaFim } = this.form;
+    const inicioValido = dataIsoValida(vigenciaInicio);
+    const formatoInvalido = 'Informe uma data válida no formato DD/MM/AAAA.';
+    if (vigenciaInicio && !inicioValido) {
+      errors['vigenciaInicio'] = formatoInvalido;
+    } else if (vigenciaInicio && vigenciaInicio < this.vigenciaInicioMinima) {
+      errors['vigenciaInicio'] = 'Escolha hoje ou uma data futura.';
+    }
+    if (vigenciaFim && !dataIsoValida(vigenciaFim)) {
+      errors['vigenciaFim'] = formatoInvalido;
+    } else if (vigenciaFim && vigenciaFim < this.vigenciaFimMinima) {
+      errors['vigenciaFim'] = inicioValido && vigenciaFim < vigenciaInicio
+        ? 'O fim deve ser igual ou posterior ao início.'
+        : 'Escolha hoje ou uma data futura.';
+    }
+  }
+
   private validarFormulario(): Record<string, string> {
     const errors: Record<string, string> = {};
     const titulo = this.form.titulo.trim();
     if (!titulo) errors['titulo'] = 'Informe o título do plano.';
     else if (titulo.length > 150) errors['titulo'] = 'Use até 150 caracteres.';
     if (this.form.orientacoes.length > 4000) errors['orientacoes'] = 'Use até 4.000 caracteres.';
-    if (this.form.vigenciaInicio && this.form.vigenciaInicio < this.vigenciaInicioMinima) {
-      errors['vigenciaInicio'] = 'Escolha hoje ou uma data futura.';
-    }
-    if (this.form.vigenciaFim && this.form.vigenciaFim < this.vigenciaFimMinima) {
-      errors['vigenciaFim'] = this.form.vigenciaFim < this.form.vigenciaInicio
-        ? 'O fim deve ser igual ou posterior ao início.'
-        : 'Escolha hoje ou uma data futura.';
-    }
+    this.validarVigencia(errors);
     this.validarMetas(errors);
     if (this.form.refeicoes.length > 140) errors['refeicoes'] = 'Um plano pode conter até 140 refeições.';
     for (const [indice, refeicao] of this.form.refeicoes.entries()) {
@@ -1116,11 +1132,6 @@ export class DietaComponent implements OnInit {
     this.erro = '';
     this.mensagem = '';
     this.errors = {};
-  }
-
-  private dataLocal(iso: string): string {
-    const [ano, mes, dia] = iso.slice(0, 10).split('-');
-    return ano && mes && dia ? `${dia}/${mes}/${ano}` : iso;
   }
 }
 

@@ -94,6 +94,15 @@ describe('ConsultasComponent', () => {
     component.form.medidas.altura = '170';
   });
 
+  it('exibe data e hora da consulta em formato brasileiro e mantém o ISO ao salvar', fakeAsync(() => {
+    tick();
+    fixture.detectChanges();
+    const campo = fixture.nativeElement.querySelector('#dataHora') as HTMLInputElement;
+    expect(campo.value).toBe('15/01/2025 14:30');
+    expect(campo.readOnly).toBeTrue();
+    expect(component.form.payload().dataHora).toBe(atendimentoEmAndamento.dataHora);
+  }));
+
   it('asks before completing an appointment with a draft and preserves it as read only', () => {
     component.salvar();
     fixture.detectChanges();

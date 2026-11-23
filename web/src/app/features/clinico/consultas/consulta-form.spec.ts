@@ -3,6 +3,16 @@ import { ConsultaForm, numero } from './consulta-form';
 describe('ConsultaForm', () => {
   let form: ConsultaForm;
   beforeEach(() => { form = new ConsultaForm(); form.dataHora = '2025-01-15T14:30'; form.status = 'REALIZADA'; });
+
+  it('valida o calendário sem depender do fuso horário do navegador', () => {
+    form.status = 'CONFIRMADA';
+    form.dataHora = '2025-02-29T00:30';
+    expect(form.validar()['dataHora']).toBeDefined();
+    form.dataHora = '2024-02-29T00:30';
+    expect(form.validar()['dataHora']).toBeUndefined();
+    form.dataHora = '2025-04-03T24:00';
+    expect(form.validar()['dataHora']).toBeDefined();
+  });
   it('exige peso e altura para concluir e converte centimetros para metros', () => {
     expect(form.validar()['peso']).toBeTruthy();
     expect(form.validar()['altura']).toBeTruthy();

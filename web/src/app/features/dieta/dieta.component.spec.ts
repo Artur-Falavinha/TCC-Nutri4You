@@ -165,6 +165,8 @@ describe('DietaComponent', () => {
     component.salvar();
 
     expect(dieta.criarPlano).toHaveBeenCalledWith(paciente.id, jasmine.objectContaining({
+      vigenciaInicio: null,
+      vigenciaFim: null,
       metas: { kcal: 1800, proteinas: 225, carboidratos: 135, gorduras: 40 },
       percentuais: { proteinas: 50, carboidratos: 30, gorduras: 20 },
       refeicoes: [{
@@ -378,6 +380,67 @@ describe('DietaComponent', () => {
     expect(dieta.criarPlano).not.toHaveBeenCalled();
     expect(component.errors['vigenciaInicio']).toBeDefined();
     expect(component.errors['vigenciaFim']).toBeDefined();
+  });
+
+  it('exibe a vigência em dia/mês/ano e salva as datas em ISO', async () => {
+    component.abrirNovoRascunho();
+    component.form.titulo = 'Plano';
+    const ano = Number(component.vigenciaInicioMinima.slice(0, 4)) + 1;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const inicio = fixture.nativeElement.querySelector('#vigenciaInicio') as HTMLInputElement;
+    const fim = fixture.nativeElement.querySelector('#vigenciaFim') as HTMLInputElement;
+    expect(inicio.placeholder).toBe('DD/MM/AAAA');
+    inicio.value = `0304${ano}`;
+    inicio.dispatchEvent(new Event('input', { bubbles: true }));
+    fim.value = `05/04/${ano}`;
+    fim.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(inicio.value).toBe(`03/04/${ano}`);
+
+    component.salvar();
+    expect(dieta.criarPlano).toHaveBeenCalledOnceWith(paciente.id,
+      jasmine.objectContaining({ vigenciaInicio: `${ano}-04-03`, vigenciaFim: `${ano}-04-05` }), null);
+  });
+
+  it('não trata vigência incompleta ou impossível como campo vazio', async () => {
+    component.abrirNovoRascunho();
+    component.form.titulo = 'Plano';
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const inicio = fixture.nativeElement.querySelector('#vigenciaInicio') as HTMLInputElement;
+    const fim = fixture.nativeElement.querySelector('#vigenciaFim') as HTMLInputElement;
+    inicio.value = '31/04/2099';
+    inicio.dispatchEvent(new Event('input', { bubbles: true }));
+    fim.value = '12/05';
+    fim.dispatchEvent(new Event('input', { bubbles: true }));
+
+    component.salvar();
+    expect(dieta.criarPlano).not.toHaveBeenCalled();
+    expect(component.errors['vigenciaInicio']).toContain('DD/MM/AAAA');
+    expect(component.errors['vigenciaFim']).toContain('DD/MM/AAAA');
+  });
+
+  it('carrega e preserva a vigência anterior de um rascunho', async () => {
+    const plano = { ...planoSalvo, vigenciaInicio: '2020-02-29', vigenciaFim: '2020-03-01' };
+    dieta.atualizarPlano.and.returnValue(of(plano));
+    component.planoSelecionado = plano;
+    component.abrirEdicao();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const inicio = fixture.nativeElement.querySelector('#vigenciaInicio') as HTMLInputElement;
+    const fim = fixture.nativeElement.querySelector('#vigenciaFim') as HTMLInputElement;
+    expect(inicio.value).toBe('29/02/2020');
+    expect(fim.value).toBe('01/03/2020');
+    expect(component.vigenciaFimMinima).toBe('2020-03-01');
+    expect(component.alterado).toBeFalse();
+
+    component.salvar();
+    expect(dieta.atualizarPlano).toHaveBeenCalledOnceWith(paciente.id, plano.id,
+      jasmine.objectContaining({ vigenciaInicio: plano.vigenciaInicio, vigenciaFim: plano.vigenciaFim }), null);
   });
 
   it('exclui o plano publicado somente após confirmar', () => {

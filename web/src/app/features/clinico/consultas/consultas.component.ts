@@ -11,6 +11,7 @@ import { PatientTabsComponent } from '../../../shared/components/patient-tabs/pa
 import { UiButtonComponent } from '../../../shared/components/ui-button/ui-button.component';
 import { UiInputComponent } from '../../../shared/components/ui-input/ui-input.component';
 import { UiSelectComponent } from '../../../shared/components/ui-select/ui-select.component';
+import { DataHoraClinicaPipe } from '../../../shared/pipes/data-hora-clinica.pipe';
 import { PacienteDialogComponent } from '../../pacientes/components/paciente-dialog/paciente-dialog.component';
 import { AnamneseField } from '../../anamnese/anamnese.models';
 import { AnamneseService } from '../../anamnese/anamnese.service';
@@ -21,7 +22,7 @@ import { criarLinkGoogleAgenda } from '../../agenda/google-calendar-link';
 
 @Component({
   selector: 'app-consultas',
-  imports: [DatePipe, FormsModule, RouterLink, PatientTabsComponent, UiButtonComponent,
+  imports: [DatePipe, DataHoraClinicaPipe, FormsModule, RouterLink, PatientTabsComponent, UiButtonComponent,
     UiInputComponent, UiSelectComponent, FormAlertComponent, PacienteDialogComponent],
   templateUrl: './consultas.component.html',
   styleUrl: './consultas.component.css'

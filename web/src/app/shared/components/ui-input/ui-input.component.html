@@ -8,6 +8,7 @@
   <div
     class="ui-input__control"
     [class.ui-input__control--password]="isPasswordField"
+    [class.ui-input__control--calendario]="campoData && seletorNativoDisponivel && !readonly"
     [class.ui-input__control--leading]="showLeadingIcon"
   >
     @if (showLeadingIcon) {
@@ -17,21 +18,28 @@
       class="ui-input__field"
       [id]="id"
       [type]="resolvedInputType"
-      [placeholder]="placeholder"
+      [placeholder]="campoData && !placeholder ? 'DD/MM/AAAA' : placeholder"
       [value]="value"
       [disabled]="disabled"
       [readOnly]="readonly"
       [required]="required"
-      [attr.inputmode]="inputmode"
-      [attr.maxlength]="maxlength"
-      [attr.min]="min"
-      [attr.max]="max"
+      [attr.inputmode]="campoData ? 'numeric' : inputmode"
+      [attr.maxlength]="campoData ? 10 : maxlength"
       [attr.aria-invalid]="errorMessage ? 'true' : null"
       [attr.aria-describedby]="errorMessage ? id + '-error' : null"
       [autocomplete]="autocomplete"
       (input)="onInput($event)"
       (blur)="onBlur()"
     />
+    @if (campoData && seletorNativoDisponivel && !readonly) {
+      <input #calendario class="ui-input__calendario" type="date" tabindex="-1" aria-hidden="true"
+        [value]="dataIso" [attr.min]="min" [attr.max]="max" [disabled]="disabled"
+        (input)="selecionarData(calendario.value)" />
+      <button class="ui-input__toggle ui-input__toggle--calendario" type="button" [disabled]="disabled"
+        [attr.aria-label]="'Abrir calendário: ' + label" (click)="abrirCalendario(calendario)">
+        <i class="ph ph-calendar-blank" aria-hidden="true"></i>
+      </button>
+    }
     @if (isPasswordField) {
       <button
         class="ui-input__toggle"

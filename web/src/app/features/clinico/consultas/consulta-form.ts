@@ -1,3 +1,4 @@
+import { horarioCivilIso } from '../../../shared/utils/data-br.util';
 import { Consulta, ConsultaPayload, MedidasConsulta } from './consultas.service';
 
 export type CampoMedida = keyof MedidasConsulta;
@@ -152,8 +153,8 @@ export class ConsultaForm {
   }
   validar(): Record<string, string> {
     const errors: Record<string, string> = {};
-    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(this.dataHora)
-      || Number.isNaN(Date.parse(this.dataHora)) || this.dataHora < '1900' || this.dataHora >= '2101') {
+    if (this.dataHora.length !== 16 || !horarioCivilIso(this.dataHora)
+      || this.dataHora < '1900' || this.dataHora >= '2101') {
       errors['dataHora'] = 'Informe uma data e hora válidas, entre 1900 e 2100.';
     } else if (this.status === 'REALIZADA' && !this.iniciada) {
       // Datas de consultas representam o horario civil da clinica, em Sao Paulo.

@@ -71,6 +71,7 @@ th { font-size: 11px; text-transform: uppercase; }
 .field input[aria-invalid="true"], .field textarea[aria-invalid="true"], .icon-action.danger-text:hover { border-color: var(--color-error); }
 .field small, .field-error, .counter, .grams-field, .food-name small, .food-preview small, .food-preview span { font-size: 12px; }
 .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin: 18px 0; }
+.campo-vigencia { min-width: 0; --ui-label-transform: none; --ui-label-spacing: normal; --ui-label-size: inherit; --ui-label-weight: 600; --ui-input-padding: 9px 12px; }
 .required, .field-error, .danger-text, .icon-action.danger-text { color: var(--color-error); }
 .field-error { display: block; font-weight: 400; line-height: 1.4; }
 .counter { display: block; margin-top: 5px; text-align: right; }

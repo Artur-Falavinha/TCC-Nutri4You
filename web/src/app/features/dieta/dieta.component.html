@@ -224,18 +224,12 @@
             @if (errors['titulo']) { <span id="titulo-error" class="field-error" role="alert">{{ errors['titulo'] }}</span> }
           </label>
           <div class="field-grid">
-            <label class="field" for="vigenciaInicio">
-              <span>Início da vigência</span>
-              <input id="vigenciaInicio" name="vigenciaInicio" type="date" [(ngModel)]="form.vigenciaInicio"
-                [min]="vigenciaInicioMinima" [attr.aria-invalid]="!!errors['vigenciaInicio']" />
-              @if (errors['vigenciaInicio']) { <span class="field-error" role="alert">{{ errors['vigenciaInicio'] }}</span> }
-            </label>
-            <label class="field" for="vigenciaFim">
-              <span>Fim da vigência</span>
-              <input id="vigenciaFim" name="vigenciaFim" type="date" [(ngModel)]="form.vigenciaFim"
-                [min]="vigenciaFimMinima" [attr.aria-invalid]="!!errors['vigenciaFim']" />
-              @if (errors['vigenciaFim']) { <span class="field-error" role="alert">{{ errors['vigenciaFim'] }}</span> }
-            </label>
+            <app-ui-input class="campo-vigencia" label="Início da vigência" inputId="vigenciaInicio" name="vigenciaInicio"
+              type="date" [(ngModel)]="form.vigenciaInicio" [min]="vigenciaInicioMinima"
+              [errorMessage]="errors['vigenciaInicio'] || ''" />
+            <app-ui-input class="campo-vigencia" label="Fim da vigência" inputId="vigenciaFim" name="vigenciaFim"
+              type="date" [(ngModel)]="form.vigenciaFim" [min]="vigenciaFimMinima"
+              [errorMessage]="errors['vigenciaFim'] || ''" />
           </div>
           <label class="field" for="orientacoes">
             <span>Orientações</span>

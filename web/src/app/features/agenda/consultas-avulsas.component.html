@@ -31,7 +31,7 @@
           <li class="linha">
             <div>
               <strong>{{ solicitacao.pacienteNome }}</strong>
-              <time [attr.datetime]="solicitacao.dataHora">{{ solicitacao.dataHora | date:'dd/MM/yyyy HH:mm' }}</time>
+              <time [attr.datetime]="solicitacao.dataHora">{{ solicitacao.dataHora | dataHoraClinica }}</time>
             </div>
             <div class="acoes">
               <button class="confirmar" type="button" [disabled]="decidindo" (click)="decidir(solicitacao, true)">Confirmar</button>
@@ -55,7 +55,7 @@
     <ul>
       @for (item of atendimentos; track item.id) {
         <li class="linha">
-          <div><strong>{{ item.pacienteNome }}</strong><time [attr.datetime]="item.dataHora">{{ item.dataHora | date:'dd/MM/yyyy HH:mm' }}</time>
+          <div><strong>{{ item.pacienteNome }}</strong><time [attr.datetime]="item.dataHora">{{ item.dataHora | dataHoraClinica }}</time>
             <span>{{ item.status === 'REALIZADA' ? 'Concluída' : item.iniciadaEm ? 'Em andamento' : 'Confirmada' }}</span></div>
           <div class="acoes">
             @if (!item.iniciadaEm && item.status === 'CONFIRMADA') {

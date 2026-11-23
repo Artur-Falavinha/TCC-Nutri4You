@@ -23,7 +23,7 @@
               <ul class="hoje">
                 @for (item of agenda.hoje; track item.id) {
                   <li>
-                    <time>{{ item.dataHora | date:'HH:mm' }}</time>
+                    <time [attr.datetime]="item.dataHora">{{ item.dataHora | dataHoraClinica:'hora' }}</time>
                     <span>{{ item.pacienteNome }}</span>
                   </li>
                 }

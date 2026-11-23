@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -6,6 +5,7 @@ import { UsuarioInfo } from '../../core/models/auth.models';
 import { AuthService } from '../../core/services/auth.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
+import { DataHoraClinicaPipe } from '../../shared/pipes/data-hora-clinica.pipe';
 import { ClinicoService, ConsultaResumo } from '../clinico/clinico.service';
 import { PrivacidadeComponent } from '../privacidade/privacidade.component';
 
@@ -18,7 +18,7 @@ const PADRAO: PreferenciasNotificacao = { lembretesConsulta: true };
 
 @Component({
   selector: 'app-configuracoes',
-  imports: [RouterLink, DatePipe, PageHeaderComponent, UiButtonComponent, PrivacidadeComponent],
+  imports: [RouterLink, DataHoraClinicaPipe, PageHeaderComponent, UiButtonComponent, PrivacidadeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header titulo="Configurações" />
@@ -95,7 +95,7 @@ const PADRAO: PreferenciasNotificacao = { lembretesConsulta: true };
           @else if (!consultas().length) { <p>Não há consultas marcadas para hoje.</p> }
           @else {
             <ul>@for (consulta of consultas(); track consulta.id) {
-              <li><time [attr.datetime]="consulta.dataHora">{{ consulta.dataHora | date:'HH:mm' }}</time><span>{{ consulta.pacienteNome }}</span></li>
+              <li><time [attr.datetime]="consulta.dataHora">{{ consulta.dataHora | dataHoraClinica:'hora' }}</time><span>{{ consulta.pacienteNome }}</span></li>
             }</ul>
           }
         </div>

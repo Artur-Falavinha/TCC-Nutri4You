@@ -15,7 +15,7 @@
     <app-ui-button label="Tentar novamente" icon="arrow-clockwise" [fullWidth]="false" (click)="carregar()" />
   } @else if (atendimento && !consultaAtual?.iniciadaEm) {
     <h2>Atendimento confirmado</h2>
-    <p>{{ consultaAtual?.dataHora | date:'dd/MM/yyyy HH:mm' }}</p>
+    <p>{{ consultaAtual?.dataHora | dataHoraClinica }}</p>
     <a class="action secondary" routerLink="/agenda">Voltar à agenda</a>
   } @else if (!editor) {
     <div class="toolbar">
@@ -34,7 +34,7 @@
           <div class="consulta-info">
             <i class="ph ph-clipboard-text" aria-hidden="true"></i>
             <div>
-              <h3>{{ consulta.dataHora | date:'dd/MM/yyyy' }} · {{ consulta.dataHora | date:'HH:mm' }}</h3>
+              <h3>{{ consulta.dataHora | dataHoraClinica }}</h3>
               <p class="status" [class.concluida]="consulta.status === 'REALIZADA'"
                 [class.cancelada]="consulta.status === 'CANCELADA'">{{ statusLabel(consulta.status) }}</p>
             </div>
@@ -57,7 +57,7 @@
             }
           </div>
           <a class="action secondary" [routerLink]="['/pacientes', patientId, 'consultas', consulta.id]"
-            [attr.aria-label]="'Abrir consulta de ' + (consulta.dataHora | date:'dd/MM/yyyy HH:mm')">Abrir consulta</a>
+            [attr.aria-label]="'Abrir consulta de ' + (consulta.dataHora | dataHoraClinica)">Abrir consulta</a>
         </article>
       }
     </div>
@@ -92,7 +92,7 @@
         }
       }
       <div class="toolbar">
-        <h2>{{ consultaId ? 'Consulta' : 'Nova consulta' }}@if (consultaId && form.dataHora) { · {{ form.dataHora | date:'dd/MM/yyyy HH:mm' }} }</h2>
+        <h2>{{ consultaId ? 'Consulta' : 'Nova consulta' }}@if (consultaId && form.dataHora) { · {{ form.dataHora | dataHoraClinica }} }</h2>
         <div class="actions">
           @if (podeEditar) { <app-ui-button label="Salvar consulta" icon="check-circle" type="submit" [loading]="salvando" /> }
           @if (consultaAtual && consultaAtual.status === 'CONFIRMADA' && !consultaAtual.iniciadaEm) {
@@ -107,8 +107,8 @@
         <section class="form-section" aria-labelledby="dados-title">
           <h3 id="dados-title">Dados da consulta</h3>
           <div class="fields">
-            <app-ui-input label="Data e hora" type="datetime-local" inputId="dataHora" name="dataHora"
-              [(ngModel)]="form.dataHora" [readonly]="true" [required]="true" min="1900-01-01T00:00" max="2100-12-31T23:59"
+            <app-ui-input label="Data e hora" inputId="dataHora" name="dataHora"
+              [ngModel]="form.dataHora | dataHoraClinica" [readonly]="true" [required]="true"
               [errorMessage]="errors['dataHora'] || ''" />
             <app-ui-select label="Status" selectId="status" name="status" [(ngModel)]="form.status"
               [options]="statusOptions" [required]="true" [errorMessage]="errors['status'] || ''" />
