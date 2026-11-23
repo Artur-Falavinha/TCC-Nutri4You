@@ -6,6 +6,7 @@ import { ActivatedRoute, CanDeactivateFn, Router, RouterLink } from '@angular/ro
 import { catchError, EMPTY, exhaustMap, filter, forkJoin, of, Observable, Subject, take, timer } from 'rxjs';
 import { ApiErrorResponse } from '../../../core/models/api-response.model';
 import { PacientesService } from '../../../core/services/pacientes.service';
+import { EstadoVazioComponent } from '../../../shared/components/estado-vazio/estado-vazio.component';
 import { FormAlertComponent } from '../../../shared/components/form-alert/form-alert.component';
 import { PatientTabsComponent } from '../../../shared/components/patient-tabs/patient-tabs.component';
 import { UiButtonComponent } from '../../../shared/components/ui-button/ui-button.component';
@@ -22,7 +23,7 @@ import { criarLinkGoogleAgenda } from '../../agenda/google-calendar-link';
 
 @Component({
   selector: 'app-consultas',
-  imports: [DatePipe, DataHoraClinicaPipe, FormsModule, RouterLink, PatientTabsComponent, UiButtonComponent,
+  imports: [DatePipe, DataHoraClinicaPipe, FormsModule, RouterLink, EstadoVazioComponent, PatientTabsComponent, UiButtonComponent,
     UiInputComponent, UiSelectComponent, FormAlertComponent, PacienteDialogComponent],
   templateUrl: './consultas.component.html',
   styleUrl: './consultas.component.css'

@@ -17,17 +17,16 @@
     <h2>Atendimento confirmado</h2>
     <p>{{ consultaAtual?.dataHora | dataHoraClinica }}</p>
     <a class="action secondary" routerLink="/agenda">Voltar à agenda</a>
+  } @else if (!editor && lista?.total === 0) {
+    <app-estado-vazio
+      [imagem]="{ url: '/consultas/sem-consultas.webp', largura: 840, altura: 631 }"
+      titulo="Nenhuma consulta registrada"
+      descricao="Os agendamentos e atendimentos deste paciente aparecerão aqui."
+    />
   } @else if (!editor) {
     <div class="toolbar">
       <div><h2>Consultas do paciente</h2><p class="subtitle">{{ lista?.total || 0 }} atendimento(s) registrado(s)</p></div>
-
     </div>
-    @if (!lista?.itens?.length) {
-      <div class="empty state">
-        <i class="ph ph-clipboard-text" aria-hidden="true"></i>
-        <h3>Nenhuma consulta registrada</h3>
-      </div>
-    }
     <div class="consultas-list">
       @for (consulta of lista?.itens; track consulta.id) {
         <article class="consulta-row">
@@ -59,6 +58,8 @@
           <a class="action secondary" [routerLink]="['/pacientes', patientId, 'consultas', consulta.id]"
             [attr.aria-label]="'Abrir consulta de ' + (consulta.dataHora | dataHoraClinica)">Abrir consulta</a>
         </article>
+      } @empty {
+        <p class="state">Nenhuma consulta nesta página.</p>
       }
     </div>
     @if (lista && lista.totalPaginas > 1) {
