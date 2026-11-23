@@ -4,14 +4,19 @@
 </header>
 
 <main class="canvas" [attr.aria-busy]="carregando || salvando || publicando || excluindo">
-  <a class="page-back-action" [routerLink]="atendimentoId === null ? ['/pacientes', patientId, 'consultas'] : ['/agenda/atendimentos', atendimentoId]">
-    <i class="ph ph-arrow-left" aria-hidden="true"></i>
-    {{ atendimentoId === null ? 'Voltar às consultas' : 'Voltar ao atendimento' }}
-  </a>
+  @if (tela === 'detalhe') {
+    <button type="button" class="page-back-action" (click)="voltarParaLista()" [disabled]="excluindo || publicando">
+      <i class="ph ph-arrow-left" aria-hidden="true"></i> Voltar
+    </button>
+  } @else if (tela === 'lista' && atendimentoId !== null) {
+    <a class="page-back-action" [routerLink]="['/agenda/atendimentos', atendimentoId]">
+      <i class="ph ph-arrow-left" aria-hidden="true"></i> Voltar ao atendimento
+    </a>
+  }
   <app-form-alert [message]="erro" type="error" />
   <app-form-alert [message]="mensagem" type="success" />
 
-  @if (tela !== 'lista') {
+  <ng-template #painelDiario>
     <nav class="week-days" aria-label="Dia da semana">
       @for (nome of dias; track nome; let i = $index) {
         <button type="button" class="action secondary" [attr.aria-pressed]="dia === i + 1" (click)="dia = i + 1">{{ nome }}</button>
@@ -27,7 +32,8 @@
         </div>
       }
     </section>
-  }
+  </ng-template>
+
   @if (carregando) {
     <p class="state" role="status">Carregando planos alimentares...</p>
   } @else if (!carregado) {
@@ -41,7 +47,7 @@
         <h2>Planos alimentares</h2>
         <p class="subtitle">{{ planos.length }} plano(s) registrado(s)</p>
       </div>
-      @if (atendimentoId === null || podeEditarAtendimento) { <app-ui-button label="Novo plano" icon="plus-circle" [fullWidth]="false" (click)="abrirNovoRascunho()" /> }
+      @if (planos.length > 0 && (atendimentoId === null || podeEditarAtendimento)) { <app-ui-button label="Novo plano" icon="plus-circle" [fullWidth]="false" (click)="abrirNovoRascunho()" /> }
     </div>
 
     @if (planos.length === 0) {
@@ -80,9 +86,6 @@
     @if (planoSelecionado; as plano) {
     <div class="toolbar detail-toolbar">
       <div>
-        <button type="button" class="text-action" (click)="voltarParaLista()">
-          <i class="ph ph-arrow-left" aria-hidden="true"></i> Planos alimentares
-        </button>
         <div class="detail-title">
           <h2>{{ plano.titulo }}</h2>
           <span class="status" [class.status--draft]="plano.status === 'RASCUNHO'"
@@ -91,15 +94,14 @@
         </div>
       </div>
       <div class="actions">
-        @if (plano.status !== 'SUBSTITUIDO') {
-          <app-ui-button label="Prévia de compras" icon="basket" variant="secondary" [fullWidth]="false" (click)="abrirPreviaListaCompras()" />
-        }
         @if (plano.status === 'RASCUNHO' && (atendimentoId === null || podeEditarAtendimento)) {
-          <app-ui-button label="Editar rascunho" icon="pencil-simple" variant="secondary" [fullWidth]="false" (click)="abrirEdicao()" />
-          <app-ui-button label="Publicar" icon="check-circle" [fullWidth]="false" [loading]="publicando" (click)="publicar()" />
-          <app-ui-button label="Excluir" icon="trash" variant="danger" [fullWidth]="false" [loading]="excluindo" (click)="excluir()" />
+          <app-ui-button label="Editar rascunho" icon="pencil-simple" variant="secondary" [fullWidth]="false" [disabled]="excluindo" (click)="abrirEdicao()" />
+          <app-ui-button label="Publicar" icon="check-circle" [fullWidth]="false" [loading]="publicando" [disabled]="excluindo" (click)="publicar()" />
         } @else if (plano.status !== 'RASCUNHO' && (atendimentoId === null || podeEditarAtendimento)) {
-          <app-ui-button label="Criar novo rascunho" icon="copy" variant="secondary" [fullWidth]="false" (click)="duplicarPlano()" />
+          <app-ui-button label="Criar novo rascunho" icon="copy" variant="secondary" [fullWidth]="false" [disabled]="excluindo" (click)="duplicarPlano()" />
+        }
+        @if (atendimentoId === null || podeEditarAtendimento) {
+          <app-ui-button label="Excluir" icon="trash" variant="danger" [fullWidth]="false" [disabled]="publicando" [loading]="excluindo" (click)="excluir()" />
         }
       </div>
     </div>
@@ -115,6 +117,8 @@
         <div class="guidance"><h4>Orientações</h4><p>{{ plano.orientacoes }}</p></div>
       }
     </section>
+
+    <ng-container [ngTemplateOutlet]="painelDiario" />
 
     @if (plano.metas; as metas) {
       <section class="summary-card" aria-labelledby="goals-title">
@@ -153,7 +157,7 @@
               <p class="empty-inline">Nenhum alimento adicionado.</p>
             } @else {
               <div class="table-scroll">
-                <p class="section-help">Substitutos são informativos. Não entram nos totais do plano nem na prévia de compras.</p>
+                <p class="section-help">Substitutos são informativos. Seus nutrientes são exibidos separadamente.</p>
                 <table>
                   <thead><tr><th>Alimento</th><th>Quantidade</th><th>Energia</th><th>Proteínas</th><th>Carboidratos</th><th>Gorduras</th><th>Fibras</th></tr></thead>
                   <tbody>
@@ -193,6 +197,8 @@
     </section>
     }
   } @else {
+    <ng-container [ngTemplateOutlet]="painelDiario" />
+
     <form (ngSubmit)="salvar()" novalidate>
       <div class="toolbar editor-toolbar">
         <div>
@@ -221,13 +227,13 @@
             <label class="field" for="vigenciaInicio">
               <span>Início da vigência</span>
               <input id="vigenciaInicio" name="vigenciaInicio" type="date" [(ngModel)]="form.vigenciaInicio"
-                [attr.aria-invalid]="!!errors['vigenciaInicio']" />
+                [min]="vigenciaInicioMinima" [attr.aria-invalid]="!!errors['vigenciaInicio']" />
               @if (errors['vigenciaInicio']) { <span class="field-error" role="alert">{{ errors['vigenciaInicio'] }}</span> }
             </label>
             <label class="field" for="vigenciaFim">
               <span>Fim da vigência</span>
               <input id="vigenciaFim" name="vigenciaFim" type="date" [(ngModel)]="form.vigenciaFim"
-                [attr.aria-invalid]="!!errors['vigenciaFim']" />
+                [min]="vigenciaFimMinima" [attr.aria-invalid]="!!errors['vigenciaFim']" />
               @if (errors['vigenciaFim']) { <span class="field-error" role="alert">{{ errors['vigenciaFim'] }}</span> }
             </label>
           </div>
@@ -341,7 +347,7 @@
                           </div>
                           <section class="substitutes-editor" [attr.aria-label]="'Substitutos informativos de ' + (item.alimento?.nome || 'alimento')">
                             <div class="section-heading substitutes-heading">
-                              <div><h5>Substitutos informativos</h5><p class="section-help">Cada substituto tem quantidade e nutrientes próprios. Não altera os totais do plano nem a lista de compras.</p></div>
+                              <div><h5>Substitutos informativos</h5><p class="section-help">Cada substituto tem quantidade e nutrientes próprios.</p></div>
                               <button type="button" class="text-action" (click)="abrirBuscaSubstitutos(refeicao, item)" [disabled]="!item.alimento || item.substitutos.length >= 10" [attr.aria-label]="'Adicionar substituto para ' + (item.alimento?.nome || 'alimento')"><i class="ph ph-plus" aria-hidden="true"></i>Adicionar substituto ({{ item.substitutos.length }}/10)</button>
                             </div>
                             @if (errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-substitutos']) { <p class="field-error" role="alert">{{ errors['refeicao-' + refeicao.chave + '-item-' + item.chave + '-substitutos'] }}</p> }
@@ -414,7 +420,7 @@
     [description]="confirmacao.descricao"
     (fechar)="cancelarConfirmacaoDestrutiva()"
   >
-    <app-ui-button dialogActions label="Cancelar" variant="outline" type="button"
+    <app-ui-button id="cancelar-acao-destrutiva" dialogActions label="Cancelar" variant="outline" type="button"
       [fullWidth]="false" (click)="cancelarConfirmacaoDestrutiva()" />
     <app-ui-button dialogActions [label]="confirmacao.confirmar" variant="danger" type="button"
       [fullWidth]="false" (click)="confirmarAcaoDestrutiva()" />
@@ -452,52 +458,4 @@
     <app-ui-button dialogActions label="Confirmar publicação" type="button"
       [fullWidth]="false" (click)="confirmarPublicacao()" />
   </app-paciente-dialog>
-}
-
-@if (modalListaCompras && planoSelecionado) {
-  <div class="shopping-preview-backdrop">
-    <section class="shopping-preview" role="dialog" aria-modal="true" aria-labelledby="shopping-preview-title" aria-describedby="shopping-preview-help">
-      <header class="shopping-preview__header">
-        <div>
-          <h2 id="shopping-preview-title">Prévia da lista de compras</h2>
-          <p>{{ listaCompras?.planoTitulo || planoSelecionado.titulo }} · versão {{ planoSelecionado.versao }}</p>
-        </div>
-        <button type="button" class="icon-action" aria-label="Fechar prévia da lista de compras" (click)="fecharPreviaListaCompras()"><i class="ph ph-x" aria-hidden="true"></i></button>
-      </header>
-      <p id="shopping-preview-help" class="section-help">A lista usa somente os alimentos principais. As quantidades consideram as refeições previstas nas datas escolhidas dentro da vigência; substitutos são informativos e não entram neste cálculo. Esta visualização não altera as marcações do paciente.</p>
-      <div class="shopping-preview__controls">
-        <label class="field" for="dias-lista-compras"><span>Período da prévia</span>
-          <span class="input-unit"><input id="dias-lista-compras" name="dias-lista-compras" type="number" min="1" max="30" step="1" inputmode="numeric" [ngModelOptions]="{ standalone: true }" [(ngModel)]="diasListaCompras" [attr.aria-invalid]="!periodoListaComprasValido" /><span>dias</span></span>
-        </label>
-        <button type="button" class="action secondary" (click)="carregarListaCompras()" [disabled]="listaComprasCarregando || !periodoListaComprasValido"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i>Atualizar prévia</button>
-      </div>
-      @if (!periodoListaComprasValido) { <p class="field-error" role="alert">Informe um número inteiro entre 1 e 30 dias.</p> }
-      @if (listaComprasErro) { <p class="field-error" role="alert">{{ listaComprasErro }}</p> }
-      @if (listaComprasCarregando) {
-        <p class="state" role="status">Calculando quantidades para {{ diasListaCompras }} dia(s)...</p>
-      } @else if (listaCompras && !listaComprasErro) {
-        <div class="shopping-preview__summary" aria-live="polite">
-          <span>{{ listaCompras.totalItens }} alimento(s)</span>
-          <span>Período: {{ listaCompras.dias }} dia(s)</span>
-        </div>
-        @if (listaCompras.itens.length === 0) {
-          <p class="empty-inline">Este plano ainda não tem alimentos principais para incluir na lista.</p>
-        } @else {
-          <div class="shopping-preview__categories">
-            @for (grupo of itensListaComprasPorCategoria; track grupo.categoria) {
-              <section class="shopping-category" [attr.aria-labelledby]="'shopping-category-' + $index">
-                <h3 [id]="'shopping-category-' + $index">{{ grupo.categoria }}</h3>
-                <ul>
-                  @for (item of grupo.itens; track item.alimentoId) {
-                    <li><span>{{ item.nome }}</span><strong>{{ formatarNutriente(item.quantidadeGramas) }} g</strong></li>
-                  }
-                </ul>
-              </section>
-            }
-          </div>
-        }
-      }
-      <footer class="shopping-preview__footer"><button type="button" class="action secondary" (click)="fecharPreviaListaCompras()">Fechar</button></footer>
-    </section>
-  </div>
 }

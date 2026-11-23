@@ -35,26 +35,27 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
 @Transactional(readOnly = true)
 public class PrescricaoService {
-    private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
     private final GestaoPacienteService acesso;
     private final AtendimentoClinicoService atendimentos;
     private final PlanoAlimentarRepository planos;
     private final AlimentoRepository alimentos;
     private final ListaComprasRepository listas;
     private final EntityManager entityManager;
+    private final Clock relogio;
 
     public PrescricaoService(
             GestaoPacienteService acesso,
@@ -62,13 +63,15 @@ public class PrescricaoService {
             PlanoAlimentarRepository planos,
             AlimentoRepository alimentos,
             ListaComprasRepository listas,
-            EntityManager entityManager) {
+            EntityManager entityManager,
+            Clock relogio) {
         this.acesso = acesso;
         this.atendimentos = atendimentos;
         this.planos = planos;
         this.alimentos = alimentos;
         this.listas = listas;
         this.entityManager = entityManager;
+        this.relogio = relogio;
     }
 
     public List<PlanoDTO> listar(Nutricionista autor, Integer pacienteId, Integer atendimentoId) {
@@ -87,6 +90,7 @@ public class PrescricaoService {
 
     @Transactional
     public PlanoDTO criar(Nutricionista autor, Integer pacienteId, Integer atendimentoId, PlanoRequest request) {
+        entityManager.find(Paciente.class, pacienteId, LockModeType.PESSIMISTIC_WRITE);
         Consulta consulta;
         Paciente paciente;
         Integer consultaId = request == null ? null : request.consultaId();
@@ -98,7 +102,7 @@ public class PrescricaoService {
             validarConsultaDoPlano(consulta, consultaId);
             paciente = consulta.getPaciente();
         }
-        if (consulta != null && planos.existsByConsulta_Id(consulta.getId())) {
+        if (consulta != null && planos.existsByConsulta_IdAndStatusNot(consulta.getId(), PlanoAlimentar.STATUS_EXCLUIDO)) {
             throw new PlanoConflitoException("Consulta já possui um plano alimentar.");
         }
         PlanoAlimentar plano = new PlanoAlimentar(paciente, autor, consulta);
@@ -119,8 +123,12 @@ public class PrescricaoService {
     @Transactional
     public void excluir(Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer id, Long versao) {
         PlanoAlimentar plano = bloquearPlanoParaEdicao(autor, pacienteId, atendimentoId, id);
-        exigirRascunho(plano, versao);
-        planos.delete(plano);
+        exigirVersao(plano, versao);
+        if ("RASCUNHO".equals(plano.getStatus())) {
+            planos.delete(plano);
+        } else {
+            plano.excluir();
+        }
         planos.flush();
     }
 
@@ -149,12 +157,6 @@ public class PrescricaoService {
         validarDias(dias);
         PlanoAlimentar plano = planoAtivo(paciente);
         return plano == null ? null : respostaCompras(plano, dias);
-    }
-
-    public ListaComprasDTO previaCompras(Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer id, int dias) {
-        validarDias(dias);
-        exigirLeitura(autor, pacienteId, atendimentoId);
-        return respostaCompras(exigirPlanoNoEscopo(autor, pacienteId, atendimentoId, id), dias, Map.of());
     }
 
     @Transactional
@@ -259,18 +261,19 @@ public class PrescricaoService {
 
     private PlanoAlimentar bloquearPlanoParaEdicao(
             Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer id) {
+        entityManager.find(Paciente.class, pacienteId, LockModeType.PESSIMISTIC_WRITE);
         if (atendimentoId == null) {
             acesso.exigirAcesso(autor, pacienteId);
         } else {
             atendimentos.exigirEmAndamento(autor, atendimentoId, pacienteId);
         }
-        entityManager.find(Paciente.class, pacienteId, LockModeType.PESSIMISTIC_WRITE);
         return exigirPlanoNoEscopo(autor, pacienteId, atendimentoId, id);
     }
 
     private PlanoAlimentar exigirPlanoNoEscopo(
             Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer id) {
-        return planos.findByIdAndPaciente_IdAndNutricionista_Id(id, pacienteId, autor.getId())
+        return planos.findByIdAndPaciente_IdAndNutricionista_IdAndStatusNot(
+                        id, pacienteId, autor.getId(), PlanoAlimentar.STATUS_EXCLUIDO)
                 .filter(p -> pertenceAoEscopo(p.getConsulta(), atendimentoId))
                 .orElseThrow(PlanoNaoEncontradoException::new);
     }
@@ -297,14 +300,17 @@ public class PrescricaoService {
     }
 
     private void exigirRascunho(PlanoAlimentar plano, Long versao) {
+        exigirVersao(plano, versao);
+        if (!"RASCUNHO".equals(plano.getStatus()))
+            throw new PlanoConflitoException("Somente rascunhos podem ser alterados ou publicados.");
+    }
+
+    private void exigirVersao(PlanoAlimentar plano, Long versao) {
         if (versao == null || versao < 0)
             throw new IllegalArgumentException("Informe a versão atual do plano.");
         if (!versao.equals(plano.getVersao()))
             throw new PlanoConflitoException(
                     "O plano foi alterado. Recarregue antes de continuar.");
-        if (!"RASCUNHO".equals(plano.getStatus()))
-            throw new PlanoConflitoException(
-                    "Somente rascunhos podem ser alterados, excluídos ou publicados.");
     }
 
     private void aplicar(PlanoAlimentar plano, PlanoRequest request) {
@@ -317,6 +323,12 @@ public class PrescricaoService {
                 && request.vigenciaFim().isBefore(request.vigenciaInicio())) {
             throw new IllegalArgumentException(
                     "O fim da vigência deve ser igual ou posterior ao início.");
+        }
+        if (!Objects.equals(plano.getVigenciaInicio(), request.vigenciaInicio())) {
+            validarDataDaVigencia(request.vigenciaInicio(), "Início");
+        }
+        if (!Objects.equals(plano.getVigenciaFim(), request.vigenciaFim())) {
+            validarDataDaVigencia(request.vigenciaFim(), "Fim");
         }
         Nutrientes metas = calcularMetas(request.metas(), request.percentuais());
         if (request.refeicoes() == null || request.refeicoes().size() > 140)
@@ -447,10 +459,17 @@ public class PrescricaoService {
         }
     }
 
+    private void validarDataDaVigencia(LocalDate data, String campo) {
+        if (data != null && data.isBefore(LocalDate.now(relogio))) {
+            throw new IllegalArgumentException(campo + " da vigência deve ser hoje ou uma data futura.");
+        }
+    }
+
     void validarPublicacao(PlanoAlimentar plano) {
         if (plano.getVigenciaInicio() == null || plano.getVigenciaFim() == null)
             throw new IllegalArgumentException(
                     "Publicação exige início e fim da vigência explícitos.");
+        validarDataDaVigencia(plano.getVigenciaInicio(), "Início");
         if (plano.getRefeicoes().isEmpty()
                 || plano.getRefeicoes().stream()
                         .anyMatch(
@@ -470,7 +489,7 @@ public class PrescricaoService {
     }
 
     private PlanoAlimentar planoAtivo(Paciente paciente) {
-        LocalDate hoje = LocalDate.now(FUSO);
+        LocalDate hoje = LocalDate.now(relogio);
         return planos.sobrepostos(paciente.getId(), hoje, hoje).stream().findFirst().orElse(null);
     }
 
@@ -528,7 +547,7 @@ public class PrescricaoService {
                         .toList();
         Nutrientes totais =
                 plano.getRefeicoes().stream()
-                        .filter(r -> r.previstaEm(LocalDate.now(FUSO)))
+                        .filter(r -> r.previstaEm(LocalDate.now(relogio)))
                         .map(this::totalRefeicao)
                         .reduce(Nutrientes.zero(), Nutrientes::somar)
                         .arredondar();
@@ -581,7 +600,7 @@ public class PrescricaoService {
     private ListaComprasDTO respostaCompras(PlanoAlimentar plano, int dias, Map<Integer, Boolean> marcacoes) {
         Map<Integer, BigDecimal> gramas = new LinkedHashMap<>();
         Map<Integer, Alimento> catalogo = new HashMap<>();
-        LocalDate hoje = LocalDate.now(FUSO);
+        LocalDate hoje = LocalDate.now(relogio);
         plano.getRefeicoes()
                 .forEach(
                         r ->

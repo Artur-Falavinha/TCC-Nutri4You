@@ -11,12 +11,14 @@ import java.util.Optional;
 public interface PlanoAlimentarRepository extends JpaRepository<PlanoAlimentar, Integer> {
     List<PlanoAlimentar> findByPaciente_IdOrderByIdDesc(Integer pacienteId);
     List<PlanoAlimentar> findByPaciente_IdAndStatus(Integer pacienteId, String status);
-    Optional<PlanoAlimentar> findByIdAndPaciente_IdAndNutricionista_Id(Integer id, Integer pacienteId, Integer nutricionistaId);
-    boolean existsByConsulta_Id(Integer consultaId);
+    Optional<PlanoAlimentar> findByIdAndPaciente_IdAndNutricionista_IdAndStatusNot(
+            Integer id, Integer pacienteId, Integer nutricionistaId, String status);
+    boolean existsByConsulta_IdAndStatusNot(Integer consultaId, String status);
 
     @Query("""
             select p from PlanoAlimentar p left join p.consulta c
             where p.paciente.id = :pacienteId and p.nutricionista.id = :nutricionistaId
+              and p.status <> 'EXCLUIDO'
               and ((:atendimentoId is null and (c.id is null or c.avulsa = false)) or c.id = :atendimentoId)
             order by p.id desc
             """)

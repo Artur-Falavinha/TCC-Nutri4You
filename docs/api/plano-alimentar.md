@@ -8,6 +8,7 @@ Base `/api/v1`, envelope `ApiResponse`, JWT obrigatório. O nutricionista acessa
 | GET | `/gestao-pacientes/{pacienteId}/planos` | Listar planos do autor |
 | GET | `/gestao-pacientes/{pacienteId}/planos/{planoId}` | Detalhar, incluindo refeições |
 | PUT | `/gestao-pacientes/{pacienteId}/planos/{planoId}` | Editar metadados do rascunho |
+| DELETE | `/gestao-pacientes/{pacienteId}/planos/{planoId}?versao=0` | Excluir plano, usando a versão atual (204) |
 | POST | `/gestao-pacientes/{pacienteId}/planos/{planoId}/publicacao` | Publicar com `{ "versao": 0 }` |
 | GET | `/usuarios/me/dieta-ativa` | Plano vigente; `data: null` quando ausente |
 | GET | `/alimentos?q=arroz&pagina=0` | Busca por palavras do nome, sem distinguir acentos, vírgulas, ordem ou maiúsculas; 2 a 150 caracteres, 30 resultados por página (0 a 1000) |
@@ -34,9 +35,9 @@ Criação/edição:
 }
 ```
 
-Versão obrigatória na edição, ignorada na criação. Metas diárias comuns aos sete dias e opcionais. Quando `percentuais` é informado, os três valores devem ficar entre 0 e 100 e somar exatamente 100%. O servidor recalcula os gramas a partir das kcal usando 4 kcal/g para proteínas e carboidratos e 9 kcal/g para gorduras; os gramas enviados pelo cliente não são a fonte de verdade. Fim da vigência inclusivo. Publicação exige início hoje ou no futuro no fuso da clínica. Rascunhos podem ter vigência incompleta. A consulta vinculada é opcional, deve pertencer ao mesmo atendimento e não pode ter outro plano.
+Versão obrigatória na edição, ignorada na criação. Metas diárias comuns aos sete dias e opcionais. Quando `percentuais` é informado, os três valores devem ficar entre 0 e 100 e somar exatamente 100%. O servidor recalcula os gramas a partir das kcal usando 4 kcal/g para proteínas e carboidratos e 9 kcal/g para gorduras; os gramas enviados pelo cliente não são a fonte de verdade. Fim da vigência inclusivo. Datas informadas na criação de um rascunho e novas datas na edição devem ser de hoje em diante no fuso de São Paulo. Rascunhos podem ter vigência incompleta. Publicar exige início e fim, com início de hoje em diante. A consulta vinculada é opcional, deve pertencer ao mesmo atendimento e pode ter um plano visível por vez.
 
-A publicação serializa pelo paciente: encerra o plano anterior na véspera, ou o substitui quando os inícios são iguais; rejeita sobreposição com plano futuro. Publicados são imutáveis. Revisões exigem novo rascunho. O dashboard também ignora rascunhos e planos expirados.
+A publicação rejeita qualquer sobreposição com outro plano publicado para o paciente. Revisões exigem novo rascunho. Excluir um plano publicado remove sua prescrição e preserva os registros de consumo. A dieta ativa do paciente exibe apenas o plano publicado e vigente, inclusive após o fim do vínculo clínico.
 
 ## Refeições
 

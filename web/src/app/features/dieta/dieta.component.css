@@ -37,7 +37,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .text-action { display: inline-flex; align-items: center; gap: 7px; padding: 4px 0; border: 0; color: var(--color-brand-primary); background: transparent; font-weight: 700; cursor: pointer; }
 .text-action:hover { text-decoration: underline; }
 .detail-toolbar { align-items: flex-end; }
-.detail-toolbar > div:first-child > .text-action, .editor-toolbar > div:first-child > .text-action, .guidance h4 { margin-bottom: 7px; }
+.editor-toolbar > div:first-child > .text-action, .guidance h4 { margin-bottom: 7px; }
 .summary-card, .section-heading { margin-bottom: 14px; }
 .summary-card > h3, .form-section > h3 { margin-bottom: 18px; }
 .summary-grid, .nutrient-grid, .meal-total, .nutrient-inputs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }

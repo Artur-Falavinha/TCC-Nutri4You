@@ -13,7 +13,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -27,14 +26,15 @@ import java.util.List;
 @Entity
 @Table(name = "Plano_Alimentar")
 public class PlanoAlimentar {
+    public static final String STATUS_EXCLUIDO = "EXCLUIDO";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_plano")
     private Integer id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_consulta", unique = true, updatable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_consulta", updatable = false)
     private Consulta consulta;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -139,6 +139,11 @@ public class PlanoAlimentar {
 
     public void terminarEm(LocalDate fim) { this.vigenciaFim = fim; tocar(); }
     public void substituir() { this.status = "SUBSTITUIDO"; tocar(); }
+    public void excluir() {
+        this.status = STATUS_EXCLUIDO;
+        tocar();
+    }
+
     public void tocar() {
         Instant agora = Instant.now();
         revisadoEm = agora.isAfter(revisadoEm.plusMillis(1)) ? agora : revisadoEm.plusMillis(1);

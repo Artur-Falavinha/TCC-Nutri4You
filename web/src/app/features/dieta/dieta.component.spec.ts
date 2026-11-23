@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of, Subject, throwError } from 'rxjs';
+import { of, Subject } from 'rxjs';
 
 import { Paciente } from '../../core/models/paciente.models';
 import { PacientesService } from '../../core/services/pacientes.service';
@@ -98,23 +98,13 @@ describe('DietaComponent', () => {
       'buscarPlano',
       'criarPlano',
       'atualizarPlano',
-      'excluirRascunho',
-      'publicarPlano',
-      'previsualizarListaCompras'
+      'excluirPlano',
+      'publicarPlano'
     ]);
     dieta.listarAlimentos.and.returnValue(of(paginaAlimentos([])));
     dieta.listarCategorias.and.returnValue(of(['Cereais']));
     dieta.listarPlanos.and.returnValue(of([]));
     dieta.criarPlano.and.returnValue(of(planoSalvo));
-    dieta.previsualizarListaCompras.and.returnValue(of({
-      planoId: planoSalvo.id,
-      planoTitulo: planoSalvo.titulo,
-      dias: 7,
-      totalItens: 1,
-      itensComprados: 0,
-      itensPendentes: 1,
-      itens: [{ alimentoId: alimento.id, nome: alimento.nome, categoria: alimento.categoria, quantidadeGramas: 875, comprado: false }]
-    }));
 
     await TestBed.configureTestingModule({
       imports: [DietaComponent],
@@ -358,33 +348,57 @@ describe('DietaComponent', () => {
     expect(component.formatarNutriente(null)).toBe('—');
   });
 
-  it('shows a read-only shopping preview for the saved plan and requests the selected period', () => {
-    component.planoSelecionado = planoSalvo;
-    component.tela = 'detalhe';
-    component.abrirPreviaListaCompras();
+  it('mostra uma ação na lista vazia e posiciona o resumo antes dos dias da semana', () => {
+    const raiz = fixture.nativeElement as HTMLElement;
+    expect(raiz.textContent).toContain('Criar primeiro plano');
+    expect(raiz.textContent).not.toContain('Novo plano');
+    expect(raiz.textContent).not.toContain('Voltar às consultas');
+
+    component.planos = [planoSalvo];
     fixture.detectChanges();
+    expect(raiz.textContent).toContain('Novo plano');
 
-    expect(dieta.previsualizarListaCompras).toHaveBeenCalledWith(paciente.id, planoSalvo.id, 7, null);
-    expect(fixture.nativeElement.querySelector('.shopping-preview').textContent).toContain('somente os alimentos principais');
-    expect(fixture.nativeElement.querySelector('.shopping-category').textContent).toContain('875,00 g');
-    expect(fixture.nativeElement.querySelector('.shopping-preview input[type="checkbox"]')).toBeNull();
-  });
-
-  it('rejects an invalid shopping preview period and reports API errors', () => {
     component.planoSelecionado = planoSalvo;
     component.tela = 'detalhe';
-    component.diasListaCompras = 31;
-    component.abrirPreviaListaCompras();
-
-    expect(dieta.previsualizarListaCompras).not.toHaveBeenCalled();
-    expect(component.listaComprasErro).toContain('entre 1 e 30 dias');
-
-    component.diasListaCompras = 7;
-    dieta.previsualizarListaCompras.and.returnValue(throwError(() => ({ message: 'Falha de prévia' })));
-    component.carregarListaCompras();
-    expect(component.listaComprasErro).toBe('Falha de prévia');
-    expect(component.listaComprasCarregando).toBeFalse();
+    fixture.detectChanges();
+    const resumo = raiz.querySelector('#plan-summary-title')!;
+    const dias = raiz.querySelector('.week-days')!;
+    expect(resumo.compareDocumentPosition(dias) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(raiz.textContent).not.toContain('Prévia de compras');
+    raiz.querySelector<HTMLButtonElement>('.page-back-action')!.click();
+    expect(component.tela).toBe('lista');
   });
+
+  it('bloqueia vigência passada ao criar um plano', () => {
+    component.abrirNovoRascunho();
+    component.form.titulo = 'Plano';
+    component.form.vigenciaInicio = '2020-01-01';
+    component.form.vigenciaFim = '2020-01-02';
+    component.salvar();
+    expect(dieta.criarPlano).not.toHaveBeenCalled();
+    expect(component.errors['vigenciaInicio']).toBeDefined();
+    expect(component.errors['vigenciaFim']).toBeDefined();
+  });
+
+  it('exclui o plano publicado somente após confirmar', () => {
+    const plano = { ...planoSalvo, status: 'PUBLICADO' as const };
+    dieta.excluirPlano.and.returnValue(of(undefined));
+    component.planos = [plano];
+    component.planoSelecionado = plano;
+    component.tela = 'detalhe';
+
+    component.excluir();
+    expect(component.confirmacaoDestrutiva?.descricao).toContain(plano.titulo);
+    component.cancelarConfirmacaoDestrutiva();
+    expect(dieta.excluirPlano).not.toHaveBeenCalled();
+
+    component.excluir();
+    component.confirmarAcaoDestrutiva();
+    expect(dieta.excluirPlano).toHaveBeenCalledOnceWith(paciente.id, plano.id, plano.versao, null);
+    expect(component.planos).toEqual([]);
+    expect(component.tela).toBe('lista');
+  });
+
   it('filtra os totais por dia e cola refeições com substitutos no dia escolhido', () => {
     component.abrirNovoRascunho(); component.adicionarRefeicao();
     const segunda = component.form.refeicoes[0];
@@ -400,7 +414,7 @@ describe('DietaComponent', () => {
     expect(segunda.itens[0].quantidadeGramas).toBe(100);
   });
   it('publica somente após a confirmação no modal padrão', () => {
-    const rascunho = { ...planoSalvo, vigenciaInicio: '2026-11-05', vigenciaFim: '2026-11-12' };
+    const rascunho = { ...planoSalvo, vigenciaInicio: component.vigenciaInicioMinima, vigenciaFim: component.vigenciaInicioMinima };
     dieta.publicarPlano.and.returnValue(of({ ...rascunho, status: 'PUBLICADO', versao: 1 }));
     component.planoSelecionado = rascunho;
     component.tela = 'detalhe';

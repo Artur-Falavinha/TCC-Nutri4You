@@ -3,7 +3,6 @@ import { map } from 'rxjs';
 
 import { ApiService } from '../../core/services/api.service';
 import {
-  ListaCompras,
   PaginaAlimentos,
   Plano,
   PlanoRequest
@@ -48,7 +47,7 @@ export class DietaService {
     return this.api.put<Plano>(this.escopo(`${this.caminhoPlanos(pacienteId)}/${planoId}`, atendimentoId), request);
   }
 
-  excluirRascunho(pacienteId: number, planoId: number, versao: number, atendimentoId: number | null = null) {
+  excluirPlano(pacienteId: number, planoId: number, versao: number, atendimentoId: number | null = null) {
     return this.api
       .delete<unknown>(this.escopo(`${this.caminhoPlanos(pacienteId)}/${planoId}?versao=${versao}`, atendimentoId))
       .pipe(map(() => undefined));
@@ -58,13 +57,6 @@ export class DietaService {
     return this.api.post<Plano>(
       this.escopo(`${this.caminhoPlanos(pacienteId)}/${planoId}/publicacao`, atendimentoId),
       { versao }
-    );
-  }
-
-  previsualizarListaCompras(pacienteId: number, planoId: number, dias: number, atendimentoId: number | null = null) {
-    return this.api.get<ListaCompras>(
-      this.escopo(`${this.caminhoPlanos(pacienteId)}/${planoId}/lista-compras`, atendimentoId),
-      { params: { dias } }
     );
   }
 

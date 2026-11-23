@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { Component, DestroyRef, HostListener, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -19,8 +19,6 @@ import {
   CampoNumericoEdicao,
   DistribuicaoMacros,
   ItemEdicao,
-  ItemListaCompras,
-  ListaCompras,
   MetasEdicao,
   MetasNutricionais,
   Nutrientes,
@@ -39,7 +37,6 @@ import { DietaService } from './dieta.service';
 
 type TelaDieta = 'lista' | 'detalhe' | 'editor';
 type FiltrosBuscaAlimentos = { nome: string; categoria: string; pagina: number } | null;
-type PedidoListaCompras = { planoId: number; dias: number } | null;
 type MacroPercentual = 'percentualProteinas' | 'percentualCarboidratos' | 'percentualGorduras';
 
 interface ReferenciaEnergetica {
@@ -54,10 +51,13 @@ interface ReferenciaEnergetica {
 
 const NUTRIENTES_VAZIOS: Nutrientes = { kcal: 0, proteinas: 0, carboidratos: 0, gorduras: 0, fibras: 0 };
 const MAXIMO_SUBSTITUTOS = 10;
+const FORMATO_DATA_CLINICA = new Intl.DateTimeFormat('sv-SE', {
+  timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit'
+});
 
 @Component({
   selector: 'app-dieta',
-  imports: [DatePipe, FormsModule, RouterLink, PatientTabsComponent, FormAlertComponent, UiButtonComponent, UiSelectComponent, BuscaAlimentosComponent, PacienteDialogComponent],
+  imports: [DatePipe, NgTemplateOutlet, FormsModule, RouterLink, PatientTabsComponent, FormAlertComponent, UiButtonComponent, UiSelectComponent, BuscaAlimentosComponent, PacienteDialogComponent],
   templateUrl: './dieta.component.html',
   styleUrl: './dieta.component.css'
 })
@@ -195,12 +195,6 @@ export class DietaComponent implements OnInit {
   categoriaSelecionada = '';
   refeicaoSelecionada: number | null = null;
   modoBuscaSubstituto = false;
-  modalListaCompras = false;
-  diasListaCompras: number | null = 7;
-  listaCompras: ListaCompras | null = null;
-  itensListaComprasPorCategoria: { categoria: string; itens: ItemListaCompras[] }[] = [];
-  listaComprasCarregando = false;
-  listaComprasErro = '';
   private original = this.assinatura();
   private chaveAtual = 0;
   private refeicaoCopiada: {
@@ -213,9 +207,8 @@ export class DietaComponent implements OnInit {
     }[];
   } | null = null;
   private readonly buscasAlimentos$ = new Subject<FiltrosBuscaAlimentos>();
-  private readonly buscasListaCompras$ = new Subject<PedidoListaCompras>();
   private elementoAtivoAntesDaBusca: HTMLElement | null = null;
-  private elementoAtivoAntesDaListaCompras: HTMLElement | null = null;
+  private elementoAtivoAntesDaConfirmacao: HTMLElement | null = null;
   private elementoAtivoAntesDaPublicacao: HTMLElement | null = null;
   private substitutoSelecionado: { refeicaoChave: number; itemChave: number } | null = null;
   private macroAutopreenchido: MacroPercentual | null = null;
@@ -228,16 +221,8 @@ export class DietaComponent implements OnInit {
     return this.refeicaoCopiada !== null && this.form.refeicoes.length < 140;
   }
 
-  get periodoListaComprasValido(): boolean {
-    return this.diasListaCompras !== null
-      && Number.isInteger(this.diasListaCompras)
-      && this.diasListaCompras >= 1
-      && this.diasListaCompras <= 30;
-  }
-
   ngOnInit(): void {
     this.configurarBuscaAlimentos();
-    this.configurarPreviaListaCompras();
     this.carregar();
   }
 
@@ -531,44 +516,6 @@ export class DietaComponent implements OnInit {
     item.substitutos = item.substitutos.filter(itemAtual => itemAtual.chave !== substituto.chave);
   }
 
-  abrirPreviaListaCompras(): void {
-    if (this.tela !== 'detalhe' || !this.planoSelecionado) return;
-    this.elementoAtivoAntesDaListaCompras = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    this.modalListaCompras = true;
-    this.listaCompras = null;
-    this.itensListaComprasPorCategoria = [];
-    this.listaComprasErro = '';
-    this.carregarListaCompras();
-    setTimeout(() => document.getElementById('dias-lista-compras')?.focus());
-  }
-
-  carregarListaCompras(): void {
-    const plano = this.planoSelecionado;
-    if (!this.modalListaCompras || !plano) return;
-    if (!this.periodoListaComprasValido) {
-      this.listaCompras = null;
-      this.itensListaComprasPorCategoria = [];
-      this.listaComprasCarregando = false;
-      this.listaComprasErro = 'Informe um número inteiro entre 1 e 30 dias.';
-      return;
-    }
-    this.listaCompras = null;
-    this.itensListaComprasPorCategoria = [];
-    this.listaComprasErro = '';
-    this.listaComprasCarregando = true;
-    this.buscasListaCompras$.next({ planoId: plano.id, dias: this.diasListaCompras! });
-  }
-
-  fecharPreviaListaCompras(): void {
-    this.modalListaCompras = false;
-    this.listaComprasCarregando = false;
-    this.buscasListaCompras$.next(null);
-    this.listaCompras = null;
-    this.itensListaComprasPorCategoria = [];
-    this.elementoAtivoAntesDaListaCompras?.focus();
-    this.elementoAtivoAntesDaListaCompras = null;
-  }
-
   removerAlimento(refeicao: RefeicaoEdicao, item: ItemEdicao): void {
     refeicao.itens = refeicao.itens.filter(alimento => alimento.chave !== item.chave);
   }
@@ -650,29 +597,33 @@ export class DietaComponent implements OnInit {
 
   excluir(): void {
     const plano = this.planoSelecionado;
-    if (!plano || plano.status !== 'RASCUNHO' || this.excluindo) return;
+    if (!plano || this.excluindo || this.publicando || (this.atendimentoId !== null && !this.podeEditarAtendimento)) return;
+    const rascunho = plano.status === 'RASCUNHO';
     this.pedirConfirmacaoDestrutiva(
-      'Excluir rascunho?',
-      `O rascunho “${plano.titulo}” será excluído permanentemente.`,
-      'Excluir rascunho',
-      () => this.excluirRascunho(plano));
+      'Excluir plano alimentar?',
+      rascunho
+        ? `O rascunho “${plano.titulo}” será excluído permanentemente.`
+        : `O plano “${plano.titulo}” será retirado da Dieta. Os registros de consumo serão preservados.`,
+      'Excluir plano',
+      () => this.excluirPlano(plano));
   }
 
-  private excluirRascunho(plano: Plano): void {
+  private excluirPlano(plano: Plano): void {
     if (this.excluindo) return;
     this.excluindo = true;
     this.erro = '';
-    this.dieta.excluirRascunho(this.patientId, plano.id, plano.versao, this.atendimentoId)
+    this.mensagem = '';
+    this.dieta.excluirPlano(this.patientId, plano.id, plano.versao, this.atendimentoId)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
           this.planos = this.planos.filter(item => item.id !== plano.id);
           this.planoSelecionado = null;
           this.tela = 'lista';
           this.excluindo = false;
-          this.mensagem = 'Rascunho excluído.';
+          this.mensagem = 'Plano alimentar excluído.';
         },
         error: (error: ApiErrorResponse) => {
-          this.erro = error.message || 'Não foi possível excluir o rascunho.';
+          this.erro = error.message || 'Não foi possível excluir o plano alimentar.';
           this.excluindo = false;
         }
       });
@@ -714,11 +665,13 @@ export class DietaComponent implements OnInit {
 
   cancelarConfirmacaoDestrutiva(): void {
     this.confirmacaoDestrutiva = null;
+    this.elementoAtivoAntesDaConfirmacao?.focus();
+    this.elementoAtivoAntesDaConfirmacao = null;
   }
 
   confirmarAcaoDestrutiva(): void {
     const confirmacao = this.confirmacaoDestrutiva;
-    this.confirmacaoDestrutiva = null;
+    this.cancelarConfirmacaoDestrutiva();
     confirmacao?.acao();
   }
 
@@ -808,8 +761,7 @@ export class DietaComponent implements OnInit {
 
   @HostListener('document:keydown.escape')
   fecharModalComEscape(): void {
-    if (this.modalListaCompras) this.fecharPreviaListaCompras();
-    else if (this.modalAlimentos) this.fecharBuscaAlimentos();
+    if (this.modalAlimentos) this.fecharBuscaAlimentos();
   }
 
   private carregarCategorias(): void {
@@ -847,39 +799,6 @@ export class DietaComponent implements OnInit {
     });
   }
 
-  private configurarPreviaListaCompras(): void {
-    this.buscasListaCompras$.pipe(
-      switchMap(pedido => {
-        if (pedido === null) return EMPTY;
-        return this.dieta.previsualizarListaCompras(this.patientId, pedido.planoId, pedido.dias, this.atendimentoId).pipe(
-          catchError((error: ApiErrorResponse) => {
-            this.listaComprasErro = error.message || 'Não foi possível carregar a prévia da lista de compras.';
-            this.listaComprasCarregando = false;
-            return EMPTY;
-          })
-        );
-      }),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(resultado => {
-      this.listaCompras = resultado;
-      this.itensListaComprasPorCategoria = this.agruparItensListaCompras(resultado.itens);
-      this.listaComprasCarregando = false;
-    });
-  }
-
-  private agruparItensListaCompras(itens: ItemListaCompras[]): { categoria: string; itens: ItemListaCompras[] }[] {
-    const grupos = new Map<string, ItemListaCompras[]>();
-    for (const item of itens) {
-      const categoria = item.categoria?.trim() || 'Sem categoria';
-      const itensDaCategoria = grupos.get(categoria) ?? [];
-      itensDaCategoria.push(item);
-      grupos.set(categoria, itensDaCategoria);
-    }
-    return [...grupos.entries()]
-      .sort(([a], [b]) => a.localeCompare(b, 'pt-BR'))
-      .map(([categoria, itensDaCategoria]) => ({ categoria, itens: itensDaCategoria }));
-  }
-
   private adicionarSubstituto(refeicao: RefeicaoEdicao, itemChave: number, alimento: Alimento): void {
     const item = refeicao.itens.find(itemAtual => itemAtual.chave === itemChave);
     if (!item?.alimento) return;
@@ -899,14 +818,37 @@ export class DietaComponent implements OnInit {
     this.mensagemAlimento = `${alimento.nome} adicionado como substituto informativo.`;
   }
 
+  get vigenciaInicioMinima(): string {
+    return this.dataMinimaVigencia(this.form.vigenciaInicio, this.planoSelecionado?.vigenciaInicio);
+  }
+
+  get vigenciaFimMinima(): string {
+    const minima = this.dataMinimaVigencia(this.form.vigenciaFim, this.planoSelecionado?.vigenciaFim);
+    return this.form.vigenciaInicio > minima ? this.form.vigenciaInicio : minima;
+  }
+
+  private dataMinimaVigencia(data: string, original?: string | null): string {
+    const hoje = this.dataAtualNaClinica();
+    return this.planoEmEdicaoId !== null && data === original && data < hoje ? data : hoje;
+  }
+
+  private dataAtualNaClinica(): string {
+    return FORMATO_DATA_CLINICA.format(new Date());
+  }
+
   private validarFormulario(): Record<string, string> {
     const errors: Record<string, string> = {};
     const titulo = this.form.titulo.trim();
     if (!titulo) errors['titulo'] = 'Informe o título do plano.';
     else if (titulo.length > 150) errors['titulo'] = 'Use até 150 caracteres.';
     if (this.form.orientacoes.length > 4000) errors['orientacoes'] = 'Use até 4.000 caracteres.';
-    if (this.form.vigenciaInicio && this.form.vigenciaFim && this.form.vigenciaFim < this.form.vigenciaInicio) {
-      errors['vigenciaFim'] = 'O fim deve ser igual ou posterior ao início.';
+    if (this.form.vigenciaInicio && this.form.vigenciaInicio < this.vigenciaInicioMinima) {
+      errors['vigenciaInicio'] = 'Escolha hoje ou uma data futura.';
+    }
+    if (this.form.vigenciaFim && this.form.vigenciaFim < this.vigenciaFimMinima) {
+      errors['vigenciaFim'] = this.form.vigenciaFim < this.form.vigenciaInicio
+        ? 'O fim deve ser igual ou posterior ao início.'
+        : 'Escolha hoje ou uma data futura.';
     }
     this.validarMetas(errors);
     if (this.form.refeicoes.length > 140) errors['refeicoes'] = 'Um plano pode conter até 140 refeições.';
@@ -1004,6 +946,7 @@ export class DietaComponent implements OnInit {
   private validarPublicacao(plano: Plano): string {
     if (!plano.vigenciaInicio || !plano.vigenciaFim) return 'Informe as datas de início e fim da vigência antes de publicar.';
     if (plano.vigenciaFim < plano.vigenciaInicio) return 'O fim da vigência deve ser igual ou posterior ao início.';
+    if (plano.vigenciaInicio < this.dataAtualNaClinica()) return 'Defina o início da vigência para hoje ou uma data futura.';
     if (plano.refeicoes.length === 0 || plano.refeicoes.some(refeicao => refeicao.itens.length === 0)) {
       return 'A publicação exige ao menos uma refeição, e todas as refeições precisam ter alimentos.';
     }
@@ -1129,7 +1072,9 @@ export class DietaComponent implements OnInit {
 
   private pedirConfirmacaoDestrutiva(
       titulo: string, descricao: string, confirmar: string, acao: () => void): void {
+    this.elementoAtivoAntesDaConfirmacao = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.confirmacaoDestrutiva = { titulo, descricao, confirmar, acao };
+    setTimeout(() => document.querySelector<HTMLButtonElement>('#cancelar-acao-destrutiva button')?.focus());
   }
 
   private atualizarPlanoNaLista(plano: Plano): void {

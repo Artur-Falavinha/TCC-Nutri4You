@@ -138,24 +138,6 @@ export interface MetasEdicao {
   carboidratosGKg: CampoNumericoEdicao;
 }
 
-export interface ItemListaCompras {
-  alimentoId: number;
-  nome: string;
-  categoria: string | null;
-  quantidadeGramas: number;
-  comprado: boolean;
-}
-
-export interface ListaCompras {
-  planoId: number;
-  planoTitulo: string;
-  dias: number;
-  totalItens: number;
-  itensComprados: number;
-  itensPendentes: number;
-  itens: ItemListaCompras[];
-}
-
 export interface PlanoEdicao {
   titulo: string;
   orientacoes: string;
