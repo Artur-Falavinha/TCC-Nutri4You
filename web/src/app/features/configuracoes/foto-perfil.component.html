@@ -7,20 +7,29 @@
   </div>
 </div>
 
-<div class="foto-acoes" role="group" aria-label="Foto de perfil" aria-describedby="foto-formatos"
-  [attr.aria-busy]="foto.carregando() || foto.salvando()">
-  <input #seletor type="file" accept="image/jpeg,image/png" hidden (change)="selecionar(seletor)" />
-  <div class="botoes">
-    <app-ui-button [label]="foto.url() ? 'Trocar foto' : 'Adicionar foto'" icon="image"
-      [fullWidth]="false" [disabled]="foto.carregando()" [loading]="foto.salvando()" (click)="seletor.click()" />
-    @if (foto.url()) {
-      <button type="button" class="botao-discreto perigo" [disabled]="foto.salvando() || foto.carregando()"
-        (click)="remocao.showModal()">
-        <i class="ph ph-trash" aria-hidden="true"></i> Remover foto
-      </button>
+<div class="foto-rodape">
+  <div class="foto-acoes" role="group" aria-label="Foto de perfil" aria-describedby="foto-formatos"
+    [attr.aria-busy]="foto.carregando() || foto.salvando()">
+    <input #seletor type="file" accept="image/jpeg,image/png" hidden (change)="selecionar(seletor)" />
+    <div class="botoes">
+      <app-ui-button [label]="foto.url() ? 'Trocar foto' : 'Adicionar foto'" icon="image"
+        [fullWidth]="false" [disabled]="foto.carregando()" [loading]="foto.salvando()" (click)="seletor.click()" />
+      @if (foto.url()) {
+        <button type="button" class="botao-discreto perigo" [disabled]="foto.salvando() || foto.carregando()"
+          (click)="remocao.showModal()">
+          <i class="ph ph-trash" aria-hidden="true"></i> Remover foto
+        </button>
+      }
+    </div>
+    <p id="foto-formatos" class="formatos">JPEG ou PNG · Até 5 MB</p>
+  </div>
+  <div class="foto-status" role="status">
+    @if (foto.mensagem()) {
+      <p class="retorno retorno--sucesso">
+        <i class="ph ph-check-circle" aria-hidden="true"></i> {{ foto.mensagem() }}
+      </p>
     }
   </div>
-  <p id="foto-formatos" class="formatos">JPEG ou PNG · Até 5 MB</p>
 </div>
 
 @if (foto.falhaCarga()) {
@@ -38,14 +47,6 @@
     <i class="ph ph-warning-circle" aria-hidden="true"></i> {{ foto.erro() }}
   </p>
 }
-<div role="status">
-  @if (foto.mensagem()) {
-    <p class="retorno retorno--sucesso">
-      <i class="ph ph-check-circle" aria-hidden="true"></i> {{ foto.mensagem() }}
-    </p>
-  }
-</div>
-
 <dialog #remocao class="remocao" aria-labelledby="remover-foto-titulo" aria-describedby="remover-foto-descricao">
   <div class="remocao__conteudo">
     <h3 id="remover-foto-titulo">Remover a foto de perfil?</h3>
