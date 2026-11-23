@@ -121,6 +121,8 @@ h3 { font-size: 1.125rem; }
   background: var(--color-surface-page);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
+  line-height: 1;
+  text-align: center;
 }
 .dia[aria-pressed="true"] .dia__total { background: var(--color-brand-primary); color: var(--color-text-on-brand); }
 
