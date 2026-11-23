@@ -17,7 +17,7 @@ export type RootStackParamList = {
   Agenda: undefined;
   HorariosDisponiveis: {
     nutricionistaId: number;
-    data: string;
+    data?: string;
     consultaId?: number;
     versao?: number;
   };

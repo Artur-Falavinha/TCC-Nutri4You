@@ -13,6 +13,7 @@ export interface Appointment {
   status: AppointmentStatus;
   versao: number;
   iniciadaEm?: string | null;
+  avulsa?: boolean;
 }
 
 export interface AgendaNutritionist {

@@ -16,20 +16,20 @@ import {
 const DIAS_DA_SEMANA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 
 interface CalendarCardProps {
-  selectedDate: string;
-  appointmentDates: Set<string>;
+  selectedDate?: string;
+  appointmentDates?: Set<string>;
   onSelectDate: (dateKey: string) => void;
 }
 
 export function CalendarCard({ selectedDate, appointmentDates, onSelectDate }: CalendarCardProps) {
   const dataAtual = dataIsoDaClinica();
   const mesAtual = dataAtual.slice(0, 7);
-  const [chaveMes, setChaveMes] = useState(mesAtual);
+  const [chaveMes, setChaveMes] = useState(() => selectedDate?.slice(0, 7) ?? mesAtual);
   const mes = useMemo(() => fromDateKey(`${chaveMes}-01`), [chaveMes]);
   const dias = useMemo(() => buildCalendarDays(mes), [mes]);
   const semanas = Array.from({ length: dias.length / 7 }, (_, indice) => dias.slice(indice * 7, indice * 7 + 7));
   const permiteVoltarMes = chaveMes > mesAtual;
-  const temConsultaNoMes = dias.some(({ dateKey }) => !!dateKey && appointmentDates.has(dateKey));
+  const temConsultaNoMes = dias.some(({ dateKey }) => !!dateKey && appointmentDates?.has(dateKey));
 
   const mudarMes = (intervalo: number) => {
     const proximoMes = shiftMonthKey(chaveMes, intervalo);
@@ -38,8 +38,8 @@ export function CalendarCard({ selectedDate, appointmentDates, onSelectDate }: C
 
   return (
     <View style={sectionCardStyles.superficie}>
-      <SectionCardHeader titulo="Agendamento" icone="calendar" />
-      <Text style={styles.instrucao}>Escolha um dia para ver os horários disponíveis.</Text>
+      <SectionCardHeader titulo="Escolha a data" icone="calendar" />
+      <Text style={styles.instrucao}>Toque em um dia para consultar os horários.</Text>
 
       <View style={styles.navegacao}>
         <Pressable
@@ -79,7 +79,7 @@ export function CalendarCard({ selectedDate, appointmentDates, onSelectDate }: C
               if (!dateKey) return <View key={key} style={styles.celula} />;
 
               const selecionado = dateKey === selectedDate;
-              const temConsulta = appointmentDates.has(dateKey);
+              const temConsulta = appointmentDates?.has(dateKey);
               const desabilitado = !isAppointmentDateSelectable(dateKey, dataAtual);
               return (
                 <Pressable
@@ -94,7 +94,7 @@ export function CalendarCard({ selectedDate, appointmentDates, onSelectDate }: C
                   {({ pressed }) => (
                     <View style={[
                       styles.data,
-                      (temConsulta || pressed) && styles.diaComConsulta,
+                      (temConsulta || pressed) && styles.pressionado,
                       selecionado && styles.diaSelecionado
                     ]}>
                       <Text style={[
@@ -112,7 +112,7 @@ export function CalendarCard({ selectedDate, appointmentDates, onSelectDate }: C
 
         {temConsultaNoMes && (
           <View style={styles.legenda}>
-            <View style={[styles.marcador, styles.diaComConsulta]} aria-hidden />
+            <View style={[styles.marcador, styles.pressionado]} aria-hidden />
             <Text style={styles.instrucao}>Dia com consulta</Text>
           </View>
         )}
@@ -161,7 +161,6 @@ const styles = StyleSheet.create({
   },
   celula: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
   data: { minWidth: 29, minHeight: 30, maxWidth: '100%', alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
-  diaComConsulta: { backgroundColor: colors.brandSoft },
   diaSelecionado: { backgroundColor: colors.brand },
   numero: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 14, fontVariant: ['tabular-nums'] },
   numeroSelecionado: { color: colors.white },

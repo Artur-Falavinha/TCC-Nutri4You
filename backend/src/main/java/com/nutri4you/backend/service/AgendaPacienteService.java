@@ -247,6 +247,6 @@ public class AgendaPacienteService {
                 consulta.getNutricionista().getNome(),
                 consulta.getDataHora(),
                 consulta.getStatus(),
-                consulta.getVersao(), consulta.getIniciadaEm());
+                consulta.getVersao(), consulta.getIniciadaEm(), consulta.isAvulsa());
     }
 }

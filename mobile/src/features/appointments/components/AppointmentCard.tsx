@@ -1,7 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { sectionCardStyles } from '../../../components/layout/SectionCardHeader';
 import { colors, fontFamily, radius, spacing } from '../../../theme/tokens';
 import { appointmentDateLabel, timeRangeLabel } from '../appointments-date.util';
 import { Appointment } from '../appointments.models';
@@ -32,7 +31,7 @@ export function AppointmentCard({
   const canceled = appointment.status === 'CANCELADA' || appointment.status === 'RECUSADA';
 
   return (
-    <View style={sectionCardStyles.superficie}>
+    <View style={styles.card}>
       <View style={styles.resumo}>
         <Text style={styles.professionalName}>{appointment.nutricionistaNome}</Text>
         <Text
@@ -56,6 +55,15 @@ export function AppointmentCard({
           <Text style={styles.detailText}>{timeRangeLabel(appointment.dataHora)}</Text>
         </View>
       </View>
+
+      {pending && appointment.avulsa && (
+        <View style={styles.aviso}>
+          <Feather name="clock" size={16} color={colors.pending} aria-hidden />
+          <Text style={styles.avisoTexto}>
+            Consulta e vínculo pendentes. O vínculo será criado quando o nutricionista aceitar a consulta.
+          </Text>
+        </View>
+      )}
 
       {confirmed ? (
         <>
@@ -91,6 +99,13 @@ export function AppointmentCard({
 }
 
 const styles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: radius.md,
+    padding: spacing.sm, gap: spacing.sm
+  },
+  aviso: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs, backgroundColor: colors.pendingBackground,
+    padding: spacing.sm, borderRadius: radius.sm },
+  avisoTexto: { flex: 1, color: colors.pending, fontFamily: fontFamily.semibold, fontSize: 13, lineHeight: 19 },
   resumo: {
     flexDirection: 'row',
     flexWrap: 'wrap',

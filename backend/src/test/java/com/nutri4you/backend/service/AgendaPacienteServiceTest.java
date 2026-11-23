@@ -191,6 +191,11 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
 
         var reserva = service.solicitar(semVinculo, new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 0)));
         assertThat(reserva.status()).isEqualTo("AGUARDANDO_CONFIRMACAO");
+        assertThat(reserva.avulsa()).isTrue();
+        assertThat(service.listar(semVinculo)).singleElement().satisfies(pendente -> {
+            assertThat(pendente.status()).isEqualTo("AGUARDANDO_CONFIRMACAO");
+            assertThat(pendente.avulsa()).isTrue();
+        });
         assertThat(atendimento.listarAvulsasPendentes(nutri))
                 .containsExactly(new SolicitacaoAvulsaDTO(reserva.id(), semVinculo.getNome(), dia.atTime(9, 0), reserva.versao()));
         assertThat(gestao.listarParaNutricionista(nutri)).noneMatch(item -> item.id().equals(semVinculo.getId()));
@@ -200,6 +205,7 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
         atendimento.decidirAvulsa(nutri, reserva.id(), new DecisaoConsultaRequest(true, reserva.versao()));
         var confirmada = service.listar(semVinculo).getFirst();
         assertThat(confirmada.status()).isEqualTo("CONFIRMADA");
+        assertThat(confirmada.avulsa()).isFalse();
         assertThat(consultas.findById(reserva.id()))
                 .hasValueSatisfying(consulta -> assertThat(consulta.isAvulsa()).isFalse());
         assertThat(atendimento.listarAvulsasPendentes(nutri)).isEmpty();

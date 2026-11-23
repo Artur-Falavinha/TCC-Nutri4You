@@ -50,7 +50,10 @@ const linking = {
       Notificacoes: { path: 'notificacoes', alias: ['Notificacoes'] },
       DadosPessoais: 'dados-pessoais',
       Agenda: 'agenda',
-      HorariosDisponiveis: 'agenda/horarios',
+      HorariosDisponiveis: {
+        path: 'agenda/horarios',
+        parse: { nutricionistaId: Number, consultaId: Number, versao: Number }
+      },
       Health: 'health'
     }
   }
