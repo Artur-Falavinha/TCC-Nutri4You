@@ -2,7 +2,7 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'rea
 
 import CancelCalendarIcon from '../../../assets/appointments/cancel-calendar.svg';
 import { colors, fontFamily, radius, spacing } from '../../../theme/tokens';
-import { appointmentLongDateLabel } from '../appointments-date.util';
+import { appointmentDateLabel } from '../appointments-date.util';
 import { Appointment } from '../appointments.models';
 
 interface CancelAppointmentModalProps {
@@ -35,7 +35,7 @@ export function CancelAppointmentModal({
           <Text style={styles.title}>Cancelar Consulta?</Text>
           {appointment ? (
             <Text style={styles.message}>
-              {`Tem certeza que deseja cancelar sua consulta com ${appointment.nutricionistaNome} no dia ${appointmentLongDateLabel(appointment.dataHora)}?`}
+              {`Tem certeza que deseja cancelar sua consulta com ${appointment.nutricionistaNome} no dia ${appointmentDateLabel(appointment.dataHora)}?`}
             </Text>
           ) : null}
 

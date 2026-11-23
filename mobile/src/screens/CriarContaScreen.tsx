@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CommonActions, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
@@ -29,7 +29,10 @@ import { URL_TERMOS, VERSAO_TERMOS } from '../core/perfil/privacidade';
 import { ApiError } from '../core/api/api-response.types';
 import { formatCpfDisplay, isCpfComplete, normalizeCpf } from '../core/utils/cpf-mask.util';
 import {
+  DATA_MINIMA_NASCIMENTO,
+  dataNascimentoParaIso,
   toIsoDate,
+  formatarDataCivil,
   formatDateDisplay,
   formatDateFromDate,
   parseDisplayDate
@@ -45,15 +48,7 @@ const SEXO_OPTIONS = [
 
 type SexoOption = (typeof SEXO_OPTIONS)[number];
 
-const MIN_BIRTH_DATE = new Date(1900, 0, 1);
-const TODAY = new Date();
-
-function toHtmlDateValue(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
+const MIN_BIRTH_DATE = new Date(`${DATA_MINIMA_NASCIMENTO}T00:00:00`);
 
 export default function CriarContaScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -74,7 +69,6 @@ interface DadosCadastroPacienteProps {
 function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPacienteProps) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { showAlert } = useAppAlert();
-  const webDateInputRef = useRef<HTMLInputElement | null>(null);
   const [nome, setNome] = useState('');
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const email = confirmacao.email;
@@ -90,6 +84,9 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
   const [areaCampoSexo, setAreaCampoSexo] = useState<LayoutRectangle | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const hoje = new Date();
+  const hojeIso = toIsoDate(formatDateFromDate(hoje)) ?? '';
+  const isoDate = dataNascimentoParaIso(dataNascimento);
 
   const sexoLabel = useMemo(() => {
     if (sexo === null) {
@@ -99,38 +96,8 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
   }, [sexo]);
 
   const pickerDate = useMemo(() => {
-    return parseDisplayDate(dataNascimento) ?? new Date(2000, 0, 1);
-  }, [dataNascimento]);
-
-  const openDatePicker = () => {
-    // DateTimePicker nao tem UI no web (retorna null + warning).
-    if (Platform.OS === 'web') {
-      const input = webDateInputRef.current;
-      if (!input) {
-        return;
-      }
-      if (typeof input.showPicker === 'function') {
-        try {
-          input.showPicker();
-          return;
-        } catch {
-          // browsers sem showPicker caem no click()
-        }
-      }
-      input.click();
-      return;
-    }
-    setShowDatePicker(true);
-  };
-
-  const onWebDateInputChange = (event: { target: { value: string } }) => {
-    const value = event.target.value;
-    if (!value) {
-      return;
-    }
-    const [year, month, day] = value.split('-').map(Number);
-    setDataNascimento(formatDateFromDate(new Date(year, month - 1, day)));
-  };
+    return (isoDate && isoDate <= hojeIso ? parseDisplayDate(isoDate) : null) ?? new Date(2000, 0, 1);
+  }, [hojeIso, isoDate]);
 
   const onDateChange = (event: DateTimePickerEvent, selected?: Date) => {
     if (Platform.OS === 'android') {
@@ -175,7 +142,6 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
       return;
     }
 
-    const isoDate = dataNascimento.trim() ? toIsoDate(dataNascimento) : undefined;
     if (dataNascimento.trim() && !isoDate) {
       showAlert('Atenção', 'Data de nascimento inválida. Use DD/MM/AAAA.');
       return;
@@ -400,12 +366,13 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
                 <>
                   <Feather name="calendar" size={20} color="#005414" style={authFormStyles.inputIcon} />
                   {React.createElement('input', {
-                    ref: webDateInputRef,
                     type: 'date',
-                    value: dataNascimento ? toHtmlDateValue(pickerDate) : '',
-                    min: toHtmlDateValue(MIN_BIRTH_DATE),
-                    max: toHtmlDateValue(TODAY),
-                    onChange: onWebDateInputChange,
+                    lang: 'pt-BR',
+                    value: isoDate ?? '',
+                    min: DATA_MINIMA_NASCIMENTO,
+                    max: hojeIso,
+                    onChange: (evento: React.ChangeEvent<HTMLInputElement>) =>
+                      setDataNascimento(formatarDataCivil(evento.currentTarget.value)),
                     // Cobre o icone: clique nativo do browser abre o date picker.
                     style: {
                       position: 'absolute',
@@ -423,7 +390,7 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
                 </>
               ) : (
                 <TouchableOpacity
-                  onPress={openDatePicker}
+                  onPress={() => setShowDatePicker(true)}
                   hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
                   accessibilityRole="button"
                   accessibilityLabel="Abrir seletor de data"
@@ -437,6 +404,7 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
                 placeholderTextColor="#94a3b8"
                 keyboardType="number-pad"
                 maxLength={10}
+                accessibilityLabel="Data de nascimento"
                 value={dataNascimento}
                 onChangeText={(text) => setDataNascimento(formatDateDisplay(text))}
               />
@@ -495,7 +463,8 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
                 value={pickerDate}
                 mode="date"
                 display="spinner"
-                maximumDate={TODAY}
+                locale="pt-BR"
+                maximumDate={hoje}
                 minimumDate={MIN_BIRTH_DATE}
                 onChange={onDateChange}
               />
@@ -509,7 +478,7 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
           value={pickerDate}
           mode="date"
           display="default"
-          maximumDate={TODAY}
+          maximumDate={hoje}
           minimumDate={MIN_BIRTH_DATE}
           onChange={onDateChange}
         />

@@ -3,6 +3,7 @@ import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-nati
 
 export interface ChartDataPoint {
   label: string;
+  dataFormatada?: string;
   value: number;
   formatted?: string;
 }
@@ -43,7 +44,7 @@ export function EvolucaoLineChart({
     : data.length - 1;
 
   const paddingHorizontal = 28;
-  const paddingTop = 32;
+  const paddingTop = data.some((ponto) => ponto.dataFormatada) ? 44 : 32;
   const paddingBottom = 26;
   const chartWidth = Math.max(containerWidth - paddingHorizontal * 2, 80);
   const chartHeight = Math.max(height - paddingTop - paddingBottom, 40);
@@ -67,6 +68,7 @@ export function EvolucaoLineChart({
   });
 
   const activePoint = points[activeIndex] || points[points.length - 1];
+  const larguraTooltip = activePoint.item.dataFormatada ? 88 : 68;
 
   return (
     <View style={[styles.container, { height }]} onLayout={onLayout} testID="evolucao-line-chart">
@@ -139,7 +141,7 @@ export function EvolucaoLineChart({
             onPress={() => setSelectedIdx(p.idx)}
             style={[styles.touchTarget, { left: p.x - 16, top: p.y - 16 }]}
             accessibilityRole="button"
-            accessibilityLabel={`${p.item.label}: ${p.item.formatted || p.item.value}`}
+            accessibilityLabel={`${p.item.dataFormatada || p.item.label}: ${p.item.formatted || p.item.value}`}
           >
             <View
               style={[
@@ -163,13 +165,17 @@ export function EvolucaoLineChart({
           style={[
             styles.tooltip,
             {
-              left: Math.max(8, Math.min(containerWidth - 76, activePoint.x - 34)),
-              top: Math.max(2, activePoint.y - 32),
+              minWidth: larguraTooltip,
+              left: Math.max(8, Math.min(containerWidth - larguraTooltip - 8, activePoint.x - larguraTooltip / 2)),
+              top: Math.max(2, activePoint.y - paddingTop),
               borderColor: cor
             }
           ]}
           pointerEvents="none"
         >
+          {activePoint.item.dataFormatada ? (
+            <Text style={[styles.tooltipText, { color: cor }]}>{activePoint.item.dataFormatada}</Text>
+          ) : null}
           <Text style={[styles.tooltipText, { color: cor }]}>
             {activePoint.item.formatted || `${activePoint.item.value} ${unidade}`.trim()}
           </Text>
@@ -255,7 +261,6 @@ const styles = StyleSheet.create({
   },
   tooltip: {
     position: 'absolute',
-    minWidth: 68,
     paddingHorizontal: 8,
     paddingVertical: 4,
     backgroundColor: '#ffffff',

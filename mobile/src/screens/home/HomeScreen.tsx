@@ -24,7 +24,7 @@ import {
   listarNutricionistas,
   NutricionistaVinculo
 } from '../../core/perfil/perfil.service';
-import { formatDateDisplay, toIsoDate } from '../../core/utils/date-mask.util';
+import { dataNascimentoParaIso, formatarDataCivil, formatDateDisplay } from '../../core/utils/date-mask.util';
 import { formatPhoneDisplay, normalizePhone } from '../../core/utils/phone-mask.util';
 import { RootStackParamList } from '../../navigation/types';
 import { AppHeader } from '../../components/layout/AppHeader';
@@ -36,17 +36,6 @@ import { Privacidade } from './Privacidade';
 type Props = NativeStackScreenProps<RootStackParamList, 'DadosPessoais'>;
 
 const SEXO_OPTIONS = ['Masculino', 'Feminino', 'Prefiro não informar'] as const;
-
-function isoParaExibicao(valor: string | null): string {
-  if (!valor) {
-    return '';
-  }
-  const partes = /^(\d{4})-(\d{2})-(\d{2})/.exec(valor);
-  if (!partes) {
-    return formatDateDisplay(valor);
-  }
-  return `${partes[3]}/${partes[2]}/${partes[1]}`;
-}
 
 function mensagemErro(erro: unknown, fallback: string): string {
   return erro instanceof ApiError ? erro.message : fallback;
@@ -73,7 +62,7 @@ export function HomeScreen({ navigation }: Props) {
         setEmail(perfil.email ?? '');
         setTelefone(formatPhoneDisplay(perfil.telefone ?? ''));
         setSexo(perfil.sexo ?? '');
-        setDataNascimento(isoParaExibicao(perfil.dataNascimento));
+        setDataNascimento(formatarDataCivil(perfil.dataNascimento));
         setVinculos(nutricionistas ?? []);
       })
       .catch((falha: unknown) => {
@@ -91,7 +80,7 @@ export function HomeScreen({ navigation }: Props) {
       setErro('Informe o nome.');
       return;
     }
-    const nascimento = dataNascimento.trim() ? toIsoDate(dataNascimento) : undefined;
+    const nascimento = dataNascimentoParaIso(dataNascimento);
     if (dataNascimento.trim() && !nascimento) {
       setAviso('');
       setErro('Data de nascimento inválida. Use DD/MM/AAAA.');
@@ -254,6 +243,7 @@ export function HomeScreen({ navigation }: Props) {
             placeholder="DD/MM/AAAA"
             placeholderTextColor="#94a3b8"
             keyboardType="number-pad"
+            maxLength={10}
             editable={!carregando && !salvando}
             accessibilityLabel="Data de nascimento"
           />

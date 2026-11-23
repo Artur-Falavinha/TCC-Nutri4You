@@ -1,3 +1,4 @@
+import { dataIsoDaClinica } from '../../../core/utils/date-mask.util';
 import {
   appointmentDateLabel,
   buildCalendarDays,
@@ -59,7 +60,7 @@ describe('appointments date utilities', () => {
   });
 
   it('mantém o calendário mensal coerente com os dias aceitos pelo backend', () => {
-    const today = new Date(2026, 9, 21, 12);
+    const today = '2026-10-21';
 
     expect(isAppointmentDateSelectable('2026-10-20', today)).toBe(false);
     expect(isAppointmentDateSelectable('2026-10-21', today)).toBe(true);
@@ -69,8 +70,19 @@ describe('appointments date utilities', () => {
 
   it('formata mês, data e intervalo de 45 minutos em português', () => {
     expect(monthTitle(new Date(2026, 9, 22))).toBe('Outubro 2026');
-    expect(appointmentDateLabel('2026-10-25T14:30:00')).toBe('25 Out, 2026');
+    expect(appointmentDateLabel('2026-10-05T00:15:00')).toBe('05/10/2026');
     expect(timeRangeLabel('2026-10-25T14:30:00')).toBe('14:30-15:15');
+  });
+
+  it('mantém o dia selecionável até a meia-noite em São Paulo', () => {
+    const antesDaMeiaNoite = dataIsoDaClinica(new Date('2026-10-22T02:59:59Z'));
+    const meiaNoite = dataIsoDaClinica(new Date('2026-10-22T03:00:00Z'));
+    expect(isAppointmentDateSelectable('2026-10-21', antesDaMeiaNoite)).toBe(true);
+    expect(isAppointmentDateSelectable('2026-10-21', meiaNoite)).toBe(false);
+  });
+
+  it('mantém o horário civil da clínica mesmo em dias de mudança de horário no dispositivo', () => {
+    expect(timeRangeLabel('2026-03-08T02:30:00')).toBe('02:30-03:15');
   });
 
   it('separa horários por turno', () => {

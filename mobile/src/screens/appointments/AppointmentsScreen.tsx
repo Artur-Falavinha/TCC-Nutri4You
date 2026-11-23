@@ -23,7 +23,8 @@ import {
   listAgendaNutritionists,
   listAppointments
 } from '../../features/appointments/appointments.service';
-import { dateKeyFromLocalDateTime, toDateKey } from '../../features/appointments/appointments-date.util';
+import { dataIsoDaClinica } from '../../core/utils/date-mask.util';
+import { dateKeyFromLocalDateTime } from '../../features/appointments/appointments-date.util';
 import { AgendaNutritionist, Appointment } from '../../features/appointments/appointments.models';
 import { AppointmentCard } from '../../features/appointments/components/AppointmentCard';
 import { CalendarCard } from '../../features/appointments/components/CalendarCard';
@@ -45,7 +46,7 @@ export function AppointmentsScreen({ navigation }: Props) {
   const [nutritionists, setNutritionists] = useState<AgendaNutritionist[]>([]);
   const [selectedNutritionistId, setSelectedNutritionistId] = useState<number | null>(null);
   const [userName, setUserName] = useState('Paciente');
-  const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
+  const [selectedDate, setSelectedDate] = useState(() => dataIsoDaClinica());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [cancelling, setCancelling] = useState(false);

@@ -37,9 +37,12 @@ describe('NotificationsScreen', () => {
     ]);
     const tree = await renderScreen();
     expect(appointments).toHaveBeenCalledTimes(1);
-    expect(tree.root.findAllByType(Text).map((item) => item.props.children)).toContain('Consulta confirmada');
+    const textos = tree.root.findAllByType(Text).map((item) => item.props.children);
+    expect(textos).toContain('Consulta confirmada');
+    expect(textos).toContain('01/01/2030, às 14:30');
     const reminders = tree.root.findAllByProps({ accessibilityRole: 'button' }).filter((item) => item.props.accessibilityLabel?.includes('Abrir agenda'));
     expect(reminders.length).toBeGreaterThan(0);
+    expect(reminders[0].props.accessibilityLabel).toContain('01/01/2030, às 14:30');
     await act(async () => reminders[0].props.onPress());
     expect(navigation.navigate).toHaveBeenCalledWith('Agenda');
     await act(async () => tree.unmount());

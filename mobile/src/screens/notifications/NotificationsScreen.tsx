@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { formatarDataHoraCivil, FUSO_HORARIO_CLINICA } from '../../core/utils/date-mask.util';
 import { listAppointments } from '../../features/appointments/appointments.service';
 import { Appointment } from '../../features/appointments/appointments.models';
 import { RootStackParamList } from '../../navigation/types';
@@ -20,7 +21,7 @@ import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 type Props = NativeStackScreenProps<RootStackParamList, 'Notificacoes'>;
 
 const relogioDaClinica = new Intl.DateTimeFormat('en', {
-  timeZone: 'America/Sao_Paulo',
+  timeZone: FUSO_HORARIO_CLINICA,
   year: 'numeric',
   month: '2-digit',
   day: '2-digit',
@@ -28,11 +29,6 @@ const relogioDaClinica = new Intl.DateTimeFormat('en', {
   minute: '2-digit',
   second: '2-digit',
   hourCycle: 'h23'
-});
-const formatoLembrete = new Intl.DateTimeFormat('pt-BR', {
-  dateStyle: 'long',
-  timeStyle: 'short',
-  timeZone: 'UTC'
 });
 
 export function NotificationsScreen({ navigation }: Props) {
@@ -104,7 +100,7 @@ export function NotificationsScreen({ navigation }: Props) {
         ) : null}
         {!loading && !error ? notificacoes.map((item) => (
           <Pressable key={item.id} style={styles.card} onPress={() => navigation.navigate('Agenda')}
-            accessibilityRole="button" accessibilityLabel={`Consulta ${formatarData(item.dataHora)}. Abrir agenda`}>
+            accessibilityRole="button" accessibilityLabel={`Consulta ${formatarDataHoraCivil(item.dataHora)}. Abrir agenda`}>
             <View style={styles.row}>
               <View style={[styles.dot, item.status === 'RECUSADA' && styles.rejectedDot]} />
               <Text style={[styles.cardTitle, item.status === 'RECUSADA' && styles.rejectedTitle]}>
@@ -112,7 +108,7 @@ export function NotificationsScreen({ navigation }: Props) {
                   : `Consulta ${item.status === 'CONFIRMADA' ? 'confirmada' : 'aguardando confirmação'}`}
               </Text>
             </View>
-            <Text style={styles.body}>{formatarData(item.dataHora)}</Text>
+            <Text style={styles.body}>{formatarDataHoraCivil(item.dataHora)}</Text>
             {item.status === 'RECUSADA' ? (
               <Text style={styles.body}>O nutricionista não pôde aceitar este horário. Escolha uma nova data na agenda.</Text>
             ) : null}
@@ -139,10 +135,6 @@ function horarioCivilDaClinica(agora: Date): number {
     Number(year), Number(month) - 1, Number(day),
     Number(hour), Number(minute), Number(second), agora.getUTCMilliseconds()
   );
-}
-
-function formatarData(dataHora: string): string {
-  return formatoLembrete.format(horarioCivilEmMilissegundos(dataHora));
 }
 
 const styles = StyleSheet.create({

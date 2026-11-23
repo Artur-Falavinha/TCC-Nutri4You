@@ -1,3 +1,4 @@
+import { formatarDataCivil } from '../../core/utils/date-mask.util';
 import { Nutrients } from './dieta.models';
 
 export function formatNutrient(value: number): string {
@@ -13,26 +14,7 @@ export function formatGrams(value: number): string {
 }
 
 export function formatDate(value: string | null): string {
-  if (!value) {
-    return '—';
-  }
-
-  const date = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-  if (!date) {
-    return '—';
-  }
-
-  const [, year, month, day] = date;
-  const validDate = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
-  if (
-    validDate.getUTCFullYear() !== Number(year) ||
-    validDate.getUTCMonth() + 1 !== Number(month) ||
-    validDate.getUTCDate() !== Number(day)
-  ) {
-    return '—';
-  }
-
-  return `${day}/${month}/${year}`;
+  return formatarDataCivil(value) || '—';
 }
 
 export function formatFoodSource(source: string, version: string): string {

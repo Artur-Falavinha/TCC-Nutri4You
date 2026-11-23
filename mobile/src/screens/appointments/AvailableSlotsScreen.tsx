@@ -15,6 +15,7 @@ import CheckCircleIcon from '../../assets/appointments/check-circle.svg';
 import InfoIcon from '../../assets/appointments/info.svg';
 import { useAppAlert } from '../../components/feedback/AppAlertProvider';
 import { ApiError } from '../../core/api/api-response.types';
+import { dataIsoDaClinica, formatDateFromDate } from '../../core/utils/date-mask.util';
 import {
   getAppointmentAvailability,
   rescheduleAppointment,
@@ -85,6 +86,7 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
   }, [nutricionistaId, selectedDate, consultaId]);
 
   const weekDays = useMemo(() => buildWeekDays(selectedDate), [selectedDate]);
+  const dataAtual = dataIsoDaClinica();
   const groupedSlots = useMemo(
     () => groupSlotsByPeriod(availability?.horarios ?? []),
     [availability]
@@ -162,7 +164,7 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
             {weekDays.map((date) => {
               const dateKey = toDateKey(date);
               const active = dateKey === selectedDate;
-              const disabled = saving || !isAppointmentDateSelectable(dateKey);
+              const disabled = saving || !isAppointmentDateSelectable(dateKey, dataAtual);
               return (
                 <Pressable
                   key={dateKey}
@@ -175,7 +177,7 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
                     setSelectedDate(dateKey);
                   }}
                   accessibilityRole="button"
-                  accessibilityLabel={`Selecionar dia ${dateKey}`}
+                  accessibilityLabel={`Selecionar dia ${formatDateFromDate(date)}`}
                   disabled={disabled}
                   accessibilityState={{ selected: active, disabled }}
                 >

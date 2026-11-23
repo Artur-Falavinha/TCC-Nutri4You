@@ -221,6 +221,7 @@ describe('Evolução Components', () => {
       expect(str).toContain('Peso');
       expect(str).toContain('Gordura Corporal (%)');
       expect(str).toContain('Cintura');
+      expect(str).toContain('01/10/2026');
       expect(str).not.toContain('Consumo do dia');
 
       act(() => tree?.unmount());
@@ -257,6 +258,7 @@ describe('Evolução Components', () => {
       });
       const str = JSON.stringify(tree?.toJSON());
       expect(str).toContain('1800');
+      expect(str).toContain('11/10/2026');
       expect(str).toContain('2000');
       expect(str).toContain('kcal');
       expect(str).toContain('Proteínas');

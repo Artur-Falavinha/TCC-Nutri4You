@@ -1,3 +1,5 @@
+import { formatarDataCivil } from '../../core/utils/date-mask.util';
+
 const MONTHS = [
   'Janeiro',
   'Fevereiro',
@@ -11,21 +13,6 @@ const MONTHS = [
   'Outubro',
   'Novembro',
   'Dezembro'
-];
-
-const SHORT_MONTHS = [
-  'Jan',
-  'Fev',
-  'Mar',
-  'Abr',
-  'Mai',
-  'Jun',
-  'Jul',
-  'Ago',
-  'Set',
-  'Out',
-  'Nov',
-  'Dez'
 ];
 
 const WEEKDAYS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
@@ -48,13 +35,6 @@ export function fromDateKey(value: string): Date {
   return new Date(year, month - 1, day);
 }
 
-export function fromLocalDateTime(value: string): Date {
-  const [datePart, timePart = '00:00'] = value.split('T');
-  const [year, month, day] = datePart.split('-').map(Number);
-  const [hour, minute] = timePart.split(':').map(Number);
-  return new Date(year, month - 1, day, hour, minute);
-}
-
 export function monthTitle(date: Date): string {
   return `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 }
@@ -65,19 +45,14 @@ export function shiftMonthKey(monthKey: string, amount: number): string {
 }
 
 export function appointmentDateLabel(value: string): string {
-  const date = fromLocalDateTime(value);
-  return `${date.getDate()} ${SHORT_MONTHS[date.getMonth()]}, ${date.getFullYear()}`;
-}
-
-export function appointmentLongDateLabel(value: string): string {
-  const date = fromLocalDateTime(value);
-  return `${date.getDate()} de ${MONTHS[date.getMonth()]}`;
+  return formatarDataCivil(value);
 }
 
 export function timeRangeLabel(value: string, durationMinutes = 45): string {
-  const start = fromLocalDateTime(value);
-  const end = new Date(start.getTime() + durationMinutes * 60_000);
-  return `${formatTime(start)}-${formatTime(end)}`;
+  const inicio = new Date(`${value}Z`);
+  if (!Number.isFinite(inicio.getTime())) return '';
+  const fim = new Date(inicio.getTime() + durationMinutes * 60_000);
+  return `${inicio.toISOString().slice(11, 16)}-${fim.toISOString().slice(11, 16)}`;
 }
 
 export function buildCalendarDays(month: Date): CalendarDay[] {
@@ -115,16 +90,8 @@ export function weekdayShort(date: Date): string {
   return WEEKDAYS[date.getDay()];
 }
 
-export function isPastDate(dateKey: string, today = new Date()): boolean {
-  return fromDateKey(dateKey).getTime() < new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate()
-  ).getTime();
-}
-
-export function isAppointmentDateSelectable(dateKey: string, today = new Date()): boolean {
-  return !isPastDate(dateKey, today);
+export function isAppointmentDateSelectable(dateKey: string, dataAtual: string): boolean {
+  return dateKey >= dataAtual;
 }
 
 export function dateKeyFromLocalDateTime(value: string): string {
@@ -134,14 +101,10 @@ export function dateKeyFromLocalDateTime(value: string): string {
 export function groupSlotsByPeriod(slots: string[]): { morning: string[]; afternoon: string[] } {
   return slots.reduce(
     (groups, slot) => {
-      const date = fromLocalDateTime(slot);
-      (date.getHours() < 12 ? groups.morning : groups.afternoon).push(slot);
+      const hora = Number(slot.slice(11, 13));
+      (hora < 12 ? groups.morning : groups.afternoon).push(slot);
       return groups;
     },
     { morning: [] as string[], afternoon: [] as string[] }
   );
-}
-
-function formatTime(date: Date): string {
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }

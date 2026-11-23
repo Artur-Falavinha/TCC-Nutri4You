@@ -2,14 +2,14 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import CalendarMonthIcon from '../../../assets/appointments/calendar-month.svg';
+import { dataIsoDaClinica, formatarDataCivil } from '../../../core/utils/date-mask.util';
 import { colors, fontFamily, radius, shadows, spacing } from '../../../theme/tokens';
 import {
   buildCalendarDays,
   fromDateKey,
   isAppointmentDateSelectable,
   monthTitle,
-  shiftMonthKey,
-  toDateKey
+  shiftMonthKey
 } from '../appointments-date.util';
 
 const WEEKDAYS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
@@ -25,7 +25,8 @@ export function CalendarCard({
   appointmentDates,
   onSelectDate
 }: CalendarCardProps) {
-  const currentMonthKey = toDateKey(new Date()).slice(0, 7);
+  const dataAtual = dataIsoDaClinica();
+  const currentMonthKey = dataAtual.slice(0, 7);
   const [visibleMonthKey, setVisibleMonthKey] = useState(currentMonthKey);
   const visibleMonth = useMemo(
     () => fromDateKey(`${visibleMonthKey}-01`),
@@ -97,7 +98,7 @@ export function CalendarCard({
                 }
                 const isSelected = item.dateKey === selectedDate;
                 const hasAppointment = appointmentDates.has(item.dateKey);
-                const disabled = !isAppointmentDateSelectable(item.dateKey);
+                const disabled = !isAppointmentDateSelectable(item.dateKey, dataAtual);
                 return (
                   <Pressable
                     key={item.key}
@@ -105,7 +106,7 @@ export function CalendarCard({
                     onPress={() => onSelectDate(item.dateKey as string)}
                     disabled={disabled}
                     accessibilityRole="button"
-                    accessibilityLabel={`Dia ${item.day}`}
+                    accessibilityLabel={`Dia ${formatarDataCivil(item.dateKey)}`}
                     accessibilityState={{ selected: isSelected, disabled }}
                   >
                     <View

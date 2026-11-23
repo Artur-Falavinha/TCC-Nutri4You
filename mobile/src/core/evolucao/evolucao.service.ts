@@ -1,4 +1,7 @@
 import { apiClient } from '../api/api-client';
+import { formatarDataCivil } from '../utils/date-mask.util';
+
+export { formatarDataHoraCivil as formatarDataHoraConsulta } from '../utils/date-mask.util';
 
 export interface AvaliacaoHistorico {
   id: number;
@@ -80,56 +83,14 @@ export interface VariacaoCalculada {
 }
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-const MESES_EXTENSO = [
-  'Janeiro',
-  'Fevereiro',
-  'Março',
-  'Abril',
-  'Maio',
-  'Junho',
-  'Julho',
-  'Agosto',
-  'Setembro',
-  'Outubro',
-  'Novembro',
-  'Dezembro'
-];
-
-function extrairData(dataIso: string): { dia: number; mes: number } | null {
-  if (!dataIso) return null;
-
-  const isoLocal = /^(\d{4})-(\d{2})-(\d{2})/.exec(dataIso);
-  if (isoLocal) {
-    const ano = Number(isoLocal[1]);
-    const mes = Number(isoLocal[2]);
-    const dia = Number(isoLocal[3]);
-    const validacao = new Date(Date.UTC(ano, mes - 1, dia));
-    if (
-      validacao.getUTCFullYear() === ano &&
-      validacao.getUTCMonth() === mes - 1 &&
-      validacao.getUTCDate() === dia
-    ) {
-      return { dia, mes };
-    }
-    return null;
-  }
-
-  const data = new Date(dataIso);
-  if (Number.isNaN(data.getTime())) return null;
-  return { dia: data.getDate(), mes: data.getMonth() + 1 };
-}
 
 export function formatarDataMes(dataIso: string): string {
-  const data = extrairData(dataIso);
-  return data ? MESES[data.mes - 1] || '' : '';
+  const mes = Number(formatarDataCivil(dataIso).slice(3, 5));
+  return MESES[mes - 1] ?? '';
 }
 
 export function formatarDataDiaMes(dataIso: string): string {
-  const data = extrairData(dataIso);
-  if (!data) return '';
-  const dia = String(data.dia).padStart(2, '0');
-  const mes = String(data.mes).padStart(2, '0');
-  return `${dia}/${mes}`;
+  return formatarDataCivil(dataIso).slice(0, 5);
 }
 
 export function extrairPrimeiroNome(nomeCompleto?: string | null): string {
@@ -153,32 +114,6 @@ export function calcularPercentualMeta(consumido?: number | null, meta?: number 
     return 0;
   }
   return Math.max(0, Math.round((consumido / meta) * 100));
-}
-
-export function formatarDataHoraConsulta(dataIso?: string | null): string {
-  if (!dataIso) {
-    return '';
-  }
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(dataIso);
-  if (match) {
-    const dia = Number(match[3]);
-    const mesIdx = Number(match[2]) - 1;
-    const mesNome = MESES_EXTENSO[mesIdx] ?? '';
-    const hora = match[4];
-    const minuto = match[5];
-    if (mesNome) {
-      return `${dia} de ${mesNome}, às ${hora}:${minuto}`;
-    }
-  }
-  const d = new Date(dataIso);
-  if (isNaN(d.getTime())) {
-    return '';
-  }
-  const dia = d.getDate();
-  const mesNome = MESES_EXTENSO[d.getMonth()] || '';
-  const hora = String(d.getHours()).padStart(2, '0');
-  const minuto = String(d.getMinutes()).padStart(2, '0');
-  return `${dia} de ${mesNome}, às ${hora}:${minuto}`;
 }
 
 export function calcularVariacao(

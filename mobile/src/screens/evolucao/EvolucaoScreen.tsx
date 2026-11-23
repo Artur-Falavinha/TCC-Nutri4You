@@ -18,6 +18,7 @@ import { AppHeader } from '../../components/layout/AppHeader';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { logout } from '../../core/auth/auth.service';
 import { carregarPerfil } from '../../core/perfil/perfil.service';
+import { formatarDataCivil } from '../../core/utils/date-mask.util';
 import {
   AvaliacaoHistorico,
   carregarEvolucao,
@@ -116,6 +117,7 @@ export function EvolucaoScreen({ navigation }: Props) {
     .filter((a) => a.peso != null)
     .map((a) => ({
       label: formatarDataMes(a.dataAvaliacao),
+      dataFormatada: formatarDataCivil(a.dataAvaliacao),
       value: Number(a.peso),
       formatted: `${Number(a.peso).toFixed(1)} kg`
     }));
@@ -125,6 +127,7 @@ export function EvolucaoScreen({ navigation }: Props) {
     .filter((a) => a.percentualGordura != null)
     .map((a) => ({
       label: formatarDataMes(a.dataAvaliacao),
+      dataFormatada: formatarDataCivil(a.dataAvaliacao),
       value: Number(a.percentualGordura),
       formatted: `${Number(a.percentualGordura).toFixed(1)}%`
     }));

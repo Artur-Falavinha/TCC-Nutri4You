@@ -36,8 +36,8 @@ describe('Horários disponíveis', () => {
   }
   it('exibe domingo e tocar novamente no dia atual não deixa a tela carregando', async () => {
     await abrir();
-    expect(dia('2030-01-06')).toBeDefined();
-    await act(async () => dia('2030-01-06').props.onPress());
+    expect(dia('06/01/2030')).toBeDefined();
+    await act(async () => dia('06/01/2030').props.onPress());
     expect(api).toHaveBeenCalledTimes(1);
     expect(tree.root.findAllByType(ActivityIndicator)).toHaveLength(0);
     expect(JSON.stringify(tree.toJSON())).toContain('09:00-09:45');
@@ -49,9 +49,9 @@ describe('Horários disponíveis', () => {
     await act(async () => slot.props.onPress());
     let responder: (value: AppointmentAvailability) => void = () => undefined;
     api.mockReturnValueOnce(new Promise(resolve => { responder = resolve; }));
-    await act(async () => dia('2030-01-05').props.onPress());
+    await act(async () => dia('05/01/2030').props.onPress());
     api.mockResolvedValueOnce({ ...disponibilidade, data: '2030-01-04', horarios: [] });
-    await act(async () => dia('2030-01-04').props.onPress());
+    await act(async () => dia('04/01/2030').props.onPress());
     await act(async () => responder(disponibilidade));
     expect(JSON.stringify(tree.toJSON())).toContain('Não há horários disponíveis');
     const confirmar = tree.root.findAll(p => p.props.accessibilityRole === 'button' && typeof p.props.onPress === 'function'

@@ -1,6 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { formatarDataCivil } from '../../../core/utils/date-mask.util';
 import { DailyConsumption, getConsumption, markMeal } from '../../../features/dieta/consumo.service';
 import { colors, spacing, radius } from '../../../theme/tokens';
 
@@ -37,7 +38,7 @@ export function DailyMealsCard({ onChanged }: { onChanged: () => Promise<void> }
     <Text style={styles.title}>Refeições consumidas</Text>
     <View style={styles.dates}>
       <Pressable accessibilityRole="button" accessibilityLabel="Consumo do dia anterior" disabled={loading || saving} onPress={() => moveDate(-1)}><Text style={styles.action}>← Anterior</Text></Pressable>
-      <Text>{daily?.data.split('-').reverse().join('/')}</Text>
+      <Text>{formatarDataCivil(daily?.data)}</Text>
       <Pressable accessibilityRole="button" accessibilityLabel="Voltar ao consumo de hoje" disabled={saving} onPress={() => { setSelection({}); }}><Text style={styles.action}>Hoje</Text></Pressable>
     </View>
     {loading ? <ActivityIndicator color={colors.brand} /> : <>

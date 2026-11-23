@@ -20,6 +20,7 @@ import { AppHeader } from '../../components/layout/AppHeader';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { ApiError } from '../../core/api/api-response.types';
 import { logout } from '../../core/auth/auth.service';
+import { formatDateFromDate } from '../../core/utils/date-mask.util';
 import {
   formatDate,
   formatFoodSource,
@@ -334,7 +335,7 @@ export function MealPlanScreen({ navigation }: Props) {
                   onPress={() => setSelectedDay(index)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isSelected }}
-                  accessibilityLabel={`Dia ${day.label} ${day.data.getDate()}`}
+                  accessibilityLabel={`Dia ${day.label} ${formatDateFromDate(day.data)}`}
                   testID={`day-selector-pill-${day.key}`}
                 >
                   <Text style={[styles.dayPillLabel, isSelected && styles.dayPillLabelActive]}>
