@@ -2,6 +2,7 @@ package com.nutri4you.backend.service;
 
 import com.nutri4you.backend.config.EmailProperties;
 import com.nutri4you.backend.email.AsyncEmailDispatcher;
+import com.nutri4you.backend.email.CadastroEmailTemplate;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.TipoCadastro;
@@ -19,28 +20,23 @@ public class EmailNotificationService {
     private final EmailProperties emailProperties;
     private final TokenEmailService tokenEmailService;
     private final AsyncEmailDispatcher asyncEmailDispatcher;
+    private final CadastroEmailTemplate cadastroEmailTemplate;
 
     public EmailNotificationService(
             EmailProperties emailProperties,
             TokenEmailService tokenEmailService,
-            AsyncEmailDispatcher asyncEmailDispatcher) {
+            AsyncEmailDispatcher asyncEmailDispatcher,
+            CadastroEmailTemplate cadastroEmailTemplate) {
         this.emailProperties = emailProperties;
         this.tokenEmailService = tokenEmailService;
         this.asyncEmailDispatcher = asyncEmailDispatcher;
+        this.cadastroEmailTemplate = cadastroEmailTemplate;
     }
 
     public void agendarInicioCadastro(String email, TipoCadastro tipoUsuario, UUID token) {
-        String codigoParaAplicativo = tipoUsuario == TipoCadastro.PACIENTE
-                ? "\nVocê também pode colar este código no aplicativo Nutri4You:\n" + token + "\n" : "";
-        String corpo = """
-                Abra o link e selecione Confirmar e-mail para continuar seu cadastro no Nutri4You:
-                %s
-                %s
-                O link expira em %d horas até a confirmação. Depois de confirmar, você tem 30 minutos para concluir.
-                Se você não solicitou, ignore este e-mail.
-                """.formatted(emailProperties.linkCadastro(token), codigoParaAplicativo, emailProperties.getConfirmacaoTtlHoras());
-
-        enviarConfirmacaoAposCommit(email, corpo);
+        var conteudo = cadastroEmailTemplate.criar(
+                tipoUsuario, token, emailProperties.linkCadastro(token), emailProperties.getConfirmacaoTtlHoras());
+        enviarConfirmacaoAposCommit(email, conteudo);
     }
 
     @Transactional
@@ -55,11 +51,12 @@ public class EmailNotificationService {
         enviarRecuperacaoAssincrona(nutricionista.getEmail(), nutricionista.getNome(), token);
     }
 
-    private void enviarConfirmacaoAposCommit(String destinatario, String corpo) {
+    private void enviarConfirmacaoAposCommit(String destinatario, CadastroEmailTemplate.Conteudo conteudo) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                asyncEmailDispatcher.enviar(destinatario, "Confirme seu e-mail — Nutri4You", corpo);
+                asyncEmailDispatcher.enviarFormatado(
+                        destinatario, "Confirme seu e-mail — Nutri4You", conteudo.texto(), conteudo.html());
             }
         });
     }
