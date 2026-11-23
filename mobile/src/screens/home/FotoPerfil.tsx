@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AvatarFoto } from '../../components/layout/AvatarFoto';
 import { carregarFotoPerfil, removerFotoPerfil, selecionarEEnviarFotoPerfil } from '../../core/perfil/foto-perfil.service';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 
@@ -50,13 +50,7 @@ export function FotoPerfil() {
   return (
     <View style={styles.cartao}>
       <View style={styles.conteudo}>
-        <View style={styles.avatar} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          {foto ? (
-            <Image source={{ uri: foto }} style={styles.imagem} resizeMode="cover" />
-          ) : (
-            <Ionicons name="person-outline" size={32} color={colors.brand} />
-          )}
-        </View>
+        <AvatarFoto foto={foto} tamanho={64} />
         <View style={styles.detalhes}>
           <Text style={styles.titulo} accessibilityRole="header">Foto de perfil</Text>
           {Platform.OS === 'web' ? <Text style={styles.legenda}>JPEG ou PNG de até 5 MB.</Text> : null}
@@ -96,8 +90,6 @@ export function FotoPerfil() {
 const styles = StyleSheet.create({
   cartao: { gap: spacing.xs, padding: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
   conteudo: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.md },
-  avatar: { width: 64, height: 64, borderRadius: radius.pill, overflow: 'hidden', backgroundColor: colors.subtle, alignItems: 'center', justifyContent: 'center' },
-  imagem: { width: 64, height: 64 },
   detalhes: { flex: 1, minWidth: 136, gap: spacing.xxs },
   titulo: { fontSize: 16, fontFamily: fontFamily.bold, color: colors.text },
   legenda: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 13 },

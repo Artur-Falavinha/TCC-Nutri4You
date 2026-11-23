@@ -1,10 +1,12 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
-import { Observable, catchError, forkJoin, map, of, switchMap } from 'rxjs';
+import { EMPTY, Observable, catchError, distinctUntilChanged, forkJoin, map, of, switchMap } from 'rxjs';
 
 import { Paciente } from '../../../core/models/paciente.models';
 import { AuthService } from '../../../core/services/auth.service';
 import { PacientesService } from '../../../core/services/pacientes.service';
+import { AvatarPerfilComponent } from '../../../shared/components/avatar-perfil/avatar-perfil.component';
 import { PatientTabsComponent } from '../../../shared/components/patient-tabs/patient-tabs.component';
 import { formatarDataBr } from '../../../shared/utils/data-br.util';
 import { AnamneseService } from '../../anamnese/anamnese.service';
@@ -18,7 +20,7 @@ interface UltimaConsulta {
 
 @Component({
   selector: 'app-dados-paciente',
-  imports: [PatientTabsComponent],
+  imports: [AvatarPerfilComponent, PatientTabsComponent],
   templateUrl: './dados.component.html',
   styleUrl: './dados.component.css'
 })
@@ -28,16 +30,33 @@ export class DadosComponent implements OnInit {
   private readonly anamnese = inject(AnamneseService);
   private readonly consultas = inject(ConsultasService);
   private readonly auth = inject(AuthService);
+  private readonly destroyRef = inject(DestroyRef);
 
   paciente: Paciente | null = null;
+  fotoUrl: string | null = null;
   respostas: Answers = {};
   ultimaConsulta: UltimaConsulta | null = null;
   consultaIndisponivel = false;
   erro = '';
 
   ngOnInit(): void {
-    const id = Number(this.route.snapshot.paramMap.get('id'));
-    forkJoin({
+    this.destroyRef.onDestroy(() => this.atualizarFoto(null));
+    this.route.paramMap.pipe(
+      map(params => Number(params.get('id'))),
+      distinctUntilChanged(),
+      switchMap(id => {
+        this.paciente = null;
+        this.ultimaConsulta = null;
+        this.erro = '';
+        this.atualizarFoto(null);
+        return this.carregarFicha(id);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(imagem => this.atualizarFoto(imagem));
+  }
+
+  private carregarFicha(id: number): Observable<Blob | null> {
+    return forkJoin({
       paciente: this.pacientes.buscarPorId(id),
       anamnese: this.anamnese.get(id),
       consulta: this.ultimaRealizada(id).pipe(
@@ -45,8 +64,8 @@ export class DadosComponent implements OnInit {
         catchError(() => of({ consulta: null as Consulta | null, falhou: true }))
       ),
       nutricionista: this.auth.fetchMe().pipe(catchError(() => of(null)))
-    }).subscribe({
-      next: ({ paciente, anamnese, consulta, nutricionista }) => {
+    }).pipe(
+      switchMap(({ paciente, anamnese, consulta, nutricionista }) => {
         this.paciente = paciente;
         this.respostas = anamnese.respostas ?? {};
         this.consultaIndisponivel = consulta.falhou;
@@ -56,11 +75,19 @@ export class DadosComponent implements OnInit {
             profissional: nutricionista?.nome ?? ''
           };
         }
-      },
-      error: () => {
+        return this.pacientes.carregarFoto(paciente.id).pipe(catchError(() => of(null)));
+      }),
+      catchError(() => {
         this.erro = 'Não foi possível carregar os dados do paciente.';
-      }
-    });
+        return EMPTY;
+      })
+    );
+  }
+
+  private atualizarFoto(imagem: Blob | null): void {
+    const anterior = this.fotoUrl;
+    this.fotoUrl = imagem?.size ? URL.createObjectURL(imagem) : null;
+    if (anterior) URL.revokeObjectURL(anterior);
   }
 
   get telefone(): string {

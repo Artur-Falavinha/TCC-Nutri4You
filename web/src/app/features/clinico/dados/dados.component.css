@@ -88,11 +88,8 @@
 }
 
 .ficha__avatar {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #e2e8f0;
+  --tamanho-avatar: 3rem;
+  --fundo-avatar: color-mix(in srgb, var(--color-brand-primary) 8%, var(--color-surface-card));
 }
 
 .ficha__nome {

@@ -32,6 +32,7 @@ import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu'
 import { SolicitacoesVinculo } from './SolicitacoesVinculo';
 import { Privacidade } from './Privacidade';
 import { FotoPerfil } from './FotoPerfil';
+import { AvatarNutricionista } from './AvatarNutricionista';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DadosPessoais'>;
 
@@ -276,6 +277,7 @@ export function HomeScreen({ navigation }: Props) {
           ) : (
             vinculos.map((vinculo) => (
               <View key={vinculo.id} style={styles.vinculo}>
+                <AvatarNutricionista id={vinculo.id} />
                 <View style={styles.vinculoTexto}>
                   <Text style={styles.vinculoNome}>{vinculo.nome}</Text>
                   <Text style={styles.vinculoEmail}>{vinculo.email}</Text>

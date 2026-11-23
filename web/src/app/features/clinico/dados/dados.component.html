@@ -9,7 +9,7 @@
     @else {
       <article class="ficha">
         <header class="ficha__perfil">
-          <span class="ficha__avatar" aria-hidden="true"></span>
+          <app-avatar-perfil class="ficha__avatar" [url]="fotoUrl" />
           <p class="ficha__nome">{{ paciente.nome }}</p>
         </header>
         <section class="ficha__bloco">

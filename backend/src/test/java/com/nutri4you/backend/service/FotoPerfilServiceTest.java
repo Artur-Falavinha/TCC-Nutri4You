@@ -3,8 +3,11 @@ package com.nutri4you.backend.service;
 import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
+import com.nutri4you.backend.model.RelacaoClinica;
+import com.nutri4you.backend.model.StatusRelacaoClinica;
 import com.nutri4you.backend.repository.FotoPerfilRepository;
 import com.nutri4you.backend.repository.FotoPerfilRepository.TipoTitular;
+import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -14,16 +17,21 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 class FotoPerfilServiceTest {
     private final FotoPerfilRepository repositorio = mock(FotoPerfilRepository.class);
-    private final FotoPerfilService servico = new FotoPerfilService(repositorio);
+    private final GestaoPacienteService gestao = mock(GestaoPacienteService.class);
+    private final RelacaoClinicaRepository relacoes = mock(RelacaoClinicaRepository.class);
+    private final FotoPerfilService servico = new FotoPerfilService(repositorio, gestao, relacoes);
 
     @Test
     void usaOEscopoDoTitularMesmoQuandoOsIdsCoincidem() throws IOException {
@@ -61,6 +69,35 @@ class FotoPerfilServiceTest {
         assertThatThrownBy(() -> servico.buscar(null)).isInstanceOf(AcessoNegadoException.class);
         assertThatThrownBy(() -> servico.remover("anonymousUser")).isInstanceOf(AcessoNegadoException.class);
         verifyNoInteractions(repositorio);
+    }
+
+    @Test
+    void verificaAcessoAFichaAntesDeLerFotoDoPaciente() {
+        var nutricionista = new Nutricionista("Nutricionista", "nutri@example.test", "hash", "1234");
+        doThrow(new AcessoNegadoException("Sem vínculo")).when(gestao).exigirAcesso(nutricionista, 8);
+
+        assertThatThrownBy(() -> servico.buscarFotoPaciente(nutricionista, 8)).isInstanceOf(AcessoNegadoException.class);
+        verifyNoInteractions(repositorio);
+
+        byte[] foto = {1, 2};
+        when(repositorio.buscar(TipoTitular.PACIENTE, 7)).thenReturn(Optional.of(foto));
+        assertThat(servico.buscarFotoPaciente(nutricionista, 7)).contains(foto);
+        verify(gestao).exigirAcesso(nutricionista, 7);
+    }
+
+    @Test
+    void permiteLerFotoSomenteDoNutricionistaComVinculoAtivo() {
+        var paciente = new Paciente("Paciente", "paciente@example.test", "hash");
+        ReflectionTestUtils.setField(paciente, "id", 7);
+        byte[] foto = {1, 2};
+        when(relacoes.findByPaciente_IdAndNutricionista_IdAndStatus(7, 8, StatusRelacaoClinica.ATIVA))
+                .thenReturn(Optional.of(mock(RelacaoClinica.class)));
+        when(repositorio.buscar(TipoTitular.NUTRICIONISTA, 8)).thenReturn(Optional.of(foto));
+
+        assertThatThrownBy(() -> servico.buscarFotoNutricionista(paciente, 9)).isInstanceOf(AcessoNegadoException.class);
+        assertThatThrownBy(() -> servico.buscarFotoPaciente(paciente, 8)).isInstanceOf(AcessoNegadoException.class);
+        verifyNoInteractions(repositorio);
+        assertThat(servico.buscarFotoNutricionista(paciente, 8)).contains(foto);
     }
 
     private static MockMultipartFile png(int largura, int altura) throws IOException {

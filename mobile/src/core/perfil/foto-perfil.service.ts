@@ -6,8 +6,16 @@ import { apiClient } from '../api/api-client';
 const ROTA = '/usuarios/me/foto';
 const LIMITE_BYTES = 5 * 1024 * 1024;
 
-export async function carregarFotoPerfil(): Promise<string | null> {
-  const foto = await apiClient.getBlob(ROTA);
+export function carregarFotoPerfil(): Promise<string | null> {
+  return carregarFoto(ROTA);
+}
+
+export function carregarFotoNutricionista(id: number): Promise<string | null> {
+  return carregarFoto(`/usuarios/me/nutricionistas/${id}/foto`);
+}
+
+async function carregarFoto(rota: string): Promise<string | null> {
+  const foto = await apiClient.getBlob(rota);
   return foto?.size ? lerFoto(foto) : null;
 }
 

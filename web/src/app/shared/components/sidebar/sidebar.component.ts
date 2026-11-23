@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
+import { FotoPerfilService } from '../../../core/services/foto-perfil.service';
 import { AvatarPerfilComponent } from '../avatar-perfil/avatar-perfil.component';
 
 @Component({
@@ -11,6 +12,7 @@ import { AvatarPerfilComponent } from '../avatar-perfil/avatar-perfil.component'
   styleUrl: './sidebar.component.css'
 })
 export class SidebarComponent {
+  protected readonly foto = inject(FotoPerfilService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 

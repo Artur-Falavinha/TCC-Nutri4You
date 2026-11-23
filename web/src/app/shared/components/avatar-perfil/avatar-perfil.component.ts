@@ -1,13 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import { FotoPerfilService } from '../../../core/services/foto-perfil.service';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 @Component({
   selector: 'app-avatar-perfil',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'aria-hidden': 'true' },
   template: `
-    @if (foto.url(); as url) {
-      <img [src]="url" alt="" />
+    @if (url(); as imagem) {
+      <img [src]="imagem" alt="" />
     } @else if (iniciais()) {
       <span>{{ iniciais() }}</span>
     } @else {
@@ -33,7 +32,7 @@ import { FotoPerfilService } from '../../../core/services/foto-perfil.service';
 })
 export class AvatarPerfilComponent {
   readonly nome = input('');
-  protected readonly foto = inject(FotoPerfilService);
+  readonly url = input<string | null>(null);
   protected readonly iniciais = computed(() => {
     const partes = this.nome().trim().split(/\s+/);
     const primeira = Array.from(partes[0] ?? '')[0] ?? '';

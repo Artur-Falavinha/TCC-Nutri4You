@@ -35,6 +35,10 @@ export class ApiService {
       .pipe(map((response) => response?.data as T));
   }
 
+  getBlob(path: string): Observable<Blob | null> {
+    return this.http.get(this.buildUrl(path), { responseType: 'blob' });
+  }
+
   post<T>(path: string, body: unknown): Observable<T> {
     return this.http
       .post<ApiResponse<T>>(this.buildUrl(path), body)

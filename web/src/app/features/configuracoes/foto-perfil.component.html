@@ -1,5 +1,5 @@
 <div class="identidade">
-  <app-avatar-perfil [nome]="nome()" />
+  <app-avatar-perfil [nome]="nome()" [url]="foto.url()" />
   <div class="identidade__dados">
     <h3 #identidade tabindex="-1">{{ nome() }}</h3>
     <p class="email">{{ email() }}</p>

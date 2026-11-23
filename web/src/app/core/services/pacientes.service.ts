@@ -29,6 +29,10 @@ export class PacientesService {
     return this.api.get<Paciente>(`/gestao-pacientes/${id}`);
   }
 
+  carregarFoto(id: number): Observable<Blob | null> {
+    return this.api.getBlob(`/gestao-pacientes/${id}/foto`);
+  }
+
   vincularPaciente(id: number): Observable<void> {
     return this.api
       .post<unknown>(`/gestao-pacientes/${id}/vincular`, {})
