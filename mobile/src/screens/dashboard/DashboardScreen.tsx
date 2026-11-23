@@ -1,4 +1,3 @@
-import { DailyMealsCard } from './components/DailyMealsCard';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
@@ -13,9 +12,8 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
-import DietIcon from '../../assets/appointments/nav-diet.svg';
 import { AppHeader } from '../../components/layout/AppHeader';
 import { useAppAlert } from '../../components/feedback/AppAlertProvider';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
@@ -25,18 +23,14 @@ import {
   carregarDashboardPaciente,
   DashboardPacienteDados,
   extrairPrimeiroNome,
-  formatarDataHoraConsulta,
-  formatarNumeroMilhar
+  formatarDataHoraConsulta
 } from '../../core/evolucao/evolucao.service';
 import { RootStackParamList } from '../../navigation/types';
 import { colors, fontFamily, radius, shadows, spacing } from '../../theme/tokens';
+import { DailyIntakeCard } from './components/DailyIntakeCard';
+import { DailyMealsCard } from './components/DailyMealsCard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
-
-const RING_SIZE = 76;
-const RING_STROKE = 7;
-const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export function DashboardScreen({ navigation }: Props) {
   const { showAlert } = useAppAlert();
@@ -172,8 +166,6 @@ export function DashboardScreen({ navigation }: Props) {
   const kcalConsumidas = consumo?.caloriasConsumidas ?? 0;
   const metaKcal = consumo?.metaCalorias ?? dados?.dietaAtiva?.metaKcal ?? 0;
   const percKcal = calcularPercentualMeta(kcalConsumidas, metaKcal);
-  const percRing = Math.min(100, Math.max(0, percKcal));
-  const strokeDashoffset = RING_CIRCUMFERENCE - (percRing / 100) * RING_CIRCUMFERENCE;
 
   const proteinaConsumida = consumo?.proteinas ?? 0;
   const metaProteina = consumo?.metaProteinas ?? dados?.dietaAtiva?.metaProteina ?? 0;
@@ -240,106 +232,11 @@ export function DashboardScreen({ navigation }: Props) {
           </View>
 
           <DailyMealsCard onChanged={handleRefresh} />
-          {/* Card: Consumo Diário */}
-          <View style={styles.consumoCard} testID="dashboard-consumo-card">
-            <View style={styles.consumoTopRow}>
-              <View style={styles.consumoMainInfo}>
-                <Text style={styles.consumoLabel}>CONSUMO DIÁRIO</Text>
-                <View style={styles.kcalRow}>
-                  <Text style={styles.kcalValue}>
-                    {formatarNumeroMilhar(kcalConsumidas)}
-                  </Text>
-                  <Text style={styles.kcalUnit}> kcal</Text>
-                </View>
-                <Text style={styles.metaText}>
-                  {metaKcal > 0
-                    ? `Meta: ${formatarNumeroMilhar(metaKcal)} kcal`
-                    : 'Meta calórica ainda não definida'}
-                </Text>
-              </View>
-
-              <View style={styles.ringWrapper}>
-                <Svg width={RING_SIZE} height={RING_SIZE}>
-                  <Circle
-                    cx={RING_SIZE / 2}
-                    cy={RING_SIZE / 2}
-                    r={RING_RADIUS}
-                    stroke="#f1f5f9"
-                    strokeWidth={RING_STROKE}
-                    fill="none"
-                  />
-                  <Circle
-                    cx={RING_SIZE / 2}
-                    cy={RING_SIZE / 2}
-                    r={RING_RADIUS}
-                    stroke={colors.brand}
-                    strokeWidth={RING_STROKE}
-                    strokeDasharray={`${RING_CIRCUMFERENCE} ${RING_CIRCUMFERENCE}`}
-                    strokeDashoffset={strokeDashoffset}
-                    strokeLinecap="round"
-                    fill="none"
-                    transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
-                  />
-                </Svg>
-                <View style={styles.ringCenter}>
-                  <Text style={styles.ringPercentText} testID="dashboard-kcal-percent">
-                    {percKcal}%
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.macrosRow}>
-              {/* Proteínas */}
-              <View style={styles.macroColumn}>
-                <View style={styles.macroHeader}>
-                  <View style={styles.macroTitleGroup}>
-                    <DietIcon color={colors.brand} width={13} height={13} />
-                    <Text style={styles.macroName}>Proteínas</Text>
-                  </View>
-                  <Text style={styles.macroStats}>
-                    <Text style={styles.macroGramas}>{Math.round(proteinaConsumida)}g</Text>
-                    <Text style={styles.macroPercent}> {percProteina}%</Text>
-                  </Text>
-                </View>
-                <View style={styles.macroBarTrack}>
-                  <View
-                    style={[
-                      styles.macroBarFill,
-                      { width: `${Math.min(100, Math.max(0, percProteina))}%` }
-                    ]}
-                  />
-                </View>
-              </View>
-
-              {/* Carbos */}
-              <View style={styles.macroColumn}>
-                <View style={styles.macroHeader}>
-                  <View style={styles.macroTitleGroup}>
-                    <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
-                      <Path
-                        d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66l.07-.12L13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15L11 21z"
-                        fill={colors.brand}
-                      />
-                    </Svg>
-                    <Text style={styles.macroName}>Carbos</Text>
-                  </View>
-                  <Text style={styles.macroStats}>
-                    <Text style={styles.macroGramas}>{Math.round(carboConsumido)}g</Text>
-                    <Text style={styles.macroPercent}> {percCarbo}%</Text>
-                  </Text>
-                </View>
-                <View style={styles.macroBarTrack}>
-                  <View
-                    style={[
-                      styles.macroBarFill,
-                      { width: `${Math.min(100, Math.max(0, percCarbo))}%` }
-                    ]}
-                  />
-                </View>
-              </View>
-            </View>
-          </View>
+          <DailyIntakeCard
+            calorias={{ valor: kcalConsumidas, meta: metaKcal, percentual: percKcal }}
+            proteinas={{ valor: proteinaConsumida, percentual: percProteina }}
+            carboidratos={{ valor: carboConsumido, percentual: percCarbo }}
+          />
 
           {/* Card: Próxima Consulta */}
           <Pressable
@@ -485,119 +382,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginTop: 2
-  },
-  consumoCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    ...shadows.card
-  },
-  consumoTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-  consumoMainInfo: {
-    flex: 1,
-    paddingRight: spacing.sm
-  },
-  consumoLabel: {
-    color: '#64748b',
-    fontFamily: fontFamily.bold,
-    fontSize: 11,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-    fontWeight: '700'
-  },
-  kcalRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline'
-  },
-  kcalValue: {
-    color: '#1e293b',
-    fontFamily: fontFamily.extrabold,
-    fontSize: 30,
-    lineHeight: 36,
-    fontWeight: '800'
-  },
-  kcalUnit: {
-    color: '#64748b',
-    fontFamily: fontFamily.regular,
-    fontSize: 16
-  },
-  metaText: {
-    color: '#64748b',
-    fontFamily: fontFamily.regular,
-    fontSize: 12,
-    marginTop: 2
-  },
-  ringWrapper: {
-    width: RING_SIZE,
-    height: RING_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  ringCenter: {
-    ...StyleSheet.absoluteFill,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  ringPercentText: {
-    color: '#1e293b',
-    fontFamily: fontFamily.bold,
-    fontSize: 15,
-    fontWeight: '700'
-  },
-  macrosRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginTop: spacing.lg
-  },
-  macroColumn: {
-    flex: 1
-  },
-  macroHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6
-  },
-  macroTitleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4
-  },
-  macroName: {
-    color: '#334155',
-    fontFamily: fontFamily.semibold,
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  macroStats: {
-    fontSize: 12
-  },
-  macroGramas: {
-    color: '#1e293b',
-    fontFamily: fontFamily.bold,
-    fontSize: 12,
-    fontWeight: '700'
-  },
-  macroPercent: {
-    color: '#94a3b8',
-    fontFamily: fontFamily.regular,
-    fontSize: 11
-  },
-  macroBarTrack: {
-    height: 6,
-    backgroundColor: '#f1f5f9',
-    borderRadius: radius.pill,
-    overflow: 'hidden'
-  },
-  macroBarFill: {
-    height: '100%',
-    backgroundColor: colors.brand,
-    borderRadius: radius.pill
   },
   consultaCard: {
     backgroundColor: '#1b3b2b',
