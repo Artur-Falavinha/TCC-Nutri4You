@@ -83,25 +83,30 @@ describe('AnamneseComponent', () => {
     expect(component.answers).toEqual({});
   });
 
-  it('exibe o novo rótulo da cor da urina e salva o valor legado do rascunho', async () => {
-    const valorSalvo = '6 - Severamente Desidratado';
-    component.fields = [field('urineColor', { type: 'select', options: ['1 - Hidratado', valorSalvo] })];
-    const rascunho: Anamnese = { ...empty, versao: 2, status: 'RASCUNHO', rascunho: { urineColor: valorSalvo } };
-    component.data = rascunho;
-    api.save.and.returnValue(of(rascunho));
+  for (const { campo, valorSalvo, rotulo } of [
+    { campo: 'urineColor', valorSalvo: '6 - Severamente Desidratado', rotulo: '6 - Âmbar escuro' },
+    { campo: 'bristol', valorSalvo: 'Tipo 5 - Pedaços suaves com bordas bem definidas', rotulo: 'Tipo 5 - Pedaços macios' }
+  ]) {
+    it(`exibe o novo rótulo de ${campo} e salva o valor legado do rascunho`, async () => {
+      component.fields = [field(campo, { type: 'select', options: [valorSalvo] })];
+      const respostas = { [campo]: valorSalvo };
+      const rascunho: Anamnese = { ...empty, versao: 2, status: 'RASCUNHO', rascunho: respostas };
+      component.data = rascunho;
+      api.save.and.returnValue(of(rascunho));
 
-    component.startEditing();
-    const formulario = form();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    const select = formulario.querySelector<HTMLSelectElement>('#urineColor')!;
+      component.startEditing();
+      const formulario = form();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const select = formulario.querySelector<HTMLSelectElement>(`#${campo}`)!;
 
-    expect(select.value).toBe(valorSalvo);
-    expect(select.selectedOptions[0]?.textContent?.trim()).toBe('6 - Âmbar escuro');
-    expect(component.dirty).toBeFalse();
-    await component.save(true, formulario);
-    expect(api.save).toHaveBeenCalledWith(patient.id, 2, { urineColor: valorSalvo }, true);
-  });
+      expect(select.value).toBe(valorSalvo);
+      expect(select.selectedOptions[0]?.textContent?.trim()).toBe(rotulo);
+      expect(component.dirty).toBeFalse();
+      await component.save(true, formulario);
+      expect(api.save).toHaveBeenCalledWith(patient.id, 2, respostas, true);
+    });
+  }
 
   it('blocks finalization of blank required answers without calling the API', async () => {
     component.startEditing();
