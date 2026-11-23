@@ -3,7 +3,7 @@ import { Component, DestroyRef, HostListener, OnInit, inject } from '@angular/co
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, CanDeactivateFn, Router, RouterLink } from '@angular/router';
-import { forkJoin, of, Observable, Subject, take } from 'rxjs';
+import { catchError, EMPTY, exhaustMap, filter, forkJoin, of, Observable, Subject, take, timer } from 'rxjs';
 import { ApiErrorResponse } from '../../../core/models/api-response.model';
 import { PacientesService } from '../../../core/services/pacientes.service';
 import { FormAlertComponent } from '../../../shared/components/form-alert/form-alert.component';
@@ -62,6 +62,7 @@ export class ConsultasComponent implements OnInit {
   erro = '';
   mensagem = '';
   avisoConclusaoRascunhoAberto = false;
+  vinculoEncerrado = false;
   errors: Record<string, string> = {};
   lista: PaginaConsultas | null = null;
   private original = this.form.assinatura();
@@ -77,6 +78,26 @@ export class ConsultasComponent implements OnInit {
       this.mensagem = 'Consulta salva com sucesso.';
     }
     this.carregar();
+    this.monitorarVinculo();
+  }
+
+  private monitorarVinculo(): void {
+    const consultaId = this.consultaId;
+    if (!this.editor || consultaId === null) return;
+
+    timer(15_000, 15_000).pipe(
+      filter(() => !this.vinculoEncerrado && !this.salvando && this.consultaAtual?.status === 'CONFIRMADA'
+        && !!this.consultaAtual.iniciadaEm),
+      exhaustMap(() => (this.atendimento
+        ? this.atendimentos.verificarAcesso(consultaId)
+        : this.service.verificarAcesso(this.patientId, consultaId)).pipe(
+        catchError((erro: ApiErrorResponse) => {
+          if (erro.error === 'VINCULO_ENCERRADO') this.tratarFalha(erro, 'O vínculo foi encerrado.');
+          return EMPTY;
+        })
+      )),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
   }
 
   carregar(pagina = 0): void {
@@ -99,7 +120,10 @@ export class ConsultasComponent implements OnInit {
           this.carregado = true;
           this.carregando = false;
         },
-        error: (error: ApiErrorResponse) => { this.erro = error.message || 'Não foi possível carregar o atendimento.'; this.carregando = false; }
+        error: (erro: ApiErrorResponse) => {
+          this.tratarFalha(erro, 'Não foi possível carregar o atendimento.');
+          this.carregando = false;
+        }
       });
       return;
     }
@@ -126,7 +150,7 @@ export class ConsultasComponent implements OnInit {
         this.carregando = false;
       },
       error: (error: ApiErrorResponse) => {
-        this.erro = error.message || 'Não foi possível carregar as consultas.';
+        this.tratarFalha(error, 'Não foi possível carregar as consultas.');
         this.carregando = false;
       }
     });
@@ -190,7 +214,7 @@ export class ConsultasComponent implements OnInit {
           this.salvarConsulta();
         },
         error: (error: ApiErrorResponse) => {
-          this.erro = error.message || 'Não foi possível verificar se há dieta em rascunho. Tente novamente para concluir o atendimento.';
+          this.tratarFalha(error, 'Não foi possível verificar se há dieta em rascunho. Tente novamente para concluir o atendimento.');
           this.salvando = false;
         }
       });
@@ -210,7 +234,7 @@ export class ConsultasComponent implements OnInit {
         else void this.router.navigate(['/pacientes', this.patientId, 'consultas'], { state: { consultaSalva: true } });
       },
       error: (error: ApiErrorResponse) => {
-        this.erro = error.message || 'Não foi possível salvar. Seus campos foram mantidos.';
+        this.tratarFalha(error, 'Não foi possível salvar. Seus campos foram mantidos.');
         this.salvando = false;
       }
     });
@@ -257,8 +281,27 @@ export class ConsultasComponent implements OnInit {
         if (acao === 'inicio' && !this.editor) void this.router.navigate(['/pacientes', this.patientId, 'consultas', c.id]);
         else this.carregar(this.lista?.pagina || 0);
       },
-      error: (e: ApiErrorResponse) => { this.salvando = false; this.erro = e.message; }
+      error: (erro: ApiErrorResponse) => {
+        this.salvando = false;
+        this.tratarFalha(erro, 'Não foi possível atualizar a consulta.');
+      }
     });
+  }
+
+  private tratarFalha(erro: ApiErrorResponse, mensagemPadrao: string): void {
+    this.erro = erro.message || mensagemPadrao;
+    if (erro.error !== 'VINCULO_ENCERRADO') return;
+
+    this.vinculoEncerrado = true;
+    this.carregado = false;
+    this.mensagem = '';
+    this.nome = '';
+    this.consultaAtual = null;
+    this.contextoClinico = null;
+    this.lista = null;
+    this.avisoConclusaoRascunhoAberto = false;
+    this.form = new ConsultaForm();
+    this.original = this.form.assinatura();
   }
 
   statusLabel(status: string): string {

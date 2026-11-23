@@ -7,6 +7,8 @@ import com.nutri4you.backend.dto.ConsultaRequest;
 import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.service.AtendimentoClinicoService;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,6 +37,12 @@ public class AtendimentoClinicoController {
     @GetMapping("/{id}")
     public ApiResponse<AtendimentoClinicoResponse> buscar(Authentication auth, @PathVariable Integer id) {
         return ApiResponse.ok(atendimentos.buscar(nutricionista(auth), id), "Atendimento carregado.");
+    }
+
+    @GetMapping("/{id}/acesso")
+    public ResponseEntity<Void> verificarAcesso(Authentication auth, @PathVariable Integer id) {
+        atendimentos.verificarAcesso(nutricionista(auth), id);
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
     @PostMapping("/{id}/inicio")

@@ -65,6 +65,12 @@ public class ConsultaService {
         return respostaComMedidas(exigirConsulta(nutricionista, pacienteId, id));
     }
 
+    @Transactional(readOnly = true)
+    public void verificarAcesso(Nutricionista nutricionista, Integer pacienteId, Integer id) {
+        pacientes.exigirAcesso(nutricionista, pacienteId);
+        exigirConsulta(nutricionista, pacienteId, id);
+    }
+
     @Transactional
     public ConsultaResponse criar(Nutricionista nutricionista, Integer pacienteId, ConsultaRequest request) {
         pacientes.exigirAcesso(nutricionista, pacienteId);

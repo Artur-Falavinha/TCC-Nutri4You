@@ -3,6 +3,7 @@ package com.nutri4you.backend.service;
 import com.nutri4you.backend.dto.PacienteResumoDTO;
 import com.nutri4you.backend.dto.PacienteResponseDTO;
 import com.nutri4you.backend.exception.AcessoNegadoException;
+import com.nutri4you.backend.exception.VinculoEncerradoException;
 import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
@@ -141,6 +142,10 @@ public class GestaoPacienteService {
 
     private void validarAcessoNutricionista(Nutricionista nutricionista, Paciente paciente) {
         if (!relacaoAtiva(nutricionista, paciente)) {
+            if (relacaoClinicaRepository.existsByPaciente_IdAndNutricionista_IdAndEncerradaEmIsNotNull(
+                    paciente.getId(), nutricionista.getId())) {
+                throw new VinculoEncerradoException();
+            }
             throw new AcessoNegadoException("Sem permissão para acessar dados deste paciente.");
         }
     }

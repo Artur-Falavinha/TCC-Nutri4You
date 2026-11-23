@@ -15,9 +15,12 @@ import com.nutri4you.backend.repository.PerguntaAnamneseRepository;
 import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import com.nutri4you.backend.repository.RespostaAnamneseRepository;
 import com.nutri4you.backend.security.TokenService;
+import com.nutri4you.backend.service.PrivacidadeService;
 import com.nutri4you.backend.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -32,6 +35,8 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -55,6 +60,7 @@ class AtendimentoClinicoControllerTest {
     @Autowired RespostaAnamneseRepository respostas;
     @Autowired PasswordEncoder encoder;
     @Autowired TokenService tokens;
+    @Autowired PrivacidadeService privacidade;
     @Autowired Clock clock;
 
     private Nutricionista nutricionista;
@@ -68,6 +74,9 @@ class AtendimentoClinicoControllerTest {
         outraNutricionista = nutricionistas.save(TestDataFactory.nutricionistaConfirmado("Outra nutricionista",
                 "outra@teste.com", encoder.encode("senha123"), "CRN8-22222"));
         paciente = pacientes.save(TestDataFactory.pacienteConfirmado(encoder));
+        privacidade.aceitar(nutricionista, PrivacidadeService.VERSAO);
+        privacidade.aceitar(outraNutricionista, PrivacidadeService.VERSAO);
+        privacidade.aceitar(paciente, PrivacidadeService.VERSAO);
         token = bearer(nutricionista.getEmail());
     }
 
@@ -191,6 +200,31 @@ class AtendimentoClinicoControllerTest {
                 .andExpect(status().isForbidden());
         mvc.perform(put(url).header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
                         .content(registro(legada))).andExpect(status().isForbidden());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void informaVinculoEncerradoDuranteConsultaSemExporProntuario(boolean avulsa) throws Exception {
+        relacoes.saveAndFlush(RelacaoClinica.criar(paciente, nutricionista));
+        Consulta consulta = consulta(nutricionista, agora().minusMinutes(5), "CONFIRMADA", avulsa);
+        consulta.iniciar(agora());
+        consultas.flush();
+        String url = avulsa ? BASE + "/" + consulta.getId()
+                : GESTAO + "/" + paciente.getId() + "/consultas/" + consulta.getId();
+        mvc.perform(get(url + "/acesso").header("Authorization", token))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(delete(GESTAO + "/" + paciente.getId() + "/relacao").header("Authorization", token))
+                .andExpect(status().isOk());
+        mvc.perform(get(url + "/acesso").header("Authorization", token))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.error").value("VINCULO_ENCERRADO"));
+        mvc.perform(put(url).header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                        .content(registro(consulta)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("VINCULO_ENCERRADO"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+        assertThat(consultas.findById(consulta.getId()).orElseThrow().getStatus())
+                .isEqualTo("CANCELADA");
     }
 
     private ResultActions cancelar(Consulta consulta, String token, long versao)

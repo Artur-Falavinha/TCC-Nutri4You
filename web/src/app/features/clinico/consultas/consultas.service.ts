@@ -62,6 +62,9 @@ export class ConsultasService {
   buscar(pacienteId: number, id: number) {
     return this.api.get<Consulta>(`${this.path(pacienteId)}/${id}`);
   }
+  verificarAcesso(pacienteId: number, id: number) {
+    return this.api.get<void>(`${this.path(pacienteId)}/${id}/acesso`);
+  }
   acao(pacienteId: number, c: Consulta, acao: 'inicio' | 'confirmacao' | 'cancelamento') {
     return this.api.post<Consulta>(`${this.path(pacienteId)}/${c.id}/${acao}`, { versao: c.versao });
   }
@@ -82,6 +85,7 @@ export class AtendimentosService {
   private readonly path = '/agenda-nutricionista/atendimentos';
   listar() { return this.api.get<AtendimentoClinico[]>(this.path); }
   buscar(id: number) { return this.api.get<AtendimentoClinico>(`${this.path}/${id}`); }
+  verificarAcesso(id: number) { return this.api.get<void>(`${this.path}/${id}/acesso`); }
   iniciar(c: AtendimentoClinico) { return this.api.post<AtendimentoClinico>(`${this.path}/${c.id}/inicio`, { versao: c.versao }); }
   cancelar(c: AtendimentoClinico) { return this.api.post<void>(`${this.path}/${c.id}/cancelamento`, { versao: c.versao }); }
   salvar(id: number, payload: ConsultaPayload) { return this.api.put<AtendimentoClinico>(`${this.path}/${id}`, payload); }

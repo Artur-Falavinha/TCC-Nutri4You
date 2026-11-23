@@ -1,12 +1,16 @@
 <header class="page-header">
   <h1>{{ nome || 'Paciente' }}</h1>
-  @if (!atendimento) { <app-patient-tabs [patientId]="patientId" /> }
+  @if (!atendimento && !vinculoEncerrado) { <app-patient-tabs [patientId]="patientId" /> }
 </header>
 <main class="canvas" [attr.aria-busy]="carregando || salvando">
   <app-form-alert [message]="erro" type="error" />
   <app-form-alert [message]="mensagem" type="success" />
   @if (carregando) {
     <p class="state" role="status">Carregando consultas...</p>
+  } @else if (vinculoEncerrado) {
+    <a class="action secondary" [routerLink]="atendimento ? ['/agenda'] : ['/pacientes']">
+      <i class="ph ph-arrow-left" aria-hidden="true"></i>{{ atendimento ? 'Voltar à agenda' : 'Voltar aos pacientes' }}
+    </a>
   } @else if (!carregado) {
     <app-ui-button label="Tentar novamente" icon="arrow-clockwise" [fullWidth]="false" (click)="carregar()" />
   } @else if (atendimento && !consultaAtual?.iniciadaEm) {

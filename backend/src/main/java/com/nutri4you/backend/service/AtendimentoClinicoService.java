@@ -6,6 +6,7 @@ import com.nutri4you.backend.dto.ConsultaRequest;
 import com.nutri4you.backend.dto.ConsultaResponse;
 import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.exception.ConsultaNaoEncontradaException;
+import com.nutri4you.backend.exception.VinculoEncerradoException;
 import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.StatusRelacaoClinica;
@@ -51,6 +52,11 @@ public class AtendimentoClinicoService {
                 ? consultaService.respostaComMedidas(consulta)
                 : consultaService.resposta(consulta, null);
         return resposta(consulta, dados, temRegistro);
+    }
+
+    @Transactional(readOnly = true)
+    public void verificarAcesso(Nutricionista nutricionista, Integer consultaId) {
+        buscarAvulsa(nutricionista, consultaId);
     }
 
     @Transactional
@@ -115,15 +121,17 @@ public class AtendimentoClinicoService {
     }
 
     private Consulta buscarAvulsa(Nutricionista nutricionista, Integer consultaId) {
-        return consultas.findByIdAndNutricionista_IdAndAvulsaTrue(consultaId, nutricionista.getId())
-                .filter(this::vinculoNaoEncerrado)
+        Consulta consulta = consultas.findByIdAndNutricionista_IdAndAvulsaTrue(consultaId, nutricionista.getId())
                 .orElseThrow(ConsultaNaoEncontradaException::new);
+        exigirVinculoNaoEncerrado(consulta);
+        return consulta;
     }
 
     private Consulta bloquearAvulsa(Nutricionista nutricionista, Integer consultaId) {
-        return consultas.buscarAvulsaParaAtualizar(consultaId, nutricionista.getId())
-                .filter(this::vinculoNaoEncerrado)
+        Consulta consulta = consultas.buscarAvulsaParaAtualizar(consultaId, nutricionista.getId())
                 .orElseThrow(ConsultaNaoEncontradaException::new);
+        exigirVinculoNaoEncerrado(consulta);
+        return consulta;
     }
 
     private void exigirMesmoPaciente(Consulta consulta, Integer pacienteId) {
@@ -132,9 +140,11 @@ public class AtendimentoClinicoService {
         }
     }
 
-    private boolean vinculoNaoEncerrado(Consulta consulta) {
-        return !relacoes.existsByPaciente_IdAndNutricionista_IdAndEncerradaEmIsNotNull(
-                consulta.getPaciente().getId(), consulta.getNutricionista().getId());
+    private void exigirVinculoNaoEncerrado(Consulta consulta) {
+        if (relacoes.existsByPaciente_IdAndNutricionista_IdAndEncerradaEmIsNotNull(
+                consulta.getPaciente().getId(), consulta.getNutricionista().getId())) {
+            throw new VinculoEncerradoException();
+        }
     }
 
     private boolean emAndamento(Consulta consulta) {

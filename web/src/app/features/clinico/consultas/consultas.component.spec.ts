@@ -1,6 +1,6 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { AnamneseService } from '../../anamnese/anamnese.service';
 import { DietaService } from '../../dieta/dieta.service';
@@ -55,9 +55,10 @@ describe('ConsultasComponent', () => {
   };
 
   beforeEach(async () => {
-    atendimentos = jasmine.createSpyObj('AtendimentosService', ['buscar', 'salvar']);
+    atendimentos = jasmine.createSpyObj('AtendimentosService', ['buscar', 'salvar', 'verificarAcesso']);
     atendimentos.buscar.and.returnValues(of(atendimentoEmAndamento), of(atendimentoConcluido));
     atendimentos.salvar.and.returnValue(of(atendimentoConcluido));
+    atendimentos.verificarAcesso.and.returnValue(of(undefined));
     dieta = jasmine.createSpyObj('DietaService', ['listarPlanos']);
     dieta.listarPlanos.and.returnValue(of([dietaRascunho]));
     anamnese = jasmine.createSpyObj('AnamneseService', ['fields']);
@@ -78,7 +79,7 @@ describe('ConsultasComponent', () => {
           }
         },
         { provide: PacientesService, useValue: jasmine.createSpyObj('PacientesService', ['buscarPorId']) },
-        { provide: ConsultasService, useValue: jasmine.createSpyObj('ConsultasService', ['buscar', 'listar', 'salvar', 'acao']) },
+        { provide: ConsultasService, useValue: jasmine.createSpyObj('ConsultasService', ['buscar', 'listar', 'salvar', 'acao', 'verificarAcesso']) },
         { provide: AtendimentosService, useValue: atendimentos },
         { provide: AnamneseService, useValue: anamnese },
         { provide: DietaService, useValue: dieta }
@@ -141,4 +142,30 @@ describe('ConsultasComponent', () => {
     expect(fixture.nativeElement.querySelector('app-paciente-dialog')).toBeNull();
     expect(atendimentos.salvar).toHaveBeenCalledOnceWith(90, jasmine.objectContaining({ status: 'REALIZADA' }));
   });
+
+  it('informa o encerramento e remove o formulário durante o atendimento aberto', fakeAsync(() => {
+    fixture.destroy();
+    atendimentos.buscar.and.returnValue(of(atendimentoEmAndamento));
+    atendimentos.verificarAcesso.and.returnValue(throwError(() => ({
+      status: 403,
+      error: 'VINCULO_ENCERRADO',
+      message: 'O vínculo com este paciente foi encerrado.'
+    })));
+    fixture = TestBed.createComponent(ConsultasComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    component.form.observacao = 'Anotação temporária';
+
+    tick(15_000);
+    fixture.detectChanges();
+
+    const pagina = fixture.nativeElement as HTMLElement;
+    expect(atendimentos.verificarAcesso).toHaveBeenCalledOnceWith(90);
+    expect(pagina.textContent).toContain('O vínculo com este paciente foi encerrado.');
+    expect(pagina.querySelector('form')).toBeNull();
+    expect(pagina.querySelector('a[href="/agenda"]')).not.toBeNull();
+    expect(component.form.observacao).toBe('');
+    expect(component.podeSair()).toBeTrue();
+    fixture.destroy();
+  }));
 });

@@ -84,6 +84,17 @@ public class ApiExceptionHandler {
                 request.getRequestURI()));
     }
 
+    @ExceptionHandler(VinculoEncerradoException.class)
+    public ResponseEntity<ApiErrorResponse> handleVinculoEncerrado(
+            VinculoEncerradoException exception,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiErrorResponse.of(
+                HttpStatus.FORBIDDEN.value(),
+                "VINCULO_ENCERRADO",
+                exception.getMessage(),
+                request.getRequestURI()));
+    }
+
     @ExceptionHandler(AcessoNegadoException.class)
     public ResponseEntity<ApiErrorResponse> handleAcessoNegado(
             AcessoNegadoException exception,
