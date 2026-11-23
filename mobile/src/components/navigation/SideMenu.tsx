@@ -15,6 +15,8 @@ import LogoutIcon from '../../assets/appointments/nav-logout.svg';
 import ProfileIcon from '../../assets/appointments/nav-profile.svg';
 import ResultsIcon from '../../assets/appointments/nav-results.svg';
 import ShoppingIcon from '../../assets/appointments/nav-shopping.svg';
+import { AvatarFoto } from '../layout/AvatarFoto';
+import { carregarFotoPerfil } from '../../core/perfil/foto-perfil.service';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 
 export type MenuDestination =
@@ -134,8 +136,15 @@ interface MenuSobrepostoProps {
 
 function MenuSobreposto({ menu, fechar, remover }: MenuSobrepostoProps) {
   const [progresso] = useState(() => new Animated.Value(0));
+  const [foto, setFoto] = useState<string | null>(null);
   const acaoSolicitada = useRef(false);
   const { aberto, id } = menu;
+
+  useEffect(() => {
+    let ativo = true;
+    void carregarFotoPerfil().then(imagem => { if (ativo) setFoto(imagem); }).catch(() => undefined);
+    return () => { ativo = false; };
+  }, []);
 
   useEffect(() => {
     const animacao = Animated.timing(progresso, {
@@ -196,6 +205,7 @@ function MenuSobreposto({ menu, fechar, remover }: MenuSobrepostoProps) {
       >
         <SafeAreaView style={styles.drawer} edges={['top', 'bottom', 'left']}>
           <View style={styles.header}>
+            <AvatarFoto foto={foto} tamanho={44} />
             <Text style={styles.userName} numberOfLines={1}>
               {menu.userName || 'Paciente'}
             </Text>
@@ -281,9 +291,13 @@ const styles = StyleSheet.create({
     elevation: 16
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     paddingBottom: spacing.xxxl
   },
   userName: {
+    flex: 1,
     color: '#065f46',
     fontFamily: fontFamily.bold,
     fontSize: 20,
