@@ -164,6 +164,8 @@ public class ConsultaService {
         }
         if (aceitar) {
             exigirSemConflito(consulta);
+            pacientes.ativarVinculoAoAceitarAgendamento(consulta);
+            consulta.integrarAoAcompanhamento();
             consulta.atualizar(consulta.getDataHora(), "CONFIRMADA", consulta.getObservacao());
         } else {
             consulta.recusar();

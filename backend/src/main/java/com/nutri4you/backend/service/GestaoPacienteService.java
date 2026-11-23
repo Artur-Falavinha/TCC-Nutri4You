@@ -127,6 +127,35 @@ public class GestaoPacienteService {
                 "Não existe relação recorrente ativa com este nutricionista.");
     }
 
+    void ativarVinculoAoAceitarAgendamento(Consulta consulta) {
+        if (!consulta.isAvulsa()) {
+            return;
+        }
+        Integer pacienteId = consulta.getPaciente().getId();
+        Integer nutricionistaId = consulta.getNutricionista().getId();
+        nutricionistaRepository.findByIdForUpdate(nutricionistaId)
+                .orElseThrow(() -> new IllegalArgumentException("Nutricionista indisponível."));
+        pacienteRepository.findByIdForUpdate(pacienteId)
+                .orElseThrow(PacienteNaoEncontradoException::new);
+
+        relacaoClinicaRepository.findByPaciente_IdAndStatus(pacienteId, StatusRelacaoClinica.ATIVA)
+                .stream()
+                .filter(relacao -> !relacao.getNutricionista().getId().equals(nutricionistaId))
+                .findFirst()
+                .ifPresent(relacao -> {
+                    throw new IllegalArgumentException("O paciente já possui outro nutricionista vinculado.");
+                });
+
+        RelacaoClinica relacao = relacaoClinicaRepository
+                .findByPaciente_IdAndNutricionista_Id(pacienteId, nutricionistaId)
+                .orElseGet(() -> RelacaoClinica.criarSolicitacao(
+                        consulta.getPaciente(), consulta.getNutricionista()));
+        if (relacao.getStatus() != StatusRelacaoClinica.ATIVA) {
+            relacao.reativar();
+            relacaoClinicaRepository.save(relacao);
+        }
+    }
+
     private void encerrarVinculo(Integer pacienteId, Integer nutricionistaId, String mensagemSemVinculo) {
         nutricionistaRepository.findByIdForUpdate(nutricionistaId)
                 .orElseThrow(() -> new IllegalArgumentException(mensagemSemVinculo));

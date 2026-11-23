@@ -92,6 +92,11 @@ public class Consulta {
         return avulsa;
     }
 
+    public void integrarAoAcompanhamento() {
+        this.avulsa = false;
+        this.atualizadoEm = Instant.now();
+    }
+
     public void cancelar() {
         this.status = "CANCELADA";
         this.atualizadoEm = Instant.now();

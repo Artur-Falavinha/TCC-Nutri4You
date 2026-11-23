@@ -30,7 +30,6 @@ import { RootStackParamList } from '../../navigation/types';
 import { AppHeader } from '../../components/layout/AppHeader';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { SolicitacoesVinculo } from './SolicitacoesVinculo';
-import { BuscarVinculo } from './BuscarVinculo';
 import { Privacidade } from './Privacidade';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DadosPessoais'>;
@@ -269,7 +268,6 @@ export function HomeScreen({ navigation }: Props) {
             />
           )}
 
-          {!carregando && <BuscarVinculo temVinculo={vinculos.length > 0} />}
           <Text style={styles.secao}>Nutricionistas vinculados</Text>
           {vinculos.length === 0 ? (
             <Text style={styles.vazio}>Nenhum nutricionista vinculado.</Text>

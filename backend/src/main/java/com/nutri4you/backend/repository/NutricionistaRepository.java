@@ -32,8 +32,10 @@ public interface NutricionistaRepository extends JpaRepository<Nutricionista, In
             from Nutricionista n
             left join RelacaoClinica r on r.nutricionista = n
                 and r.paciente.id = :pacienteId and r.status = :statusAtiva
-            where r.id is not null or (n.aceitaConsultasAvulsas = true and exists (
-                select 1 from HorarioAtendimento h where h.nutricionista = n))
+            where r.id is not null or (
+                not exists (select 1 from RelacaoClinica ativa
+                    where ativa.paciente.id = :pacienteId and ativa.status = :statusAtiva)
+                and exists (select 1 from HorarioAtendimento h where h.nutricionista = n))
             order by n.nome, n.id
             """)
     List<NutricionistaAgendaDTO> listarParaAgenda(Integer pacienteId, StatusRelacaoClinica statusAtiva);

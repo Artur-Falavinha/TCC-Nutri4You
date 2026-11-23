@@ -74,6 +74,7 @@ clinica (`TIMESTAMP WITHOUT TIME ZONE`), interpretado em America/Sao_Paulo.
 - O cálculo é limitado às faixas de validação das equações originais: homens de 18 a 61 anos e mulheres de 18 a 55 anos. Sexo e data de nascimento vêm do cadastro do paciente.
 - Referências do cálculo: [equação masculina de Jackson e Pollock](https://pubmed.ncbi.nlm.nih.gov/718832/), [equação feminina de Jackson, Pollock e Ward](https://pubmed.ncbi.nlm.nih.gov/7402053/) e [conversão de densidade corporal de Siri](https://escholarship.org/uc/item/6mh9f4nf).
 - Peso e altura que já existirem nas respostas finalizadas da anamnese, inclusive registros legados, são usados como valores iniciais na primeira avaliação da consulta. O atendimento apenas consome esses dados: os campos não são reativados nem adicionados novamente ao formulário da anamnese.
+- Cada consulta possui no máximo uma avaliação antropométrica. Avaliações longitudinais também podem existir sem consulta; quando vinculadas, o banco garante que avaliação e consulta pertencem ao mesmo paciente.
 - Edicao atualiza a avaliacao vinculada, sem duplicar; nao apaga avaliacao
   existente ao receber `null`. A data da avaliacao acompanha a consulta.
 - Bloqueio otimista protege tambem edicoes somente de medidas.

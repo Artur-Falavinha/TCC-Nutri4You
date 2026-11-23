@@ -163,14 +163,13 @@ public class AgendaPacienteService {
 
     private void validarNovaSolicitacao(Paciente paciente, Nutricionista nutricionista, boolean vinculado) {
         if (vinculado) return;
-        if (!nutricionista.aceitaConsultasAvulsas()) {
-            throw new IllegalArgumentException(INDISPONIVEL);
+        if (relacoes.existsByPaciente_IdAndStatus(paciente.getId(), StatusRelacaoClinica.ATIVA)) {
+            throw new IllegalArgumentException("Você já possui um nutricionista vinculado.");
         }
-        if (relacoes.existsByPaciente_IdAndNutricionista_IdAndEncerradaEmIsNotNull(paciente.getId(), nutricionista.getId())
-                || consultas.temConsultaInicial(paciente.getId(), nutricionista.getId(), LocalDateTime.now(clock))) {
-            throw new IllegalArgumentException("Já existe uma consulta inicial ou um acompanhamento anterior com este nutricionista. "
+        if (consultas.temConsultaInicialEmAberto(paciente.getId(), nutricionista.getId(), LocalDateTime.now(clock))) {
+            throw new IllegalArgumentException("Já existe uma consulta inicial em aberto com este nutricionista. "
                     + "Se a consulta não ocorreu, peça ao nutricionista para cancelá-la. "
-                    + "Para continuar o acompanhamento, solicite um vínculo ativo em Dados pessoais.");
+                    + "O vínculo será criado quando o nutricionista aceitar o agendamento.");
         }
     }
 

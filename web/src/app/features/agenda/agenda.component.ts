@@ -6,7 +6,6 @@ import { ApiService } from '../../core/services/api.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
-import { ConsultasAvulsasComponent } from './consultas-avulsas.component';
 import { UiSelectComponent } from '../../shared/components/ui-select/ui-select.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
 import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog/paciente-dialog.component';
@@ -17,7 +16,7 @@ interface Horario { diaSemana: number; horario: string }
 @Component({
   selector: 'app-agenda',
   imports: [
-    FormsModule, FormAlertComponent, PageHeaderComponent, ConsultasAvulsasComponent,
+    FormsModule, FormAlertComponent, PageHeaderComponent,
     UiSelectComponent, UiButtonComponent, PacienteDialogComponent
   ],
   templateUrl: './agenda.component.html',

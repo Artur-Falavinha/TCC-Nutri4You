@@ -42,7 +42,7 @@
           <div class="conteudo">
             <strong>{{ item.pacienteNome }} solicitou uma consulta</strong>
             <time [attr.datetime]="item.dataHora">{{ item.dataHora | dataHoraClinica }}</time>
-            <span>{{ item.avulsa ? 'Consulta avulsa' : 'Paciente vinculado' }}</span>
+            <span>Solicitação de agendamento</span>
           </div>
           <div class="acoes">
             <app-ui-button label="Recusar" variant="secondary" [fullWidth]="false"

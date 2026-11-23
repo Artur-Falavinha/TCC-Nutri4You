@@ -11,7 +11,7 @@ const agendaVazia: Agenda = {
 };
 
 function solicitacao(id: number): NotificacaoConsulta {
-  return { id, pacienteId: id, pacienteNome: `Paciente ${id}`, dataHora: '2026-11-20T09:00:00', versao: 0, avulsa: false };
+  return { id, pacienteId: id, pacienteNome: `Paciente ${id}`, dataHora: '2026-11-20T09:00:00', versao: 0 };
 }
 
 describe('DashboardComponent — solicitações de consulta pendentes', () => {

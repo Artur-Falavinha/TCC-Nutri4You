@@ -19,10 +19,10 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Integer> {
     @Query("""
             select count(c) > 0 from Consulta c
             where c.paciente.id = :pacienteId and c.nutricionista.id = :nutricionistaId and c.avulsa = true
-              and (c.status in ('REALIZADA', 'CONFIRMADA')
+              and (c.status = 'CONFIRMADA'
                    or (c.status = 'AGUARDANDO_CONFIRMACAO' and c.dataHora > :agora))
             """)
-    boolean temConsultaInicial(Integer pacienteId, Integer nutricionistaId, LocalDateTime agora);
+    boolean temConsultaInicialEmAberto(Integer pacienteId, Integer nutricionistaId, LocalDateTime agora);
 
     @Query("""
             select count(c) > 0 from Consulta c where c.paciente.id = :pacienteId

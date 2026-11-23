@@ -7,7 +7,6 @@ export interface NotificacaoConsulta {
   pacienteNome: string;
   dataHora: string;
   versao: number;
-  avulsa: boolean;
 }
 
 export interface NotificacaoVinculo { id: number; pacienteNome: string; versao: number }
