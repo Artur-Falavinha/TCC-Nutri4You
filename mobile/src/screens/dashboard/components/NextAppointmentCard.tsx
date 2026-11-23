@@ -2,8 +2,8 @@ import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatarDataHoraConsulta } from '../../../core/evolucao/evolucao.service';
+import { SectionCardHeader, sectionCardStyles } from '../../../components/layout/SectionCardHeader';
 import { colors, fontFamily, radius, spacing } from '../../../theme/tokens';
-import { DashboardCardHeader, dashboardCardStyles } from './DashboardCardHeader';
 
 type Props = {
   dataHora?: string;
@@ -15,14 +15,14 @@ export function NextAppointmentCard({ dataHora, abrirAgenda }: Props) {
 
   return (
     <Pressable
-      style={({ pressed }) => [dashboardCardStyles.superficie, pressed && estilos.pressionado]}
+      style={({ pressed }) => [sectionCardStyles.superficie, pressed && estilos.pressionado]}
       onPress={abrirAgenda}
       accessibilityRole="button"
       accessibilityLabel={`Próxima consulta: ${texto}`}
       accessibilityHint="Abre a agenda"
       testID="dashboard-proxima-consulta-card"
     >
-      <DashboardCardHeader titulo="Próxima consulta" icone="calendar" />
+      <SectionCardHeader titulo="Próxima consulta" icone="calendar" />
       <View style={[estilos.resumo, dataHora && estilos.resumoAgendado]}>
         <Text style={[estilos.data, dataHora && estilos.dataAgendada]} testID="dashboard-proxima-consulta-texto">
           {texto}

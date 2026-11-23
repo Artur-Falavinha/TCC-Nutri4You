@@ -1,9 +1,11 @@
+import { Feather } from '@expo/vector-icons';
 import { CommonActions, useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -13,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '../../components/layout/AppHeader';
+import { SectionCardHeader, sectionCardStyles } from '../../components/layout/SectionCardHeader';
 import { useAppAlert } from '../../components/feedback/AppAlertProvider';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { ApiError } from '../../core/api/api-response.types';
@@ -179,12 +182,13 @@ export function AppointmentsScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
       <AppHeader onOpenMenu={() => setMenuVisible(true)} />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -193,6 +197,7 @@ export function AppointmentsScreen({ navigation }: Props) {
           />
         }
       >
+        <Text style={styles.tituloPagina} accessibilityRole="header" aria-level={1}>Agenda</Text>
         {!loading && !error && (
           <NutritionistCatalog
             nutritionists={nutritionists}
@@ -209,25 +214,35 @@ export function AppointmentsScreen({ navigation }: Props) {
         )}
 
         <View style={styles.appointmentsSection}>
-          <Text style={styles.sectionTitle}>Consultas Agendadas</Text>
+          <SectionCardHeader icone="clipboard" titulo="Consultas agendadas" />
 
           {error ? (
-            <Text style={styles.error} accessibilityRole="alert">
-              {error}
-            </Text>
+            <View style={[sectionCardStyles.superficie, styles.erro]}>
+              <Text style={styles.textoErro} accessibilityRole="alert">{error}</Text>
+              <Pressable
+                style={({ pressed }) => [styles.recarregar, pressed && styles.recarregarPressionado]}
+                accessibilityRole="button"
+                onPress={() => void load()}
+              >
+                <Text style={styles.textoRecarregar}>Recarregar agenda</Text>
+              </Pressable>
+            </View>
           ) : loading ? (
-            <View style={styles.loading}>
+            <View style={[sectionCardStyles.superficie, styles.loading]} aria-busy>
               <ActivityIndicator color={colors.brand} />
               <Text style={styles.loadingText}>Carregando consultas...</Text>
             </View>
           ) : appointments.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>Nenhuma consulta agendada</Text>
-              <Text style={styles.emptyText}>
-                {selectedNutritionist
-                  ? 'Escolha um dia no calendário para solicitar um horário.'
-                  : 'Seus pedidos e consultas confirmadas aparecem aqui.'}
-              </Text>
+            <View style={[sectionCardStyles.superficie, styles.emptyState]}>
+              <View style={styles.emptyIcon} aria-hidden>
+                <Feather name="inbox" size={20} color={colors.brandDeep} />
+              </View>
+              <View style={styles.emptyContent}>
+                <Text style={styles.emptyTitle}>Nenhuma consulta agendada</Text>
+                <Text style={styles.emptyText}>
+                  Seus pedidos e consultas confirmadas aparecem aqui.
+                </Text>
+              </View>
             </View>
           ) : (
             appointments.map((appointment) => (
@@ -277,22 +292,21 @@ const styles = StyleSheet.create({
   },
   content: {
     width: '100%',
-    maxWidth: 428,
+    maxWidth: 560,
     alignSelf: 'center',
     paddingHorizontal: spacing.md,
-    paddingBottom: spacing.lg,
-    gap: spacing.lg
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
+    gap: spacing.md
   },
   appointmentsSection: {
     gap: spacing.md
   },
-  sectionTitle: {
-    paddingHorizontal: spacing.xs,
-    color: colors.text,
-    fontFamily: fontFamily.bold,
-    fontSize: 18,
-    lineHeight: 28,
-    letterSpacing: -0.45
+  tituloPagina: {
+    color: colors.brandDeep,
+    fontFamily: fontFamily.extrabold,
+    fontSize: 28,
+    lineHeight: 36
   },
   loading: {
     minHeight: 96,
@@ -305,20 +319,41 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.regular,
     fontSize: 14
   },
-  error: {
+  erro: {
+    backgroundColor: colors.dangerButtonBackground
+  },
+  textoErro: {
     color: colors.dangerText,
-    backgroundColor: colors.dangerButtonBackground,
-    borderRadius: radius.sm,
-    padding: spacing.sm,
-    fontFamily: fontFamily.regular,
-    fontSize: 13
+    fontFamily: fontFamily.semibold,
+    fontSize: 14,
+    lineHeight: 21
+  },
+  recarregar: {
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+    minHeight: 48,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.card
+  },
+  recarregarPressionado: { backgroundColor: colors.dangerBackground },
+  textoRecarregar: { color: colors.dangerText, fontFamily: fontFamily.bold, fontSize: 14 },
+  emptyContent: {
+    flex: 1,
+    gap: spacing.xxs
   },
   emptyState: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.xl,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs
+    gap: spacing.sm
+  },
+  emptyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.pill,
+    backgroundColor: colors.subtle,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   emptyTitle: {
     color: colors.text,
@@ -330,7 +365,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontFamily: fontFamily.regular,
     fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center'
+    lineHeight: 21
   }
 });

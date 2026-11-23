@@ -22,6 +22,8 @@ describe('Catálogo de nutricionistas da agenda', () => {
       );
     });
 
+    expect(JSON.stringify(tree!.toJSON())).not.toContain('Mariana Costa');
+
     await act(async () => {
       tree!.root.findByType(TextInput).props.onChangeText('Mariana');
     });
@@ -34,6 +36,47 @@ describe('Catálogo de nutricionistas da agenda', () => {
       tree!.root.findByProps({ accessibilityLabel: 'Selecionar Mariana Costa' }).props.onPress();
     });
     expect(onSelect).toHaveBeenCalledWith(2);
+  });
+
+  it('limita as sugestões, ignora acentos e esconde os resultados ao limpar', async () => {
+    let tree: renderer.ReactTestRenderer;
+    await act(async () => {
+      tree = renderer.create(
+        <NutritionistCatalog
+          nutritionists={Array.from({ length: 9 }, (_, indice) => ({
+            id: indice + 1,
+            nome: `João da Silva ${indice + 1}`,
+            vinculado: false
+          }))}
+          onSelect={jest.fn()}
+        />
+      );
+    });
+
+    const buscar = (valor: string) => act(async () => {
+      tree!.root.findByType(TextInput).props.onChangeText(valor);
+    });
+    const painel = () => JSON.stringify(tree!.toJSON());
+    await buscar('   ');
+    expect(painel()).not.toContain('João da Silva');
+
+    await buscar('joao');
+    expect(painel()).toContain('João da Silva 1');
+    expect(painel()).not.toContain('João da Silva 9');
+    expect(painel()).toContain('Digite mais do nome para refinar');
+
+    await buscar('joao   da silva 9');
+    expect(painel()).toContain('João da Silva 9');
+    expect(painel()).not.toContain('João da Silva 1');
+
+    await buscar('ana');
+    expect(painel()).toContain('Nenhum nutricionista encontrado');
+    await act(async () => {
+      tree!.root.findByProps({ accessibilityLabel: 'Limpar busca' }).props.onPress();
+    });
+    expect(tree!.root.findByType(TextInput).props.value).toBe('');
+    expect(painel()).not.toContain('Nenhum nutricionista encontrado');
+    expect(painel()).not.toContain('João da Silva');
   });
 
   it('informa que a aceitação do agendamento cria o vínculo', async () => {

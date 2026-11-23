@@ -5,8 +5,8 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from '
 
 import { dataIsoDaClinica, formatarDataCivil } from '../../../core/utils/date-mask.util';
 import { DailyConsumption, getConsumption, markMeal } from '../../../features/dieta/consumo.service';
+import { SectionCardHeader, sectionCardStyles } from '../../../components/layout/SectionCardHeader';
 import { colors, fontFamily, radius, spacing } from '../../../theme/tokens';
-import { DashboardCardHeader, dashboardCardStyles } from './DashboardCardHeader';
 
 export function DailyMealsCard({ onChanged }: { onChanged: () => Promise<void> }) {
   const [registro, setRegistro] = useState<DailyConsumption | null>(null);
@@ -61,8 +61,8 @@ export function DailyMealsCard({ onChanged }: { onChanged: () => Promise<void> }
   }
 
   return (
-    <View style={dashboardCardStyles.superficie} testID="daily-meals-card" aria-busy={ocupado}>
-      <DashboardCardHeader titulo="Refeições consumidas" icone="check-square" />
+    <View style={sectionCardStyles.superficie} testID="daily-meals-card" aria-busy={ocupado}>
+      <SectionCardHeader titulo="Refeições consumidas" icone="check-square" />
 
       <View style={styles.navegacao}>
         <Pressable

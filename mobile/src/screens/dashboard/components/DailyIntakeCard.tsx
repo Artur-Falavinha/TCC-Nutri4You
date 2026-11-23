@@ -4,8 +4,8 @@ import Svg, { Circle } from 'react-native-svg';
 
 import DietIcon from '../../../assets/appointments/nav-diet.svg';
 import { formatarNumeroMilhar } from '../../../core/evolucao/evolucao.service';
+import { SectionCardHeader, sectionCardStyles } from '../../../components/layout/SectionCardHeader';
 import { colors, fontFamily, radius, spacing } from '../../../theme/tokens';
-import { DashboardCardHeader, dashboardCardStyles } from './DashboardCardHeader';
 
 type MedidaConsumo = { valor: number; percentual: number };
 
@@ -25,8 +25,8 @@ export function DailyIntakeCard({ calorias, proteinas, carboidratos }: Props) {
   const progressoCalorias = Math.min(calorias.percentual, 100) / 100;
 
   return (
-    <View style={dashboardCardStyles.superficie} testID="dashboard-consumo-card">
-      <DashboardCardHeader titulo="Consumo diário" icone="activity" />
+    <View style={sectionCardStyles.superficie} testID="dashboard-consumo-card">
+      <SectionCardHeader titulo="Consumo diário" icone="activity" />
 
       <View style={styles.resumo}>
         <View style={styles.calorias}>

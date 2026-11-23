@@ -1,13 +1,13 @@
 import { Feather } from '@expo/vector-icons';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { SectionCardHeader, sectionCardStyles } from '../../../components/layout/SectionCardHeader';
 import { colors, fontFamily, radius, spacing } from '../../../theme/tokens';
-import { DashboardCardHeader, dashboardCardStyles } from './DashboardCardHeader';
 
 export function PersonalDietCard({ abrirDieta }: { abrirDieta: () => void }) {
   return (
-    <View style={dashboardCardStyles.superficie} testID="dashboard-dieta-card">
-      <DashboardCardHeader titulo="Sua dieta personalizada" icone="book-open" />
+    <View style={sectionCardStyles.superficie} testID="dashboard-dieta-card">
+      <SectionCardHeader titulo="Sua dieta personalizada" icone="book-open" />
 
       <View style={estilos.resumo}>
         <Text style={estilos.descricao}>

@@ -2,14 +2,14 @@ import { Feather } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, fontFamily, radius, shadows, spacing } from '../../../theme/tokens';
+import { colors, fontFamily, radius, shadows, spacing } from '../../theme/tokens';
 
 type Props = {
   icone: ComponentProps<typeof Feather>['name'];
   titulo: string;
 };
 
-export function DashboardCardHeader({ icone, titulo }: Props) {
+export function SectionCardHeader({ icone, titulo }: Props) {
   return (
     <View style={estilos.cabecalho}>
       <View style={estilos.marca} aria-hidden>
@@ -20,7 +20,7 @@ export function DashboardCardHeader({ icone, titulo }: Props) {
   );
 }
 
-export const dashboardCardStyles = StyleSheet.create({
+export const sectionCardStyles = StyleSheet.create({
   superficie: {
     ...shadows.card,
     backgroundColor: colors.card,
