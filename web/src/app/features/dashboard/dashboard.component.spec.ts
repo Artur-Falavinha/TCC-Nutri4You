@@ -112,11 +112,14 @@ describe('Badge de notificações do nutricionista', () => {
     ];
     const tela = abrir(NotificacoesComponent);
     const painel: HTMLElement = tela.nativeElement;
-    const rotulos = [...painel.querySelectorAll('.tipo-consulta')].map(item => item.textContent?.trim());
-    expect(rotulos).toEqual(['Primeira consulta', 'Consulta de acompanhamento', 'Reagendamento', 'Solicitação de consulta']);
+    const rotulos = [...painel.querySelectorAll('.tipo-solicitacao')].map(item => item.textContent?.trim());
+    expect(rotulos).toEqual([
+      'Acompanhamento nutricional', 'Primeira consulta', 'Consulta de acompanhamento', 'Reagendamento', 'Solicitação de consulta'
+    ]);
     expect(painel.querySelector('.horario-consulta')?.textContent).toContain('45 min');
     expect(painel.querySelectorAll('.aviso-vinculo').length).toBe(1);
     expect(painel.querySelector('.aviso-vinculo')?.textContent).toContain('ativa o vínculo com o paciente');
+    expect(painel.querySelector('.acoes[aria-describedby]')?.getAttribute('aria-describedby')).toBe('aviso-vinculo-1');
     tela.destroy();
   }));
 });

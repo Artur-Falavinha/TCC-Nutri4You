@@ -16,23 +16,39 @@ ul {
 }
 
 li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-16);
-  padding: var(--space-16);
   border: var(--border-width-hairline) solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background: var(--color-surface-card);
 }
 
+.card__cabecalho,
+.card__rodape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12) var(--space-24);
+  padding-inline: var(--space-24);
+}
+
+.card__cabecalho {
+  justify-content: space-between;
+  padding-block: var(--space-16);
+}
+
+.identificacao {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
 .icone {
   display: grid;
   place-items: center;
-  width: 2.75rem;
+  flex: 0 0 2.75rem;
   height: 2.75rem;
-  border-radius: 50%;
-  background: var(--color-surface-page);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-brand-primary) 10%, white);
   color: var(--color-brand-primary);
   font-size: var(--icon-size-md);
 }
@@ -43,24 +59,11 @@ li {
   overflow-wrap: anywhere;
 }
 
-.conteudo time,
-.conteudo span,
-.vazio p {
-  color: var(--color-text-secondary);
+.conteudo h2 {
+  font: 700 1.125rem / var(--leading-tight) var(--font-heading);
 }
 
-.conteudo time,
-.conteudo span {
-  font-size: var(--text-sm);
-}
-
-.acoes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-8);
-}
-
-.conteudo .tipo-consulta {
+.tipo-solicitacao {
   justify-self: start;
   padding: var(--space-2) var(--space-8);
   border-radius: var(--radius-sm);
@@ -74,16 +77,46 @@ li {
   flex-wrap: wrap;
   column-gap: var(--space-16);
   row-gap: var(--space-2);
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-page);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
-.decisao-consulta { display: grid; justify-items: end; gap: var(--space-8); }
+.horario-consulta > * {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.horario-consulta i { color: var(--color-brand-primary); }
+
+.card__rodape {
+  justify-content: flex-end;
+  padding-block: var(--space-12);
+  border-top: var(--border-width-hairline) solid var(--color-border-default);
+  border-radius: 0 0 calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px);
+  background: var(--color-surface-page);
+}
+
+.acoes {
+  --input-min-height: 2.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+
 .aviso-vinculo {
   display: flex;
-  align-items: start;
+  align-items: baseline;
   gap: var(--space-6);
-  max-width: 17rem;
+  max-width: 60ch;
+  margin-inline-end: auto;
   color: var(--color-brand-primary-hover);
   font-size: var(--text-sm);
+  line-height: 1.5;
 }
 
 .vazio {
@@ -105,11 +138,11 @@ li {
 
 .vazio p {
   margin: 0;
+  color: var(--color-text-secondary);
 }
 
 @media (max-width: 48rem) {
-  .notificacoes { padding: var(--space-16); }
-  li { grid-template-columns: auto minmax(0, 1fr); }
-  .acoes, .decisao-consulta { grid-column: 1 / -1; }
-  .decisao-consulta { justify-items: start; }
+  .notificacoes, .card__cabecalho, .card__rodape { padding-inline: var(--space-16); }
+  .horario-consulta, .acoes { width: 100%; }
+  .acoes > app-ui-button { flex: 1 1 auto; }
 }
