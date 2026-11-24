@@ -40,6 +40,9 @@ public class Nutricionista implements UserDetails {
     @Column(name = "aceita_consultas_avulsas", nullable = false)
     private boolean aceitaConsultasAvulsas;
 
+    @Column(name = "notificacoes_email_agenda", nullable = false)
+    private boolean notificacoesEmailAgenda;
+
     protected Nutricionista() {
     }
 
@@ -68,6 +71,14 @@ public class Nutricionista implements UserDetails {
 
     public void definirAceiteDeConsultasAvulsas(boolean aceita) {
         this.aceitaConsultasAvulsas = aceita;
+    }
+
+    public boolean notificaAgendaPorEmail() {
+        return notificacoesEmailAgenda;
+    }
+
+    public void definirNotificacoesEmailAgenda(boolean ativas) {
+        this.notificacoesEmailAgenda = ativas;
     }
 
     public void setSenha(String senha) {

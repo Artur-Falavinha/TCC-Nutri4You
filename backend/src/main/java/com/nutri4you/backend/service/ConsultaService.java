@@ -20,6 +20,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.nutri4you.backend.service.NotificacaoAgendaEmailService.Tipo.CANCELADA;
+import static com.nutri4you.backend.service.NotificacaoAgendaEmailService.Tipo.CONFIRMADA;
+import static com.nutri4you.backend.service.NotificacaoAgendaEmailService.Tipo.RECUSADA;
+
 @Service
 public class ConsultaService {
     private static final Set<String> STATUS = Set.of(
@@ -31,11 +35,13 @@ public class ConsultaService {
     private final AvaliacaoAntropometricaRepository avaliacoes;
     private final HorarioConsultaService horarios;
     private final AnamneseService anamneses;
+    private final NotificacaoAgendaEmailService notificacoesEmail;
 
     public ConsultaService(GestaoPacienteService pacientes, ConsultaRepository consultas,
                            AvaliacaoAntropometricaRepository avaliacoes, Clock clock,
                            com.nutri4you.backend.repository.NutricionistaRepository nutricionistas,
-                           HorarioConsultaService horarios, AnamneseService anamneses) {
+                           HorarioConsultaService horarios, AnamneseService anamneses,
+                           NotificacaoAgendaEmailService notificacoesEmail) {
         this.pacientes = pacientes;
         this.consultas = consultas;
         this.avaliacoes = avaliacoes;
@@ -43,7 +49,7 @@ public class ConsultaService {
         this.nutricionistas = nutricionistas;
         this.horarios = horarios;
         this.anamneses = anamneses;
-
+        this.notificacoesEmail = notificacoesEmail;
     }
 
     @Transactional(readOnly = true)
@@ -121,6 +127,7 @@ public class ConsultaService {
         }
         consulta.cancelar();
         consultas.flush();
+        notificacoesEmail.agendar(consulta, CANCELADA);
     }
 
     @Transactional(readOnly = true)
@@ -171,6 +178,7 @@ public class ConsultaService {
             consulta.recusar();
         }
         consultas.flush();
+        notificacoesEmail.agendar(consulta, aceitar ? CONFIRMADA : RECUSADA);
     }
 
     private void exigirVersao(Consulta c, Long versao) {

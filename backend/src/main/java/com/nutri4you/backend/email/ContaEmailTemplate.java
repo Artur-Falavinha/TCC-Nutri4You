@@ -53,6 +53,11 @@ public class ContaEmailTemplate {
                 new Codigo("Código de verificação", token)));
     }
 
+    public Conteudo notificacaoAgenda(String titulo, String introducao, String detalhe, String acao, String link) {
+        return renderizar(new Mensagem(titulo, introducao, acao, link, detalhe,
+                "Gerencie os avisos por e-mail em Configurações no Nutri4You.", null));
+    }
+
     private Conteudo renderizar(Mensagem mensagem) {
         Codigo codigo = mensagem.codigo();
         String htmlCodigo = codigo == null ? "" : preencher(blocoCodigo, Map.of(

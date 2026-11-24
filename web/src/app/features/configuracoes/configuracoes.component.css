@@ -48,7 +48,7 @@ h2, h3 { font-family: var(--font-heading); line-height: var(--leading-tight); }
 h2 { font-size: var(--text-md); }
 h3 { font-size: 1rem; }
 .secundario, .estado { color: var(--color-text-secondary); line-height: 1.5; }
-.acao + .acao, .consultas__lista li + li { border-top: 1px solid var(--color-border-default); }
+.acao + .acao { border-top: 1px solid var(--color-border-default); }
 
 .acao, .preferencia {
   display: flex;
@@ -77,12 +77,13 @@ h3 { font-size: 1rem; }
 
 .botao-link:hover { background: var(--color-surface-page); }
 
-.preferencia, .consultas, .feedback {
+.preferencia, .feedback {
   padding: var(--space-12);
   border-radius: var(--radius-md);
 }
 
 .preferencia { background: var(--color-surface-page); cursor: pointer; }
+.preferencia--salvando, .interruptor input:disabled { cursor: wait; }
 .interruptor { position: relative; display: inline-flex; align-items: center; gap: var(--space-8); }
 
 .interruptor input {
@@ -123,11 +124,6 @@ h3 { font-size: 1rem; }
   outline: 2px solid var(--color-brand-primary);
   outline-offset: 2px;
 }
-
-.consultas { display: grid; gap: var(--space-8); border: 1px solid var(--color-border-default); }
-.consultas__lista { margin: 0; padding: 0; list-style: none; }
-.consultas__lista li { display: flex; gap: var(--space-12); padding-block: var(--space-8); overflow-wrap: anywhere; }
-.consultas time { flex: none; color: var(--color-brand-primary); font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .feedback--erro { color: #a11919; background: var(--color-error-surface); }
 

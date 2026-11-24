@@ -52,56 +52,44 @@
     </div>
   </section>
 
-  <section class="card" id="notificacoes" aria-labelledby="lembretes-titulo">
+  <section class="card" id="notificacoes" aria-labelledby="notificacoes-titulo"
+    [attr.aria-busy]="carregandoPreferencia() || salvandoPreferencia()">
     <header class="card__cabecalho">
-      <span class="icone" aria-hidden="true"><i class="ph ph-bell-ringing"></i></span>
-      <h2 id="lembretes-titulo">Lembretes</h2>
+      <span class="icone" aria-hidden="true"><i class="ph ph-envelope-simple"></i></span>
+      <h2 id="notificacoes-titulo">Notificações por e-mail</h2>
     </header>
 
-    <label class="preferencia">
-      <span class="preferencia__texto">
-        <strong id="lembretes-rotulo">Lembretes de consulta</strong>
-        <span class="secundario" id="lembretes-descricao">Mostra as consultas de hoje nesta página.</span>
-      </span>
-      <span class="interruptor">
-        <input
-          type="checkbox"
-          role="switch"
-          aria-labelledby="lembretes-rotulo"
-          aria-describedby="lembretes-descricao"
-          [checked]="preferencias.lembretesConsulta"
-          (change)="atualizarLembretes($event)"
-        />
-        <span class="interruptor__trilho" aria-hidden="true"></span>
-        <span class="interruptor__estado" aria-hidden="true">
-          {{ preferencias.lembretesConsulta ? 'Ativado' : 'Desativado' }}
+    @if (carregandoPreferencia()) {
+      <p class="estado" role="status">Carregando sua preferência…</p>
+    } @else if (notificacoesAtivas() !== null) {
+      <label class="preferencia" [class.preferencia--salvando]="salvandoPreferencia()">
+        <span class="preferencia__texto">
+          <strong id="notificacoes-rotulo">Atualizações da agenda</strong>
+          <span class="secundario" id="notificacoes-descricao">
+            Receba no e-mail da sua conta avisos sobre solicitações, confirmações, reagendamentos, recusas e cancelamentos.
+          </span>
         </span>
-      </span>
-    </label>
-
-
-    @if (preferencias.lembretesConsulta) {
-      <div class="consultas" [attr.aria-busy]="carregando()">
-        <h3>Consultas de hoje</h3>
-        @if (carregando()) {
-          <p class="estado" role="status">Carregando consultas…</p>
-        } @else if (erro()) {
-          <p class="feedback feedback--erro" role="alert">{{ erro() }}</p>
-        } @else if (!consultas().length) {
-          <p class="estado">Nenhuma consulta marcada para hoje.</p>
-        } @else {
-          <ul class="consultas__lista">
-            @for (consulta of consultas(); track consulta.id) {
-              <li>
-                <time [attr.datetime]="consulta.dataHora">{{ consulta.dataHora | dataHoraClinica:'hora' }}</time>
-                <span>{{ consulta.pacienteNome }}</span>
-              </li>
-            }
-          </ul>
-        }
-      </div>
+        <span class="interruptor">
+          <input
+            #controleAgenda
+            type="checkbox"
+            role="switch"
+            aria-labelledby="notificacoes-rotulo"
+            aria-describedby="notificacoes-descricao"
+            [checked]="notificacoesAtivas()"
+            [disabled]="salvandoPreferencia()"
+            (change)="salvarPreferencia(controleAgenda)"
+          />
+          <span class="interruptor__trilho" aria-hidden="true"></span>
+          <span class="interruptor__estado" aria-hidden="true">
+            {{ salvandoPreferencia() ? 'Salvando…' : notificacoesAtivas() ? 'Ativado' : 'Desativado' }}
+          </span>
+        </span>
+      </label>
+    } @else {
+      <p class="feedback feedback--erro" role="alert">Não foi possível carregar sua preferência de e-mail.</p>
+      <app-ui-button label="Tentar novamente" variant="secondary" [fullWidth]="false" (click)="carregarPreferencia()" />
     }
-    <p class="secundario">A preferência vale neste navegador.</p>
   </section>
 
   <section class="card" aria-labelledby="privacidade-titulo">

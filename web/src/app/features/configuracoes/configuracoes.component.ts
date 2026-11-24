@@ -1,26 +1,19 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 import { ToastService } from '../../core/services/toast.service';
 import { UsuarioInfo } from '../../core/models/auth.models';
 import { AuthService } from '../../core/services/auth.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
-import { DataHoraClinicaPipe } from '../../shared/pipes/data-hora-clinica.pipe';
-import { ClinicoService, ConsultaResumo } from '../clinico/clinico.service';
 import { PrivacidadeComponent } from '../privacidade/privacidade.component';
 import { FotoPerfilComponent } from './foto-perfil.component';
-
-interface PreferenciasNotificacao {
-  lembretesConsulta: boolean;
-}
-
-const CHAVE_PREFERENCIAS = 'nutri4you.preferencias-notificacao';
-const PADRAO: PreferenciasNotificacao = { lembretesConsulta: true };
+import { PreferenciasEmailAgendaService } from './preferencias-email-agenda.service';
 
 @Component({
   selector: 'app-configuracoes',
-  imports: [RouterLink, DataHoraClinicaPipe, PageHeaderComponent, UiButtonComponent, PrivacidadeComponent, FotoPerfilComponent],
+  imports: [RouterLink, PageHeaderComponent, UiButtonComponent, PrivacidadeComponent, FotoPerfilComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './configuracoes.component.html',
   styleUrl: './configuracoes.component.css'
@@ -28,12 +21,11 @@ const PADRAO: PreferenciasNotificacao = { lembretesConsulta: true };
 export class ConfiguracoesComponent {
   private readonly toast = inject(ToastService);
   private readonly auth = inject(AuthService);
-  private readonly clinico = inject(ClinicoService);
+  private readonly preferenciasEmail = inject(PreferenciasEmailAgendaService);
   private readonly destroyRef = inject(DestroyRef);
-  preferencias = this.carregarPreferencias();
-  readonly consultas = signal<ConsultaResumo[]>([]);
-  readonly carregando = signal(false);
-  readonly erro = signal('');
+  readonly notificacoesAtivas = signal<boolean | null>(null);
+  readonly carregandoPreferencia = signal(false);
+  readonly salvandoPreferencia = signal(false);
   readonly conta = signal<UsuarioInfo | null>(null);
   readonly carregandoConta = signal(true);
   readonly erroConta = signal('');
@@ -41,7 +33,7 @@ export class ConfiguracoesComponent {
 
   constructor() {
     this.carregarConta();
-    if (this.preferencias.lembretesConsulta) this.carregar();
+    this.carregarPreferencia();
   }
 
   carregarConta(): void {
@@ -63,39 +55,36 @@ export class ConfiguracoesComponent {
     });
   }
 
-  carregar(): void {
-    if (this.carregando()) return;
-    this.carregando.set(true);
-    this.erro.set('');
-    this.clinico.agenda().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: agenda => { this.consultas.set(agenda.hoje); this.carregando.set(false); },
-      error: () => { this.erro.set('Não foi possível carregar as consultas.'); this.carregando.set(false); }
-    });
+  carregarPreferencia(): void {
+    if (this.carregandoPreferencia()) return;
+    this.carregandoPreferencia.set(true);
+    this.preferenciasEmail.buscar()
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.carregandoPreferencia.set(false)))
+      .subscribe({
+        next: preferencia => this.notificacoesAtivas.set(preferencia.ativa),
+        error: () => this.notificacoesAtivas.set(null)
+      });
   }
 
-  atualizarLembretes(evento: Event): void {
-    const controle = evento.target as HTMLInputElement;
-    const preferencias = { lembretesConsulta: controle.checked };
-    try {
-      localStorage.setItem(CHAVE_PREFERENCIAS, JSON.stringify(preferencias));
-    } catch {
-      controle.checked = this.preferencias.lembretesConsulta;
-      this.toast.erro('Não foi possível salvar a preferência neste navegador.');
-      return;
-    }
-    this.preferencias = preferencias;
-    this.toast.sucesso('Preferência salva neste navegador.');
-    if (preferencias.lembretesConsulta) this.carregar();
-  }
+  salvarPreferencia(controle: HTMLInputElement): void {
+    const anterior = this.notificacoesAtivas();
+    if (anterior === null || this.salvandoPreferencia()) return;
 
-  private carregarPreferencias(): PreferenciasNotificacao {
-    try {
-      const valor = localStorage.getItem(CHAVE_PREFERENCIAS);
-      const salvo: Partial<PreferenciasNotificacao> | null = valor ? JSON.parse(valor) : null;
-      return typeof salvo?.lembretesConsulta === 'boolean'
-        ? { lembretesConsulta: salvo.lembretesConsulta } : PADRAO;
-    } catch {
-      return PADRAO;
-    }
+    const ativa = controle.checked;
+    this.notificacoesAtivas.set(ativa);
+    this.salvandoPreferencia.set(true);
+    this.preferenciasEmail.salvar(ativa)
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.salvandoPreferencia.set(false)))
+      .subscribe({
+        next: preferencia => {
+          this.notificacoesAtivas.set(preferencia.ativa);
+          this.toast.sucesso(preferencia.ativa ? 'Notificações por e-mail ativadas.' : 'Notificações por e-mail desativadas.');
+        },
+        error: () => {
+          this.notificacoesAtivas.set(anterior);
+          controle.checked = anterior;
+          this.toast.erro('Não foi possível salvar a preferência de e-mail. Tente novamente.');
+        }
+      });
   }
 }

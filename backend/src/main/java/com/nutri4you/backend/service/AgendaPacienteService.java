@@ -23,6 +23,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 
+import static com.nutri4you.backend.service.NotificacaoAgendaEmailService.Tipo.CANCELADA;
+import static com.nutri4you.backend.service.NotificacaoAgendaEmailService.Tipo.REAGENDAMENTO_SOLICITADO;
+import static com.nutri4you.backend.service.NotificacaoAgendaEmailService.Tipo.SOLICITADA;
+
 @Service
 public class AgendaPacienteService {
 
@@ -34,18 +38,19 @@ public class AgendaPacienteService {
     private final RelacaoClinicaRepository relacoes;
     private final HorarioAtendimentoService horarios;
     private final Clock clock;
-
+    private final NotificacaoAgendaEmailService notificacoesEmail;
 
     public AgendaPacienteService(
             ConsultaRepository consultas,
             NutricionistaRepository nutricionistas,
-            RelacaoClinicaRepository relacoes, HorarioAtendimentoService horarios, Clock clock) {
+            RelacaoClinicaRepository relacoes, HorarioAtendimentoService horarios, Clock clock,
+            NotificacaoAgendaEmailService notificacoesEmail) {
         this.consultas = consultas;
         this.nutricionistas = nutricionistas;
         this.relacoes = relacoes;
         this.horarios = horarios;
         this.clock = clock;
-
+        this.notificacoesEmail = notificacoesEmail;
     }
 
     @Transactional(readOnly = true)
@@ -121,6 +126,7 @@ public class AgendaPacienteService {
 
         Consulta consulta = consultas.save(new Consulta(paciente, nutricionista, request.dataHora(), !vinculado));
         consultas.flush();
+        notificacoesEmail.agendar(consulta, SOLICITADA);
         return resposta(consulta);
     }
 
@@ -140,6 +146,7 @@ public class AgendaPacienteService {
 
         consulta.reagendar(request.dataHora());
         consultas.flush();
+        notificacoesEmail.agendar(consulta, REAGENDAMENTO_SOLICITADO);
         return resposta(consulta);
     }
 
@@ -153,6 +160,7 @@ public class AgendaPacienteService {
         validarVersao(versao, consulta);
         consulta.cancelar();
         consultas.flush();
+        notificacoesEmail.agendar(consulta, CANCELADA);
         return resposta(consulta);
     }
 

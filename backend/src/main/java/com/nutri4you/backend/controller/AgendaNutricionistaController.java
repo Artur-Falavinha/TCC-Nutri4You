@@ -4,6 +4,7 @@ import com.nutri4you.backend.dto.ApiResponse;
 import com.nutri4you.backend.dto.DecisaoConsultaRequest;
 import com.nutri4you.backend.dto.HorarioAtendimentoDTO;
 import com.nutri4you.backend.dto.PreferenciaAgendaDTO;
+import com.nutri4you.backend.dto.PreferenciaEmailAgendaDTO;
 import com.nutri4you.backend.dto.SolicitacaoAvulsaDTO;
 import com.nutri4you.backend.dto.NotificacaoConsultaDTO;
 import com.nutri4you.backend.exception.AcessoNegadoException;
@@ -68,6 +69,19 @@ public class AgendaNutricionistaController {
     public ApiResponse<PreferenciaAgendaDTO> salvarPreferencia(
             Authentication auth, @RequestBody PreferenciaAgendaDTO preferencia) {
         return ApiResponse.ok(horarios.salvarPreferencia(nutricionista(auth), preferencia), "Preferência salva.");
+    }
+
+    @GetMapping("/preferencias/notificacoes-email")
+    public ApiResponse<PreferenciaEmailAgendaDTO> preferenciaEmail(Authentication auth) {
+        return ApiResponse.ok(new PreferenciaEmailAgendaDTO(nutricionista(auth).notificaAgendaPorEmail()),
+                "Preferência de e-mail carregada.");
+    }
+
+    @PutMapping("/preferencias/notificacoes-email")
+    public ApiResponse<PreferenciaEmailAgendaDTO> salvarPreferenciaEmail(
+            Authentication auth, @RequestBody PreferenciaEmailAgendaDTO preferencia) {
+        return ApiResponse.ok(horarios.salvarPreferenciaEmail(nutricionista(auth), preferencia),
+                "Preferência de e-mail salva.");
     }
 
     @GetMapping("/solicitacoes-avulsas")

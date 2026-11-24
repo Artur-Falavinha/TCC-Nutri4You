@@ -28,18 +28,21 @@ public class GestaoPacienteService {
     private final ConsultaRepository consultaRepository;
     private final NutricionistaRepository nutricionistaRepository;
     private final Clock clock;
+    private final NotificacaoAgendaEmailService notificacoesEmail;
 
     public GestaoPacienteService(
             PacienteRepository pacienteRepository,
             RelacaoClinicaRepository relacaoClinicaRepository,
             ConsultaRepository consultaRepository,
             NutricionistaRepository nutricionistaRepository,
-            Clock clock) {
+            Clock clock,
+            NotificacaoAgendaEmailService notificacoesEmail) {
         this.pacienteRepository = pacienteRepository;
         this.relacaoClinicaRepository = relacaoClinicaRepository;
         this.consultaRepository = consultaRepository;
         this.nutricionistaRepository = nutricionistaRepository;
         this.clock = clock;
+        this.notificacoesEmail = notificacoesEmail;
     }
 
     @Transactional(readOnly = true)
@@ -157,16 +160,18 @@ public class GestaoPacienteService {
     }
 
     private void encerrarVinculo(Integer pacienteId, Integer nutricionistaId, String mensagemSemVinculo) {
-        nutricionistaRepository.findByIdForUpdate(nutricionistaId)
+        Nutricionista nutricionista = nutricionistaRepository.findByIdForUpdate(nutricionistaId)
                 .orElseThrow(() -> new IllegalArgumentException(mensagemSemVinculo));
         pacienteRepository.findByIdForUpdate(pacienteId).orElseThrow(PacienteNaoEncontradoException::new);
         RelacaoClinica relacao = relacaoClinicaRepository
                 .findByPaciente_IdAndNutricionista_IdAndStatus(pacienteId, nutricionistaId, StatusRelacaoClinica.ATIVA)
                 .orElseThrow(() -> new IllegalArgumentException(mensagemSemVinculo));
 
-        consultaRepository.bloquearConsultasEmAberto(pacienteId, nutricionistaId, LocalDateTime.now(clock))
-                .forEach(Consulta::cancelar);
+        List<Consulta> canceladas = consultaRepository
+                .bloquearConsultasEmAberto(pacienteId, nutricionistaId, LocalDateTime.now(clock));
+        canceladas.forEach(Consulta::cancelar);
         relacao.encerrar();
+        notificacoesEmail.agendarCancelamentosPorVinculo(nutricionista, canceladas.size());
     }
 
     private void validarAcessoNutricionista(Nutricionista nutricionista, Paciente paciente) {
