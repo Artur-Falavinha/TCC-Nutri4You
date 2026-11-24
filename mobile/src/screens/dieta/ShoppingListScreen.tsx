@@ -267,18 +267,7 @@ export function ShoppingListScreen({ navigation }: Props) {
         }
       >
         <View style={styles.heading}>
-          <View style={styles.headingTop}>
-            <Text style={styles.title} accessibilityRole="header" aria-level={1}>Lista de compras</Text>
-            <Pressable
-              style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
-              onPress={() => navigation.navigate('Dieta')}
-              accessibilityRole="button"
-              accessibilityLabel="Voltar para dieta ativa"
-            >
-              <Feather name="arrow-left" size={16} color={colors.brandDeep} aria-hidden />
-              <Text style={styles.secondaryButtonText}>Dieta</Text>
-            </Pressable>
-          </View>
+          <Text style={styles.title} accessibilityRole="header" aria-level={1}>Lista de compras</Text>
           <Text style={styles.subtitle}>
             Inclui apenas os alimentos principais; substituições opcionais não são somadas.
           </Text>
@@ -352,13 +341,6 @@ export function ShoppingListScreen({ navigation }: Props) {
             <Text style={[styles.bodyText, styles.centered]}>
               Uma lista será criada a partir da sua dieta ativa quando houver um plano vigente.
             </Text>
-            <Pressable
-              style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
-              onPress={() => navigation.navigate('Dieta')}
-              accessibilityRole="button"
-            >
-              <Text style={styles.primaryButtonText}>Ver dieta ativa</Text>
-            </Pressable>
           </View>
         ) : (
           <View style={styles.listSection}>
@@ -460,17 +442,8 @@ const styles = StyleSheet.create({
   content: { width: '100%', alignSelf: 'center', padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
   contentCompact: { paddingHorizontal: spacing.sm },
   heading: { paddingTop: spacing.xs, gap: spacing.xxs },
-  headingTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs },
-  title: {
-    flexGrow: 1, flexShrink: 1, flexBasis: 175,
-    color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 30, lineHeight: 38
-  },
+  title: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 30, lineHeight: 38 },
   subtitle: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 15, lineHeight: 23 },
-  secondaryButton: {
-    minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xxs,
-    paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, backgroundColor: colors.confirmedBackground, borderRadius: radius.md
-  },
-  secondaryButtonText: { flexShrink: 1, color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 14, lineHeight: 20 },
   surface: {
     backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border,
     padding: spacing.md, gap: spacing.sm, ...shadows.card
