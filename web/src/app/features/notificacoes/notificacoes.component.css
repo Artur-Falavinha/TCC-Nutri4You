@@ -87,9 +87,29 @@ li, .estado {
   overflow-wrap: anywhere;
 }
 
-.conteudo h2 {
+.conteudo h2, .conteudo h3 {
   font: 700 1.125rem / var(--leading-tight) var(--font-heading);
 }
+
+ul + .resultados { margin-block-start: var(--space-24); }
+.resultados h2 { margin-block-end: var(--space-12); font: 700 var(--text-md) / var(--leading-tight) var(--font-heading); }
+.resultados time { color: var(--color-text-secondary); font-size: var(--text-sm); }
+
+.link-resultado {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 2.75rem;
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  color: var(--color-brand-primary-hover);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.link-resultado:hover { background: var(--color-surface-page); }
+.link-resultado:focus-visible { outline: 2px solid var(--color-brand-primary); outline-offset: 2px; }
 
 .tipo-solicitacao {
   justify-self: start;

@@ -6,7 +6,7 @@ import { getToken } from '../../../core/auth/token-storage';
 import { carregarPerfil } from '../../../core/perfil/perfil.service';
 import { gravarVistas, lerVistas } from '../../../features/notificacoes/leitura-storage';
 import { NotificacoesProvider, useNotificacoes } from '../../../features/notificacoes/NotificacoesProvider';
-import { listarAvisosConsulta, listarAvisosPlanos } from '../../../features/notificacoes/notificacoes.service';
+import { listarAvisosConsulta, listarAvisosExames, listarAvisosPlanos } from '../../../features/notificacoes/notificacoes.service';
 
 import { listAppointments } from '../../../features/appointments/appointments.service';
 import { NotificationsScreen } from '../NotificationsScreen';
@@ -17,6 +17,7 @@ jest.mock('../../../features/notificacoes/leitura-storage', () => ({ lerVistas: 
 jest.mock('../../../features/notificacoes/notificacoes.service', () => ({
   ...jest.requireActual('../../../features/notificacoes/notificacoes.service'),
   listarAvisosConsulta: jest.fn(),
+  listarAvisosExames: jest.fn(),
   listarAvisosPlanos: jest.fn()
 }));
 jest.mock('../../../components/layout/AppHeader', () => ({
@@ -58,6 +59,7 @@ describe('NotificationsScreen', () => {
     });
     jest.mocked(lerVistas).mockResolvedValue(new Set());
     jest.mocked(listarAvisosConsulta).mockResolvedValue([]);
+    jest.mocked(listarAvisosExames).mockResolvedValue([]);
     jest.mocked(listarAvisosPlanos).mockResolvedValue([]);
   });
   afterEach(() => jest.restoreAllMocks());
@@ -208,6 +210,23 @@ describe('NotificationsScreen', () => {
     await act(async () => botao.props.onPress());
     expect(navigation.navigate).toHaveBeenCalledWith('Dieta');
     expect(gravarVistas).toHaveBeenCalledWith(2, new Set(['plano:4', 'plano:3']));
+    await act(async () => tree.unmount());
+  });
+
+  it('exibe o pedido e o parecer com destino para Exames', async () => {
+    jest.mocked(listarAvisosExames).mockResolvedValue([
+      { id: 3, tipo: 'PARECER_REGISTRADO', exameNome: 'Hemograma', criadaEm: '2029-12-31T11:00:00Z' },
+      { id: 1, tipo: 'SOLICITADO', exameNome: 'Hemograma', criadaEm: '2029-12-30T11:00:00Z' }
+    ]);
+    appointments.mockResolvedValue([]);
+    const tree = await renderScreen();
+    const textos = tree.root.findAllByType(Text).map(item => item.props.children);
+    expect(textos).toEqual(expect.arrayContaining(['Novo exame solicitado', 'Parecer de exame disponível', 'Hemograma']));
+    const botao = tree.root.findAllByProps({ accessibilityRole: 'button' })
+      .find(item => item.props.accessibilityLabel?.includes('Abrir exames'))!;
+    await act(async () => botao.props.onPress());
+    expect(navigation.navigate).toHaveBeenCalledWith('Exames');
+    expect(gravarVistas).toHaveBeenCalledWith(2, new Set(['exame:3', 'exame:1']));
     await act(async () => tree.unmount());
   });
 });

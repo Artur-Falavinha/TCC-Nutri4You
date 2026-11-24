@@ -8,7 +8,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Agenda, ClinicoService } from '../clinico/clinico.service';
 import { NotificacoesComponent } from '../notificacoes/notificacoes.component';
-import { NotificacaoConsulta, NotificacaoVinculo } from '../notificacoes/notificacoes.service';
+import { NotificacaoConsulta, NotificacaoResultadoExame, NotificacaoVinculo } from '../notificacoes/notificacoes.service';
 import { DashboardComponent } from './dashboard.component';
 
 const agendaVazia: Agenda = {
@@ -24,12 +24,14 @@ describe('Badge de notificações do nutricionista', () => {
   let usuarioId: number;
   let consultas: NotificacaoConsulta[];
   let vinculos: NotificacaoVinculo[];
+  let resultados: NotificacaoResultadoExame[];
   let indisponivel: boolean;
 
   beforeEach(() => {
     usuarioId = 910761;
     consultas = [consulta];
     vinculos = [vinculo];
+    resultados = [];
     indisponivel = false;
     TestBed.configureTestingModule({
       imports: [DashboardComponent, NotificacoesComponent],
@@ -39,9 +41,11 @@ describe('Badge de notificações do nutricionista', () => {
         { provide: ClinicoService, useValue: { agenda: () => of(agendaVazia) } },
         { provide: AuthService, useValue: { fetchMe: () => of({ id: usuarioId }) } },
         { provide: ApiService, useValue: {
-          get: (rota: string) => indisponivel
-            ? throwError(() => ({ message: 'Notificações indisponíveis' }))
-            : of(rota.endsWith('/vinculos') ? vinculos : consultas)
+          get: (rota: string) => {
+            if (indisponivel) return throwError(() => ({ message: 'Notificações indisponíveis' }));
+            if (rota.endsWith('/vinculos')) return of(vinculos);
+            return of(rota.endsWith('/exames') ? resultados : consultas);
+          }
         } }
       ]
     });
@@ -103,6 +107,27 @@ describe('Badge de notificações do nutricionista', () => {
     const tela = abrir(DashboardComponent);
     expect(tela.nativeElement.querySelector('.badge')?.textContent?.trim()).toBe('2');
     tela.destroy();
+  }));
+
+  it('conta o resultado no sino e abre os exames do atendimento', fakeAsync(() => {
+    consultas = [];
+    vinculos = [];
+    resultados = [{ id: 1, pacienteId: 7, pacienteNome: 'Paciente de teste', atendimentoId: 12,
+      exameNome: 'Hemograma', criadaEm: '2026-11-20T12:00:00Z' }];
+    const inicio = abrir(DashboardComponent);
+    expect(inicio.nativeElement.querySelector('app-notification-bell a').getAttribute('aria-label'))
+      .toBe('Notificações, 1 não lida');
+    inicio.destroy();
+
+    const notificacoes = abrir(NotificacoesComponent);
+    const painel: HTMLElement = notificacoes.nativeElement;
+    expect(painel.textContent).toContain('Hemograma');
+    expect(painel.querySelector('.link-resultado')?.getAttribute('href')).toBe('/pacientes/7/exames?atendimentoId=12');
+    notificacoes.destroy();
+
+    const lido = abrir(DashboardComponent);
+    expect(lido.nativeElement.querySelector('app-notification-bell .badge')).toBeNull();
+    lido.destroy();
   }));
 
   it('distingue as consultas e avisa sobre o vínculo antes do aceite', fakeAsync(() => {

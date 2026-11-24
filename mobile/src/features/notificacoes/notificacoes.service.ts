@@ -17,9 +17,17 @@ export interface AvisoPlanoAlimentar {
   criadaEm: string;
 }
 
-export type AvisoPaciente = AvisoConsulta | AvisoPlanoAlimentar;
+export interface AvisoExame {
+  id: number;
+  tipo: 'SOLICITADO' | 'PARECER_REGISTRADO';
+  exameNome: string;
+  criadaEm: string;
+}
+
+export type AvisoPaciente = AvisoConsulta | AvisoPlanoAlimentar | AvisoExame;
 
 export function chaveAviso(aviso: AvisoPaciente): string {
+  if ('exameNome' in aviso) return 'exame:' + aviso.id;
   return 'atualizacao' in aviso ? 'plano:' + aviso.id : 'aviso:' + aviso.id;
 }
 
@@ -29,4 +37,8 @@ export function listarAvisosConsulta(): Promise<AvisoConsulta[]> {
 
 export function listarAvisosPlanos(): Promise<AvisoPlanoAlimentar[]> {
   return apiClient.get<AvisoPlanoAlimentar[]>('/usuarios/me/notificacoes-planos');
+}
+
+export function listarAvisosExames(): Promise<AvisoExame[]> {
+  return apiClient.get<AvisoExame[]>('/usuarios/me/notificacoes-exames');
 }

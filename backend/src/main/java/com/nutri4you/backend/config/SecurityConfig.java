@@ -53,7 +53,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/gestao-pacientes/**").hasRole("NUTRICIONISTA")
                         .requestMatchers("/api/v1/agenda-nutricionista/**").hasRole("NUTRICIONISTA")
                         .requestMatchers("/api/v1/agenda/notificacoes", "/api/v1/usuarios/me/lembretes-consulta",
-                                "/api/v1/usuarios/me/notificacoes-planos")
+                                "/api/v1/usuarios/me/notificacoes-planos", "/api/v1/usuarios/me/notificacoes-exames")
                         .hasRole("PACIENTE")
                         .requestMatchers("/api/v1/dashboard/**").hasRole("NUTRICIONISTA")
                         .anyRequest().authenticated())

@@ -9,7 +9,7 @@
   }
 
   @let temPendencias = itens.length > 0 || vinculos.length > 0;
-  @if (carregando || (!temPendencias && !erro)) {
+  @if (carregando || (!temPendencias && !resultados.length && !erro)) {
     <div class="estado" [attr.role]="carregando ? 'status' : null">
       <span class="icone" aria-hidden="true">
         <i class="ph" [class.ph-hourglass]="carregando" [class.ph-tray]="!carregando"></i>
@@ -18,7 +18,7 @@
         <p>Carregando notificações…</p>
       } @else {
         <h2>Nenhuma solicitação pendente</h2>
-        <p>Novas solicitações de consulta e de vínculo aparecerão aqui.</p>
+        <p>Solicitações de consulta, de vínculo e resultados de exames aparecem aqui.</p>
       }
     </div>
   } @else if (temPendencias) {
@@ -83,5 +83,32 @@
         </li>
       }
     </ul>
+  }
+
+  @if (!carregando && resultados.length) {
+    <section class="resultados" aria-labelledby="resultados-titulo">
+      <h2 id="resultados-titulo">Resultados de exames</h2>
+      <ul>
+        @for (item of resultados; track item.id) {
+          <li>
+            <div class="card__cabecalho">
+              <div class="identificacao">
+                <div class="icone" aria-hidden="true"><i class="ph ph-test-tube"></i></div>
+                <div class="conteudo">
+                  <h3>{{ item.pacienteNome }} enviou um resultado</h3>
+                  <span>{{ item.exameNome }}</span>
+                  <time [attr.datetime]="item.criadaEm">{{ item.criadaEm | date:'dd/MM/yyyy HH:mm' }}</time>
+                </div>
+              </div>
+              <a class="link-resultado" [routerLink]="['/pacientes', item.pacienteId, 'exames']"
+                [queryParams]="item.atendimentoId === null ? null : { atendimentoId: item.atendimentoId }"
+                [attr.aria-label]="'Ver exames de ' + item.pacienteNome + ' — ' + item.exameNome">
+                Ver exames <i class="ph ph-arrow-right" aria-hidden="true"></i>
+              </a>
+            </div>
+          </li>
+        }
+      </ul>
+    </section>
   }
 </div>

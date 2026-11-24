@@ -16,9 +16,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../../components/layout/AppHeader';
 import { SideMenu } from '../../components/navigation/SideMenu';
 import { sectionCardStyles } from '../../components/layout/SectionCardHeader';
-import { formatarDataCivil, formatarDataHoraCivil } from '../../core/utils/date-mask.util';
+import { dataIsoDaClinica, formatarDataCivil, formatarDataHoraCivil } from '../../core/utils/date-mask.util';
 import { useNotificacoes } from '../../features/notificacoes/NotificacoesProvider';
-import { chaveAviso } from '../../features/notificacoes/notificacoes.service';
+import { chaveAviso, type AvisoPaciente } from '../../features/notificacoes/notificacoes.service';
 import { RootStackParamList } from '../../navigation/types';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 
@@ -57,7 +57,7 @@ export function NotificationsScreen({ navigation }: Props) {
       >
         <View style={styles.introducao}>
           <Text style={styles.titulo} accessibilityRole="header" aria-level={1}>Notificações</Text>
-          <Text style={styles.subtitulo}>Atualizações da sua agenda e do plano alimentar</Text>
+          <Text style={styles.subtitulo}>Atualizações sobre consultas, dieta e exames</Text>
         </View>
 
         {carregando ? (
@@ -95,19 +95,14 @@ export function NotificationsScreen({ navigation }: Props) {
               <Text style={[styles.tituloCartao, styles.centralizado]} accessibilityRole="header" aria-level={2}>
                 Tudo em dia
               </Text>
-              <Text style={[styles.texto, styles.centralizado]}>Os avisos sobre consultas e dieta aparecem aqui.</Text>
+              <Text style={[styles.texto, styles.centralizado]}>Os avisos sobre consultas, dieta e exames aparecem aqui.</Text>
             </View>
           </View>
         ) : null}
 
         {pronto && avisos.length > 0 ? <Text style={styles.tituloCartao} accessibilityRole="header" aria-level={2}>Atualizações recentes</Text> : null}
-        {pronto ? avisos.map(aviso => 'atualizacao' in aviso ? (
-          <CartaoNotificacao key={chaveAviso(aviso)} tipo={aviso.atualizacao ? 'PLANO_ATUALIZADO' : 'NOVO_PLANO'}
-            data={formatarDataCivil(aviso.vigenciaInicio) + ' a ' + formatarDataCivil(aviso.vigenciaFim)}
-            detalhe={aviso.titulo} destino="Dieta" onAbrir={() => navigation.navigate('Dieta')} />
-        ) : (
-          <CartaoNotificacao key={chaveAviso(aviso)} tipo={aviso.tipo}
-            data={formatarDataHoraCivil(aviso.dataHora)} onAbrir={abrirAgenda} />
+        {pronto ? avisos.map(aviso => (
+          <CartaoAviso key={chaveAviso(aviso)} aviso={aviso} navigation={navigation} />
         )) : null}
         {pronto && lembretes.length > 0 ? <Text style={styles.tituloCartao} accessibilityRole="header" aria-level={2}>Status das consultas</Text> : null}
         {pronto ? lembretes.map(({ id, status, dataHora }) => (
@@ -120,7 +115,32 @@ export function NotificationsScreen({ navigation }: Props) {
   );
 }
 
+function CartaoAviso({ aviso, navigation }: { aviso: AvisoPaciente; navigation: Props['navigation'] }) {
+  if ('exameNome' in aviso) {
+    return (
+      <CartaoNotificacao tipo={aviso.tipo} data={formatarDataCivil(dataIsoDaClinica(new Date(aviso.criadaEm)))}
+        detalhe={aviso.exameNome} destino="Exames" onAbrir={() => navigation.navigate('Exames')} />
+    );
+  }
+  if ('atualizacao' in aviso) {
+    return (
+      <CartaoNotificacao tipo={aviso.atualizacao ? 'PLANO_ATUALIZADO' : 'NOVO_PLANO'}
+        data={formatarDataCivil(aviso.vigenciaInicio) + ' a ' + formatarDataCivil(aviso.vigenciaFim)}
+        detalhe={aviso.titulo} destino="Dieta" onAbrir={() => navigation.navigate('Dieta')} />
+    );
+  }
+  return <CartaoNotificacao tipo={aviso.tipo} data={formatarDataHoraCivil(aviso.dataHora)} onAbrir={() => navigation.navigate('Agenda')} />;
+}
+
 const apresentacoes = {
+  SOLICITADO: {
+    titulo: 'Novo exame solicitado', icone: 'clipboard', cor: colors.brandDark,
+    fundo: colors.confirmedBackground, detalhe: ''
+  },
+  PARECER_REGISTRADO: {
+    titulo: 'Parecer de exame disponível', icone: 'file-text', cor: colors.brandDark,
+    fundo: colors.confirmedBackground, detalhe: ''
+  },
   NOVO_PLANO: {
     titulo: 'Novo plano alimentar', icone: 'book-open', cor: colors.brandDark,
     fundo: colors.confirmedBackground, detalhe: ''
@@ -177,7 +197,7 @@ type CartaoProps = {
   tipo: keyof typeof apresentacoes;
   data: string;
   detalhe?: string;
-  destino?: 'Agenda' | 'Dieta';
+  destino?: 'Agenda' | 'Dieta' | 'Exames';
   onAbrir: () => void;
 };
 

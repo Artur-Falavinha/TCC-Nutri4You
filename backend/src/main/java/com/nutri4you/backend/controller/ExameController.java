@@ -4,16 +4,33 @@ import com.nutri4you.backend.dto.*;
 import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.model.*;
 import com.nutri4you.backend.service.ExameService;
+import com.nutri4you.backend.service.NotificacaoExameService;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.net.URI;
+import java.util.List;
 
 @RestController
 public class ExameController {
     private final ExameService service;
-    public ExameController(ExameService service) { this.service = service; }
+    private final NotificacaoExameService notificacoes;
+
+    public ExameController(ExameService service, NotificacaoExameService notificacoes) {
+        this.service = service;
+        this.notificacoes = notificacoes;
+    }
+
+    @GetMapping("/api/v1/usuarios/me/notificacoes-exames")
+    public ApiResponse<List<NotificacaoExameDTO>> avisosPaciente(Authentication auth) {
+        return ApiResponse.ok(notificacoes.listarPaciente(paciente(auth)), "Notificações de exames carregadas.");
+    }
+
+    @GetMapping("/api/v1/agenda-nutricionista/notificacoes/exames")
+    public ApiResponse<List<NotificacaoExameDTO.Resultado>> avisosNutricionista(Authentication auth) {
+        return ApiResponse.ok(notificacoes.listarResultados(nutri(auth)), "Resultados pendentes carregados.");
+    }
     @GetMapping("/api/v1/gestao-pacientes/{pacienteId}/exames")
     public ApiResponse<ExameService.Pagina> listar(Authentication a, @PathVariable Integer pacienteId,
             @RequestParam(required = false) Integer atendimentoId, @RequestParam(defaultValue = "0") int pagina) {

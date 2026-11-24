@@ -3,6 +3,10 @@ package com.nutri4you.backend.service;
 import com.nutri4you.backend.exception.*;
 import com.nutri4you.backend.support.ClinicalServiceTestSupport;
 import com.nutri4you.backend.dto.ExameResponse;
+import com.nutri4you.backend.dto.NotificacaoExameDTO;
+import com.nutri4you.backend.model.Consulta;
+import com.nutri4you.backend.model.NotificacaoExame.Tipo;
+import com.nutri4you.backend.support.TestDataFactory;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,11 +16,55 @@ import static org.assertj.core.api.Assertions.*;
 class ExameServiceTest extends ClinicalServiceTestSupport {
     @Autowired ExameService service;
     @Autowired EntityManager entityManager;
+    @Autowired NotificacaoExameService notificacoes;
+    @Autowired GestaoPacienteService gestao;
     private MockMultipartFile pdf(int size) {
         byte[] bytes = new byte[size]; System.arraycopy("%PDF-1.4".getBytes(java.nio.charset.StandardCharsets.US_ASCII), 0, bytes, 0, 8);
         return new MockMultipartFile("arquivo", "resultado.pdf", "application/pdf", bytes);
     }
     private ExameResponse pedido() { return service.solicitar(nutri, paciente.getId(), null, new ExameService.Solicitacao("Hemograma", "Orientação")); }
+
+    @Test void avisaCadaDestinatarioEExibeSomenteOResultadoAtualPendente() {
+        var exame = pedido();
+        assertThat(notificacoes.listarPaciente(paciente)).extracting(NotificacaoExameDTO::tipo)
+                .containsExactly(Tipo.SOLICITADO);
+        assertThat(notificacoes.listarResultados(nutri)).isEmpty();
+
+        var enviado = service.enviar(paciente, exame.id(), exame.versao(), pdf(20));
+        var primeiro = notificacoes.listarResultados(nutri).getFirst();
+        assertThat(primeiro.exameNome()).isEqualTo("Hemograma");
+        assertThat(primeiro.pacienteId()).isEqualTo(paciente.getId());
+        assertThat(primeiro.atendimentoId()).isNull();
+        assertThatThrownBy(() -> service.enviar(paciente, exame.id(), exame.versao(), pdf(20)))
+                .isInstanceOf(ConsultaConflitoException.class);
+        assertThat(notificacoes.listarResultados(nutri)).containsExactly(primeiro);
+
+        var substituido = service.enviar(paciente, exame.id(), enviado.versao(), pdf(30));
+        assertThat(notificacoes.listarResultados(nutri)).singleElement()
+                .satisfies(resultado -> assertThat(resultado.id()).isNotEqualTo(primeiro.id()));
+        service.analisar(nutri, paciente.getId(), null, exame.id(), new ExameService.Analise("Revisado", substituido.versao()));
+
+        assertThat(notificacoes.listarResultados(nutri)).isEmpty();
+        assertThat(notificacoes.listarPaciente(paciente)).extracting(NotificacaoExameDTO::tipo)
+                .containsExactly(Tipo.PARECER_REGISTRADO, Tipo.SOLICITADO);
+        assertThat(notificacoes.listarPaciente(pacientes.save(TestDataFactory.outroPaciente(encoder)))).isEmpty();
+    }
+
+    @Test void resultadoDeAtendimentoAbreNoEscopoClinicoEODesvinculoRetiraOAviso() {
+        var consulta = new Consulta(paciente, nutri, agora().plusHours(1), true);
+        consulta.atualizar(consulta.getDataHora(), "CONFIRMADA", null);
+        consulta.iniciar(agora());
+        consultas.saveAndFlush(consulta);
+        var exame = service.solicitar(nutri, paciente.getId(), consulta.getId(), new ExameService.Solicitacao("Exame", null));
+        service.enviar(paciente, exame.id(), exame.versao(), pdf(20));
+
+        assertThat(notificacoes.listarResultados(nutri)).singleElement()
+                .satisfies(resultado -> assertThat(resultado.atendimentoId()).isEqualTo(consulta.getId()));
+        gestao.desvincularNutricionista(nutri, paciente.getId());
+        assertThat(notificacoes.listarResultados(nutri)).isEmpty();
+        assertThat(notificacoes.listarPaciente(paciente)).extracting(NotificacaoExameDTO::tipo)
+                .containsExactly(Tipo.SOLICITADO);
+    }
     @Test void aceitaLimiteExatoRejeitaExcessoEConteudoIncompativel() {
         var e = pedido();
         assertThat(service.enviar(paciente, e.id(), e.versao(), pdf(5 * 1024 * 1024)).arquivoTamanho()).isEqualTo(5L * 1024 * 1024);

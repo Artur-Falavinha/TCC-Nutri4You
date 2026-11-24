@@ -17,9 +17,19 @@ export interface NotificacaoConsulta {
 
 export interface NotificacaoVinculo { id: number; pacienteNome: string; versao: number }
 
+export interface NotificacaoResultadoExame {
+  id: number;
+  pacienteId: number;
+  pacienteNome: string;
+  atendimentoId: number | null;
+  exameNome: string;
+  criadaEm: string;
+}
+
 interface NotificacoesPendentes {
   consultas: NotificacaoConsulta[];
   vinculos: NotificacaoVinculo[];
+  resultados: NotificacaoResultadoExame[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -29,9 +39,10 @@ export class NotificacoesService {
 
   listar() { return this.api.get<NotificacaoConsulta[]>(this.path); }
   listarVinculos() { return this.api.get<NotificacaoVinculo[]>(`${this.path}/vinculos`); }
+  listarResultados() { return this.api.get<NotificacaoResultadoExame[]>(`${this.path}/exames`); }
 
   listarPendentes() {
-    return forkJoin({ consultas: this.listar(), vinculos: this.listarVinculos() });
+    return forkJoin({ consultas: this.listar(), vinculos: this.listarVinculos(), resultados: this.listarResultados() });
   }
 
   contarNaoVistas(usuarioId: number, pendentes: NotificacoesPendentes): number {
@@ -57,10 +68,11 @@ export class NotificacoesService {
     return this.api.post<void>(`${this.path}/${item.id}/decisao`, { aceitar, versao: item.versao });
   }
 
-  private chaves({ consultas, vinculos }: NotificacoesPendentes): string[] {
+  private chaves({ consultas, vinculos, resultados }: NotificacoesPendentes): string[] {
     return [
       ...consultas.map(({ id, versao }) => `consulta:${id}:${versao}`),
-      ...vinculos.map(({ id, versao }) => `vinculo:${id}:${versao}`)
+      ...vinculos.map(({ id, versao }) => `vinculo:${id}:${versao}`),
+      ...resultados.map(({ id }) => `exame:${id}`)
     ];
   }
 

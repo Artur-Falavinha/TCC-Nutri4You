@@ -1,5 +1,7 @@
+import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
 import { ToastService } from '../../core/services/toast.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
@@ -7,11 +9,12 @@ import { AuthService } from '../../core/services/auth.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
 import { DataHoraClinicaPipe } from '../../shared/pipes/data-hora-clinica.pipe';
-import { NotificacaoConsulta, NotificacaoVinculo, NotificacoesService, TipoNotificacaoConsulta } from './notificacoes.service';
+import { NotificacaoConsulta, NotificacaoResultadoExame, NotificacaoVinculo,
+  NotificacoesService, TipoNotificacaoConsulta } from './notificacoes.service';
 
 @Component({
   selector: 'app-notificacoes',
-  imports: [DataHoraClinicaPipe, PageHeaderComponent, UiButtonComponent],
+  imports: [DataHoraClinicaPipe, DatePipe, PageHeaderComponent, RouterLink, UiButtonComponent],
   templateUrl: './notificacoes.component.html',
   styleUrl: './notificacoes.component.css'
 })
@@ -28,6 +31,7 @@ export class NotificacoesComponent implements OnInit {
   };
   itens: NotificacaoConsulta[] = [];
   vinculos: NotificacaoVinculo[] = [];
+  resultados: NotificacaoResultadoExame[] = [];
   carregando = true;
   decidindo: number | null = null;
   erro = '';
@@ -43,6 +47,7 @@ export class NotificacoesComponent implements OnInit {
         next: ({ usuario, pendentes }) => {
           this.itens = pendentes.consultas;
           this.vinculos = pendentes.vinculos;
+          this.resultados = pendentes.resultados;
           this.service.marcarComoVistas(usuario.id, pendentes);
         },
         error: (erro: ApiErrorResponse) => { this.erro = erro.message || 'Não foi possível carregar as notificações.'; }

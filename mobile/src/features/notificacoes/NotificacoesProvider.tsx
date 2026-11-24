@@ -8,7 +8,7 @@ import type { Appointment } from '../appointments/appointments.models';
 import { listAppointments } from '../appointments/appointments.service';
 import { chaveLembrete, selecionarLembretes } from './lembretes';
 import { gravarVistas, lerVistas } from './leitura-storage';
-import { chaveAviso, listarAvisosConsulta, listarAvisosPlanos, type AvisoPaciente } from './notificacoes.service';
+import { chaveAviso, listarAvisosConsulta, listarAvisosExames, listarAvisosPlanos, type AvisoPaciente } from './notificacoes.service';
 
 interface Sessao {
   token: string;
@@ -78,11 +78,11 @@ export function NotificacoesProvider({ children, rota }: PropsWithChildren<{ rot
         sessaoAtual.current = sessao;
       }
 
-      const [consultas, avisosConsultas, avisosPlanos] = await Promise.all([
-        listAppointments(), listarAvisosConsulta(), listarAvisosPlanos()
+      const [consultas, avisosConsultas, avisosPlanos, avisosExames] = await Promise.all([
+        listAppointments(), listarAvisosConsulta(), listarAvisosPlanos(), listarAvisosExames()
       ]);
       if (!vigente()) return;
-      const avisos = [...avisosConsultas, ...avisosPlanos]
+      const avisos = [...avisosConsultas, ...avisosPlanos, ...avisosExames]
         .sort((a, b) => Date.parse(b.criadaEm) - Date.parse(a.criadaEm))
         .slice(0, 50);
       const statusNotificados = new Set(avisosConsultas.map(({ consultaId, tipo }) =>
