@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "notificacao_consulta_paciente")
 public class NotificacaoConsultaPaciente {
-    public enum Tipo { CONFIRMADA, REAGENDADA, RECUSADA, CANCELADA }
+    public enum Tipo { CONFIRMADA, REAGENDADA, RECUSADA, CANCELADA, LEMBRETE_24H }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

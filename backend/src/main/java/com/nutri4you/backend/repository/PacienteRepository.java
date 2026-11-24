@@ -7,6 +7,7 @@ import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.StatusRelacaoClinica;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 
 import org.springframework.data.jpa.repository.Query;
 
@@ -24,6 +25,10 @@ public interface PacienteRepository extends JpaRepository<Paciente, Integer> {
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Paciente p where p.id = :id")
     Optional<Paciente> findByIdForUpdate(@Param("id") Integer id);
+
+    @Modifying
+    @Query("update Paciente p set p.lembretesConsultaAtivos = :ativa where p.id = :id")
+    int definirLembretesConsulta(@Param("id") Integer id, @Param("ativa") boolean ativa);
 
 
 

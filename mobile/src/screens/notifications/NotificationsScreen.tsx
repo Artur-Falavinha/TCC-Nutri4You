@@ -103,7 +103,7 @@ export function NotificationsScreen({ navigation }: Props) {
         {pronto ? avisos.map(({ id, tipo, dataHora }) => (
           <CartaoNotificacao key={'aviso:' + id} tipo={tipo} dataHora={dataHora} onAbrirAgenda={abrirAgenda} />
         )) : null}
-        {pronto && lembretes.length > 0 ? <Text style={styles.tituloCartao} accessibilityRole="header" aria-level={2}>Lembretes</Text> : null}
+        {pronto && lembretes.length > 0 ? <Text style={styles.tituloCartao} accessibilityRole="header" aria-level={2}>Status das consultas</Text> : null}
         {pronto ? lembretes.map(({ id, status, dataHora }) => (
           <CartaoNotificacao key={'lembrete:' + id}
             tipo={status === 'CONFIRMADA' || status === 'RECUSADA' ? status : 'AGUARDANDO_CONFIRMACAO'}
@@ -142,6 +142,13 @@ const apresentacoes = {
     cor: colors.dangerText,
     fundo: colors.dangerButtonBackground,
     detalhe: 'Esse horário foi removido da sua agenda.'
+  },
+  LEMBRETE_24H: {
+    titulo: 'Lembrete de consulta',
+    icone: 'bell',
+    cor: colors.brandDark,
+    fundo: colors.confirmedBackground,
+    detalhe: 'Sua consulta está confirmada e se aproxima.'
   },
   AGUARDANDO_CONFIRMACAO: {
     titulo: 'Consulta aguardando confirmação',

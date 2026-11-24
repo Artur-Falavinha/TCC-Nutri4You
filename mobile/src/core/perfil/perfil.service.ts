@@ -22,6 +22,20 @@ export interface AtualizarPerfilPayload {
   dataNascimento?: string;
 }
 
+interface PreferenciaLembretesConsulta {
+  ativa: boolean;
+}
+
+const rotaLembretes = '/usuarios/me/lembretes-consulta';
+
+export function carregarLembretesConsulta(): Promise<PreferenciaLembretesConsulta> {
+  return apiClient.get<PreferenciaLembretesConsulta>(rotaLembretes);
+}
+
+export function salvarLembretesConsulta(ativa: boolean): Promise<PreferenciaLembretesConsulta> {
+  return apiClient.put<PreferenciaLembretesConsulta>(rotaLembretes, { ativa });
+}
+
 export function carregarPerfil(): Promise<PacientePerfil> {
   return apiClient.get<PacientePerfil>('/usuarios/me/perfil');
 }

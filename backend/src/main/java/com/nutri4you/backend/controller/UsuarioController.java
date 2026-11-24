@@ -9,6 +9,7 @@ import com.nutri4you.backend.dto.MensagemResponse;
 import com.nutri4you.backend.dto.NutricionistaVinculoDTO;
 import com.nutri4you.backend.dto.PacientePerfilDTO;
 import com.nutri4you.backend.dto.PacienteUpdateDTO;
+import com.nutri4you.backend.dto.PreferenciaLembreteConsultaDTO;
 import com.nutri4you.backend.dto.UsuarioInfoDTO;
 import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.model.Nutricionista;
@@ -77,6 +78,19 @@ public class UsuarioController {
         return ResponseEntity.ok(ApiResponse.ok(
                 perfilPacienteService.perfil(paciente(authentication)),
                 "Perfil carregado."));
+    }
+
+    @GetMapping("/me/lembretes-consulta")
+    public ApiResponse<PreferenciaLembreteConsultaDTO> lembretesConsulta(Authentication auth) {
+        return ApiResponse.ok(new PreferenciaLembreteConsultaDTO(paciente(auth).recebeLembretesConsulta()),
+                "Preferência de lembretes carregada.");
+    }
+
+    @PutMapping("/me/lembretes-consulta")
+    public ApiResponse<PreferenciaLembreteConsultaDTO> salvarLembretesConsulta(
+            Authentication auth, @RequestBody PreferenciaLembreteConsultaDTO preferencia) {
+        return ApiResponse.ok(perfilPacienteService.salvarPreferenciaLembretes(paciente(auth), preferencia),
+                "Preferência de lembretes salva.");
     }
 
     @PutMapping("/me")

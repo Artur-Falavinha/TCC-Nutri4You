@@ -3,7 +3,7 @@ import { apiClient } from '../../core/api/api-client';
 export interface AvisoConsulta {
   id: number;
   consultaId: number;
-  tipo: 'CONFIRMADA' | 'REAGENDADA' | 'RECUSADA' | 'CANCELADA';
+  tipo: 'CONFIRMADA' | 'REAGENDADA' | 'RECUSADA' | 'CANCELADA' | 'LEMBRETE_24H';
   dataHora: string;
   criadaEm: string;
 }

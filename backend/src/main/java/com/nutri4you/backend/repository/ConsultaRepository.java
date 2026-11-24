@@ -3,6 +3,7 @@ package com.nutri4you.backend.repository;
 import com.nutri4you.backend.dto.SolicitacaoAvulsaDTO;
 import com.nutri4you.backend.dto.NotificacaoConsultaDTO;
 import com.nutri4you.backend.model.Consulta;
+import com.nutri4you.backend.model.NotificacaoConsultaPaciente.Tipo;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -15,6 +16,21 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface ConsultaRepository extends JpaRepository<Consulta, Integer> {
+
+    @Query("""
+            select c.id from Consulta c
+            where c.status = 'CONFIRMADA' and c.iniciadaEm is null
+              and c.dataHora > :agora and c.dataHora <= :limite
+              and c.paciente.lembretesConsultaAtivos = true
+              and not exists (select 1 from NotificacaoConsultaPaciente n
+                              where n.consultaId = c.id and n.tipo = :tipo and n.dataHora = c.dataHora)
+            order by c.dataHora, c.id
+            """)
+    List<Integer> buscarIdsComLembretePendente(LocalDateTime agora, LocalDateTime limite, Tipo tipo, Pageable pagina);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from Consulta c where c.id = :id")
+    Optional<Consulta> bloquearParaLembrete(Integer id);
 
     @Query("""
             select count(c) > 0 from Consulta c

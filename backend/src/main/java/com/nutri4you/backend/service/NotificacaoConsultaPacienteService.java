@@ -60,12 +60,14 @@ public class NotificacaoConsultaPacienteService {
             case REAGENDADA -> "Consulta reagendada";
             case RECUSADA -> "Solicitação de consulta recusada";
             case CANCELADA -> "Consulta cancelada";
+            case LEMBRETE_24H -> "Lembrete de consulta";
         };
         String introducao = switch (evento.tipo()) {
             case CONFIRMADA -> "Seu horário foi confirmado pelo nutricionista.";
             case REAGENDADA -> "O nutricionista confirmou o novo horário da sua consulta.";
             case RECUSADA -> "Sua solicitação de horário foi recusada. Você pode consultar outras disponibilidades no app.";
             case CANCELADA -> "Uma consulta da sua agenda foi cancelada.";
+            case LEMBRETE_24H -> "Sua consulta está confirmada e se aproxima. Confira o horário abaixo.";
         };
         var conteudo = modelo.notificacaoConsultaPaciente(titulo, introducao, evento.dataHora());
         dispatcher.enviarFormatado(evento.destinatario(), titulo + " — Nutri4You", conteudo.texto(), conteudo.html());

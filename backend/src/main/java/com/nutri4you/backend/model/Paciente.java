@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import org.hibernate.annotations.ColumnDefault;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -52,6 +53,10 @@ public class Paciente implements UserDetails {
 
     @Column(name = "email_confirmado", nullable = false)
     private boolean emailConfirmado = false;
+
+    @Column(name = "lembretes_consulta_ativos", nullable = false, updatable = false)
+    @ColumnDefault("true")
+    private boolean lembretesConsultaAtivos = true;
 
     protected Paciente() {
     }
@@ -139,6 +144,10 @@ public class Paciente implements UserDetails {
 
     public boolean isEmailConfirmado() {
         return emailConfirmado;
+    }
+
+    public boolean recebeLembretesConsulta() {
+        return lembretesConsultaAtivos;
     }
 
     public void setEmailConfirmado(boolean emailConfirmado) {

@@ -1,19 +1,23 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { Text } from 'react-native';
+import { Switch, Text } from 'react-native';
 
 import {
   atualizarPerfil,
   carregarPerfil,
-  listarNutricionistas
+  carregarLembretesConsulta,
+  listarNutricionistas,
+  salvarLembretesConsulta
 } from '../../../core/perfil/perfil.service';
 import { HomeScreen } from '../HomeScreen';
 
 jest.mock('../../../core/perfil/perfil.service', () => ({
   atualizarPerfil: jest.fn(),
   carregarPerfil: jest.fn(),
+  carregarLembretesConsulta: jest.fn(),
   desvincularNutricionista: jest.fn(),
   listarNutricionistas: jest.fn(),
+  salvarLembretesConsulta: jest.fn(),
   listarSolicitacoesVinculo: jest.fn().mockResolvedValue([])
 }));
 
@@ -34,6 +38,29 @@ describe('HomeScreen', () => {
     });
     (listarNutricionistas as jest.Mock).mockResolvedValue([]);
     (atualizarPerfil as jest.Mock).mockResolvedValue({ nome: 'Paciente Atualizado' });
+    jest.mocked(carregarLembretesConsulta).mockResolvedValue({ ativa: true });
+  });
+
+  it('desativa os lembretes e mantém a preferência quando uma tentativa de reativar falha', async () => {
+    jest.mocked(salvarLembretesConsulta)
+      .mockResolvedValueOnce({ ativa: false })
+      .mockRejectedValueOnce(new Error('Falha de rede'));
+    let tree!: renderer.ReactTestRenderer;
+    await act(async () => {
+      tree = renderer.create(
+        <HomeScreen navigation={{ navigate: jest.fn() } as never}
+          route={{ key: 'DadosPessoais', name: 'DadosPessoais', params: undefined }} />
+      );
+    });
+    const controle = () => tree.root.findByType(Switch);
+    expect(controle().props.value).toBe(true);
+    await act(async () => { controle().props.onValueChange(false); });
+    expect(salvarLembretesConsulta).toHaveBeenCalledWith(false);
+    expect(controle().props.value).toBe(false);
+    await act(async () => { controle().props.onValueChange(true); });
+    expect(controle().props.value).toBe(false);
+    expect(JSON.stringify(tree.toJSON())).toContain('Não foi possível salvar a preferência.');
+    await act(async () => tree.unmount());
   });
 
   it('abre a tela existente de troca de senha a partir dos dados pessoais', async () => {

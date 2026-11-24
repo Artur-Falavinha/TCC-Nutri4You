@@ -36,6 +36,7 @@ import { SolicitacoesVinculo } from './SolicitacoesVinculo';
 import { Privacidade } from './Privacidade';
 import { FotoPerfil } from './FotoPerfil';
 import { AvatarNutricionista } from './AvatarNutricionista';
+import { LembretesConsulta } from './LembretesConsulta';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 import { perfilStyles } from './perfil.styles';
 
@@ -346,6 +347,7 @@ export function HomeScreen({ navigation }: Props) {
             </Pressable>
           </View>
 
+          <LembretesConsulta />
           <Privacidade />
 
           <Pressable
