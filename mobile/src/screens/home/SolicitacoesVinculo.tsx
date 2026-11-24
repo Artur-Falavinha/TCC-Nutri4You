@@ -1,3 +1,7 @@
+import { Feather } from '@expo/vector-icons';
+import { SectionCardHeader, sectionCardStyles } from '../../components/layout/SectionCardHeader';
+import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
+import { perfilStyles } from './perfil.styles';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -61,22 +65,31 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
 
   const ocupado = carregando || decidindo;
   return (
-    <View style={styles.secao}>
+    <View style={sectionCardStyles.superficie}>
       <View style={styles.cabecalho}>
-        <Text style={styles.titulo} accessibilityRole="header">Solicitações de vínculo</Text>
-        <Pressable onPress={atualizar} accessibilityRole="button"
-          accessibilityLabel="Atualizar solicitações de vínculo" disabled={ocupado}
-          style={[styles.acao, ocupado && styles.desabilitada]}>
-          <Text style={styles.atualizar}>Atualizar</Text>
+        <View style={styles.titulo}>
+          <SectionCardHeader titulo="Solicitações de vínculo" icone="inbox" />
+        </View>
+        <Pressable
+          onPress={atualizar}
+          accessibilityRole="button"
+          accessibilityLabel="Atualizar solicitações de vínculo"
+          disabled={ocupado}
+          style={({ pressed }) => [
+            perfilStyles.botao, perfilStyles.secundario, (pressed || ocupado) && perfilStyles.pressionado
+          ]}
+        >
+          <Feather name="refresh-cw" size={16} color={colors.brandDark} aria-hidden />
+          <Text style={perfilStyles.rotuloBotao}>Atualizar</Text>
         </Pressable>
       </View>
-      {carregando && <ActivityIndicator accessibilityLabel="Carregando solicitações" />}
-      {erro ? <Text style={styles.erro} accessibilityRole="alert">{erro}</Text> : null}
-      {aviso ? <Text style={styles.atualizar} accessibilityLiveRegion="polite">{aviso}</Text> : null}
+      {carregando && <ActivityIndicator accessibilityLabel="Carregando solicitações" color={colors.brand} />}
+      {erro ? <Text style={perfilStyles.erro} accessibilityRole="alert">{erro}</Text> : null}
+      {aviso ? <Text style={perfilStyles.aviso} accessibilityLiveRegion="polite">{aviso}</Text> : null}
       {!carregando && !erro && solicitacoes.length === 0 &&
-        <Text style={styles.texto}>Nenhuma solicitação pendente.</Text>}
+        <Text style={perfilStyles.estadoVazio}>Nenhuma solicitação pendente.</Text>}
       {solicitacoes.length > 0 &&
-        <Text style={styles.texto}>
+        <Text style={perfilStyles.descricao}>
           Ao aceitar, o nutricionista poderá acessar sua ficha clínica para acompanhar você.
           Você pode encerrar o vínculo quando quiser.
           Você só pode manter um vínculo ativo por vez.
@@ -90,18 +103,22 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
               accessibilityRole="button"
               accessibilityLabel={'Recusar vínculo com ' + solicitacao.nutricionistaNome}
               disabled={ocupado}
-              style={[styles.acao, styles.recusa, ocupado && styles.desabilitada]}
+              style={({ pressed }) => [
+                perfilStyles.botao, perfilStyles.perigoSuave, (pressed || ocupado) && perfilStyles.pressionado
+              ]}
             >
-              <Text style={styles.recusaTexto}>Recusar</Text>
+              <Text style={perfilStyles.rotuloPerigo}>Recusar</Text>
             </Pressable>
             <Pressable
               onPress={() => void decidir(solicitacao, true)}
               accessibilityRole="button"
               accessibilityLabel={'Aceitar vínculo com ' + solicitacao.nutricionistaNome}
               disabled={ocupado}
-              style={[styles.acao, styles.aceite, ocupado && styles.desabilitada]}
+              style={({ pressed }) => [
+                perfilStyles.botao, perfilStyles.primario, (pressed || ocupado) && perfilStyles.pressionado
+              ]}
             >
-              <Text style={styles.aceiteTexto}>Aceitar</Text>
+              <Text style={perfilStyles.rotuloPrimario}>Aceitar</Text>
             </Pressable>
           </View>
         </View>
@@ -111,19 +128,9 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
 }
 
 const styles = StyleSheet.create({
-  secao: { marginTop: 24, gap: 8 },
-  cabecalho: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-  titulo: { flex: 1, fontSize: 16, fontWeight: '700', color: '#0f172a' },
-  atualizar: { color: '#006f1e', fontWeight: '700' },
-  texto: { color: '#475569' },
-  erro: { color: '#b42318' },
-  solicitacao: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 12, gap: 12 },
-  nome: { fontWeight: '700', color: '#0f172a' },
-  acoes: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8 },
-  acao: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8 },
-  recusa: { borderWidth: 1, borderColor: '#cbd5e1' },
-  recusaTexto: { color: '#334155', fontWeight: '700' },
-  aceite: { backgroundColor: '#006f1e' },
-  aceiteTexto: { color: '#ffffff', fontWeight: '700' },
-  desabilitada: { opacity: 0.6 }
+  cabecalho: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs },
+  titulo: { flexGrow: 1, flexBasis: 215 },
+  solicitacao: { backgroundColor: colors.page, borderRadius: radius.lg, padding: spacing.sm, gap: spacing.sm },
+  nome: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 15 },
+  acoes: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }
 });
