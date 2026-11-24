@@ -1,4 +1,3 @@
-import { Feather } from '@expo/vector-icons';
 import { SectionCardHeader, sectionCardStyles } from '../../components/layout/SectionCardHeader';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 import { perfilStyles } from './perfil.styles';
@@ -24,8 +23,6 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
   const [erro, setErro] = useState('');
   const [aviso, setAviso] = useState('');
 
-  const [revisao, setRevisao] = useState(0);
-
   useEffect(() => {
     let vigente = true;
     void listarSolicitacoesVinculo()
@@ -39,13 +36,7 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
         if (vigente) setCarregando(false);
       });
     return () => { vigente = false; };
-  }, [revisao]);
-
-  const atualizar = () => {
-    setCarregando(true);
-    setErro('');
-    setRevisao((atual) => atual + 1);
-  };
+  }, []);
 
   const decidir = async (solicitacao: SolicitacaoVinculo, aceitar: boolean) => {
     setDecidindo(true);
@@ -66,23 +57,7 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
   const ocupado = carregando || decidindo;
   return (
     <View style={sectionCardStyles.superficie}>
-      <View style={styles.cabecalho}>
-        <View style={styles.titulo}>
-          <SectionCardHeader titulo="Solicitações de vínculo" icone="inbox" />
-        </View>
-        <Pressable
-          onPress={atualizar}
-          accessibilityRole="button"
-          accessibilityLabel="Atualizar solicitações de vínculo"
-          disabled={ocupado}
-          style={({ pressed }) => [
-            perfilStyles.botao, perfilStyles.secundario, (pressed || ocupado) && perfilStyles.pressionado
-          ]}
-        >
-          <Feather name="refresh-cw" size={16} color={colors.brandDark} aria-hidden />
-          <Text style={perfilStyles.rotuloBotao}>Atualizar</Text>
-        </Pressable>
-      </View>
+      <SectionCardHeader titulo="Solicitações de vínculo" icone="inbox" />
       {carregando && <ActivityIndicator accessibilityLabel="Carregando solicitações" color={colors.brand} />}
       {erro ? <Text style={perfilStyles.erro} accessibilityRole="alert">{erro}</Text> : null}
       {aviso ? <Text style={perfilStyles.aviso} accessibilityLiveRegion="polite">{aviso}</Text> : null}
@@ -128,8 +103,6 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
 }
 
 const styles = StyleSheet.create({
-  cabecalho: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs },
-  titulo: { flexGrow: 1, flexBasis: 215 },
   solicitacao: { backgroundColor: colors.page, borderRadius: radius.lg, padding: spacing.sm, gap: spacing.sm },
   nome: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 15 },
   acoes: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }
