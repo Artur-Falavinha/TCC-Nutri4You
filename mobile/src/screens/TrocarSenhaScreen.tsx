@@ -6,27 +6,31 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   ScrollView,
-  ActivityIndicator
+  ActivityIndicator,
+  useWindowDimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthScreenLayout } from '../components/auth/AuthScreenLayout';
-import { authFormStyles } from '../components/auth/authFormStyles';
 import { useAppAlert } from '../components/feedback/AppAlertProvider';
 import { AppHeader } from '../components/layout/AppHeader';
+import { SectionCardHeader, sectionCardStyles } from '../components/layout/SectionCardHeader';
 import { MenuDestination, SideMenu } from '../components/navigation/SideMenu';
 import { logout, solicitarRecuperacaoSenha } from '../core/auth/auth.service';
 import { getToken } from '../core/auth/token-storage';
 import { carregarPerfil } from '../core/perfil/perfil.service';
 import { isValidUuid } from '../core/utils/uuid.util';
 import type { RootStackParamList } from '../navigation/types';
+import { colors, fontFamily, radius, spacing } from '../theme/tokens';
+import { perfilStyles } from './home/perfil.styles';
 
 export default function TrocarSenhaScreen() {
+  const { width } = useWindowDimensions();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { showAlert } = useAppAlert();
   const [step, setStep] = useState<1 | 2>(1);
@@ -148,113 +152,119 @@ export default function TrocarSenhaScreen() {
     }
   };
 
-  const backLabel = isAuthenticated ? 'Voltar ao início' : 'Voltar para o login';
-  const recoveryCard = (
-    <View style={authFormStyles.card}>
-      <View style={authFormStyles.header}>
-        <Text style={authFormStyles.title} accessibilityRole="header">
-          {isAuthenticated ? 'Trocar senha' : 'Esqueceu a senha?'}
-        </Text>
-        <Text style={authFormStyles.description}>
-          {step === 1
-            ? 'Informe o e-mail cadastrado para receber um código de verificação.'
-            : 'Cole o código recebido por e-mail para redefinir a senha.'}
+  const etapaCodigo = step === 2;
+  const rotuloVoltar = isAuthenticated ? 'Voltar ao início' : 'Voltar para o login';
+  const cartao = (
+    <View style={sectionCardStyles.superficie}>
+      <View style={estilos.cabecalho}>
+        <SectionCardHeader
+          icone={etapaCodigo ? 'lock' : 'mail'}
+          titulo={isAuthenticated
+            ? (etapaCodigo ? 'Verificar código' : 'Solicitar código')
+            : 'Esqueceu a senha?'}
+        />
+        <Text style={estilos.etapa}>Verificação · {step} de 2</Text>
+        <Text style={perfilStyles.descricao}>
+          {etapaCodigo
+            ? 'Cole o código recebido por e-mail para redefinir a senha.'
+            : 'Informe o e-mail cadastrado para receber um código de verificação.'}
         </Text>
       </View>
 
-      <View style={authFormStyles.inputGroup}>
-        <Text style={authFormStyles.label}>Email cadastrado</Text>
-        <View style={authFormStyles.inputContainer}>
-          <Feather name="mail" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+      <View style={estilos.campo}>
+        <Text style={estilos.rotulo}>Email cadastrado</Text>
+        <View style={[estilos.controle, etapaCodigo && estilos.somenteLeitura]}>
+          <Feather name="mail" size={18} color={colors.textSecondary} aria-hidden />
           <TextInput
-            style={[authFormStyles.input, step === 2 && styles.inputDisabled]}
+            style={[estilos.entrada, etapaCodigo && estilos.entradaSomenteLeitura]}
             placeholder="email@exemplo.com"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colors.textSecondary}
             accessibilityLabel="Email cadastrado"
             keyboardType="email-address"
             autoCapitalize="none"
             autoComplete="email"
             value={email}
             onChangeText={setEmail}
-            editable={step === 1}
+            editable={!etapaCodigo}
           />
         </View>
       </View>
 
-      {step === 2 && (
-        <View style={authFormStyles.inputGroup}>
-          <Text style={authFormStyles.label}>Código de verificação</Text>
-          <View style={authFormStyles.inputContainer}>
-            <Feather name="lock" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+      {etapaCodigo && (
+        <View style={estilos.campo}>
+          <Text style={estilos.rotulo}>Código de verificação</Text>
+          <View style={estilos.controle}>
+            <Feather name="key" size={18} color={colors.textSecondary} aria-hidden />
             <TextInput
-              style={authFormStyles.input}
+              style={estilos.entrada}
               placeholder="Cole o código recebido"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textSecondary}
               accessibilityLabel="Código de verificação"
               value={token}
               onChangeText={setToken}
               autoCapitalize="none"
               autoCorrect={false}
+              autoComplete="one-time-code"
             />
           </View>
-          <Text style={authFormStyles.hint}>Não compartilhe esse código com ninguém.</Text>
+          <Text style={perfilStyles.descricao}>Não compartilhe esse código com ninguém.</Text>
         </View>
       )}
 
-      <TouchableOpacity
-        style={authFormStyles.button}
-        onPress={handleSubmit}
-        disabled={isLoading}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-        accessibilityState={{ busy: isLoading, disabled: isLoading }}
-        testID="trocar-senha-submit-button"
-      >
-        {isLoading ? (
-          <ActivityIndicator color="#ffffff" />
-        ) : (
-          <>
-            <Text style={authFormStyles.buttonText}>
-              {step === 1 ? 'Enviar código por e-mail' : 'Continuar'}
-            </Text>
-            <Feather name="arrow-right" size={16} color="#ffffff" />
-          </>
-        )}
-      </TouchableOpacity>
-
-      {step === 2 && (
-        <TouchableOpacity
-          style={authFormStyles.secondaryAction}
-          onPress={() => setStep(1)}
+      <View style={estilos.acoes}>
+        <Pressable
+          style={({ pressed }) => [
+            perfilStyles.botao, perfilStyles.primario,
+            pressed && perfilStyles.pressionado, isLoading && estilos.enviando
+          ]}
+          onPress={handleSubmit}
           disabled={isLoading}
           accessibilityRole="button"
-          accessibilityLabel="Alterar e-mail informado"
-          testID="trocar-senha-edit-email-button"
+          aria-busy={isLoading}
+          testID="trocar-senha-submit-button"
         >
-          <Text style={authFormStyles.secondaryActionText}>Alterar e-mail informado</Text>
-        </TouchableOpacity>
-      )}
+          <Text style={perfilStyles.rotuloPrimario}>
+            {etapaCodigo ? 'Continuar' : 'Enviar código por e-mail'}
+          </Text>
+          {isLoading
+            ? <ActivityIndicator size="small" color={colors.white} />
+            : <Feather name="arrow-right" size={18} color={colors.white} aria-hidden />}
+        </Pressable>
 
-      <TouchableOpacity
-        style={authFormStyles.secondaryAction}
-        onPress={handleBackNavigation}
-        activeOpacity={0.75}
-        accessibilityRole="button"
-        accessibilityLabel={backLabel}
-        testID="trocar-senha-back-button"
-      >
-        <Feather name="arrow-left" size={16} color="#005414" />
-        <Text style={authFormStyles.secondaryActionText}>{backLabel}</Text>
-      </TouchableOpacity>
+        {etapaCodigo && (
+          <Pressable
+            style={({ pressed }) => [perfilStyles.botao, perfilStyles.secundario, pressed && perfilStyles.pressionado]}
+            onPress={() => setStep(1)}
+            disabled={isLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Alterar e-mail informado"
+            testID="trocar-senha-edit-email-button"
+          >
+            <Feather name="edit-2" size={16} color={colors.brandDark} aria-hidden />
+            <Text style={perfilStyles.rotuloBotao}>Alterar e-mail informado</Text>
+          </Pressable>
+        )}
+
+        <Pressable
+          style={({ pressed }) => [perfilStyles.botao, pressed && perfilStyles.pressionado]}
+          onPress={handleBackNavigation}
+          accessibilityRole="button"
+          accessibilityLabel={rotuloVoltar}
+          testID="trocar-senha-back-button"
+        >
+          <Feather name="arrow-left" size={18} color={colors.brandDark} aria-hidden />
+          <Text style={perfilStyles.rotuloBotao}>{rotuloVoltar}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 
   if (!isAuthenticated) {
-    return <AuthScreenLayout>{recoveryCard}</AuthScreenLayout>;
+    return <AuthScreenLayout>{cartao}</AuthScreenLayout>;
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView style={estilos.areaSegura} edges={['left', 'right', 'bottom']}>
       <AppHeader onOpenMenu={() => setMenuVisible(true)} />
       <SideMenu
         visible={menuVisible}
@@ -264,34 +274,59 @@ export default function TrocarSenhaScreen() {
         onNavigate={(destination) => void handleMenuNavigate(destination)}
       />
 
-      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <View style={styles.content}>{recoveryCard}</View>
+      <KeyboardAvoidingView style={estilos.preencher} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          style={estilos.preencher}
+          contentContainerStyle={[estilos.conteudo, width < 420 && estilos.conteudoCompacto]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={estilos.titulo} accessibilityRole="header" aria-level={1}>Trocar senha</Text>
+          {cartao}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f9f9f9'
-  },
-  fill: {
-    flex: 1
-  },
-  scrollContent: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 16
-  },
-  content: {
+const estilos = StyleSheet.create({
+  areaSegura: { flex: 1, backgroundColor: colors.pageAlt },
+  preencher: { flex: 1 },
+  conteudo: {
     width: '100%',
-    maxWidth: 408
+    maxWidth: 560,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxxl,
+    gap: spacing.md
   },
-  inputDisabled: {
-    opacity: 0.5
-  }
+  conteudoCompacto: { paddingHorizontal: spacing.sm },
+  titulo: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 30, lineHeight: 38 },
+  cabecalho: { gap: spacing.xs },
+  etapa: { color: colors.brandDark, fontFamily: fontFamily.bold, fontSize: 13, lineHeight: 20 },
+  campo: { gap: spacing.xxs },
+  rotulo: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 14 },
+  controle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.textSecondary,
+    borderRadius: radius.md
+  },
+  somenteLeitura: { backgroundColor: colors.page, borderColor: colors.border },
+  entrada: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 48,
+    paddingVertical: spacing.xs,
+    color: colors.text,
+    fontFamily: fontFamily.regular,
+    fontSize: 16
+  },
+  entradaSomenteLeitura: { color: colors.textSecondary },
+  acoes: { gap: spacing.xs },
+  enviando: { backgroundColor: colors.brandDark }
 });
