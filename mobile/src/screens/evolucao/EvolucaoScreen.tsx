@@ -302,14 +302,6 @@ export function EvolucaoScreen({ navigation }: Props) {
               Seu nutricionista ainda não registrou avaliações antropométricas para o seu acompanhamento.
               Assim que forem adicionadas na sua consulta, seus gráficos e histórico de medidas aparecerão aqui.
             </Text>
-            <Pressable
-              style={({ pressed }) => [styles.btnEmptyRefresh, pressed && styles.pressionado]}
-              accessibilityRole="button"
-              onPress={() => void carregarDados()}
-            >
-              <Feather name="refresh-cw" size={18} color={colors.brandDeep} aria-hidden />
-              <Text style={styles.btnEmptyRefreshText}>Verificar atualizações</Text>
-            </Pressable>
           </View>
         ) : (
           <>
@@ -436,11 +428,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md, alignItems: 'center', justifyContent: 'center'
   },
   btnRetryText: { color: colors.white, fontFamily: fontFamily.bold, fontSize: 15, lineHeight: 22, textAlign: 'center' },
-  btnEmptyRefresh: {
-    minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
-    backgroundColor: colors.confirmedBackground, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.md
-  },
-  btnEmptyRefreshText: { flexShrink: 1, color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 14, lineHeight: 21 },
   pressionado: { opacity: 0.8 },
   seletorGrafico: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   seletorBotao: {
