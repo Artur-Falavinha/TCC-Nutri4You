@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useMemo, useState } from 'react';
@@ -8,10 +9,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { sectionCardStyles } from '../../components/layout/SectionCardHeader';
 import { formatarDataHoraCivil, FUSO_HORARIO_CLINICA } from '../../core/utils/date-mask.util';
 import { listAppointments } from '../../features/appointments/appointments.service';
 import { Appointment } from '../../features/appointments/appointments.models';
@@ -32,6 +35,7 @@ const relogioDaClinica = new Intl.DateTimeFormat('en', {
 });
 
 export function NotificationsScreen({ navigation }: Props) {
+  const { width } = useWindowDimensions();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -71,55 +75,152 @@ export function NotificationsScreen({ navigation }: Props) {
     }
   };
 
+  const larguraMaxima = width >= 640 ? 760 : 560;
+  const margemCompacta = width < 420 && styles.margemCompacta;
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable onPress={voltar} style={styles.back}
-          accessibilityRole="button" accessibilityLabel="Voltar">
-          <Text style={styles.backText}>‹</Text>
-        </Pressable>
-        <Text style={styles.title} accessibilityRole="header">Notificações</Text>
-        <View style={styles.backSpacer} />
-      </View>
-      <ScrollView contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} />}
-      >
-        <Text style={styles.subtitle}>Atualizações e lembretes das suas consultas</Text>
-        {loading ? <ActivityIndicator color={colors.brand} accessibilityLabel="Carregando notificações" /> : null}
-        {!loading && error ? (
-          <View style={styles.card}>
-            <Text style={styles.body} accessibilityRole="alert">{error}</Text>
-            <Pressable onPress={() => void load()} accessibilityRole="button"><Text style={styles.link}>Tentar novamente</Text></Pressable>
-          </View>
-        ) : null}
-        {!loading && !error && notificacoes.length === 0 ? (
-          <View style={styles.card}>
-            <Text style={styles.emptyTitle}>Tudo em dia</Text>
-            <Text style={styles.body}>Você não tem consultas futuras para lembrar.</Text>
-          </View>
-        ) : null}
-        {!loading && !error ? notificacoes.map((item) => (
-          <Pressable key={item.id} style={styles.card} onPress={() => navigation.navigate('Agenda')}
-            accessibilityRole="button" accessibilityLabel={`Consulta ${formatarDataHoraCivil(item.dataHora)}. Abrir agenda`}>
-            <View style={styles.row}>
-              <View style={[styles.dot, item.status === 'RECUSADA' && styles.rejectedDot]} />
-              <Text style={[styles.cardTitle, item.status === 'RECUSADA' && styles.rejectedTitle]}>
-                {item.status === 'RECUSADA' ? 'Consulta recusada'
-                  : `Consulta ${item.status === 'CONFIRMADA' ? 'confirmada' : 'aguardando confirmação'}`}
-              </Text>
-            </View>
-            <Text style={styles.body}>{formatarDataHoraCivil(item.dataHora)}</Text>
-            {item.status === 'RECUSADA' ? (
-              <Text style={styles.body}>O nutricionista não pôde aceitar este horário. Escolha uma nova data na agenda.</Text>
-            ) : null}
-            <Text style={styles.link}>Ver agenda</Text>
+    <SafeAreaView style={styles.areaSegura} edges={['top', 'bottom', 'left', 'right']}>
+      <View style={styles.barra}>
+        <View style={[styles.cabecalho, margemCompacta, { maxWidth: larguraMaxima }]}>
+          <Pressable
+            onPress={voltar}
+            style={({ pressed }) => [styles.voltar, pressed && styles.pressionado]}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+          >
+            <Feather name="arrow-left" size={22} color={colors.brandDeep} aria-hidden />
           </Pressable>
+          <Text style={styles.titulo} accessibilityRole="header" aria-level={1}>Notificações</Text>
+        </View>
+      </View>
+
+      <ScrollView
+        style={styles.rolagem}
+        contentContainerStyle={[styles.conteudo, margemCompacta, { maxWidth: larguraMaxima }]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void load(true)}
+            tintColor={colors.brand}
+            colors={[colors.brand]}
+          />
+        }
+      >
+        <Text style={styles.subtitulo}>Atualizações e lembretes das suas consultas</Text>
+
+        {loading ? (
+          <View style={[sectionCardStyles.superficie, styles.estado]} aria-live="polite">
+            <ActivityIndicator color={colors.brand} />
+            <Text style={[styles.texto, styles.centralizado]}>Carregando notificações</Text>
+          </View>
+        ) : null}
+
+        {!loading && error ? (
+          <View style={sectionCardStyles.superficie}>
+            <View style={styles.linha}>
+              <View style={[styles.icone, styles.iconeErro]} aria-hidden>
+                <Feather name="alert-circle" size={22} color={colors.dangerText} />
+              </View>
+              <Text style={[styles.texto, styles.identidade]} accessibilityRole="alert">{error}</Text>
+            </View>
+            <Pressable
+              style={({ pressed }) => [styles.tentarNovamente, pressed && styles.pressionado]}
+              onPress={() => void load()}
+              accessibilityRole="button"
+            >
+              <Feather name="refresh-cw" size={18} color={colors.brandDark} aria-hidden />
+              <Text style={styles.acaoTexto}>Tentar novamente</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {!loading && !error && notificacoes.length === 0 ? (
+          <View style={[sectionCardStyles.superficie, styles.estado]}>
+            <View style={[styles.icone, styles.iconeVazio]} aria-hidden>
+              <Feather name="bell" size={24} color={colors.brandDark} />
+            </View>
+            <View style={styles.identidade}>
+              <Text style={[styles.tituloCartao, styles.centralizado]} accessibilityRole="header" aria-level={2}>
+                Tudo em dia
+              </Text>
+              <Text style={[styles.texto, styles.centralizado]}>Você não tem consultas futuras para lembrar.</Text>
+            </View>
+          </View>
+        ) : null}
+
+        {!loading && !error ? notificacoes.map((consulta) => (
+          <CartaoNotificacao key={consulta.id} consulta={consulta} onAbrirAgenda={() => navigation.navigate('Agenda')} />
         )) : null}
-        <Text style={styles.caption}>Os lembretes são baseados nas consultas vinculadas à sua conta.</Text>
+
+        <View style={styles.rodape}>
+          <Feather name="info" size={16} color={colors.textSecondary} aria-hidden />
+          <Text style={[styles.texto, styles.legenda]}>
+            Os lembretes são baseados nas consultas vinculadas à sua conta.
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const apresentacoes = {
+  RECUSADA: {
+    titulo: 'Consulta recusada',
+    icone: 'x-circle',
+    cor: colors.dangerText,
+    fundo: colors.dangerButtonBackground,
+    detalhe: 'O nutricionista não pôde aceitar este horário. Escolha uma nova data na agenda.'
+  },
+  CONFIRMADA: {
+    titulo: 'Consulta confirmada',
+    icone: 'check-circle',
+    cor: colors.brandDark,
+    fundo: colors.confirmedBackground,
+    detalhe: ''
+  },
+  AGUARDANDO_CONFIRMACAO: {
+    titulo: 'Consulta aguardando confirmação',
+    icone: 'clock',
+    cor: colors.pending,
+    fundo: colors.pendingBackground,
+    detalhe: ''
+  }
+} as const;
+
+type CartaoProps = { consulta: Appointment; onAbrirAgenda: () => void };
+
+function CartaoNotificacao({ consulta, onAbrirAgenda }: CartaoProps) {
+  const apresentacao = consulta.status === 'RECUSADA' || consulta.status === 'CONFIRMADA'
+    ? apresentacoes[consulta.status]
+    : apresentacoes.AGUARDANDO_CONFIRMACAO;
+  const data = formatarDataHoraCivil(consulta.dataHora);
+  const rotulo = [apresentacao.titulo, data, apresentacao.detalhe, 'Abrir agenda'].filter(Boolean).join('. ');
+
+  return (
+    <Pressable
+      style={({ pressed }) => [sectionCardStyles.superficie, pressed && styles.pressionado]}
+      onPress={onAbrirAgenda}
+      accessibilityRole="button"
+      accessibilityLabel={rotulo}
+    >
+      <View style={styles.linha}>
+        <View style={[styles.icone, { backgroundColor: apresentacao.fundo }]} aria-hidden>
+          <Feather name={apresentacao.icone} color={apresentacao.cor} size={22} />
+        </View>
+        <View style={styles.identidade}>
+          <Text style={styles.tituloCartao}>{apresentacao.titulo}</Text>
+          <Text style={styles.data}>{data}</Text>
+        </View>
+      </View>
+      {apresentacao.detalhe ? <Text style={styles.texto}>{apresentacao.detalhe}</Text> : null}
+      <View style={styles.acaoCartao}>
+        <Text style={styles.acaoTexto}>Ver agenda</Text>
+        <Feather name="arrow-right" size={18} color={colors.brandDark} aria-hidden />
+      </View>
+    </Pressable>
+  );
+}
+
 
 // A API envia horário civil da clínica sem offset. A escala UTC mantém esses campos
 // na comparação e na exibição, independentemente do fuso do dispositivo.
@@ -138,22 +239,69 @@ function horarioCivilDaClinica(agora: Date): number {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.page },
-  header: { minHeight: 56, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
-  back: { width: 40, height: 40, justifyContent: 'center' },
-  backText: { color: colors.brandDeep, fontSize: 36, lineHeight: 40 },
-  backSpacer: { width: 40 },
-  title: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 18 },
-  content: { padding: spacing.lg, gap: spacing.md },
-  subtitle: { color: colors.textSecondary, fontFamily: fontFamily.semibold, fontSize: 15, marginBottom: spacing.xs },
-  card: { padding: spacing.lg, gap: spacing.sm, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.brand },
-  rejectedDot: { backgroundColor: colors.danger },
-  cardTitle: { flex: 1, color: colors.text, fontFamily: fontFamily.bold, fontSize: 15 },
-  rejectedTitle: { color: colors.dangerText },
-  emptyTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 16 },
-  body: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 21 },
-  link: { color: colors.brand, fontFamily: fontFamily.semibold, fontSize: 14, paddingTop: spacing.xs },
-  caption: { color: colors.textSubtle, fontFamily: fontFamily.regular, fontSize: 12, lineHeight: 18, marginTop: spacing.sm }
+  areaSegura: { flex: 1, backgroundColor: colors.card },
+  barra: { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border },
+  cabecalho: {
+    width: '100%',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs
+  },
+  voltar: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.page,
+    borderRadius: radius.md
+  },
+  titulo: { flex: 1, color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 24, lineHeight: 32 },
+  pressionado: { opacity: 0.75 },
+  rolagem: { flex: 1, backgroundColor: colors.page },
+  conteudo: {
+    width: '100%',
+    alignSelf: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxxl,
+    gap: spacing.md
+  },
+  margemCompacta: { paddingHorizontal: spacing.sm },
+  subtitulo: { color: colors.text, fontFamily: fontFamily.semibold, fontSize: 15, lineHeight: 22 },
+  estado: { alignItems: 'center', paddingVertical: spacing.xl },
+  centralizado: { textAlign: 'center' },
+  linha: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  icone: { width: 44, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  iconeVazio: { width: 56, height: 56, backgroundColor: colors.confirmedBackground },
+  iconeErro: { backgroundColor: colors.dangerButtonBackground },
+  identidade: { flexShrink: 1, gap: spacing.xxs },
+  tituloCartao: { color: colors.text, fontFamily: fontFamily.extrabold, fontSize: 16, lineHeight: 23 },
+  data: { color: colors.textSecondary, fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 21 },
+  texto: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 21 },
+  acaoCartao: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border
+  },
+  acaoTexto: { flexShrink: 1, color: colors.brandDark, fontFamily: fontFamily.bold, fontSize: 14, lineHeight: 21 },
+  tentarNovamente: {
+    minHeight: 48,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    backgroundColor: colors.confirmedBackground
+  },
+  rodape: { flexDirection: 'row', gap: spacing.xs, alignItems: 'flex-start', paddingHorizontal: spacing.xs },
+  legenda: { flex: 1, fontSize: 13, lineHeight: 19 }
 });
