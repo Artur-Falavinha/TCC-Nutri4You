@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthScreenLayout } from '../components/auth/AuthScreenLayout';
+import { recuperacaoSenhaStyles as formulario } from '../components/auth/recuperacaoSenhaStyles';
 import { useAppAlert } from '../components/feedback/AppAlertProvider';
 import { AppHeader } from '../components/layout/AppHeader';
 import { SectionCardHeader, sectionCardStyles } from '../components/layout/SectionCardHeader';
@@ -26,7 +27,7 @@ import { getToken } from '../core/auth/token-storage';
 import { carregarPerfil } from '../core/perfil/perfil.service';
 import { isValidUuid } from '../core/utils/uuid.util';
 import type { RootStackParamList } from '../navigation/types';
-import { colors, fontFamily, radius, spacing } from '../theme/tokens';
+import { colors, fontFamily } from '../theme/tokens';
 import { perfilStyles } from './home/perfil.styles';
 
 export default function TrocarSenhaScreen() {
@@ -156,7 +157,7 @@ export default function TrocarSenhaScreen() {
   const rotuloVoltar = isAuthenticated ? 'Voltar ao início' : 'Voltar para o login';
   const cartao = (
     <View style={sectionCardStyles.superficie}>
-      <View style={estilos.cabecalho}>
+      <View style={formulario.cabecalho}>
         <SectionCardHeader
           icone={etapaCodigo ? 'lock' : 'mail'}
           titulo={isAuthenticated
@@ -171,12 +172,12 @@ export default function TrocarSenhaScreen() {
         </Text>
       </View>
 
-      <View style={estilos.campo}>
-        <Text style={estilos.rotulo}>Email cadastrado</Text>
-        <View style={[estilos.controle, etapaCodigo && estilos.somenteLeitura]}>
+      <View style={formulario.campo}>
+        <Text style={formulario.rotulo}>Email cadastrado</Text>
+        <View style={[formulario.controle, etapaCodigo && estilos.somenteLeitura]}>
           <Feather name="mail" size={18} color={colors.textSecondary} aria-hidden />
           <TextInput
-            style={[estilos.entrada, etapaCodigo && estilos.entradaSomenteLeitura]}
+            style={[formulario.entrada, etapaCodigo && estilos.entradaSomenteLeitura]}
             placeholder="email@exemplo.com"
             placeholderTextColor={colors.textSecondary}
             accessibilityLabel="Email cadastrado"
@@ -191,12 +192,12 @@ export default function TrocarSenhaScreen() {
       </View>
 
       {etapaCodigo && (
-        <View style={estilos.campo}>
-          <Text style={estilos.rotulo}>Código de verificação</Text>
-          <View style={estilos.controle}>
+        <View style={formulario.campo}>
+          <Text style={formulario.rotulo}>Código de verificação</Text>
+          <View style={formulario.controle}>
             <Feather name="key" size={18} color={colors.textSecondary} aria-hidden />
             <TextInput
-              style={estilos.entrada}
+              style={formulario.entrada}
               placeholder="Cole o código recebido"
               placeholderTextColor={colors.textSecondary}
               accessibilityLabel="Código de verificação"
@@ -211,11 +212,11 @@ export default function TrocarSenhaScreen() {
         </View>
       )}
 
-      <View style={estilos.acoes}>
+      <View style={formulario.acoes}>
         <Pressable
           style={({ pressed }) => [
             perfilStyles.botao, perfilStyles.primario,
-            pressed && perfilStyles.pressionado, isLoading && estilos.enviando
+            pressed && perfilStyles.pressionado, isLoading && formulario.enviando
           ]}
           onPress={handleSubmit}
           disabled={isLoading}
@@ -264,7 +265,7 @@ export default function TrocarSenhaScreen() {
   }
 
   return (
-    <SafeAreaView style={estilos.areaSegura} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView style={formulario.areaSegura} edges={['left', 'right', 'bottom']}>
       <AppHeader onOpenMenu={() => setMenuVisible(true)} />
       <SideMenu
         visible={menuVisible}
@@ -274,13 +275,13 @@ export default function TrocarSenhaScreen() {
         onNavigate={(destination) => void handleMenuNavigate(destination)}
       />
 
-      <KeyboardAvoidingView style={estilos.preencher} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={formulario.preencher} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          style={estilos.preencher}
-          contentContainerStyle={[estilos.conteudo, width < 420 && estilos.conteudoCompacto]}
+          style={formulario.preencher}
+          contentContainerStyle={[formulario.conteudo, width < 420 && formulario.conteudoCompacto]}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={estilos.titulo} accessibilityRole="header" aria-level={1}>Trocar senha</Text>
+          <Text style={formulario.titulo} accessibilityRole="header" aria-level={1}>Trocar senha</Text>
           {cartao}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -289,44 +290,7 @@ export default function TrocarSenhaScreen() {
 }
 
 const estilos = StyleSheet.create({
-  areaSegura: { flex: 1, backgroundColor: colors.pageAlt },
-  preencher: { flex: 1 },
-  conteudo: {
-    width: '100%',
-    maxWidth: 560,
-    alignSelf: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xxxl,
-    gap: spacing.md
-  },
-  conteudoCompacto: { paddingHorizontal: spacing.sm },
-  titulo: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 30, lineHeight: 38 },
-  cabecalho: { gap: spacing.xs },
   etapa: { color: colors.brandDark, fontFamily: fontFamily.bold, fontSize: 13, lineHeight: 20 },
-  campo: { gap: spacing.xxs },
-  rotulo: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 14 },
-  controle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.textSecondary,
-    borderRadius: radius.md
-  },
   somenteLeitura: { backgroundColor: colors.page, borderColor: colors.border },
-  entrada: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 48,
-    paddingVertical: spacing.xs,
-    color: colors.text,
-    fontFamily: fontFamily.regular,
-    fontSize: 16
-  },
-  entradaSomenteLeitura: { color: colors.textSecondary },
-  acoes: { gap: spacing.xs },
-  enviando: { backgroundColor: colors.brandDark }
+  entradaSomenteLeitura: { color: colors.textSecondary }
 });
