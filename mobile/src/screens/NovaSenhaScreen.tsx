@@ -39,7 +39,8 @@ export default function NovaSenhaScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'NovaSenha'>>();
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [senhaVisivel, setSenhaVisivel] = useState(false);
+  const [confirmacaoSenhaVisivel, setConfirmacaoSenhaVisivel] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userName, setUserName] = useState('Paciente');
@@ -188,24 +189,24 @@ export default function NovaSenhaScreen() {
             placeholderTextColor={colors.textSecondary}
             accessibilityLabel="Nova senha"
             autoComplete="new-password"
-            secureTextEntry={!showPassword}
+            secureTextEntry={!senhaVisivel}
             value={novaSenha}
             onChangeText={setNovaSenha}
           />
           <Pressable
             style={({ pressed }) => [estilos.visibilidade, pressed && perfilStyles.pressionado]}
-            onPress={() => setShowPassword((visivel) => !visivel)}
+            onPress={() => setSenhaVisivel((visivel) => !visivel)}
             accessibilityRole="button"
-            accessibilityLabel={showPassword ? 'Ocultar senhas' : 'Mostrar senhas'}
+            accessibilityLabel={senhaVisivel ? 'Ocultar nova senha' : 'Mostrar nova senha'}
           >
-            <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color={colors.brandDark} aria-hidden />
+            <Feather name={senhaVisivel ? 'eye-off' : 'eye'} size={18} color={colors.brandDark} aria-hidden />
           </Pressable>
         </View>
       </View>
 
       <View style={formulario.campo}>
         <Text style={formulario.rotulo}>Confirmar nova senha</Text>
-        <View style={formulario.controle}>
+        <View style={[formulario.controle, estilos.controleComVisibilidade]}>
           <Feather name="lock" size={18} color={colors.textSecondary} aria-hidden />
           <TextInput
             style={formulario.entrada}
@@ -213,10 +214,18 @@ export default function NovaSenhaScreen() {
             placeholderTextColor={colors.textSecondary}
             accessibilityLabel="Confirmar nova senha"
             autoComplete="new-password"
-            secureTextEntry={!showPassword}
+            secureTextEntry={!confirmacaoSenhaVisivel}
             value={confirmarSenha}
             onChangeText={setConfirmarSenha}
           />
+          <Pressable
+            style={({ pressed }) => [estilos.visibilidade, pressed && perfilStyles.pressionado]}
+            onPress={() => setConfirmacaoSenhaVisivel((visivel) => !visivel)}
+            accessibilityRole="button"
+            accessibilityLabel={confirmacaoSenhaVisivel ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+          >
+            <Feather name={confirmacaoSenhaVisivel ? 'eye-off' : 'eye'} size={18} color={colors.brandDark} aria-hidden />
+          </Pressable>
         </View>
       </View>
 
