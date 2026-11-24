@@ -8,6 +8,9 @@ import org.springframework.web.util.HtmlUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -17,15 +20,20 @@ import java.util.regex.Pattern;
 public class ContaEmailTemplate {
 
     private static final Pattern MARCADOR = Pattern.compile("\\{\\{([A-Z_]+)}}");
+    private static final DateTimeFormatter FORMATO_HORARIO =
+            DateTimeFormatter.ofPattern("dd/MM/uuuu 'às' HH:mm", Locale.forLanguageTag("pt-BR"));
 
     private final String modelo;
     private final String blocoCodigo;
+    private final String blocoAcao;
 
     public ContaEmailTemplate(
             @Value("classpath:email/conta.html") Resource modelo,
-            @Value("classpath:email/codigo.html") Resource blocoCodigo) throws IOException {
+            @Value("classpath:email/codigo.html") Resource blocoCodigo,
+            @Value("classpath:email/acao.html") Resource blocoAcao) throws IOException {
         this.modelo = modelo.getContentAsString(StandardCharsets.UTF_8);
         this.blocoCodigo = blocoCodigo.getContentAsString(StandardCharsets.UTF_8);
+        this.blocoAcao = blocoAcao.getContentAsString(StandardCharsets.UTF_8);
     }
 
     public Conteudo confirmacaoCadastro(TipoCadastro tipoUsuario, UUID token, String link, long validadeHoras) {
@@ -58,32 +66,37 @@ public class ContaEmailTemplate {
                 "Gerencie os avisos por e-mail em Configurações no Nutri4You.", null));
     }
 
+    public Conteudo notificacaoConsultaPaciente(String titulo, String introducao, LocalDateTime horario) {
+        return renderizar(new Mensagem(titulo, introducao, null, null,
+                "Horário da consulta: " + horario.format(FORMATO_HORARIO),
+                "Abra o app Nutri4You e toque em Notificações para acompanhar suas consultas.", null));
+    }
+
     private Conteudo renderizar(Mensagem mensagem) {
         Codigo codigo = mensagem.codigo();
         String htmlCodigo = codigo == null ? "" : preencher(blocoCodigo, Map.of(
                 "ROTULO_CODIGO", escaparHtml(codigo.rotulo()),
                 "TOKEN", codigo.token().toString()));
+        String htmlAcao = mensagem.link() == null ? "" : preencher(blocoAcao, Map.of(
+                "LINK", escaparHtml(mensagem.link()), "ACAO", escaparHtml(mensagem.acao())));
         String html = preencher(modelo, Map.of(
                 "TITULO", escaparHtml(mensagem.titulo()),
                 "INTRODUCAO", escaparHtml(mensagem.introducao()),
                 "CODIGO", htmlCodigo,
-                "LINK", escaparHtml(mensagem.link()),
-                "ACAO", escaparHtml(mensagem.acao()),
+                "BOTAO", htmlAcao,
                 "VALIDADE", escaparHtml(mensagem.validade()),
                 "RODAPE", escaparHtml(mensagem.rodape())));
         String textoCodigo = codigo == null ? "" : "\n" + codigo.rotulo() + "\n" + codigo.token() + "\n";
+        String textoAcao = mensagem.link() == null ? "" : mensagem.acao() + "\n" + mensagem.link() + "\n\n";
         String texto = """
                 %s
 
                 %s
                 %s
-                %s
-                %s
-
-                %s
+                %s%s
                 %s
                 """.formatted(mensagem.titulo(), mensagem.introducao(), textoCodigo,
-                mensagem.acao(), mensagem.link(), mensagem.validade(), mensagem.rodape());
+                textoAcao, mensagem.validade(), mensagem.rodape());
         return new Conteudo(texto, html);
     }
 

@@ -36,12 +36,14 @@ public class ConsultaService {
     private final HorarioConsultaService horarios;
     private final AnamneseService anamneses;
     private final NotificacaoAgendaEmailService notificacoesEmail;
+    private final NotificacaoConsultaPacienteService notificacoesPaciente;
 
     public ConsultaService(GestaoPacienteService pacientes, ConsultaRepository consultas,
                            AvaliacaoAntropometricaRepository avaliacoes, Clock clock,
                            com.nutri4you.backend.repository.NutricionistaRepository nutricionistas,
                            HorarioConsultaService horarios, AnamneseService anamneses,
-                           NotificacaoAgendaEmailService notificacoesEmail) {
+                           NotificacaoAgendaEmailService notificacoesEmail,
+                           NotificacaoConsultaPacienteService notificacoesPaciente) {
         this.pacientes = pacientes;
         this.consultas = consultas;
         this.avaliacoes = avaliacoes;
@@ -50,6 +52,7 @@ public class ConsultaService {
         this.horarios = horarios;
         this.anamneses = anamneses;
         this.notificacoesEmail = notificacoesEmail;
+        this.notificacoesPaciente = notificacoesPaciente;
     }
 
     @Transactional(readOnly = true)
@@ -128,6 +131,7 @@ public class ConsultaService {
         consulta.cancelar();
         consultas.flush();
         notificacoesEmail.agendar(consulta, CANCELADA);
+        notificacoesPaciente.registrar(consulta, NotificacaoConsultaPaciente.Tipo.CANCELADA);
     }
 
     @Transactional(readOnly = true)
@@ -179,6 +183,10 @@ public class ConsultaService {
         }
         consultas.flush();
         notificacoesEmail.agendar(consulta, aceitar ? CONFIRMADA : RECUSADA);
+        var tipoPaciente = aceitar
+                ? (consulta.foiReagendada() ? NotificacaoConsultaPaciente.Tipo.REAGENDADA : NotificacaoConsultaPaciente.Tipo.CONFIRMADA)
+                : NotificacaoConsultaPaciente.Tipo.RECUSADA;
+        notificacoesPaciente.registrar(consulta, tipoPaciente);
     }
 
     private void exigirVersao(Consulta c, Long versao) {

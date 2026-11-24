@@ -18,7 +18,6 @@ import { SideMenu } from '../../components/navigation/SideMenu';
 import { sectionCardStyles } from '../../components/layout/SectionCardHeader';
 import { formatarDataHoraCivil } from '../../core/utils/date-mask.util';
 import { useNotificacoes } from '../../features/notificacoes/NotificacoesProvider';
-import { Appointment } from '../../features/appointments/appointments.models';
 import { RootStackParamList } from '../../navigation/types';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 
@@ -27,9 +26,11 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Notificacoes'>;
 export function NotificationsScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const [menuVisivel, setMenuVisivel] = useState(false);
-  const { lembretes, nome, carregando, atualizando, erro, carregar } = useNotificacoes();
+  const { avisos, lembretes, nome, carregando, atualizando, erro, carregar } = useNotificacoes();
   const larguraMaxima = width >= 640 ? 760 : 560;
   const margemCompacta = width < 420 && styles.margemCompacta;
+  const pronto = !carregando && !erro;
+  const abrirAgenda = () => navigation.navigate('Agenda');
 
   return (
     <SafeAreaView style={styles.areaSegura} edges={['left', 'right', 'bottom']}>
@@ -84,7 +85,7 @@ export function NotificationsScreen({ navigation }: Props) {
           </View>
         ) : null}
 
-        {!carregando && !erro && lembretes.length === 0 ? (
+        {pronto && avisos.length === 0 && lembretes.length === 0 ? (
           <View style={[sectionCardStyles.superficie, styles.estado]}>
             <View style={[styles.icone, styles.iconeVazio]} aria-hidden>
               <Feather name="bell" size={24} color={colors.brandDark} />
@@ -93,21 +94,21 @@ export function NotificationsScreen({ navigation }: Props) {
               <Text style={[styles.tituloCartao, styles.centralizado]} accessibilityRole="header" aria-level={2}>
                 Tudo em dia
               </Text>
-              <Text style={[styles.texto, styles.centralizado]}>Você não tem consultas futuras para lembrar.</Text>
+              <Text style={[styles.texto, styles.centralizado]}>As atualizações e os lembretes das suas consultas aparecem aqui.</Text>
             </View>
           </View>
         ) : null}
 
-        {!carregando && !erro ? lembretes.map((consulta) => (
-          <CartaoNotificacao key={consulta.id} consulta={consulta} onAbrirAgenda={() => navigation.navigate('Agenda')} />
+        {pronto && avisos.length > 0 ? <Text style={styles.tituloCartao} accessibilityRole="header" aria-level={2}>Atualizações recentes</Text> : null}
+        {pronto ? avisos.map(({ id, tipo, dataHora }) => (
+          <CartaoNotificacao key={'aviso:' + id} tipo={tipo} dataHora={dataHora} onAbrirAgenda={abrirAgenda} />
         )) : null}
-
-        <View style={styles.rodape}>
-          <Feather name="info" size={16} color={colors.textSecondary} aria-hidden />
-          <Text style={[styles.texto, styles.legenda]}>
-            Os lembretes são baseados nas consultas vinculadas à sua conta.
-          </Text>
-        </View>
+        {pronto && lembretes.length > 0 ? <Text style={styles.tituloCartao} accessibilityRole="header" aria-level={2}>Lembretes</Text> : null}
+        {pronto ? lembretes.map(({ id, status, dataHora }) => (
+          <CartaoNotificacao key={'lembrete:' + id}
+            tipo={status === 'CONFIRMADA' || status === 'RECUSADA' ? status : 'AGUARDANDO_CONFIRMACAO'}
+            dataHora={dataHora} onAbrirAgenda={abrirAgenda} />
+        )) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -128,6 +129,20 @@ const apresentacoes = {
     fundo: colors.confirmedBackground,
     detalhe: ''
   },
+  REAGENDADA: {
+    titulo: 'Consulta reagendada',
+    icone: 'calendar',
+    cor: colors.brandDark,
+    fundo: colors.confirmedBackground,
+    detalhe: 'O nutricionista confirmou esse novo horário.'
+  },
+  CANCELADA: {
+    titulo: 'Consulta cancelada',
+    icone: 'slash',
+    cor: colors.dangerText,
+    fundo: colors.dangerButtonBackground,
+    detalhe: 'Esse horário foi removido da sua agenda.'
+  },
   AGUARDANDO_CONFIRMACAO: {
     titulo: 'Consulta aguardando confirmação',
     icone: 'clock',
@@ -137,13 +152,11 @@ const apresentacoes = {
   }
 } as const;
 
-type CartaoProps = { consulta: Appointment; onAbrirAgenda: () => void };
+type CartaoProps = { tipo: keyof typeof apresentacoes; dataHora: string; onAbrirAgenda: () => void };
 
-function CartaoNotificacao({ consulta, onAbrirAgenda }: CartaoProps) {
-  const apresentacao = consulta.status === 'RECUSADA' || consulta.status === 'CONFIRMADA'
-    ? apresentacoes[consulta.status]
-    : apresentacoes.AGUARDANDO_CONFIRMACAO;
-  const data = formatarDataHoraCivil(consulta.dataHora);
+function CartaoNotificacao({ tipo, dataHora, onAbrirAgenda }: CartaoProps) {
+  const apresentacao = apresentacoes[tipo];
+  const data = formatarDataHoraCivil(dataHora);
   const rotulo = [apresentacao.titulo, data, apresentacao.detalhe, 'Abrir agenda'].filter(Boolean).join('. ');
 
   return (
@@ -218,7 +231,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: radius.md,
     backgroundColor: colors.confirmedBackground
-  },
-  rodape: { flexDirection: 'row', gap: spacing.xs, alignItems: 'flex-start', paddingHorizontal: spacing.xs },
-  legenda: { flex: 1, fontSize: 13, lineHeight: 19 }
+  }
 });

@@ -4,6 +4,7 @@ import com.nutri4you.backend.dto.*;
 import com.nutri4you.backend.exception.*;
 import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.Nutricionista;
+import com.nutri4you.backend.model.NotificacaoConsultaPaciente.Tipo;
 import com.nutri4you.backend.model.StatusRelacaoClinica;
 import com.nutri4you.backend.support.*;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
     @Autowired HorarioAtendimentoService horarios;
     @Autowired ConsultaService atendimento;
     @Autowired GestaoPacienteService gestao;
+    @Autowired NotificacaoConsultaPacienteService notificacoesPaciente;
     private LocalDate prepararGrade() {
         var dia = hoje().plusDays(7);
         horarios.salvar(nutri, List.of(new HorarioAtendimentoDTO(dia.getDayOfWeek().getValue(), LocalTime.of(9, 0)),
@@ -70,6 +72,27 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
                 .singleElement().extracting(NotificacaoConsultaDTO::getTipo)
                 .isEqualTo(NotificacaoConsultaDTO.Tipo.REAGENDAMENTO);
         assertThat(service.disponibilidade(paciente, nutri.getId(), dia).horarios()).contains(dia.atTime(9, 0));
+    }
+
+    @Test void registraDecisoesParaOPacienteMesmoDepoisDeRetirarAConsultaDaAgenda() {
+        var dia = prepararGrade();
+        var reserva = service.solicitar(paciente, new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 0)));
+        var confirmada = atendimento.confirmar(nutri, paciente.getId(), reserva.id(), reserva.versao());
+        var novaData = dia.plusWeeks(1).atTime(9, 45);
+        var pendente = service.reagendar(paciente, reserva.id(), new ReagendarConsultaRequest(novaData, confirmada.versao()));
+        assertThat(notificacoesPaciente.listar(paciente)).extracting(NotificacaoConsultaPacienteDTO::tipo)
+                .containsExactly(Tipo.CONFIRMADA);
+
+        var reagendada = atendimento.confirmar(nutri, paciente.getId(), reserva.id(), pendente.versao());
+        atendimento.cancelar(nutri, paciente.getId(), reserva.id(), reagendada.versao());
+        var nova = service.solicitar(paciente, new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 0)));
+        atendimento.decidirNotificacao(nutri, nova.id(), new DecisaoConsultaRequest(false, nova.versao()));
+
+        assertThat(notificacoesPaciente.listar(paciente)).extracting(NotificacaoConsultaPacienteDTO::tipo)
+                .containsExactly(Tipo.RECUSADA, Tipo.CANCELADA, Tipo.REAGENDADA, Tipo.CONFIRMADA);
+        assertThat(notificacoesPaciente.listar(paciente)).extracting(NotificacaoConsultaPacienteDTO::dataHora)
+                .containsExactly(dia.atTime(9, 0), novaData, novaData, dia.atTime(9, 0));
+        assertThat(notificacoesPaciente.listar(pacientes.save(TestDataFactory.outroPaciente(encoder)))).isEmpty();
     }
 
     @Test void disponibilidadeParaReagendarIgnoraSomenteAConsultaAutorizada() {

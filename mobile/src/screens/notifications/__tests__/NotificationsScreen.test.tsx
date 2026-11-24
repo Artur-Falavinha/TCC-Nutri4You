@@ -6,6 +6,7 @@ import { getToken } from '../../../core/auth/token-storage';
 import { carregarPerfil } from '../../../core/perfil/perfil.service';
 import { gravarVistas, lerVistas } from '../../../features/notificacoes/leitura-storage';
 import { NotificacoesProvider, useNotificacoes } from '../../../features/notificacoes/NotificacoesProvider';
+import { listarAvisosConsulta } from '../../../features/notificacoes/notificacoes.service';
 
 import { listAppointments } from '../../../features/appointments/appointments.service';
 import { NotificationsScreen } from '../NotificationsScreen';
@@ -13,6 +14,7 @@ import { NotificationsScreen } from '../NotificationsScreen';
 jest.mock('../../../core/auth/token-storage', () => ({ getToken: jest.fn() }));
 jest.mock('../../../core/perfil/perfil.service', () => ({ carregarPerfil: jest.fn() }));
 jest.mock('../../../features/notificacoes/leitura-storage', () => ({ lerVistas: jest.fn(), gravarVistas: jest.fn() }));
+jest.mock('../../../features/notificacoes/notificacoes.service', () => ({ listarAvisosConsulta: jest.fn() }));
 jest.mock('../../../components/layout/AppHeader', () => ({
   AppHeader: ({ onOpenMenu }: { onOpenMenu: () => void }) => {
     const { View: Botao } = jest.requireActual('react-native');
@@ -51,6 +53,7 @@ describe('NotificationsScreen', () => {
       telefone: null, sexo: null, dataNascimento: null
     });
     jest.mocked(lerVistas).mockResolvedValue(new Set());
+    jest.mocked(listarAvisosConsulta).mockResolvedValue([]);
   });
   afterEach(() => jest.restoreAllMocks());
 
@@ -148,6 +151,40 @@ describe('NotificationsScreen', () => {
     expect(textos).toContain('Consulta recusada');
     expect(textos).toContain('O nutricionista não pôde aceitar este horário. Escolha uma nova data na agenda.');
     expect(textos).not.toContain('Tudo em dia');
+    await act(async () => tree.unmount());
+  });
+
+  it('mostra o histórico de decisões e conta as atualizações uma única vez no sino', async () => {
+    const confirmada = { id: 1, consultaId: 8, tipo: 'CONFIRMADA', dataHora: '2030-01-01T10:00:00', criadaEm: '2029-12-20T14:00:00Z' } as const;
+    const reagendada = { ...confirmada, id: 2, tipo: 'REAGENDADA', dataHora: '2030-01-01T13:00:00' } as const;
+    jest.mocked(listarAvisosConsulta).mockResolvedValue([reagendada, confirmada]);
+    appointments.mockResolvedValue([
+      { id: 8, nutricionistaId: 2, nutricionistaNome: 'Nutri', dataHora: reagendada.dataHora, status: 'CONFIRMADA', versao: 3 }
+    ]);
+
+    function Quantidade() {
+      return <Text testID="total-avisos">{useNotificacoes().quantidade}</Text>;
+    }
+
+    let tree!: renderer.ReactTestRenderer;
+    await act(async () => {
+      tree = renderer.create(<NotificacoesProvider rota="Agenda"><Quantidade /></NotificacoesProvider>);
+    });
+    expect(tree.root.findByType(Text).props.children).toBe(2);
+    jest.mocked(listarAvisosConsulta).mockResolvedValue([{ ...reagendada, id: 3, tipo: 'CANCELADA' }, reagendada, confirmada]);
+    appointments.mockResolvedValue([]);
+    await act(async () => {
+      tree.update(
+        <NotificacoesProvider rota="Notificacoes">
+          <Quantidade />
+          <NotificationsScreen navigation={navigation as never} route={{ key: 'notifications', name: 'Notificacoes' }} />
+        </NotificacoesProvider>
+      );
+    });
+    const textos = tree.root.findAllByType(Text).map(item => item.props.children);
+    expect(textos).toEqual(expect.arrayContaining(['Consulta cancelada', 'Consulta reagendada', 'Consulta confirmada']));
+    expect(tree.root.findByType(Quantidade).findByType(Text).props.children).toBe(0);
+    expect(gravarVistas).toHaveBeenCalledWith(2, new Set(['aviso:3', 'aviso:2', 'aviso:1']));
     await act(async () => tree.unmount());
   });
 });

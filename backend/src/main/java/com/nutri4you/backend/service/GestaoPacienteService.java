@@ -5,6 +5,7 @@ import com.nutri4you.backend.dto.PacienteResponseDTO;
 import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.exception.VinculoEncerradoException;
 import com.nutri4you.backend.model.Consulta;
+import com.nutri4you.backend.model.NotificacaoConsultaPaciente;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.RelacaoClinica;
@@ -29,6 +30,7 @@ public class GestaoPacienteService {
     private final NutricionistaRepository nutricionistaRepository;
     private final Clock clock;
     private final NotificacaoAgendaEmailService notificacoesEmail;
+    private final NotificacaoConsultaPacienteService notificacoesPaciente;
 
     public GestaoPacienteService(
             PacienteRepository pacienteRepository,
@@ -36,13 +38,15 @@ public class GestaoPacienteService {
             ConsultaRepository consultaRepository,
             NutricionistaRepository nutricionistaRepository,
             Clock clock,
-            NotificacaoAgendaEmailService notificacoesEmail) {
+            NotificacaoAgendaEmailService notificacoesEmail,
+            NotificacaoConsultaPacienteService notificacoesPaciente) {
         this.pacienteRepository = pacienteRepository;
         this.relacaoClinicaRepository = relacaoClinicaRepository;
         this.consultaRepository = consultaRepository;
         this.nutricionistaRepository = nutricionistaRepository;
         this.clock = clock;
         this.notificacoesEmail = notificacoesEmail;
+        this.notificacoesPaciente = notificacoesPaciente;
     }
 
     @Transactional(readOnly = true)
@@ -167,10 +171,14 @@ public class GestaoPacienteService {
                 .findByPaciente_IdAndNutricionista_IdAndStatus(pacienteId, nutricionistaId, StatusRelacaoClinica.ATIVA)
                 .orElseThrow(() -> new IllegalArgumentException(mensagemSemVinculo));
 
-        List<Consulta> canceladas = consultaRepository
-                .bloquearConsultasEmAberto(pacienteId, nutricionistaId, LocalDateTime.now(clock));
+        LocalDateTime agora = LocalDateTime.now(clock);
+        List<Consulta> canceladas = consultaRepository.bloquearConsultasEmAberto(pacienteId, nutricionistaId, agora);
         canceladas.forEach(Consulta::cancelar);
         relacao.encerrar();
+        consultaRepository.flush();
+        canceladas.stream()
+                .filter(consulta -> !consulta.getDataHora().isBefore(agora) || consulta.getIniciadaEm() != null)
+                .forEach(consulta -> notificacoesPaciente.registrar(consulta, NotificacaoConsultaPaciente.Tipo.CANCELADA));
         notificacoesEmail.agendarCancelamentosPorVinculo(nutricionista, canceladas.size());
     }
 

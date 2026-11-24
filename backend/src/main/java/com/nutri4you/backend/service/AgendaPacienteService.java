@@ -8,6 +8,7 @@ import com.nutri4you.backend.dto.SolicitarConsultaRequest;
 import com.nutri4you.backend.exception.ConsultaConflitoException;
 import com.nutri4you.backend.exception.ConsultaNaoEncontradaException;
 import com.nutri4you.backend.model.Consulta;
+import com.nutri4you.backend.model.NotificacaoConsultaPaciente;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.StatusRelacaoClinica;
@@ -39,18 +40,20 @@ public class AgendaPacienteService {
     private final HorarioAtendimentoService horarios;
     private final Clock clock;
     private final NotificacaoAgendaEmailService notificacoesEmail;
+    private final NotificacaoConsultaPacienteService notificacoesPaciente;
 
     public AgendaPacienteService(
             ConsultaRepository consultas,
             NutricionistaRepository nutricionistas,
             RelacaoClinicaRepository relacoes, HorarioAtendimentoService horarios, Clock clock,
-            NotificacaoAgendaEmailService notificacoesEmail) {
+            NotificacaoAgendaEmailService notificacoesEmail, NotificacaoConsultaPacienteService notificacoesPaciente) {
         this.consultas = consultas;
         this.nutricionistas = nutricionistas;
         this.relacoes = relacoes;
         this.horarios = horarios;
         this.clock = clock;
         this.notificacoesEmail = notificacoesEmail;
+        this.notificacoesPaciente = notificacoesPaciente;
     }
 
     @Transactional(readOnly = true)
@@ -161,6 +164,7 @@ public class AgendaPacienteService {
         consulta.cancelar();
         consultas.flush();
         notificacoesEmail.agendar(consulta, CANCELADA);
+        notificacoesPaciente.registrar(consulta, NotificacaoConsultaPaciente.Tipo.CANCELADA);
         return resposta(consulta);
     }
 

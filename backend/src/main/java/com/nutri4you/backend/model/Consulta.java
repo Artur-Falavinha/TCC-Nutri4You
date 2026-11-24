@@ -97,6 +97,10 @@ public class Consulta {
         return avulsa;
     }
 
+    public boolean foiReagendada() {
+        return Boolean.TRUE.equals(reagendada);
+    }
+
     public void integrarAoAcompanhamento() {
         this.avulsa = false;
         this.atualizadoEm = Instant.now();

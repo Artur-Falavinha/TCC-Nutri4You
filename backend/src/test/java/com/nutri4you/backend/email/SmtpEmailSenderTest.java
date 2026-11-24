@@ -59,7 +59,8 @@ class SmtpEmailSenderTest {
     private ContaEmailTemplate modelo() throws Exception {
         return new ContaEmailTemplate(
                 new ClassPathResource("email/conta.html"),
-                new ClassPathResource("email/codigo.html"));
+                new ClassPathResource("email/codigo.html"),
+                new ClassPathResource("email/acao.html"));
     }
 
     private ContaEmailTemplate.Conteudo enviar(String assunto, ContaEmailTemplate.Conteudo conteudo) throws Exception {

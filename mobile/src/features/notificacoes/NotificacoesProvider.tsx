@@ -8,6 +8,7 @@ import type { Appointment } from '../appointments/appointments.models';
 import { listAppointments } from '../appointments/appointments.service';
 import { chaveLembrete, selecionarLembretes } from './lembretes';
 import { gravarVistas, lerVistas } from './leitura-storage';
+import { listarAvisosConsulta, type AvisoConsulta } from './notificacoes.service';
 
 interface Sessao {
   token: string;
@@ -17,6 +18,7 @@ interface Sessao {
 }
 
 interface DadosNotificacoes {
+  avisos: AvisoConsulta[];
   lembretes: Appointment[];
   quantidade: number;
   nome: string;
@@ -31,8 +33,8 @@ interface EstadoNotificacoes extends DadosNotificacoes {
   carregar: (modo: Modo) => Promise<void>;
 }
 
-const inicial: DadosNotificacoes = { lembretes: [], quantidade: 0, nome: '' };
-const mensagemErro = 'Não foi possível carregar seus lembretes. Tente novamente.';
+const inicial: DadosNotificacoes = { avisos: [], lembretes: [], quantidade: 0, nome: '' };
+const mensagemErro = 'Não foi possível carregar suas notificações. Tente novamente.';
 const rotasPublicas = new Set<keyof RootStackParamList>(['Login', 'CriarConta', 'Health']);
 const ContextoNotificacoes = createContext<EstadoNotificacoes | null>(null);
 
@@ -76,16 +78,21 @@ export function NotificacoesProvider({ children, rota }: PropsWithChildren<{ rot
         sessaoAtual.current = sessao;
       }
 
-      const consultas = await listAppointments();
+      const [consultas, avisos] = await Promise.all([listAppointments(), listarAvisosConsulta()]);
       if (!vigente()) return;
-      const lembretes = selecionarLembretes(consultas ?? [], new Date(Date.now()));
-      const chaves = new Set(lembretes.map(chaveLembrete));
+      const statusNotificados = new Set(avisos.map(({ consultaId, tipo }) =>
+        consultaId + ':' + (tipo === 'REAGENDADA' ? 'CONFIRMADA' : tipo)
+      ));
+      const lembretes = selecionarLembretes(consultas ?? [], new Date(Date.now()))
+        .filter(({ id, status }) => !statusNotificados.has(id + ':' + status));
+      const chaves = new Set([...avisos.map(({ id }) => 'aviso:' + id), ...lembretes.map(chaveLembrete)]);
       const quantidade = [...chaves].filter(chave => !sessao.vistas.has(chave)).length;
       if (telaAberta && (quantidade > 0 || chaves.size !== sessao.vistas.size)) {
         sessao.vistas = chaves;
         gravarVistas(sessao.id, chaves);
       }
-      setDados({ lembretes, quantidade: telaAberta ? 0 : quantidade, nome: sessao.nome });
+      setDados({ avisos, lembretes, quantidade: telaAberta ? 0 : quantidade, nome: sessao.nome });
+      setErro('');
     } catch {
       if (vigente() && modo !== 'silencioso') setErro(mensagemErro);
     } finally {
@@ -104,7 +111,7 @@ export function NotificacoesProvider({ children, rota }: PropsWithChildren<{ rot
     const retomada = AppState.addEventListener('change', estado => {
       if (estado === 'active') consultar();
     });
-    const intervalo = telaAberta ? undefined : setInterval(() => {
+    const intervalo = setInterval(() => {
       if (AppState.currentState === 'active') void carregar('silencioso');
     }, 30_000);
     return () => {
