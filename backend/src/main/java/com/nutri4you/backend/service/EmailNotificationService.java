@@ -2,7 +2,7 @@ package com.nutri4you.backend.service;
 
 import com.nutri4you.backend.config.EmailProperties;
 import com.nutri4you.backend.email.AsyncEmailDispatcher;
-import com.nutri4you.backend.email.CadastroEmailTemplate;
+import com.nutri4you.backend.email.ContaEmailTemplate;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.TipoCadastro;
@@ -20,21 +20,21 @@ public class EmailNotificationService {
     private final EmailProperties emailProperties;
     private final TokenEmailService tokenEmailService;
     private final AsyncEmailDispatcher asyncEmailDispatcher;
-    private final CadastroEmailTemplate cadastroEmailTemplate;
+    private final ContaEmailTemplate contaEmailTemplate;
 
     public EmailNotificationService(
             EmailProperties emailProperties,
             TokenEmailService tokenEmailService,
             AsyncEmailDispatcher asyncEmailDispatcher,
-            CadastroEmailTemplate cadastroEmailTemplate) {
+            ContaEmailTemplate contaEmailTemplate) {
         this.emailProperties = emailProperties;
         this.tokenEmailService = tokenEmailService;
         this.asyncEmailDispatcher = asyncEmailDispatcher;
-        this.cadastroEmailTemplate = cadastroEmailTemplate;
+        this.contaEmailTemplate = contaEmailTemplate;
     }
 
     public void agendarInicioCadastro(String email, TipoCadastro tipoUsuario, UUID token) {
-        var conteudo = cadastroEmailTemplate.criar(
+        var conteudo = contaEmailTemplate.confirmacaoCadastro(
                 tipoUsuario, token, emailProperties.linkCadastro(token), emailProperties.getConfirmacaoTtlHoras());
         enviarConfirmacaoAposCommit(email, conteudo);
     }
@@ -51,7 +51,7 @@ public class EmailNotificationService {
         enviarRecuperacaoAssincrona(nutricionista.getEmail(), nutricionista.getNome(), token);
     }
 
-    private void enviarConfirmacaoAposCommit(String destinatario, CadastroEmailTemplate.Conteudo conteudo) {
+    private void enviarConfirmacaoAposCommit(String destinatario, ContaEmailTemplate.Conteudo conteudo) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
@@ -63,17 +63,9 @@ public class EmailNotificationService {
 
     private void enviarRecuperacaoAssincrona(String email, String nome, TokenEmail token) {
         String link = emailProperties.getWebBaseUrl() + "/redefinir-senha?token=" + token.getToken();
-        asyncEmailDispatcher.enviar(
-                email,
-                "Recuperação de senha — Nutri4You",
-                """
-                        Olá, %s!
-
-                        Para redefinir sua senha, acesse:
-                        %s
-
-                        O link expira em %d hora(s).
-                        Se você não solicitou, ignore este e-mail.
-                        """.formatted(nome, link, emailProperties.getRecuperacaoTtlHoras()));
+        var conteudo = contaEmailTemplate.recuperacaoSenha(
+                nome, token.getToken(), link, emailProperties.getRecuperacaoTtlHoras());
+        asyncEmailDispatcher.enviarFormatado(email, "Recuperação de senha — Nutri4You",
+                conteudo.texto(), conteudo.html());
     }
 }

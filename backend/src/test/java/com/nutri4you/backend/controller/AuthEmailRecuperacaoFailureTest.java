@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -46,7 +48,7 @@ class AuthEmailRecuperacaoFailureTest {
     void recuperarSenhaComFalhaDeEmailRetornaMensagemGenerica() throws Exception {
         doThrow(new RuntimeException("SMTP indisponível"))
                 .when(emailSender)
-                .enviar(anyString(), anyString(), anyString());
+                .enviarFormatado(anyString(), anyString(), anyString(), anyString());
 
         mockMvc.perform(post("/api/v1/auth/recuperar-senha")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -56,5 +58,8 @@ class AuthEmailRecuperacaoFailureTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.mensagem")
                         .value("Se o e-mail estiver cadastrado, você receberá instruções para redefinir a senha."));
+
+        verify(emailSender, timeout(5000))
+                .enviarFormatado(anyString(), anyString(), anyString(), anyString());
     }
 }
