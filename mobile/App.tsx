@@ -10,7 +10,6 @@ import {
 import { View, ActivityIndicator } from 'react-native';
 
 import { AppAlertProvider } from './src/components/feedback/AppAlertProvider';
-import { SideMenuProvider } from './src/components/navigation/SideMenu';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 export default function App() {
@@ -32,9 +31,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AppAlertProvider>
-        <SideMenuProvider>
-          <RootNavigator />
-        </SideMenuProvider>
+        <RootNavigator />
       </AppAlertProvider>
       <StatusBar style="auto" />
     </SafeAreaProvider>

@@ -5,15 +5,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BellIcon from '../../assets/appointments/bell.svg';
 import MenuIcon from '../../assets/appointments/menu.svg';
-import { colors, shadows } from '../../theme/tokens';
+import { BadgeNotificacoes, rotuloNotificacoes } from '../../features/notificacoes/BadgeNotificacoes';
+import { useNotificacoes } from '../../features/notificacoes/NotificacoesProvider';
+import { colors, radius, shadows } from '../../theme/tokens';
 import { RootStackParamList } from '../../navigation/types';
 
 interface AppHeaderProps {
   onOpenMenu: () => void;
+  exibirNotificacoes?: boolean;
 }
 
-export function AppHeader({ onOpenMenu }: AppHeaderProps) {
+export function AppHeader({ onOpenMenu, exibirNotificacoes = true }: AppHeaderProps) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { quantidade } = useNotificacoes();
   return (
     <SafeAreaView style={styles.header} edges={['top']}>
       <View style={styles.headerContent}>
@@ -37,15 +41,22 @@ export function AppHeader({ onOpenMenu }: AppHeaderProps) {
           />
         </View>
 
-        <Pressable
-          style={styles.iconButton}
-          onPress={() => navigation.navigate('Notificacoes')}
-          accessibilityRole="button"
-          accessibilityLabel="Notificações"
-          hitSlop={8}
-        >
-          <BellIcon />
-        </Pressable>
+        {exibirNotificacoes ? (
+          <Pressable
+            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            onPress={() => navigation.navigate('Notificacoes')}
+            accessibilityRole="button"
+            accessibilityLabel={rotuloNotificacoes(quantidade)}
+            hitSlop={8}
+          >
+            <BellIcon color={colors.text} aria-hidden />
+            {quantidade > 0 && (
+              <View style={styles.badge} pointerEvents="none" aria-hidden>
+                <BadgeNotificacoes quantidade={quantidade} />
+              </View>
+            )}
+          </Pressable>
+        ) : <View style={styles.iconButton} />}
       </View>
     </SafeAreaView>
   );
@@ -72,6 +83,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
+  badge: {
+    position: 'absolute', top: 0, right: -4,
+    backgroundColor: colors.card, borderRadius: radius.pill, padding: 1
+  },
+  pressed: { opacity: 0.7 },
   brand: {
     alignItems: 'center',
     flexShrink: 1

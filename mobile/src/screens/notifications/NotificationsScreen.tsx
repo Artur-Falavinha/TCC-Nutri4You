@@ -1,7 +1,6 @@
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -14,118 +13,69 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppHeader } from '../../components/layout/AppHeader';
+import { SideMenu } from '../../components/navigation/SideMenu';
 import { sectionCardStyles } from '../../components/layout/SectionCardHeader';
-import { formatarDataHoraCivil, FUSO_HORARIO_CLINICA } from '../../core/utils/date-mask.util';
-import { listAppointments } from '../../features/appointments/appointments.service';
+import { formatarDataHoraCivil } from '../../core/utils/date-mask.util';
+import { useNotificacoes } from '../../features/notificacoes/NotificacoesProvider';
 import { Appointment } from '../../features/appointments/appointments.models';
 import { RootStackParamList } from '../../navigation/types';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Notificacoes'>;
 
-const relogioDaClinica = new Intl.DateTimeFormat('en', {
-  timeZone: FUSO_HORARIO_CLINICA,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hourCycle: 'h23'
-});
-
 export function NotificationsScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
-  const [agoraNaClinica, setAgoraNaClinica] = useState(0);
-
-  const load = useCallback(async (refresh = false) => {
-    if (refresh) setRefreshing(true);
-    else setLoading(true);
-    setError('');
-    try {
-      setAppointments((await listAppointments()) ?? []);
-      setAgoraNaClinica(horarioCivilDaClinica(new Date(Date.now())));
-    } catch {
-      setError('Não foi possível carregar seus lembretes. Tente novamente.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useFocusEffect(useCallback(() => { void load(); }, [load]));
-
-  const notificacoes = useMemo(() => appointments
-    .filter((item) => item.status === 'RECUSADA'
-      || (['AGUARDANDO_CONFIRMACAO', 'CONFIRMADA'].includes(item.status)
-        && horarioCivilEmMilissegundos(item.dataHora) >= agoraNaClinica))
-    .sort((a, b) => a.status === 'RECUSADA' && b.status !== 'RECUSADA' ? -1
-      : b.status === 'RECUSADA' && a.status !== 'RECUSADA' ? 1
-        : a.dataHora.localeCompare(b.dataHora)), [appointments, agoraNaClinica]);
-
-  const voltar = () => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.replace('Dashboard');
-    }
-  };
-
+  const [menuVisivel, setMenuVisivel] = useState(false);
+  const { lembretes, nome, carregando, atualizando, erro, carregar } = useNotificacoes();
   const larguraMaxima = width >= 640 ? 760 : 560;
   const margemCompacta = width < 420 && styles.margemCompacta;
 
   return (
-    <SafeAreaView style={styles.areaSegura} edges={['top', 'bottom', 'left', 'right']}>
-      <View style={styles.barra}>
-        <View style={[styles.cabecalho, margemCompacta, { maxWidth: larguraMaxima }]}>
-          <Pressable
-            onPress={voltar}
-            style={({ pressed }) => [styles.voltar, pressed && styles.pressionado]}
-            accessibilityRole="button"
-            accessibilityLabel="Voltar"
-          >
-            <Feather name="arrow-left" size={22} color={colors.brandDeep} aria-hidden />
-          </Pressable>
-          <Text style={styles.titulo} accessibilityRole="header" aria-level={1}>Notificações</Text>
-        </View>
-      </View>
+    <SafeAreaView style={styles.areaSegura} edges={['left', 'right', 'bottom']}>
+      <AppHeader onOpenMenu={() => setMenuVisivel(true)} exibirNotificacoes={false} />
+      <SideMenu
+        visible={menuVisivel}
+        activeItem="notifications"
+        userName={nome || 'Paciente'}
+        onClose={() => setMenuVisivel(false)}
+      />
 
       <ScrollView
         style={styles.rolagem}
         contentContainerStyle={[styles.conteudo, margemCompacta, { maxWidth: larguraMaxima }]}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => void load(true)}
+            refreshing={atualizando}
+            onRefresh={() => void carregar('gesto')}
             tintColor={colors.brand}
             colors={[colors.brand]}
           />
         }
       >
-        <Text style={styles.subtitulo}>Atualizações e lembretes das suas consultas</Text>
+        <View style={styles.introducao}>
+          <Text style={styles.titulo} accessibilityRole="header" aria-level={1}>Notificações</Text>
+          <Text style={styles.subtitulo}>Atualizações e lembretes das suas consultas</Text>
+        </View>
 
-        {loading ? (
+        {carregando ? (
           <View style={[sectionCardStyles.superficie, styles.estado]} aria-live="polite">
             <ActivityIndicator color={colors.brand} />
             <Text style={[styles.texto, styles.centralizado]}>Carregando notificações</Text>
           </View>
         ) : null}
 
-        {!loading && error ? (
+        {!carregando && erro ? (
           <View style={sectionCardStyles.superficie}>
             <View style={styles.linha}>
               <View style={[styles.icone, styles.iconeErro]} aria-hidden>
                 <Feather name="alert-circle" size={22} color={colors.dangerText} />
               </View>
-              <Text style={[styles.texto, styles.identidade]} accessibilityRole="alert">{error}</Text>
+              <Text style={[styles.texto, styles.identidade]} accessibilityRole="alert">{erro}</Text>
             </View>
             <Pressable
               style={({ pressed }) => [styles.tentarNovamente, pressed && styles.pressionado]}
-              onPress={() => void load()}
+              onPress={() => void carregar('abertura')}
               accessibilityRole="button"
             >
               <Feather name="refresh-cw" size={18} color={colors.brandDark} aria-hidden />
@@ -134,7 +84,7 @@ export function NotificationsScreen({ navigation }: Props) {
           </View>
         ) : null}
 
-        {!loading && !error && notificacoes.length === 0 ? (
+        {!carregando && !erro && lembretes.length === 0 ? (
           <View style={[sectionCardStyles.superficie, styles.estado]}>
             <View style={[styles.icone, styles.iconeVazio]} aria-hidden>
               <Feather name="bell" size={24} color={colors.brandDark} />
@@ -148,7 +98,7 @@ export function NotificationsScreen({ navigation }: Props) {
           </View>
         ) : null}
 
-        {!loading && !error ? notificacoes.map((consulta) => (
+        {!carregando && !erro ? lembretes.map((consulta) => (
           <CartaoNotificacao key={consulta.id} consulta={consulta} onAbrirAgenda={() => navigation.navigate('Agenda')} />
         )) : null}
 
@@ -222,43 +172,10 @@ function CartaoNotificacao({ consulta, onAbrirAgenda }: CartaoProps) {
 }
 
 
-// A API envia horário civil da clínica sem offset. A escala UTC mantém esses campos
-// na comparação e na exibição, independentemente do fuso do dispositivo.
-function horarioCivilEmMilissegundos(dataHora: string): number {
-  return Date.parse(dataHora + 'Z');
-}
-
-function horarioCivilDaClinica(agora: Date): number {
-  const { year, month, day, hour, minute, second } = Object.fromEntries(
-    relogioDaClinica.formatToParts(agora).map(({ type, value }) => [type, value])
-  );
-  return Date.UTC(
-    Number(year), Number(month) - 1, Number(day),
-    Number(hour), Number(minute), Number(second), agora.getUTCMilliseconds()
-  );
-}
-
 const styles = StyleSheet.create({
-  areaSegura: { flex: 1, backgroundColor: colors.card },
-  barra: { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border },
-  cabecalho: {
-    width: '100%',
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xs
-  },
-  voltar: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.page,
-    borderRadius: radius.md
-  },
-  titulo: { flex: 1, color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 24, lineHeight: 32 },
+  areaSegura: { flex: 1, backgroundColor: colors.page },
+  introducao: { gap: spacing.xs },
+  titulo: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 30, lineHeight: 38 },
   pressionado: { opacity: 0.75 },
   rolagem: { flex: 1, backgroundColor: colors.page },
   conteudo: {

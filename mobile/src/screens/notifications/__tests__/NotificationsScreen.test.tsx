@@ -2,32 +2,56 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { Text } from 'react-native';
 
+import { getToken } from '../../../core/auth/token-storage';
+import { carregarPerfil } from '../../../core/perfil/perfil.service';
+import { gravarVistas, lerVistas } from '../../../features/notificacoes/leitura-storage';
+import { NotificacoesProvider, useNotificacoes } from '../../../features/notificacoes/NotificacoesProvider';
+
 import { listAppointments } from '../../../features/appointments/appointments.service';
 import { NotificationsScreen } from '../NotificationsScreen';
 
-jest.mock('@react-navigation/native', () => ({
-  useFocusEffect: (callback: () => void) => jest.requireActual('react').useEffect(callback, [callback])
+jest.mock('../../../core/auth/token-storage', () => ({ getToken: jest.fn() }));
+jest.mock('../../../core/perfil/perfil.service', () => ({ carregarPerfil: jest.fn() }));
+jest.mock('../../../features/notificacoes/leitura-storage', () => ({ lerVistas: jest.fn(), gravarVistas: jest.fn() }));
+jest.mock('../../../components/layout/AppHeader', () => ({
+  AppHeader: ({ onOpenMenu }: { onOpenMenu: () => void }) => {
+    const { View: Botao } = jest.requireActual('react-native');
+    return <Botao testID="abrir-menu" onTouchEnd={onOpenMenu} />;
+  }
+}));
+jest.mock('../../../components/navigation/SideMenu', () => ({
+  SideMenu: ({ visible, activeItem }: { visible: boolean; activeItem: string }) => {
+    const { Text: Rotulo } = jest.requireActual('react-native');
+    return visible ? <Rotulo testID="aba-ativa">{activeItem}</Rotulo> : null;
+  }
 }));
 jest.mock('../../../features/appointments/appointments.service', () => ({ listAppointments: jest.fn() }));
 
 const appointments = jest.mocked(listAppointments);
-const navigation = {
-  canGoBack: jest.fn(),
-  goBack: jest.fn(),
-  navigate: jest.fn(),
-  replace: jest.fn()
-};
+const navigation = { navigate: jest.fn() };
 
 async function renderScreen() {
   let tree!: renderer.ReactTestRenderer;
   await act(async () => {
-    tree = renderer.create(<NotificationsScreen navigation={navigation as never} route={{ key: 'notifications', name: 'Notificacoes' }} />);
+    tree = renderer.create(
+      <NotificacoesProvider rota="Notificacoes">
+        <NotificationsScreen navigation={navigation as never} route={{ key: 'notifications', name: 'Notificacoes' }} />
+      </NotificacoesProvider>
+    );
   });
   return tree;
 }
 
 describe('NotificationsScreen', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.mocked(getToken).mockResolvedValue('sessao-teste');
+    jest.mocked(carregarPerfil).mockResolvedValue({
+      id: 2, nome: 'Paciente Teste', email: 'paciente@example.test',
+      telefone: null, sexo: null, dataNascimento: null
+    });
+    jest.mocked(lerVistas).mockResolvedValue(new Set());
+  });
   afterEach(() => jest.restoreAllMocks());
 
   it('exibe apenas consultas futuras e abre a agenda', async () => {
@@ -65,17 +89,45 @@ describe('NotificationsScreen', () => {
     await act(async () => tree.unmount());
   });
 
-  it('volta ao dashboard quando a tela foi aberta sem histórico', async () => {
+  it('abre a sidebar com Notificações como aba ativa', async () => {
     appointments.mockResolvedValue([]);
-    navigation.canGoBack.mockReturnValue(false);
     const tree = await renderScreen();
-    const voltar = tree.root.findAllByProps({ accessibilityLabel: 'Voltar' })
-      .find(item => typeof item.props.onPress === 'function')!;
-    expect(voltar).toBeDefined();
-    await act(async () => voltar.props.onPress());
+    const menu = tree.root.findAllByProps({ testID: 'abrir-menu' })
+      .find(item => typeof item.props.onTouchEnd === 'function')!;
+    await act(async () => menu.props.onTouchEnd());
+    expect(tree.root.findAllByProps({ testID: 'aba-ativa' })[0].props.children).toBe('notifications');
+    await act(async () => tree.unmount());
+  });
 
-    expect(navigation.replace).toHaveBeenCalledWith('Dashboard');
-    expect(navigation.goBack).not.toHaveBeenCalled();
+  it('registra o lembrete ao visitar a aba e volta a contar uma nova versão', async () => {
+    const consulta = {
+      id: 8, nutricionistaId: 2, nutricionistaNome: 'Nutri', dataHora: '2030-06-01T13:00:00',
+      status: 'CONFIRMADA', versao: 1
+    } as const;
+    appointments.mockResolvedValue([consulta]);
+
+    function Quantidade() {
+      return <Text>{useNotificacoes().quantidade}</Text>;
+    }
+
+    let tree!: renderer.ReactTestRenderer;
+    await act(async () => {
+      tree = renderer.create(<NotificacoesProvider rota="Agenda"><Quantidade /></NotificacoesProvider>);
+    });
+    expect(tree.root.findByType(Text).props.children).toBe(1);
+    expect(gravarVistas).not.toHaveBeenCalled();
+
+    await act(async () => {
+      tree.update(<NotificacoesProvider rota="Notificacoes"><Quantidade /></NotificacoesProvider>);
+    });
+    expect(tree.root.findByType(Text).props.children).toBe(0);
+    expect(gravarVistas).toHaveBeenCalledWith(2, new Set(['8:CONFIRMADA:1']));
+
+    appointments.mockResolvedValue([{ ...consulta, versao: 2 }]);
+    await act(async () => {
+      tree.update(<NotificacoesProvider rota="Agenda"><Quantidade /></NotificacoesProvider>);
+    });
+    expect(tree.root.findByType(Text).props.children).toBe(1);
     await act(async () => tree.unmount());
   });
 

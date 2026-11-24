@@ -5,8 +5,11 @@ import {
 import {
   Animated, BackHandler, Easing, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View
 } from 'react-native';
+import { CommonActions, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import BellIcon from '../../assets/appointments/bell.svg';
 import CalendarIcon from '../../assets/appointments/nav-calendar.svg';
 import DietIcon from '../../assets/appointments/nav-diet.svg';
 import ExamsIcon from '../../assets/appointments/nav-exams.svg';
@@ -16,10 +19,15 @@ import ProfileIcon from '../../assets/appointments/nav-profile.svg';
 import ResultsIcon from '../../assets/appointments/nav-results.svg';
 import ShoppingIcon from '../../assets/appointments/nav-shopping.svg';
 import { AvatarFoto } from '../layout/AvatarFoto';
+import { logout } from '../../core/auth/auth.service';
+import { BadgeNotificacoes, rotuloNotificacoes } from '../../features/notificacoes/BadgeNotificacoes';
+import { useNotificacoes } from '../../features/notificacoes/NotificacoesProvider';
+import type { RootStackParamList } from '../../navigation/types';
 import { carregarFotoPerfil } from '../../core/perfil/foto-perfil.service';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 
 export type MenuDestination =
+  | 'notifications'
   | 'profile'
   | 'home'
   | 'diet'
@@ -35,11 +43,12 @@ interface SideMenuProps {
   activeItem: MenuDestination;
   userName: string;
   onClose: () => void;
-  onNavigate: (destination: MenuDestination) => void;
+  onNavigate?: (destination: MenuDestination) => void;
 }
 
-interface ConfiguracaoMenu extends Omit<SideMenuProps, 'visible'> {
+interface ConfiguracaoMenu extends Omit<SideMenuProps, 'visible' | 'onNavigate'> {
   id: string;
+  onNavigate: (destination: MenuDestination) => void;
 }
 
 interface EstadoMenu extends ConfiguracaoMenu {
@@ -58,6 +67,7 @@ interface MenuItemProps {
   label: string;
   icon: ComponentType<{ color?: string }>;
   active?: boolean;
+  quantidadeNaoLidas?: number;
   onPress: () => void;
 }
 
@@ -72,8 +82,21 @@ const menuItems: {
   { destination: 'shopping', label: 'Compras', icon: ShoppingIcon },
   { destination: 'results', label: 'Resultados', icon: ResultsIcon },
   { destination: 'exams', label: 'Exames', icon: ExamsIcon },
+  { destination: 'notifications', label: 'Notificações', icon: BellIcon },
   { destination: 'profile', label: 'Dados pessoais', icon: ProfileIcon }
 ];
+
+const rotasMenu = {
+  home: 'Dashboard',
+  appointments: 'Agenda',
+  diet: 'Dieta',
+  shopping: 'Compras',
+  results: 'Evolucao',
+  exams: 'Exames',
+  notifications: 'Notificacoes',
+  profile: 'DadosPessoais',
+  password: 'TrocarSenha'
+} as const satisfies Record<Exclude<MenuDestination, 'logout'>, keyof RootStackParamList>;
 
 export function SideMenuProvider({ children }: PropsWithChildren) {
   const [menu, setMenu] = useState<EstadoMenu | null>(null);
@@ -110,19 +133,36 @@ export function SideMenuProvider({ children }: PropsWithChildren) {
 
 export function SideMenu({ visible, activeItem, userName, onClose, onNavigate }: SideMenuProps) {
   const id = useId();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const controle = useContext(ContextoMenu);
   if (!controle) {
     throw new Error('SideMenu deve ser usado dentro de SideMenuProvider.');
   }
 
   const { abrir, fechar } = controle;
+  const navegar = useCallback(async (destino: MenuDestination) => {
+    if (onNavigate && destino !== 'notifications') {
+      onNavigate(destino);
+      return;
+    }
+
+    onClose();
+    if (destino === activeItem) return;
+    if (destino === 'logout') {
+      await logout();
+      navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] }));
+      return;
+    }
+
+    navigation.navigate(rotasMenu[destino]);
+  }, [activeItem, navigation, onClose, onNavigate]);
   useEffect(() => {
     if (visible) {
-      abrir({ id, activeItem, userName, onClose, onNavigate });
+      abrir({ id, activeItem, userName, onClose, onNavigate: navegar });
     } else {
       fechar(id);
     }
-  }, [visible, id, activeItem, userName, onClose, onNavigate, abrir, fechar]);
+  }, [visible, id, activeItem, userName, onClose, navegar, abrir, fechar]);
   useEffect(() => () => fechar(id), [id, fechar]);
 
   return null;
@@ -135,6 +175,7 @@ interface MenuSobrepostoProps {
 }
 
 function MenuSobreposto({ menu, fechar, remover }: MenuSobrepostoProps) {
+  const { quantidade } = useNotificacoes();
   const [progresso] = useState(() => new Animated.Value(0));
   const [foto, setFoto] = useState<string | null>(null);
   const acaoSolicitada = useRef(false);
@@ -222,6 +263,7 @@ function MenuSobreposto({ menu, fechar, remover }: MenuSobrepostoProps) {
                 label={item.label}
                 icon={item.icon}
                 active={menu.activeItem === item.destination}
+                quantidadeNaoLidas={item.destination === 'notifications' ? quantidade : undefined}
                 onPress={() => acionar(item.destination)}
               />
             ))}
@@ -242,7 +284,7 @@ function MenuSobreposto({ menu, fechar, remover }: MenuSobrepostoProps) {
   ) : conteudo;
 }
 
-function MenuItem({ label, icon, active = false, onPress }: MenuItemProps) {
+function MenuItem({ label, icon, active = false, quantidadeNaoLidas, onPress }: MenuItemProps) {
   const Icon = icon;
   return (
     <Pressable
@@ -250,11 +292,14 @@ function MenuItem({ label, icon, active = false, onPress }: MenuItemProps) {
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
+      aria-current={active ? 'page' : undefined}
+      accessibilityLabel={quantidadeNaoLidas === undefined ? label : rotuloNotificacoes(quantidadeNaoLidas)}
     >
-      <View style={styles.icon}>
+      <View style={styles.icon} aria-hidden>
         <Icon color={active ? colors.brandDeep : colors.menuIcon} />
       </View>
       <Text style={[styles.itemLabel, active && styles.activeLabel]}>{label}</Text>
+      {quantidadeNaoLidas !== undefined && <BadgeNotificacoes quantidade={quantidadeNaoLidas} />}
     </Pressable>
   );
 }
@@ -330,6 +375,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   itemLabel: {
+    flex: 1,
     color: '#57534e',
     fontFamily: fontFamily.regular,
     fontSize: 14,
