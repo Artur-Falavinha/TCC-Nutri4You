@@ -1,6 +1,7 @@
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, forkJoin } from 'rxjs';
+import { ToastService } from '../../core/services/toast.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { AuthService } from '../../core/services/auth.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
@@ -15,6 +16,7 @@ import { NotificacaoConsulta, NotificacaoVinculo, NotificacoesService, TipoNotif
   styleUrl: './notificacoes.component.css'
 })
 export class NotificacoesComponent implements OnInit {
+  private readonly toast = inject(ToastService);
   private readonly service = inject(NotificacoesService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
@@ -29,7 +31,6 @@ export class NotificacoesComponent implements OnInit {
   carregando = true;
   decidindo: number | null = null;
   erro = '';
-  mensagem = '';
 
   ngOnInit(): void { this.carregar(); }
 
@@ -51,32 +52,28 @@ export class NotificacoesComponent implements OnInit {
   decidirVinculo(item: NotificacaoVinculo, aceitar: boolean): void {
     if (this.decidindo !== null) return;
     this.decidindo = item.id;
-    this.erro = '';
-    this.mensagem = '';
     this.service.decidirVinculo(item, aceitar).pipe(
       takeUntilDestroyed(this.destroyRef), finalize(() => { this.decidindo = null; })
     ).subscribe({
       next: () => {
         this.vinculos = this.vinculos.filter(atual => atual.id !== item.id);
-        this.mensagem = aceitar ? 'Vínculo aceito.' : 'Solicitação de vínculo recusada.';
+        this.toast.sucesso(aceitar ? 'Vínculo aceito.' : 'Solicitação de vínculo recusada.');
       },
-      error: (erro: ApiErrorResponse) => { this.erro = erro.message || 'Não foi possível decidir o vínculo.'; }
+      error: (erro: ApiErrorResponse) => { this.toast.erro(erro.message || 'Não foi possível decidir o vínculo.'); }
     });
   }
 
   decidir(item: NotificacaoConsulta, aceitar: boolean): void {
     if (this.decidindo !== null) return;
     this.decidindo = item.id;
-    this.erro = '';
-    this.mensagem = '';
     this.service.decidir(item, aceitar).pipe(
       takeUntilDestroyed(this.destroyRef), finalize(() => { this.decidindo = null; })
     ).subscribe({
       next: () => {
         this.itens = this.itens.filter(atual => atual.id !== item.id);
-        this.mensagem = aceitar ? 'Consulta confirmada.' : 'Consulta recusada.';
+        this.toast.sucesso(aceitar ? 'Consulta confirmada.' : 'Consulta recusada.');
       },
-      error: (erro: ApiErrorResponse) => { this.erro = erro.message || 'Não foi possível decidir a solicitação.'; }
+      error: (erro: ApiErrorResponse) => { this.toast.erro(erro.message || 'Não foi possível decidir a solicitação.'); }
     });
   }
 }

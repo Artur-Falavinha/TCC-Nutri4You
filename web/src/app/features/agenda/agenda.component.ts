@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { CanDeactivateFn } from '@angular/router';
 import { Observable, Subject, take } from 'rxjs';
 
+import { ToastService } from '../../core/services/toast.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { ApiService } from '../../core/services/api.service';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
@@ -46,6 +47,7 @@ function horarioSeguinte(horario: string): string {
   styleUrl: './agenda.component.css'
 })
 export class AgendaComponent implements OnInit {
+  private readonly toast = inject(ToastService);
   private readonly api = inject(ApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly horarios = signal<Horario[]>([]);
@@ -69,11 +71,9 @@ export class AgendaComponent implements OnInit {
   salvando = false;
   erro = '';
   erroHorario = '';
-  mensagem = '';
   modalSaida = false;
   copiando = false;
   destinos = new Set<number>();
-  retornoCopia = '';
 
   ngOnInit(): void { this.carregar(); }
 
@@ -131,14 +131,12 @@ export class AgendaComponent implements OnInit {
       this.fecharCopia();
     } else {
       this.copiando = true;
-      this.retornoCopia = '';
     }
   }
 
   selecionarDestino(numero: number, selecionado: boolean): void {
     if (selecionado) this.destinos.add(numero);
     else this.destinos.delete(numero);
-    this.retornoCopia = '';
   }
 
   copiarHorarios(): void {
@@ -149,17 +147,17 @@ export class AgendaComponent implements OnInit {
         .map(item => ({ diaSemana: dia.numero, horario: item.horario }));
     });
     if (!novos.length) {
-      this.retornoCopia = 'Os dias selecionados já têm esses horários.';
+      this.toast.informacao('Os dias selecionados já têm esses horários.');
       return;
     }
     if (this.totalHorarios() + novos.length > LIMITE_SEMANAL) {
-      this.retornoCopia = 'A cópia ultrapassa o limite de 224 horários. Selecione menos dias.';
+      this.toast.aviso('A cópia ultrapassa o limite de 224 horários. Selecione menos dias.');
       return;
     }
     const dias = new Set(novos.map(item => item.diaSemana)).size;
     this.atualizarRascunho([...this.horarios(), ...novos]);
     this.fecharCopia();
-    this.retornoCopia = dias === 1 ? 'Horários copiados para 1 dia.' : 'Horários copiados para ' + dias + ' dias.';
+    this.toast.sucesso(dias === 1 ? 'Horários copiados para 1 dia.' : 'Horários copiados para ' + dias + ' dias.');
     this.botaoCopia()?.nativeElement.focus();
   }
 
@@ -167,15 +165,14 @@ export class AgendaComponent implements OnInit {
     if (this.salvando || !this.carregado || !this.alterado()) return;
     this.salvando = true;
     this.erro = '';
-    this.mensagem = '';
     this.api.put<Horario[]>(CAMINHO_HORARIOS, this.horarios()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: horarios => {
         this.receber(horarios);
         this.salvando = false;
-        this.mensagem = 'Disponibilidade semanal salva.';
+        this.toast.sucesso('Disponibilidade semanal salva.');
       },
       error: (erro: ApiErrorResponse) => {
-        this.erro = erro.message || 'Não foi possível salvar. Tente novamente.';
+        this.toast.erro(erro.message || 'Não foi possível salvar. Tente novamente.');
         this.salvando = false;
       }
     });
@@ -216,14 +213,11 @@ export class AgendaComponent implements OnInit {
   private atualizarRascunho(horarios: Horario[]): void {
     this.horarios.set(ordenar(horarios));
     this.erro = '';
-    this.mensagem = '';
-    this.retornoCopia = '';
   }
 
   private fecharCopia(): void {
     this.copiando = false;
     this.destinos.clear();
-    this.retornoCopia = '';
   }
 }
 

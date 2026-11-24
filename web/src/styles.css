@@ -2,6 +2,7 @@
 @import '@phosphor-icons/web/regular';
 @import './styles/tokens.css';
 @import './styles/base.css';
+@import './styles/toast.css';
 
 app-dieta .food-editor-group { display: grid; gap: 10px; min-width: 0; }
 app-dieta .substitutes-editor { display: grid; gap: 10px; margin-left: 18px; padding: 14px; border-left: 2px solid var(--color-brand-primary); border-radius: 0 10px 10px 0; background: #f8fafb; }

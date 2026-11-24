@@ -1,14 +1,6 @@
 <app-page-header titulo="Notificações" [mostrarSino]="false" />
 
 <div class="notificacoes">
-  <div role="status">
-    @if (mensagem) {
-      <p class="retorno retorno--sucesso">
-        <i class="ph ph-check-circle" aria-hidden="true"></i>
-        <span>{{ mensagem }}</span>
-      </p>
-    }
-  </div>
   @if (erro) {
     <p class="retorno retorno--erro" role="alert">
       <i class="ph ph-warning-circle" aria-hidden="true"></i>

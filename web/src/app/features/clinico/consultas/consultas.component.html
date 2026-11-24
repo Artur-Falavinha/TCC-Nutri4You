@@ -4,7 +4,6 @@
 </header>
 <main class="canvas" [attr.aria-busy]="carregando || salvando">
   <app-form-alert [message]="erro" type="error" />
-  <app-form-alert [message]="mensagem" type="success" />
   @if (carregando) {
     <p class="state" role="status">Carregando consultas...</p>
   } @else if (vinculoEncerrado) {

@@ -1,8 +1,8 @@
 import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { finalize } from 'rxjs';
 
+import { ToastService } from '../../../../core/services/toast.service';
 import { UiButtonComponent } from '../../../../shared/components/ui-button/ui-button.component';
-import { FormAlertComponent } from '../../../../shared/components/form-alert/form-alert.component';
 import { PacientesService } from '../../../../core/services/pacientes.service';
 import { Paciente } from '../../../../core/models/paciente.models';
 import { ApiErrorResponse } from '../../../../core/models/api-response.model';
@@ -12,10 +12,11 @@ export type AcaoRelacao = 'vincular' | 'desvincular';
 
 @Component({
   selector: 'app-relacao-paciente-modal',
-  imports: [UiButtonComponent, FormAlertComponent, PacienteDialogComponent],
+  imports: [UiButtonComponent, PacienteDialogComponent],
   templateUrl: './relacao-paciente-modal.component.html'
 })
 export class RelacaoPacienteModalComponent {
+  private readonly toast = inject(ToastService);
   @Input({ required: true }) paciente!: Paciente;
   @Input({ required: true }) acao!: AcaoRelacao;
   @Output() fechar = new EventEmitter<void>();
@@ -24,7 +25,6 @@ export class RelacaoPacienteModalComponent {
   private readonly pacientesService = inject(PacientesService);
 
   loading = false;
-  errorMessage = '';
 
   get title(): string {
     return this.acao === 'desvincular' ? 'Encerrar relação?' : 'Solicitar vínculo?';
@@ -43,7 +43,6 @@ export class RelacaoPacienteModalComponent {
 
   onConfirmar(): void {
     this.loading = true;
-    this.errorMessage = '';
 
     const request =
       this.acao === 'desvincular'
@@ -53,11 +52,12 @@ export class RelacaoPacienteModalComponent {
     request.pipe(finalize(() => (this.loading = false))).subscribe({
       next: () => this.concluido.emit(),
       error: (error: ApiErrorResponse) => {
-        this.errorMessage =
+        this.toast.erro(
           error.message ??
           (this.acao === 'desvincular'
             ? 'Não foi possível encerrar a relação.'
-            : 'Não foi possível enviar a solicitação de vínculo.');
+            : 'Não foi possível enviar a solicitação de vínculo.')
+        );
       }
     });
   }

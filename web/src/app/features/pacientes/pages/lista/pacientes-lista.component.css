@@ -12,10 +12,6 @@
   container-type: inline-size;
 }
 
-.pacientes-main__mensagem {
-  padding: var(--space-16);
-}
-
 /* ─── Área principal ────────────────────────────────── */
 .pacientes-main {
   display: flex;

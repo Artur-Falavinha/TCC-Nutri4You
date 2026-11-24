@@ -61,8 +61,7 @@ h3 {
   margin-top: var(--space-16);
 }
 
-.foto-acoes, .foto-status { min-width: 0; }
-.foto-status:empty { position: absolute; }
+.foto-acoes { min-width: 0; }
 .formatos {
   margin-top: var(--space-6);
   color: var(--color-text-secondary);
@@ -99,15 +98,6 @@ h3 {
 
 .retorno--erro { color: var(--foto-erro); background: var(--color-error-surface); }
 .retorno > i { flex: none; font-size: 1rem; }
-.retorno--sucesso {
-  align-items: center;
-  min-height: 2.75rem;
-  margin-top: 0;
-  padding: var(--space-8) var(--space-12);
-  color: var(--color-brand-primary-hover);
-  background: var(--foto-verde-claro);
-  font-weight: 600;
-}
 .retorno .botao-discreto { color: inherit; padding-inline: 0; text-decoration: underline; }
 .retorno .botao-discreto:hover { background: transparent; }
 

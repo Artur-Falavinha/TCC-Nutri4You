@@ -30,7 +30,6 @@
 }
 
 .retorno i { font-size: var(--icon-size-md); }
-.retorno--sucesso { background: var(--notificacoes-verde-claro); color: var(--color-brand-primary-hover); }
 .retorno--erro {
   background: var(--color-error-surface);
   color: color-mix(in srgb, var(--color-error) 80%, black);

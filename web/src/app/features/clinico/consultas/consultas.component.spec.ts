@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testin
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
+import { ToastService } from '../../../core/services/toast.service';
 import { AnamneseService } from '../../anamnese/anamnese.service';
 import { DietaService } from '../../dieta/dieta.service';
 import { Plano } from '../../dieta/dieta.models';
@@ -67,6 +68,7 @@ describe('ConsultasComponent', () => {
     await TestBed.configureTestingModule({
       imports: [ConsultasComponent],
       providers: [
+        { provide: ToastService, useValue: jasmine.createSpyObj('ToastService', ['sucesso', 'erro', 'aviso', 'informacao']) },
         provideRouter([]),
         {
           provide: ActivatedRoute,

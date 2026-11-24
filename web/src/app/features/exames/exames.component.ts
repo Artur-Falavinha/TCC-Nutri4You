@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize, forkJoin, switchMap, throwError } from 'rxjs';
+import { ToastService } from '../../core/services/toast.service';
 import { PacientesService } from '../../core/services/pacientes.service';
 import { EstadoVazioComponent } from '../../shared/components/estado-vazio/estado-vazio.component';
 import { PatientTabsComponent } from '../../shared/components/patient-tabs/patient-tabs.component';
@@ -17,6 +18,7 @@ import { Exame, ExamesService, PaginaExames } from './exames.service';
   templateUrl: './exames.component.html', styleUrl: './exames.component.css'
 })
 export class ExamesComponent implements OnInit {
+  private readonly toast = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
   private readonly service = inject(ExamesService);
   private readonly atendimentos = inject(AtendimentosService);
@@ -29,7 +31,7 @@ export class ExamesComponent implements OnInit {
   readonly atendimentoId = this.route.snapshot.queryParamMap.has('atendimentoId') ? Number(this.route.snapshot.queryParamMap.get('atendimentoId')) : null;
   podeSolicitar = false;
   formularioAberto = false;
-  nomePaciente = ''; nome = ''; descricao = ''; parecer = ''; erro = ''; mensagem = '';
+  nomePaciente = ''; nome = ''; descricao = ''; parecer = ''; erro = '';
   pagina = 0; dados: PaginaExames | null = null; selecionado: Exame | null = null;
   carregando = false; salvando = false;
   ngOnInit(): void { this.carregar(); }
@@ -61,25 +63,25 @@ export class ExamesComponent implements OnInit {
 
   solicitar(): void {
     if (this.salvando || (this.atendimentoId !== null && !this.podeSolicitar) || !this.nome.trim()) return;
-    this.salvando = true; this.erro = ''; this.mensagem = '';
+    this.salvando = true; this.erro = '';
     this.service.solicitar(this.patientId, this.nome.trim(), this.descricao.trim(), this.atendimentoId)
       .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.salvando = false)).subscribe({
         next: () => {
           this.nome = '';
           this.descricao = '';
           this.formularioAberto = false;
-          this.mensagem = 'Exame solicitado.';
+          this.toast.sucesso('Exame solicitado.');
           this.carregar(0);
         },
-        error: e => this.erro = e.message || 'Não foi possível solicitar o exame.'
+        error: e => this.toast.erro(e.message || 'Não foi possível solicitar o exame.')
       });
   }
   analisar(): void {
     if (this.salvando || !this.selecionado || !this.parecer.trim()) return;
-    this.salvando = true; this.erro = ''; this.mensagem = '';
+    this.salvando = true; this.erro = '';
     this.service.analisar(this.patientId, this.selecionado, this.parecer.trim(), this.atendimentoId)
       .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.salvando = false)).subscribe({
-        next: () => { this.selecionado = null; this.parecer = ''; this.mensagem = 'Análise registrada.'; this.carregar(); },
+        next: () => { this.selecionado = null; this.parecer = ''; this.toast.sucesso('Análise registrada.'); this.carregar(); },
         error: e => this.erro = e.message || 'Não foi possível analisar o exame. Recarregue antes de continuar.'
       });
   }
@@ -89,7 +91,7 @@ export class ExamesComponent implements OnInit {
         const url = URL.createObjectURL(blob); const a = document.createElement('a');
         a.href = url; a.download = exame.arquivoNome || `exame-${exame.id}`; a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }, error: e => this.erro = e.message || 'Não foi possível baixar o arquivo.'
+      }, error: e => this.toast.erro(e.message || 'Não foi possível baixar o arquivo.')
     });
   }
 }

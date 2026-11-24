@@ -38,12 +38,6 @@
           [loading]="enviandoSenha()"
           (click)="solicitarRedefinicao()"
         />
-        @if (mensagemSenha()) {
-          <p class="feedback feedback--sucesso" role="status">{{ mensagemSenha() }}</p>
-        }
-        @if (erroSenha()) {
-          <p class="feedback feedback--erro" role="alert">{{ erroSenha() }}</p>
-        }
       </div>
 
       <div class="acao">
@@ -85,12 +79,6 @@
       </span>
     </label>
 
-    @if (mensagemPreferencia) {
-      <p class="feedback feedback--sucesso" role="status">{{ mensagemPreferencia }}</p>
-    }
-    @if (erroPreferencia) {
-      <p class="feedback feedback--erro" role="alert">{{ erroPreferencia }}</p>
-    }
 
     @if (preferencias.lembretesConsulta) {
       <div class="consultas" [attr.aria-busy]="carregando()">

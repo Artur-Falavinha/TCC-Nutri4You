@@ -17,11 +17,6 @@
 <app-page-header titulo="Gestão de Pacientes" />
 
 <main class="pacientes-main">
-  @if (mensagemRelacao) {
-    <div class="pacientes-main__mensagem">
-      <app-form-alert type="success" [message]="mensagemRelacao" />
-    </div>
-  }
 
   @if (state === 'loading') {
     <div class="pacientes-main__state" role="status" aria-label="Carregando pacientes">

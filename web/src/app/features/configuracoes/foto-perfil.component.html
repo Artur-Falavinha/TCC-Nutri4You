@@ -23,13 +23,6 @@
     </div>
     <p id="foto-formatos" class="formatos">JPEG ou PNG · Até 5 MB</p>
   </div>
-  <div class="foto-status" role="status">
-    @if (foto.mensagem()) {
-      <p class="retorno retorno--sucesso">
-        <i class="ph ph-check-circle" aria-hidden="true"></i> {{ foto.mensagem() }}
-      </p>
-    }
-  </div>
 </div>
 
 @if (foto.falhaCarga()) {

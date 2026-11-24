@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, CanDeactivateFn, RouterLink } from '@angular/router';
 import { EMPTY, Observable, Subject, catchError, forkJoin, of, switchMap, take, throwError } from 'rxjs';
 
+import { ToastService } from '../../core/services/toast.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { Paciente } from '../../core/models/paciente.models';
 import { PacientesService } from '../../core/services/pacientes.service';
@@ -67,6 +68,7 @@ const FORMATO_DATA_CLINICA = new Intl.DateTimeFormat('sv-SE', {
   styleUrl: './dieta.component.css'
 })
 export class DietaComponent implements OnInit {
+  private readonly toast = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
   private readonly pacientes = inject(PacientesService);
   private readonly dieta = inject(DietaService);
@@ -186,7 +188,6 @@ export class DietaComponent implements OnInit {
   planoParaPublicar: Plano | null = null;
   excluindo = false;
   erro = '';
-  mensagem = '';
   errors: Record<string, string> = {};
   readonly categorias: string[] = [];
   categoriaErro = '';
@@ -194,7 +195,6 @@ export class DietaComponent implements OnInit {
   modalAlimentos = false;
   alimentosCarregando = false;
   alimentosErro = '';
-  mensagemAlimento = '';
   paginaAlimentos: PaginaAlimentos | null = null;
   buscaAlimento = '';
   categoriaSelecionada = '';
@@ -333,7 +333,6 @@ export class DietaComponent implements OnInit {
   abrirDetalhe(plano: Plano): void {
     this.executarComDescarte(() => {
       this.erro = '';
-      this.mensagem = '';
       this.dieta.buscarPlano(this.patientId, plano.id, this.atendimentoId)
         .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
           next: detalhe => {
@@ -341,7 +340,7 @@ export class DietaComponent implements OnInit {
             this.tela = 'detalhe';
           },
           error: (error: ApiErrorResponse) => {
-            this.erro = error.message || 'Não foi possível abrir este plano.';
+            this.toast.erro(error.message || 'Não foi possível abrir este plano.');
           }
         });
     });
@@ -391,7 +390,7 @@ export class DietaComponent implements OnInit {
 
   adicionarRefeicao(): void {
     if (this.form.refeicoes.length >= 140) {
-      this.erro = 'Um plano pode conter até 140 refeições.';
+      this.toast.aviso('Um plano pode conter até 140 refeições.');
       return;
     }
     this.form.refeicoes.push({ chave: this.proximaChave(), nome: '', horario: '', diaSemana: this.dia, itens: [] });
@@ -411,13 +410,13 @@ export class DietaComponent implements OnInit {
         }))
       }))
     };
-    this.mensagem = 'Refeição copiada.';
+    this.toast.sucesso('Refeição copiada.');
   }
 
   colarRefeicao(): void {
     if (!this.refeicaoCopiada) return;
     if (this.form.refeicoes.length >= 140) {
-      this.erro = 'Um plano pode conter até 140 refeições.';
+      this.toast.aviso('Um plano pode conter até 140 refeições.');
       return;
     }
 
@@ -438,7 +437,7 @@ export class DietaComponent implements OnInit {
       }))
     });
     this.erro = '';
-    this.mensagem = 'Refeição adicionada ao plano.';
+    this.toast.sucesso('Refeição adicionada ao plano.');
   }
 
   removerRefeicao(refeicao: RefeicaoEdicao): void {
@@ -470,7 +469,6 @@ export class DietaComponent implements OnInit {
     this.categoriaSelecionada = '';
     this.paginaAlimentos = null;
     this.alimentosErro = '';
-    this.mensagemAlimento = '';
     this.carregarCategorias();
     this.buscarAlimentos(0);
     setTimeout(() => document.getElementById('busca-alimento')?.focus());
@@ -506,15 +504,15 @@ export class DietaComponent implements OnInit {
       return;
     }
     if (refeicao.itens.some(item => item.alimento?.id === alimento.id)) {
-      this.mensagemAlimento = 'Este alimento já está nesta refeição. Ajuste a quantidade no editor.';
+      this.toast.aviso('Este alimento já está nesta refeição. Ajuste a quantidade no editor.');
       return;
     }
     if (refeicao.itens.length >= 100) {
-      this.mensagemAlimento = 'Uma refeição pode conter até 100 alimentos.';
+      this.toast.aviso('Uma refeição pode conter até 100 alimentos.');
       return;
     }
     refeicao.itens.push({ chave: this.proximaChave(), alimento, quantidadeGramas: '', substitutos: [] });
-    this.mensagemAlimento = `${alimento.nome} adicionado à refeição.`;
+    this.toast.sucesso(`${alimento.nome} adicionado à refeição.`);
   }
 
   removerSubstituto(item: ItemEdicao, substituto: SubstitutoEdicao): void {
@@ -529,7 +527,6 @@ export class DietaComponent implements OnInit {
     if (this.salvando || this.carregando || !this.carregado) return;
     this.errors = this.validarFormulario();
     this.erro = '';
-    this.mensagem = '';
     if (Object.keys(this.errors).length > 0) {
       this.erro = 'Confira os campos destacados antes de salvar.';
       setTimeout(() => document.getElementById(Object.keys(this.errors)[0])?.focus());
@@ -547,12 +544,12 @@ export class DietaComponent implements OnInit {
         this.tela = 'detalhe';
         this.salvando = false;
         this.atualizarPlanoNaLista(plano);
-        this.mensagem = 'Rascunho salvo com sucesso.';
+        this.toast.sucesso('Rascunho salvo com sucesso.');
         this.original = this.assinatura();
         this.errors = {};
       },
       error: (error: ApiErrorResponse) => {
-        this.erro = error.message || 'Não foi possível salvar o plano. Os campos foram mantidos.';
+        this.toast.erro(error.message || 'Não foi possível salvar o plano. Os campos foram mantidos.');
         this.salvando = false;
       }
     });
@@ -564,7 +561,6 @@ export class DietaComponent implements OnInit {
     const problema = this.validarPublicacao(plano);
     if (problema) {
       this.erro = problema;
-      this.mensagem = '';
       return;
     }
     this.elementoAtivoAntesDaPublicacao = document.activeElement as HTMLElement | null;
@@ -584,17 +580,16 @@ export class DietaComponent implements OnInit {
     this.cancelarPublicacao();
     this.publicando = true;
     this.erro = '';
-    this.mensagem = '';
     this.dieta.publicarPlano(this.patientId, plano.id, plano.versao, this.atendimentoId)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: publicado => {
           this.planoSelecionado = publicado;
           this.atualizarPlanoNaLista(publicado);
-          this.mensagem = `Plano publicado com sucesso na versão ${publicado.versao}.`;
+          this.toast.sucesso(`Plano publicado com sucesso na versão ${publicado.versao}.`);
           this.publicando = false;
         },
         error: (error: ApiErrorResponse) => {
-          this.erro = error.message || 'Não foi possível publicar o plano.';
+          this.toast.erro(error.message || 'Não foi possível publicar o plano.');
           this.publicando = false;
         }
       });
@@ -617,7 +612,6 @@ export class DietaComponent implements OnInit {
     if (this.excluindo) return;
     this.excluindo = true;
     this.erro = '';
-    this.mensagem = '';
     this.dieta.excluirPlano(this.patientId, plano.id, plano.versao, this.atendimentoId)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
@@ -625,10 +619,10 @@ export class DietaComponent implements OnInit {
           this.planoSelecionado = null;
           this.tela = 'lista';
           this.excluindo = false;
-          this.mensagem = 'Plano alimentar excluído.';
+          this.toast.sucesso('Plano alimentar excluído.');
         },
         error: (error: ApiErrorResponse) => {
-          this.erro = error.message || 'Não foi possível excluir o plano alimentar.';
+          this.toast.erro(error.message || 'Não foi possível excluir o plano alimentar.');
           this.excluindo = false;
         }
       });
@@ -809,19 +803,19 @@ export class DietaComponent implements OnInit {
     const item = refeicao.itens.find(itemAtual => itemAtual.chave === itemChave);
     if (!item?.alimento) return;
     if (item.substitutos.length >= MAXIMO_SUBSTITUTOS) {
-      this.mensagemAlimento = `Um alimento pode ter até ${MAXIMO_SUBSTITUTOS} substitutos.`;
+      this.toast.aviso(`Um alimento pode ter até ${MAXIMO_SUBSTITUTOS} substitutos.`);
       return;
     }
     if (item.alimento.id === alimento.id) {
-      this.mensagemAlimento = 'O substituto deve ser diferente do alimento principal.';
+      this.toast.aviso('O substituto deve ser diferente do alimento principal.');
       return;
     }
     if (item.substitutos.some(substituto => substituto.alimento?.id === alimento.id)) {
-      this.mensagemAlimento = 'Este substituto já foi adicionado para este alimento.';
+      this.toast.aviso('Este substituto já foi adicionado para este alimento.');
       return;
     }
     item.substitutos.push({ chave: this.proximaChave(), alimento, quantidadeGramas: '' });
-    this.mensagemAlimento = `${alimento.nome} adicionado como substituto informativo.`;
+    this.toast.sucesso(`${alimento.nome} adicionado como substituto informativo.`);
   }
 
   get vigenciaInicioMinima(): string {
@@ -1132,7 +1126,6 @@ export class DietaComponent implements OnInit {
 
   private limparMensagens(): void {
     this.erro = '';
-    this.mensagem = '';
     this.errors = {};
   }
 }

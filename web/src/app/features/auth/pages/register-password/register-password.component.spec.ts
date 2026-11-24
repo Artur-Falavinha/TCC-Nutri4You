@@ -3,6 +3,7 @@ import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { RegisterPasswordComponent } from './register-password.component';
+import { ToastService } from '../../../../core/services/toast.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { RegisterFlowService } from '../../services/register-flow.service';
 
@@ -17,7 +18,7 @@ describe('RegisterPasswordComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [RegisterPasswordComponent],
-      providers: [provideRouter([]), { provide: AuthService, useValue: authService }, RegisterFlowService]
+      providers: [{ provide: ToastService, useValue: jasmine.createSpyObj('ToastService', ['erro']) }, provideRouter([]), { provide: AuthService, useValue: authService }, RegisterFlowService]
     }).compileComponents();
 
     registerFlow = TestBed.inject(RegisterFlowService);

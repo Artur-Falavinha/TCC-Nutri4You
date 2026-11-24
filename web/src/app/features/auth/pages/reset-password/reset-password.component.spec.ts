@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testin
 import { provideRouter, ActivatedRoute, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
+import { ToastService } from '../../../../core/services/toast.service';
 import { ResetPasswordComponent } from './reset-password.component';
 import { AuthService } from '../../../../core/services/auth.service';
 
@@ -15,6 +16,7 @@ describe('ResetPasswordComponent', () => {
     await TestBed.configureTestingModule({
       imports: [ResetPasswordComponent],
       providers: [
+        { provide: ToastService, useValue: jasmine.createSpyObj('ToastService', ['sucesso', 'erro', 'aviso', 'informacao']) },
         provideRouter([]),
         { provide: AuthService, useValue: authService },
         {

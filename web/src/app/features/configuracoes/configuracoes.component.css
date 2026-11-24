@@ -129,9 +129,7 @@ h3 { font-size: 1rem; }
 .consultas__lista li { display: flex; gap: var(--space-12); padding-block: var(--space-8); overflow-wrap: anywhere; }
 .consultas time { flex: none; color: var(--color-brand-primary); font-weight: 700; font-variant-numeric: tabular-nums; }
 
-.acao .feedback { flex-basis: 100%; }
 .feedback--erro { color: #a11919; background: var(--color-error-surface); }
-.feedback--sucesso { color: var(--color-brand-primary-hover); background: var(--config-verde-claro); }
 
 @container (max-width: 56rem) {
   .settings { grid-template-columns: minmax(0, 1fr); }

@@ -5,6 +5,7 @@ import { of, throwError } from 'rxjs';
 
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast.service';
 import { Agenda, ClinicoService } from '../clinico/clinico.service';
 import { NotificacoesComponent } from '../notificacoes/notificacoes.component';
 import { NotificacaoConsulta, NotificacaoVinculo } from '../notificacoes/notificacoes.service';
@@ -34,6 +35,7 @@ describe('Badge de notificações do nutricionista', () => {
       imports: [DashboardComponent, NotificacoesComponent],
       providers: [
         provideRouter([]),
+        { provide: ToastService, useValue: jasmine.createSpyObj('ToastService', ['sucesso', 'erro']) },
         { provide: ClinicoService, useValue: { agenda: () => of(agendaVazia) } },
         { provide: AuthService, useValue: { fetchMe: () => of({ id: usuarioId }) } },
         { provide: ApiService, useValue: {

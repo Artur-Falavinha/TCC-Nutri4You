@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
+import { ToastService } from '../../core/services/toast.service';
 import { AuthService } from '../../core/services/auth.service';
 import { PacientesService } from '../../core/services/pacientes.service';
 import { AnamneseComponent } from './anamnese.component';
@@ -8,6 +9,7 @@ import { AnamneseService } from './anamnese.service';
 import { Anamnese, AnamneseField } from './anamnese.models';
 
 describe('AnamneseComponent', () => {
+  let toast: jasmine.SpyObj<ToastService>;
   let fixture: ComponentFixture<AnamneseComponent>;
   let component: AnamneseComponent;
   let api: jasmine.SpyObj<AnamneseService>;
@@ -25,11 +27,13 @@ describe('AnamneseComponent', () => {
   });
 
   beforeEach(async () => {
+    toast = jasmine.createSpyObj<ToastService>('ToastService', ['sucesso', 'erro']);
     auth.authenticated = false;
     api = jasmine.createSpyObj('AnamneseService', ['fields', 'patients', 'user', 'get', 'save', 'discard']);
     await TestBed.configureTestingModule({
       imports: [AnamneseComponent],
       providers: [
+        { provide: ToastService, useValue: toast },
         provideRouter([]),
         { provide: AuthService, useValue: auth },
         { provide: AnamneseService, useValue: api },
@@ -144,7 +148,7 @@ describe('AnamneseComponent', () => {
     expect(component.editing).toBeTrue();
     expect(component.answers['profession']).toBe('Analista');
     expect(component.saving).toBeFalse();
-    expect(component.error).toContain('conectar');
+    expect(toast.erro).toHaveBeenCalledWith(jasmine.stringContaining('conectar'));
   });
 
   it('stops further saves on a version conflict', async () => {

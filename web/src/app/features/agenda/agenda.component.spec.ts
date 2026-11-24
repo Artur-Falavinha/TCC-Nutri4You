@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 
+import { ToastService } from '../../core/services/toast.service';
 import { ApiService } from '../../core/services/api.service';
 import { AgendaComponent } from './agenda.component';
 
@@ -11,7 +12,7 @@ describe('AgendaComponent — cópia de disponibilidade', () => {
     api = jasmine.createSpyObj<ApiService>('ApiService', ['get', 'put']);
     TestBed.configureTestingModule({
       imports: [AgendaComponent],
-      providers: [{ provide: ApiService, useValue: api }]
+      providers: [{ provide: ToastService, useValue: jasmine.createSpyObj('ToastService', ['sucesso', 'erro', 'aviso', 'informacao']) }, { provide: ApiService, useValue: api }]
     });
   });
 
@@ -56,7 +57,8 @@ describe('AgendaComponent — cópia de disponibilidade', () => {
     agenda.selecionarDestino(2, true);
     agenda.copiarHorarios();
 
-    expect(agenda.retornoCopia).toContain('224 horários');
+    const toast = TestBed.inject(ToastService);
+    expect(toast.aviso).toHaveBeenCalledWith(jasmine.stringContaining('224 horários'));
     expect(agenda.totalHorarios()).toBe(224);
     expect(agenda.alterado()).toBeFalse();
   });

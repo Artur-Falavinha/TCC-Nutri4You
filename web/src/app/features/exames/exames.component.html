@@ -5,7 +5,6 @@
 <main class="canvas" [class.canvas--vazio]="exibirEstadoVazio" [attr.aria-busy]="carregando || salvando">
   @if (!exibirEstadoVazio) { <h2>Exames do paciente</h2> }
   @if (erro) { <p role="alert" class="error">{{ erro }}</p><button type="button" (click)="carregar()" [disabled]="salvando">Recarregar exames</button> }
-  @if (mensagem) { <p role="status">{{ mensagem }}</p> }
   @if (exibirEstadoVazio) {
     <app-estado-vazio
       #estadoVazio

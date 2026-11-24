@@ -2,6 +2,7 @@ import { Component, EventEmitter, Output, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 
+import { ToastService } from '../../../../core/services/toast.service';
 import { UiInputComponent } from '../../../../shared/components/ui-input/ui-input.component';
 import { UiButtonComponent } from '../../../../shared/components/ui-button/ui-button.component';
 import { FormAlertComponent } from '../../../../shared/components/form-alert/form-alert.component';
@@ -24,6 +25,7 @@ import { PacienteDialogComponent } from '../paciente-dialog/paciente-dialog.comp
   styleUrl: './novo-paciente-modal.component.css'
 })
 export class NovoPacienteModalComponent {
+  private readonly toast = inject(ToastService);
   @Output() fechar = new EventEmitter<void>();
   @Output() vinculado = new EventEmitter<void>();
 
@@ -80,7 +82,7 @@ export class NovoPacienteModalComponent {
       .subscribe({
         next: () => this.vinculado.emit(),
         error: (error: ApiErrorResponse) => {
-          this.errorMessage = error.message ?? 'Não foi possível enviar a solicitação de vínculo.';
+          this.toast.erro(error.message ?? 'Não foi possível enviar a solicitação de vínculo.');
         }
       });
   }

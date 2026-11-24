@@ -3,10 +3,12 @@ import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, finalize } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { ToastService } from './toast.service';
 import { ApiErrorResponse } from '../models/api-response.model';
 
 @Injectable()
 export class FotoPerfilService {
+  private readonly toast = inject(ToastService);
   private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
   private readonly endpoint = environment.apiBaseUrl + '/usuarios/me/foto';
@@ -15,7 +17,6 @@ export class FotoPerfilService {
   readonly salvando = signal(false);
   readonly falhaCarga = signal(false);
   readonly erro = signal('');
-  readonly mensagem = signal('');
 
   constructor() {
     this.destroyRef.onDestroy(() => this.atualizarUrl(null));
@@ -35,7 +36,6 @@ export class FotoPerfilService {
 
   salvar(arquivo: File): void {
     if (this.salvando() || this.carregando()) return;
-    this.mensagem.set('');
     if (!arquivo.size || arquivo.size > 5 * 1024 * 1024
       || (arquivo.type && !['image/jpeg', 'image/png'].includes(arquivo.type))) {
       this.erro.set('Selecione uma imagem JPEG ou PNG de até 5 MB.');
@@ -58,7 +58,6 @@ export class FotoPerfilService {
 
   private alterar(requisicao: Observable<Blob | null>, acao: string, mensagem: string, orientacao: string): void {
     this.salvando.set(true);
-    this.mensagem.set('');
     this.erro.set('');
     requisicao.pipe(
       takeUntilDestroyed(this.destroyRef), finalize(() => this.salvando.set(false))
@@ -66,11 +65,11 @@ export class FotoPerfilService {
       next: imagem => {
         this.atualizarUrl(imagem);
         this.falhaCarga.set(false);
-        this.mensagem.set(mensagem);
+        this.toast.sucesso(mensagem);
       },
       error: (falha: ApiErrorResponse) => {
         const detalhe = falha.status === 400 || falha.status === 413 ? orientacao : 'Tente novamente.';
-        this.erro.set(`Não foi possível ${acao} a foto. ${detalhe}`);
+        this.toast.erro(`Não foi possível ${acao} a foto. ${detalhe}`);
       }
     });
   }

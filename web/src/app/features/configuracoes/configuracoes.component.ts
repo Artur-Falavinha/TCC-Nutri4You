@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
+import { ToastService } from '../../core/services/toast.service';
 import { UsuarioInfo } from '../../core/models/auth.models';
 import { AuthService } from '../../core/services/auth.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
@@ -25,12 +26,11 @@ const PADRAO: PreferenciasNotificacao = { lembretesConsulta: true };
   styleUrl: './configuracoes.component.css'
 })
 export class ConfiguracoesComponent {
+  private readonly toast = inject(ToastService);
   private readonly auth = inject(AuthService);
   private readonly clinico = inject(ClinicoService);
   private readonly destroyRef = inject(DestroyRef);
   preferencias = this.carregarPreferencias();
-  mensagemPreferencia = '';
-  erroPreferencia = '';
   readonly consultas = signal<ConsultaResumo[]>([]);
   readonly carregando = signal(false);
   readonly erro = signal('');
@@ -38,8 +38,6 @@ export class ConfiguracoesComponent {
   readonly carregandoConta = signal(true);
   readonly erroConta = signal('');
   readonly enviandoSenha = signal(false);
-  readonly mensagemSenha = signal('');
-  readonly erroSenha = signal('');
 
   constructor() {
     this.carregarConta();
@@ -59,11 +57,9 @@ export class ConfiguracoesComponent {
     const email = this.conta()?.email;
     if (!email || this.enviandoSenha()) return;
     this.enviandoSenha.set(true);
-    this.mensagemSenha.set('');
-    this.erroSenha.set('');
     this.auth.solicitarRecuperacaoSenha(email).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: mensagem => { this.mensagemSenha.set(mensagem); this.enviandoSenha.set(false); },
-      error: () => { this.erroSenha.set('Não foi possível solicitar o link. Tente novamente.'); this.enviandoSenha.set(false); }
+      next: mensagem => { this.toast.sucesso(mensagem); this.enviandoSenha.set(false); },
+      error: () => { this.toast.erro('Não foi possível solicitar o link. Tente novamente.'); this.enviandoSenha.set(false); }
     });
   }
 
@@ -80,17 +76,15 @@ export class ConfiguracoesComponent {
   atualizarLembretes(evento: Event): void {
     const controle = evento.target as HTMLInputElement;
     const preferencias = { lembretesConsulta: controle.checked };
-    this.mensagemPreferencia = '';
-    this.erroPreferencia = '';
     try {
       localStorage.setItem(CHAVE_PREFERENCIAS, JSON.stringify(preferencias));
     } catch {
       controle.checked = this.preferencias.lembretesConsulta;
-      this.erroPreferencia = 'Não foi possível salvar a preferência neste navegador.';
+      this.toast.erro('Não foi possível salvar a preferência neste navegador.');
       return;
     }
     this.preferencias = preferencias;
-    this.mensagemPreferencia = 'Preferência salva neste navegador.';
+    this.toast.sucesso('Preferência salva neste navegador.');
     if (preferencias.lembretesConsulta) this.carregar();
   }
 

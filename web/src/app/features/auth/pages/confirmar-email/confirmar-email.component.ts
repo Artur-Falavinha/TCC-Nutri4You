@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, finalize } from 'rxjs';
 
+import { ToastService } from '../../../../core/services/toast.service';
 import { CadastroEmailConfirmado, ConfirmacaoEmailResponse, UserProfile } from '../../../../core/models/auth.models';
 import { ApiErrorResponse } from '../../../../core/models/api-response.model';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -27,6 +28,7 @@ const MENSAGEM_CADASTRO_INDISPONIVEL = 'Este link expirou, foi substituído ou o
   styleUrl: './confirmar-email.component.css'
 })
 export class ConfirmarEmailComponent {
+  private readonly toast = inject(ToastService);
   private readonly authService = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly localizacao = inject(Location);
@@ -74,7 +76,7 @@ export class ConfirmarEmailComponent {
             this.erro.set(this.mensagemIndisponivel);
             return;
           }
-          this.erro.set('Não foi possível confirmar agora. Tente novamente.');
+          this.toast.erro('Não foi possível confirmar agora. Tente novamente.');
         }
       });
   }

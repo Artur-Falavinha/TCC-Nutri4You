@@ -4,6 +4,7 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom, forkJoin } from 'rxjs';
+import { ToastService } from '../../core/services/toast.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { EstadoVazioComponent } from '../../shared/components/estado-vazio/estado-vazio.component';
@@ -26,6 +27,7 @@ import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog
   styleUrl: './anamnese.component.css'
 })
 export class AnamneseComponent implements OnInit {
+  private readonly toast = inject(ToastService);
   readonly auth = inject(AuthService);
   private readonly api = inject(AnamneseService);
   private readonly route = inject(ActivatedRoute);
@@ -43,7 +45,6 @@ export class AnamneseComponent implements OnInit {
   saving = false;
   editing = false;
   error = '';
-  message = '';
   conflict = false;
   private original = '{}';
   confirmacao: { titulo: string; descricao: string; confirmar: string } | null = null;
@@ -91,7 +92,6 @@ export class AnamneseComponent implements OnInit {
   async loadPatient(id: number): Promise<void> {
     this.loading = true;
     this.error = '';
-    this.message = '';
     this.data = null;
     this.editing = false;
     this.patientId = id;
@@ -106,7 +106,6 @@ export class AnamneseComponent implements OnInit {
     this.original = JSON.stringify(this.answers);
     this.errors = {};
     this.error = '';
-    this.message = '';
     this.editing = true;
   }
 
@@ -116,7 +115,6 @@ export class AnamneseComponent implements OnInit {
     this.editing = false;
     this.errors = {};
     this.error = '';
-    this.message = '';
     this.conflict = false;
   }
 
@@ -234,7 +232,6 @@ export class AnamneseComponent implements OnInit {
     if (!this.data || this.saving || this.conflict) return;
     this.errors = {};
     this.error = '';
-    this.message = '';
     if (!draft) {
       for (const field of this.fields) {
         const value = this.answers[field.key];
@@ -250,8 +247,11 @@ export class AnamneseComponent implements OnInit {
       this.data = await firstValueFrom(this.api.save(this.data.paciente.id, this.data.versao, this.answers, draft));
       this.original = JSON.stringify(this.answers);
       this.editing = false;
-      this.message = draft ? 'Rascunho salvo.' : 'Anamnese finalizada e salva.';
-    } catch (error) { this.handleError(error); this.focusError(); }
+      this.toast.sucesso(draft ? 'Rascunho salvo.' : 'Anamnese finalizada e salva.');
+    } catch (error) {
+      this.handleError(error, true);
+      if (this.error) this.focusError();
+    }
     finally { this.saving = false; }
   }
 
@@ -262,8 +262,8 @@ export class AnamneseComponent implements OnInit {
     this.error = '';
     try {
       this.data = await firstValueFrom(this.api.discard(this.data.paciente.id, this.data.versao));
-      this.message = 'Rascunho descartado.';
-    } catch (error) { this.handleError(error); }
+      this.toast.sucesso('Rascunho descartado.');
+    } catch (error) { this.handleError(error, true); }
     finally { this.saving = false; }
   }
 
@@ -276,9 +276,9 @@ export class AnamneseComponent implements OnInit {
     setTimeout(() => document.getElementById(key)?.focus());
   }
 
-  private handleError(error: unknown): void {
+  private handleError(error: unknown, temporario = false): void {
     const apiError = error as ApiErrorResponse;
-    this.error = apiError.status === 0
+    const mensagem = apiError.status === 0
       ? 'Não foi possível conectar à API. Tente novamente.'
       : apiError.message || 'Não foi possível concluir a operação.';
     this.errors = apiError.fields ?? {};
@@ -286,6 +286,10 @@ export class AnamneseComponent implements OnInit {
     if (apiError.status === 401) {
       this.auth.logout();
       this.error = 'Sua sessão expirou. Entre novamente para continuar.';
+    } else if (temporario && !this.conflict && !Object.keys(this.errors).length) {
+      this.toast.erro(mensagem);
+    } else {
+      this.error = mensagem;
     }
   }
 }

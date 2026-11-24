@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, Subject } from 'rxjs';
 
+import { ToastService } from '../../core/services/toast.service';
 import { Paciente } from '../../core/models/paciente.models';
 import { PacientesService } from '../../core/services/pacientes.service';
 import { AtendimentosService } from '../clinico/consultas/consultas.service';
@@ -15,6 +16,7 @@ describe('DietaComponent', () => {
   let fixture: ComponentFixture<DietaComponent>;
   let component: DietaComponent;
   let dieta: jasmine.SpyObj<DietaService>;
+  let toast: jasmine.SpyObj<ToastService>;
   let pacientes: jasmine.SpyObj<PacientesService>;
 
   const paciente: Paciente = {
@@ -88,6 +90,7 @@ describe('DietaComponent', () => {
   }
 
   beforeEach(async () => {
+    toast = jasmine.createSpyObj<ToastService>('ToastService', ['sucesso', 'erro', 'aviso']);
     pacientes = jasmine.createSpyObj('PacientesService', ['buscarPorId', 'carregarFoto']);
     pacientes.buscarPorId.and.returnValue(of(paciente));
     pacientes.carregarFoto.and.returnValue(of(null));
@@ -110,6 +113,7 @@ describe('DietaComponent', () => {
     await TestBed.configureTestingModule({
       imports: [DietaComponent],
       providers: [
+        { provide: ToastService, useValue: toast },
         provideRouter([]),
         {
           provide: ActivatedRoute,
@@ -181,7 +185,7 @@ describe('DietaComponent', () => {
         }]
       }]
     }), null);
-    expect(component.mensagem).toBe('Rascunho salvo com sucesso.');
+    expect(toast.sucesso).toHaveBeenCalledWith('Rascunho salvo com sucesso.');
   });
 
   it('pastes an independent copy of a meal and enforces the weekly meal limit', () => {
@@ -247,7 +251,7 @@ describe('DietaComponent', () => {
     expect(component.podeColarRefeicao).toBeFalse();
     component.colarRefeicao();
     expect(component.form.refeicoes).toHaveSize(140);
-    expect(component.erro).toBe('Um plano pode conter até 140 refeições.');
+    expect(toast.aviso).toHaveBeenCalledWith('Um plano pode conter até 140 refeições.');
   });
 
   it('loads stored alternatives into an independent editor model', () => {
@@ -304,14 +308,14 @@ describe('DietaComponent', () => {
     component.abrirBuscaSubstitutos(refeicao, principal);
     component.adicionarAlimento(alimento);
     expect(principal.substitutos).toHaveSize(0);
-    expect(component.mensagemAlimento).toContain('diferente do alimento principal');
+    expect(toast.aviso).toHaveBeenCalledWith(jasmine.stringContaining('diferente do alimento principal'));
 
     component.adicionarAlimento(alimentoAlternativo);
     expect(principal.substitutos).toHaveSize(1);
     expect(principal.substitutos[0].alimento).toBe(alimentoAlternativo);
     component.adicionarAlimento(alimentoAlternativo);
     expect(principal.substitutos).toHaveSize(1);
-    expect(component.mensagemAlimento).toContain('já foi adicionado');
+    expect(toast.aviso).toHaveBeenCalledWith(jasmine.stringContaining('já foi adicionado'));
 
     principal.substitutos[0].quantidadeGramas = 50;
     expect(component.nutrientesPrevistos(principal).kcal).toBe(120);

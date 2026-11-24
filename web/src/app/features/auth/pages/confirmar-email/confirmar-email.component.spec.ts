@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 
+import { ToastService } from '../../../../core/services/toast.service';
 import { environment } from '../../../../../environments/environment';
 import { RegisterFlowService } from '../../services/register-flow.service';
 import { ConfirmarEmailComponent } from './confirmar-email.component';
@@ -20,6 +21,7 @@ describe('ConfirmarEmailComponent', () => {
     await TestBed.configureTestingModule({
       imports: [ConfirmarEmailComponent],
       providers: [
+        { provide: ToastService, useValue: jasmine.createSpyObj('ToastService', ['sucesso', 'erro', 'aviso', 'informacao']) },
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),

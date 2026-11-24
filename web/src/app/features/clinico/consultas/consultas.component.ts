@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, CanDeactivateFn, Router, RouterLink } from '@angular/router';
 import { catchError, EMPTY, exhaustMap, filter, forkJoin, of, Observable, Subject, take, timer } from 'rxjs';
+import { ToastService } from '../../../core/services/toast.service';
 import { ApiErrorResponse } from '../../../core/models/api-response.model';
 import { PacientesService } from '../../../core/services/pacientes.service';
 import { EstadoVazioComponent } from '../../../shared/components/estado-vazio/estado-vazio.component';
@@ -31,6 +32,7 @@ import { criarLinkGoogleAgenda } from '../../agenda/google-calendar-link';
   styleUrl: './consultas.component.css'
 })
 export class ConsultasComponent implements OnInit {
+  private readonly toast = inject(ToastService);
   modalSaida = false;
   consultaParaCancelar: Consulta | null = null;
   private respostaSaida: Subject<boolean> | null = null;
@@ -64,7 +66,6 @@ export class ConsultasComponent implements OnInit {
   carregado = false;
   salvando = false;
   erro = '';
-  mensagem = '';
   avisoConclusaoRascunhoAberto = false;
   vinculoEncerrado = false;
   errors: Record<string, string> = {};
@@ -77,9 +78,6 @@ export class ConsultasComponent implements OnInit {
         next: campos => { this.camposAnamnese = campos; },
         error: () => { this.erroCamposAnamnese = 'Não foi possível carregar os campos da anamnese.'; }
       });
-    }
-    if (this.router.lastSuccessfulNavigation?.extras.state?.['consultaSalva']) {
-      this.mensagem = 'Consulta salva com sucesso.';
     }
     this.carregar();
     this.monitorarVinculo();
@@ -218,7 +216,7 @@ export class ConsultasComponent implements OnInit {
           this.salvarConsulta();
         },
         error: (error: ApiErrorResponse) => {
-          this.tratarFalha(error, 'Não foi possível verificar se há dieta em rascunho. Tente novamente para concluir o atendimento.');
+          this.tratarFalha(error, 'Não foi possível verificar se há dieta em rascunho. Tente novamente para concluir o atendimento.', true);
           this.salvando = false;
         }
       });
@@ -234,11 +232,12 @@ export class ConsultasComponent implements OnInit {
       next: () => {
         this.original = this.form.assinatura();
         this.salvando = false;
-        if (this.atendimento) { this.mensagem = 'Atendimento salvo com sucesso.'; this.carregar(); }
-        else void this.router.navigate(['/pacientes', this.patientId, 'consultas'], { state: { consultaSalva: true } });
+        this.toast.sucesso(this.atendimento ? 'Atendimento salvo com sucesso.' : 'Consulta salva com sucesso.');
+        if (this.atendimento) this.carregar();
+        else void this.router.navigate(['/pacientes', this.patientId, 'consultas']);
       },
       error: (error: ApiErrorResponse) => {
-        this.tratarFalha(error, 'Não foi possível salvar. Seus campos foram mantidos.');
+        this.tratarFalha(error, 'Não foi possível salvar. Seus campos foram mantidos.', true);
         this.salvando = false;
       }
     });
@@ -287,18 +286,22 @@ export class ConsultasComponent implements OnInit {
       },
       error: (erro: ApiErrorResponse) => {
         this.salvando = false;
-        this.tratarFalha(erro, 'Não foi possível atualizar a consulta.');
+        this.tratarFalha(erro, 'Não foi possível atualizar a consulta.', true);
       }
     });
   }
 
-  private tratarFalha(erro: ApiErrorResponse, mensagemPadrao: string): void {
-    this.erro = erro.message || mensagemPadrao;
+  private tratarFalha(erro: ApiErrorResponse, mensagemPadrao: string, temporario = false): void {
+    const mensagem = erro.message || mensagemPadrao;
+    if (temporario && erro.error !== 'VINCULO_ENCERRADO') {
+      this.toast.erro(mensagem);
+      return;
+    }
+    this.erro = mensagem;
     if (erro.error !== 'VINCULO_ENCERRADO') return;
 
     this.vinculoEncerrado = true;
     this.carregado = false;
-    this.mensagem = '';
     this.nome = '';
     this.consultaAtual = null;
     this.contextoClinico = null;

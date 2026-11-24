@@ -19,7 +19,6 @@
           }
         </div>
       }
-      @if (message) { <p class="anamnese-alert" role="status">{{ message }}</p> }
       @if (auth.authenticated) {
         @if (!hasRoutePatient) {
           <app-ui-select

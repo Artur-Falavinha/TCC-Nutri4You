@@ -134,15 +134,13 @@
                 [disabled]="!destinos.size" (click)="copiarHorarios()" />
             </fieldset>
           }
-          @if (retornoCopia) { <p class="ajuda" role="status">{{ retornoCopia }}</p> }
         </div>
 
         <footer class="salvar">
-          <app-form-alert [message]="erro" type="error" />
           <div class="salvar__linha">
             <p class="salvar__estado" role="status">
               <i class="ph" [class.ph-pencil-simple]="alterado()" [class.ph-check-circle]="!alterado()" aria-hidden="true"></i>
-              {{ mensagem || (alterado() ? 'Alterações não salvas' : 'Horários sincronizados') }}
+              {{ alterado() ? 'Alterações não salvas' : 'Horários sincronizados' }}
             </p>
             <app-ui-button [label]="salvando ? 'Salvando…' : 'Salvar disponibilidade'"
               icon="floppy-disk" [fullWidth]="false" [disabled]="!alterado()" [loading]="salvando" (click)="salvar()" />
