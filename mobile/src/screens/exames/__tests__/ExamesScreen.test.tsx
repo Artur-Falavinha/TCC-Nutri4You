@@ -357,7 +357,7 @@ describe('ExamesScreen', () => {
       await Promise.resolve();
     });
     const compactScroll = compactTree.root.findByType(ScrollView);
-    expect(JSON.stringify(compactScroll.props.contentContainerStyle)).toContain('"maxWidth":448');
+    expect(JSON.stringify(compactScroll.props.contentContainerStyle)).toContain('"maxWidth":560');
     act(() => compactTree.unmount());
 
     spy.mockReturnValue({ width: 768, height: 1024, scale: 2, fontScale: 1 });
@@ -373,7 +373,7 @@ describe('ExamesScreen', () => {
       await Promise.resolve();
     });
     const wideScroll = wideTree.root.findByType(ScrollView);
-    expect(JSON.stringify(wideScroll.props.contentContainerStyle)).toContain('"maxWidth":680');
+    expect(JSON.stringify(wideScroll.props.contentContainerStyle)).toContain('"maxWidth":760');
     act(() => wideTree.unmount());
 
     spy.mockRestore();
