@@ -9,7 +9,6 @@ import { carregarPerfil } from '../../core/perfil/perfil.service';
 
 const mockNavigate = jest.fn();
 const mockDispatch = jest.fn();
-const mockShowAlert = jest.fn();
 
 jest.mock('@expo/vector-icons', () => ({
   Feather: () => null
@@ -20,12 +19,6 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({
     navigate: mockNavigate,
     dispatch: mockDispatch
-  })
-}));
-
-jest.mock('../../components/feedback/AppAlertProvider', () => ({
-  useAppAlert: () => ({
-    showAlert: mockShowAlert
   })
 }));
 

@@ -1,3 +1,4 @@
+import { toast } from '../../components/feedback/toast';
 import { Feather } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { type ComponentRef, useEffect, useRef, useState } from 'react';
@@ -42,7 +43,6 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
   const [carregando, setCarregando] = useState(!!dataSelecionada);
   const [enviando, setEnviando] = useState(false);
   const [erroHorarios, setErroHorarios] = useState('');
-  const [erroEnvio, setErroEnvio] = useState('');
   const [tentativa, setTentativa] = useState(0);
   const [solicitacao, setSolicitacao] = useState<Appointment>();
   const travaEnvio = useRef(false);
@@ -87,7 +87,6 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
     setHorario(undefined);
     setDisponibilidade(undefined);
     setErroHorarios('');
-    setErroEnvio('');
     setCarregando(true);
     setDataSelecionada(novaData);
   };
@@ -96,7 +95,6 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
     if (!horario || !rotaValida || travaEnvio.current) return;
     travaEnvio.current = true;
     setEnviando(true);
-    setErroEnvio('');
     try {
       const consulta = consultaId !== undefined && versao !== undefined
         ? await rescheduleAppointment(consultaId, { dataHora: horario, versao })
@@ -104,7 +102,7 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
       setSolicitacao({ ...consulta, avulsa: consulta.avulsa ?? (!reagendamento && profissional?.vinculado === false) });
       rolagem.current?.scrollTo({ y: 0, animated: false });
     } catch (falha) {
-      setErroEnvio(falha instanceof ApiError ? falha.message : 'Não foi possível enviar a solicitação.');
+      toast.erro(falha instanceof ApiError ? falha.message : 'Não foi possível enviar a solicitação.');
     } finally {
       travaEnvio.current = false;
       setEnviando(false);
@@ -236,7 +234,6 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
                       <Text style={styles.descricao}>Escolha outro dia para continuar.</Text>
                     </View>
                   )}
-                  {!!erroEnvio && <Text style={[styles.erro, styles.avisoErro]} accessibilityRole="alert">{erroEnvio}</Text>}
                 </View>
               </>
             )}

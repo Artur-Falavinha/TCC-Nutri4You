@@ -1,3 +1,4 @@
+import { toast } from '../../components/feedback/toast';
 import { Feather } from '@expo/vector-icons';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -188,7 +189,7 @@ export function ShoppingListScreen({ navigation }: Props) {
       }
     } catch (failure) {
       if (currentRequest === requestId.current) {
-        setError(errorMessage(failure));
+        toast.erro(errorMessage(failure));
       }
     } finally {
       if (currentRequest === requestId.current) {

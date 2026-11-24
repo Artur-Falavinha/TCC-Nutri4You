@@ -19,10 +19,6 @@ export const perfilStyles = StyleSheet.create({
   rotuloBotao: { flexShrink: 1, color: colors.brandDark, fontFamily: fontFamily.bold, fontSize: 14 },
   rotuloPrimario: { flexShrink: 1, color: colors.white, fontFamily: fontFamily.bold, fontSize: 14 },
   rotuloPerigo: { flexShrink: 1, color: colors.dangerText, fontFamily: fontFamily.bold, fontSize: 14 },
-  aviso: {
-    color: colors.brandDark, fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 21,
-    backgroundColor: colors.confirmedBackground, padding: spacing.sm, borderRadius: radius.md
-  },
   erro: {
     color: colors.dangerText, fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 21,
     backgroundColor: colors.dangerButtonBackground, padding: spacing.sm, borderRadius: radius.md

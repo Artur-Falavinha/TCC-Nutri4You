@@ -1,3 +1,4 @@
+import { toast } from '../../components/feedback/toast';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { DragEvent } from 'react';
@@ -74,7 +75,6 @@ export function ExamesScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [exames, setExames] = useState<ExamePedido[]>([]);
-  const [feedbackMessage, setFeedbackMessage] = useState('');
 
   const [selectedExame, setSelectedExame] = useState<ExamePedido | null>(null);
   const [selectedFile, setSelectedFile] = useState<ArquivoExameSelecionado | null>(null);
@@ -249,7 +249,7 @@ export function ExamesScreen({ navigation }: Props) {
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (failure) {
-      setError(extractErrorMessage(failure, 'Não foi possível baixar o resultado.'));
+      toast.erro(extractErrorMessage(failure, 'Não foi possível baixar o resultado.'));
     }
   };
 
@@ -276,7 +276,7 @@ export function ExamesScreen({ navigation }: Props) {
             : item
         )
       );
-      setFeedbackMessage(
+      toast.sucesso(
         `Envio de "${exame.nome}" removido. O exame voltou para PENDENTE.`
       );
       if (selectedExame?.id === exame.id) {
@@ -291,7 +291,7 @@ export function ExamesScreen({ navigation }: Props) {
       if (selectedExame?.id === exame.id) {
         setUploadError(msg);
       } else {
-        setError(msg);
+        toast.erro(msg);
       }
     } finally {
       setRemovingId(null);
@@ -338,7 +338,7 @@ export function ExamesScreen({ navigation }: Props) {
             : item
         )
       );
-      setFeedbackMessage(`Resultado de "${selectedExame.nome}" enviado com sucesso.`);
+      toast.sucesso(`Resultado de "${selectedExame.nome}" enviado com sucesso.`);
       setSelectedExame(null);
       setSelectedFile(null);
     } catch (failure) {
@@ -418,13 +418,6 @@ export function ExamesScreen({ navigation }: Props) {
           <Text style={styles.title} accessibilityRole="header" aria-level={1}>Pedidos de Exames</Text>
           <Text style={styles.bodyText}>Envie seus resultados para análise nutricional personalizada.</Text>
         </View>
-
-        {feedbackMessage ? (
-          <View style={styles.feedbackBox} aria-live="polite" testID="exames-feedback-banner">
-            <Feather name="check-circle" size={20} color={colors.brandDeep} aria-hidden />
-            <Text style={styles.feedbackText} accessibilityLiveRegion="polite">{feedbackMessage}</Text>
-          </View>
-        ) : null}
 
         {error ? (
           <View style={styles.errorBox} accessibilityRole="alert" testID="exames-error-box">
@@ -689,11 +682,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: radius.xl,
     padding: spacing.md, gap: spacing.sm, ...shadows.card
   },
-  feedbackBox: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs,
-    backgroundColor: colors.confirmedBackground, borderRadius: radius.md, padding: spacing.sm
-  },
-  feedbackText: { flex: 1, color: colors.brandDeep, fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 21 },
   errorBox: {
     backgroundColor: colors.dangerButtonBackground, borderColor: colors.dangerBackground, borderWidth: 1,
     borderRadius: radius.md, padding: spacing.sm, gap: spacing.xs, alignItems: 'flex-start'

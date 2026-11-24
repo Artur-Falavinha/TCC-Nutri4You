@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '../../components/layout/AppHeader';
-import { useAppAlert } from '../../components/feedback/AppAlertProvider';
+import { toast } from '../../components/feedback/toast';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { logout } from '../../core/auth/auth.service';
 import {
@@ -32,7 +32,6 @@ import { PersonalDietCard } from './components/PersonalDietCard';
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
 export function DashboardScreen({ navigation }: Props) {
-  const { showAlert } = useAppAlert();
   const [menuVisible, setMenuVisible] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
@@ -143,10 +142,7 @@ export function DashboardScreen({ navigation }: Props) {
         await sair();
         break;
       default:
-        showAlert(
-          'Em breve',
-          'Esta funcionalidade será disponibilizada nas próximas entregas.'
-        );
+        toast.informacao('Esta funcionalidade será disponibilizada nas próximas entregas.');
         break;
     }
   };

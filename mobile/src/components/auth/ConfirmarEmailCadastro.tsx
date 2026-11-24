@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
-import { useAppAlert } from '../feedback/AppAlertProvider';
+import { toast } from '../feedback/toast';
 import { ApiError } from '../../core/api/api-response.types';
 import { confirmarCadastroPaciente, iniciarCadastroPaciente } from '../../core/auth/auth.service';
 import { ComprovanteCadastro } from '../../core/auth/auth.models';
@@ -16,7 +16,6 @@ interface ConfirmarEmailCadastroProps {
 }
 
 export function ConfirmarEmailCadastro({ aoConfirmar, aoVoltar }: ConfirmarEmailCadastroProps) {
-  const { showAlert } = useAppAlert();
   const [email, setEmail] = useState('');
   const [codigo, setCodigo] = useState('');
   const [enviado, setEnviado] = useState(false);
@@ -37,10 +36,10 @@ export function ConfirmarEmailCadastro({ aoConfirmar, aoVoltar }: ConfirmarEmail
     } catch (falha) {
       if (falha instanceof ApiError && falha.error === 'EMAIL_EM_USO') {
         voltarParaEmail();
-        showAlert(falha.message);
+        toast.erro(falha.message);
         return;
       }
-      setErro(falha instanceof ApiError ? falha.message : 'Não foi possível enviar. Tente novamente.');
+      toast.erro(falha instanceof ApiError ? falha.message : 'Não foi possível enviar. Tente novamente.');
     } finally {
       setOcupado(false);
     }
@@ -64,7 +63,8 @@ export function ConfirmarEmailCadastro({ aoConfirmar, aoVoltar }: ConfirmarEmail
       const confirmacao = await confirmarCadastroPaciente(codigo.trim());
       aoConfirmar({ ...confirmacao, token: codigo.trim() });
     } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : 'Não foi possível confirmar. Tente novamente.');
+      if (falha instanceof ApiError && falha.status === 400) setErro(falha.message);
+      else toast.erro(falha instanceof ApiError ? falha.message : 'Não foi possível confirmar. Tente novamente.');
     } finally {
       setOcupado(false);
     }

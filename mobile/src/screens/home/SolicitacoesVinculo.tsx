@@ -1,3 +1,4 @@
+import { toast } from '../../components/feedback/toast';
 import { SectionCardHeader, sectionCardStyles } from '../../components/layout/SectionCardHeader';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 import { perfilStyles } from './perfil.styles';
@@ -21,7 +22,6 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
   const [carregando, setCarregando] = useState(true);
   const [decidindo, setDecidindo] = useState(false);
   const [erro, setErro] = useState('');
-  const [aviso, setAviso] = useState('');
 
   useEffect(() => {
     let vigente = true;
@@ -41,14 +41,13 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
   const decidir = async (solicitacao: SolicitacaoVinculo, aceitar: boolean) => {
     setDecidindo(true);
     setErro('');
-    setAviso('');
     try {
       const vinculo = await decidirSolicitacaoVinculo(solicitacao, aceitar);
       setSolicitacoes((atuais) => atuais.filter((item) => item.id !== solicitacao.id));
       if (vinculo) onAceito(vinculo);
-      setAviso(aceitar ? 'Vínculo aceito.' : 'Solicitação recusada.');
+      toast.sucesso(aceitar ? 'Vínculo aceito.' : 'Solicitação recusada.');
     } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : 'Não foi possível responder à solicitação.');
+      toast.erro(falha instanceof ApiError ? falha.message : 'Não foi possível responder à solicitação.');
     } finally {
       setDecidindo(false);
     }
@@ -60,7 +59,6 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
       <SectionCardHeader titulo="Solicitações de vínculo" icone="inbox" />
       {carregando && <ActivityIndicator accessibilityLabel="Carregando solicitações" color={colors.brand} />}
       {erro ? <Text style={perfilStyles.erro} accessibilityRole="alert">{erro}</Text> : null}
-      {aviso ? <Text style={perfilStyles.aviso} accessibilityLiveRegion="polite">{aviso}</Text> : null}
       {!carregando && !erro && solicitacoes.length === 0 &&
         <Text style={perfilStyles.estadoVazio}>Nenhuma solicitação pendente.</Text>}
       {solicitacoes.length > 0 &&

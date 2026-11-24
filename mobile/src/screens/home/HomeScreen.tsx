@@ -1,3 +1,4 @@
+import { toast } from '../../components/feedback/toast';
 import { Feather } from '@expo/vector-icons';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -53,7 +54,6 @@ export function HomeScreen({ navigation }: Props) {
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
-  const [aviso, setAviso] = useState('');
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -84,19 +84,16 @@ export function HomeScreen({ navigation }: Props) {
   const salvar = async () => {
     const nomeLimpo = nome.trim();
     if (!nomeLimpo) {
-      setAviso('');
       setErro('Informe o nome.');
       return;
     }
     const nascimento = dataNascimentoParaIso(dataNascimento);
     if (dataNascimento.trim() && !nascimento) {
-      setAviso('');
       setErro('Data de nascimento inválida. Use DD/MM/AAAA.');
       return;
     }
     setSalvando(true);
     setErro('');
-    setAviso('');
     try {
       const perfil = await atualizarPerfil({
         nome: nomeLimpo,
@@ -105,9 +102,9 @@ export function HomeScreen({ navigation }: Props) {
         dataNascimento: nascimento
       });
       setNome(perfil.nome ?? nomeLimpo);
-      setAviso('Dados pessoais atualizados.');
+      toast.sucesso('Dados pessoais atualizados.');
     } catch (falha) {
-      setErro(mensagemErro(falha, 'Não foi possível salvar os dados.'));
+      toast.erro(mensagemErro(falha, 'Não foi possível salvar os dados.'));
     } finally {
       setSalvando(false);
     }
@@ -115,14 +112,14 @@ export function HomeScreen({ navigation }: Props) {
 
   const executarDesvinculo = async (vinculo: NutricionistaVinculo) => {
     setErro('');
-    setAviso('');
     try {
       await desvincularNutricionista(vinculo.id);
       setVinculos((atual) => atual.filter((item) => item.id !== vinculo.id));
       setPendente(null);
-      setAviso(`Relação com ${vinculo.nome} encerrada.`);
+      toast.sucesso(`Relação com ${vinculo.nome} encerrada.`);
     } catch (falha) {
-      setErro(mensagemErro(falha, 'Não foi possível desvincular.'));
+      setPendente(null);
+      toast.erro(mensagemErro(falha, 'Não foi possível desvincular.'));
     }
   };
 
@@ -171,7 +168,7 @@ export function HomeScreen({ navigation }: Props) {
       return;
     }
     if (destino !== 'profile') {
-      setAviso('Este módulo ainda não está disponível nesta etapa.');
+      toast.informacao('Este módulo ainda não está disponível nesta etapa.');
     }
   };
 
@@ -201,7 +198,6 @@ export function HomeScreen({ navigation }: Props) {
 
             {carregando ? <ActivityIndicator color={colors.brand} accessibilityLabel="Carregando dados pessoais" /> : null}
             {erro ? <Text style={perfilStyles.erro} accessibilityRole="alert">{erro}</Text> : null}
-            {aviso ? <Text style={perfilStyles.aviso} accessibilityLiveRegion="polite">{aviso}</Text> : null}
 
             <View style={styles.grupoCampo}>
               <Text style={styles.rotulo}>Nome</Text>

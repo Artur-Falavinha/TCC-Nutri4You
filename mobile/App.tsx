@@ -10,6 +10,7 @@ import {
 import { View, ActivityIndicator } from 'react-native';
 
 import { AppAlertProvider } from './src/components/feedback/AppAlertProvider';
+import { ToastViewport } from './src/components/feedback/ToastViewport';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 export default function App() {
@@ -33,6 +34,7 @@ export default function App() {
       <AppAlertProvider>
         <RootNavigator />
       </AppAlertProvider>
+      <ToastViewport />
       <StatusBar style="auto" />
     </SafeAreaProvider>
   );

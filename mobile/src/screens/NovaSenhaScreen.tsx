@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthScreenLayout } from '../components/auth/AuthScreenLayout';
 import { recuperacaoSenhaStyles as formulario } from '../components/auth/recuperacaoSenhaStyles';
+import { toast } from '../components/feedback/toast';
 import { useAppAlert } from '../components/feedback/AppAlertProvider';
 import { AppHeader } from '../components/layout/AppHeader';
 import { SectionCardHeader, sectionCardStyles } from '../components/layout/SectionCardHeader';
@@ -86,22 +87,22 @@ export default function NovaSenhaScreen() {
 
   const handleSubmit = async () => {
     if (!token || !isValidUuid(token)) {
-      showAlert('Erro', 'Token de redefinição ausente ou inválido.');
+      toast.erro('Token de redefinição ausente ou inválido.');
       return;
     }
 
     if (!novaSenha || !confirmarSenha) {
-      showAlert('Atenção', 'Preencha todos os campos.');
+      toast.aviso('Preencha todos os campos.');
       return;
     }
 
     if (novaSenha.length < 8) {
-      showAlert('Atenção', 'A senha deve ter no mínimo 8 caracteres.');
+      toast.aviso('A senha deve ter no mínimo 8 caracteres.');
       return;
     }
 
     if (novaSenha !== confirmarSenha) {
-      showAlert('Erro', 'As senhas não coincidem. Verifique e tente novamente.');
+      toast.erro('As senhas não coincidem. Verifique e tente novamente.');
       return;
     }
 
@@ -109,25 +110,15 @@ export default function NovaSenhaScreen() {
 
     try {
       await redefinirSenha(token, novaSenha);
-      showAlert('Sucesso', 'Senha alterada com sucesso!', [
-        {
-          text: 'OK',
-          onPress: () =>
-            navigation.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [{ name: isAuthenticated ? 'Dashboard' : 'Login' }]
-              })
-            )
-        }
-      ]);
+      toast.sucesso('Senha alterada com sucesso!');
+      navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: isAuthenticated ? 'Dashboard' : 'Login' }] }));
     } catch (err: unknown) {
       const apiError = err instanceof ApiError ? err : null;
       const mensagem =
         apiError?.error === 'REQUISICAO_INVALIDA' || apiError?.status === 400
           ? 'Token inválido ou expirado. Solicite uma nova recuperação de senha.'
           : (apiError?.message ?? 'Não foi possível alterar a senha.');
-      showAlert('Erro', mensagem);
+      toast.erro(mensagem);
     } finally {
       setIsLoading(false);
     }

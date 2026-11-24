@@ -1,3 +1,4 @@
+import { toast } from '../../components/feedback/toast';
 import { Feather } from '@expo/vector-icons';
 import { SectionCardHeader, sectionCardStyles } from '../../components/layout/SectionCardHeader';
 import { colors, spacing } from '../../theme/tokens';
@@ -13,8 +14,6 @@ export function FotoPerfil() {
   const [ocupado, setOcupado] = useState(false);
   const [tentativa, setTentativa] = useState(0);
   const [falhaCarga, setFalhaCarga] = useState(false);
-  const [erro, setErro] = useState('');
-  const [mensagem, setMensagem] = useState('');
 
   useEffect(() => {
     let ativo = true;
@@ -27,23 +26,21 @@ export function FotoPerfil() {
 
   const alterar = async (remover: boolean) => {
     if (ocupado || carregando) return;
-    setMensagem('');
-    setErro('');
     setOcupado(true);
     try {
       if (remover) {
         await removerFotoPerfil();
         setFoto(null);
-        setMensagem('Foto de perfil removida.');
+        toast.sucesso('Foto de perfil removida.');
       } else {
         const imagem = await selecionarEEnviarFotoPerfil();
         if (!imagem) return;
         setFoto(imagem);
         setFalhaCarga(false);
-        setMensagem('Foto de perfil salva.');
+        toast.sucesso('Foto de perfil salva.');
       }
     } catch (falha) {
-      setErro(falha instanceof Error ? falha.message : 'Não foi possível alterar a foto. Tente novamente.');
+      toast.erro(falha instanceof Error ? falha.message : 'Não foi possível alterar a foto. Tente novamente.');
     } finally {
       setOcupado(false);
     }
@@ -100,8 +97,6 @@ export function FotoPerfil() {
           </Pressable>
         </View>
       )}
-      {erro ? <Text style={perfilStyles.erro} accessibilityRole="alert">{erro}</Text> : null}
-      {mensagem ? <Text style={perfilStyles.aviso} accessibilityLiveRegion="polite">{mensagem}</Text> : null}
     </View>
   );
 }

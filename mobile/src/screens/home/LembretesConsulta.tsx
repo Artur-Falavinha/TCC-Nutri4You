@@ -1,3 +1,4 @@
+import { toast } from '../../components/feedback/toast';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
@@ -33,9 +34,11 @@ export function LembretesConsulta() {
     setErro('');
     setSalvando(true);
     try {
-      setAtiva((await salvarLembretesConsulta(novoValor)).ativa);
+      const preferencia = await salvarLembretesConsulta(novoValor);
+      setAtiva(preferencia.ativa);
+      toast.sucesso(preferencia.ativa ? 'Lembretes ativados.' : 'Lembretes desativados.');
     } catch {
-      setErro('Não foi possível salvar a preferência. Tente novamente.');
+      toast.erro('Não foi possível salvar a preferência. Tente novamente.');
     } finally {
       setSalvando(false);
     }

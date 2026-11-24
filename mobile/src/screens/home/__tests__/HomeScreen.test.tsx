@@ -2,6 +2,7 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { Switch, Text } from 'react-native';
 
+import { toast } from '../../../components/feedback/toast';
 import {
   atualizarPerfil,
   carregarPerfil,
@@ -22,6 +23,9 @@ jest.mock('../../../core/perfil/perfil.service', () => ({
 }));
 
 jest.mock('../../../core/auth/auth.service', () => ({ logout: jest.fn() }));
+jest.mock('../../../components/feedback/toast', () => ({
+  toast: { sucesso: jest.fn(), erro: jest.fn(), aviso: jest.fn(), informacao: jest.fn() }
+}));
 jest.mock('../../../components/layout/AppHeader', () => ({ AppHeader: () => null }));
 jest.mock('../../../components/navigation/SideMenu', () => ({ SideMenu: () => null }));
 
@@ -59,7 +63,7 @@ describe('HomeScreen', () => {
     expect(controle().props.value).toBe(false);
     await act(async () => { controle().props.onValueChange(true); });
     expect(controle().props.value).toBe(false);
-    expect(JSON.stringify(tree.toJSON())).toContain('Não foi possível salvar a preferência.');
+    expect(toast.erro).toHaveBeenCalledWith('Não foi possível salvar a preferência. Tente novamente.');
     await act(async () => tree.unmount());
   });
 
@@ -108,7 +112,7 @@ describe('HomeScreen', () => {
       salvar().props.onPress();
     });
 
-    expect(JSON.stringify(tree!.toJSON())).toContain('Dados pessoais atualizados.');
+    expect(toast.sucesso).toHaveBeenCalledWith('Dados pessoais atualizados.');
 
     await act(async () => {
       tree!.root.findByProps({ accessibilityLabel: 'Nome' }).props.onChangeText('   ');
@@ -121,5 +125,6 @@ describe('HomeScreen', () => {
     const renderedText = tree!.root.findAllByType(Text).map((item) => item.props.children).join(' ');
     expect(renderedText).toContain('Informe o nome.');
     expect(renderedText).not.toContain('Dados pessoais atualizados.');
+    expect(toast.sucesso).toHaveBeenCalledTimes(1);
   }, 120000);
 });

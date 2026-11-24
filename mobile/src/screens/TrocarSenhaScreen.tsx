@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthScreenLayout } from '../components/auth/AuthScreenLayout';
 import { recuperacaoSenhaStyles as formulario } from '../components/auth/recuperacaoSenhaStyles';
-import { useAppAlert } from '../components/feedback/AppAlertProvider';
+import { toast } from '../components/feedback/toast';
 import { AppHeader } from '../components/layout/AppHeader';
 import { SectionCardHeader, sectionCardStyles } from '../components/layout/SectionCardHeader';
 import { MenuDestination, SideMenu } from '../components/navigation/SideMenu';
@@ -33,7 +33,6 @@ import { perfilStyles } from './home/perfil.styles';
 export default function TrocarSenhaScreen() {
   const { width } = useWindowDimensions();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { showAlert } = useAppAlert();
   const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState('');
   const [token, setToken] = useState('');
@@ -80,24 +79,24 @@ export default function TrocarSenhaScreen() {
   const handleSubmit = async () => {
     if (step === 1) {
       if (!email.trim()) {
-        showAlert('Atenção', 'Preencha o e-mail cadastrado.');
+        toast.aviso('Preencha o e-mail cadastrado.');
         return;
       }
       setIsLoading(true);
       const mensagem = await solicitarRecuperacaoSenha(email);
       setIsLoading(false);
       setStep(2);
-      showAlert('Pronto', mensagem);
+      toast.informacao(mensagem);
       return;
     }
 
     const trimmed = token.trim();
     if (!trimmed) {
-      showAlert('Atenção', 'Informe o código de verificação que recebeu por e-mail.');
+      toast.aviso('Informe o código de verificação que recebeu por e-mail.');
       return;
     }
     if (!isValidUuid(trimmed)) {
-      showAlert('Atenção', 'Código inválido. Confira o código no e-mail recebido.');
+      toast.aviso('Código inválido. Confira o código no e-mail recebido.');
       return;
     }
     navigation.navigate('NovaSenha', { token: trimmed });

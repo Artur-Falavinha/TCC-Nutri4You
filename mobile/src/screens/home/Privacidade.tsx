@@ -1,3 +1,4 @@
+import { toast } from '../../components/feedback/toast';
 import { Feather } from '@expo/vector-icons';
 import { SectionCardHeader, sectionCardStyles } from '../../components/layout/SectionCardHeader';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
@@ -9,13 +10,11 @@ import { Aceite, URL_TERMOS, formatarDataAceite, formatarVersaoTermos, lerAceite
 export function Privacidade() {
   const [aceite, setAceite] = useState<Aceite | null>(null);
   const [ocupado, setOcupado] = useState(false);
-  const [mensagem, setMensagem] = useState('');
 
   async function executar(acao: () => Promise<void>) {
     setOcupado(true);
-    setMensagem('');
     try { await acao(); }
-    catch { setMensagem('Não foi possível concluir agora. Tente novamente.'); }
+    catch { toast.erro('Não foi possível concluir agora. Tente novamente.'); }
     finally { setOcupado(false); }
   }
 
@@ -58,7 +57,7 @@ export function Privacidade() {
         accessibilityState={{ expanded: Boolean(aceite), disabled: ocupado }}
         disabled={ocupado}
         onPress={() => {
-          if (aceite) { setAceite(null); setMensagem(''); return; }
+          if (aceite) { setAceite(null); return; }
           void executar(async () => setAceite(await lerAceite()));
         }}
       >
@@ -73,7 +72,6 @@ export function Privacidade() {
           ) : null}
         </View>
       )}
-      {mensagem ? <Text style={perfilStyles.erro} accessibilityLiveRegion="polite">{mensagem}</Text> : null}
     </View>
   );
 }

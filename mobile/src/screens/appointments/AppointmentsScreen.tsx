@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '../../components/layout/AppHeader';
 import { SectionCardHeader, sectionCardStyles } from '../../components/layout/SectionCardHeader';
-import { useAppAlert } from '../../components/feedback/AppAlertProvider';
+import { toast } from '../../components/feedback/toast';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { ApiError } from '../../core/api/api-response.types';
 import { logout } from '../../core/auth/auth.service';
@@ -42,7 +42,6 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 export function AppointmentsScreen({ navigation }: Props) {
-  const { showAlert } = useAppAlert();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [nutritionists, setNutritionists] = useState<AgendaNutritionist[]>([]);
   const [userName, setUserName] = useState('Paciente');
@@ -93,12 +92,10 @@ export function AppointmentsScreen({ navigation }: Props) {
       await cancelAppointment(pendingCancellation.id, pendingCancellation.versao);
       setPendingCancellation(null);
       await load(true);
-      showAlert(
-        'Consulta cancelada',
-        'Se você adicionou essa consulta ao Google Agenda, remova o evento manualmente.'
-      );
+      toast.sucesso('Consulta cancelada. Se você adicionou essa consulta ao Google Agenda, remova o evento manualmente.');
     } catch (failure) {
-      setError(errorMessage(failure, 'Não foi possível cancelar a consulta.'));
+      setPendingCancellation(null);
+      toast.erro(errorMessage(failure, 'Não foi possível cancelar a consulta.'));
     } finally {
       setCancelling(false);
     }
@@ -109,7 +106,7 @@ export function AppointmentsScreen({ navigation }: Props) {
     try {
       await Linking.openURL(buildGoogleCalendarUrl(appointment));
     } catch (failure) {
-      setError(errorMessage(failure, 'Não foi possível abrir o Google Agenda.'));
+      toast.erro(errorMessage(failure, 'Não foi possível abrir o Google Agenda.'));
     }
   };
 
@@ -151,7 +148,7 @@ export function AppointmentsScreen({ navigation }: Props) {
       navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] }));
       return;
     }
-    setError('Este módulo ainda não está disponível nesta etapa.');
+    toast.informacao('Este módulo ainda não está disponível nesta etapa.');
   };
 
   const secaoConsultas = (

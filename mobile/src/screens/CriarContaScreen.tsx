@@ -22,7 +22,7 @@ import {
 import { AuthScreenLayout } from '../components/auth/AuthScreenLayout';
 import { ConfirmarEmailCadastro } from '../components/auth/ConfirmarEmailCadastro';
 import { authFormStyles } from '../components/auth/authFormStyles';
-import { useAppAlert } from '../components/feedback/AppAlertProvider';
+import { toast } from '../components/feedback/toast';
 import { autocadastrarPaciente } from '../core/auth/auth.service';
 import type { ComprovanteCadastro } from '../core/auth/auth.models';
 import { URL_TERMOS, VERSAO_TERMOS } from '../core/perfil/privacidade';
@@ -68,7 +68,6 @@ interface DadosCadastroPacienteProps {
 
 function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPacienteProps) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { showAlert } = useAppAlert();
   const [nome, setNome] = useState('');
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const email = confirmacao.email;
@@ -114,36 +113,36 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
 
   const handleRegister = async () => {
     if (Date.parse(confirmacao.expiraEm) <= Date.now()) {
-      showAlert('Confirmação expirada', 'Solicite outro e-mail para continuar.');
+      toast.aviso('Confirmação expirada. Solicite outro e-mail para continuar.');
       aoExpirar();
       return;
     }
     if (!aceitouTermos) {
-      showAlert('Atenção', 'Leia e aceite os termos de uso para criar a conta.');
+      toast.aviso('Leia e aceite os termos de uso para criar a conta.');
       return;
     }
     if (!nome.trim() || !senha || !confirmarSenha) {
-      showAlert('Atenção', 'Preencha nome e senha.');
+      toast.aviso('Preencha nome e senha.');
       return;
     }
 
     if (senha.length < 8) {
-      showAlert('Atenção', 'A senha deve ter no mínimo 8 caracteres.');
+      toast.aviso('A senha deve ter no mínimo 8 caracteres.');
       return;
     }
 
     if (senha !== confirmarSenha) {
-      showAlert('Erro', 'As senhas não coincidem.');
+      toast.erro('As senhas não coincidem.');
       return;
     }
 
     if (cpf.trim() && !isCpfComplete(cpf)) {
-      showAlert('Atenção', 'CPF incompleto. Use o formato 000.000.000-00.');
+      toast.aviso('CPF incompleto. Use o formato 000.000.000-00.');
       return;
     }
 
     if (dataNascimento.trim() && !isoDate) {
-      showAlert('Atenção', 'Data de nascimento inválida. Use DD/MM/AAAA.');
+      toast.aviso('Data de nascimento inválida. Use DD/MM/AAAA.');
       return;
     }
 
@@ -162,23 +161,11 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
         versaoTermos: VERSAO_TERMOS
       });
 
-      showAlert('Sucesso', cadastro?.mensagem ?? 'Conta criada com sucesso!', [
-        {
-          text: 'OK',
-          onPress: () =>
-            navigation.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [{ name: 'Login' }]
-              })
-            )
-        }
-      ]);
+      toast.sucesso(cadastro?.mensagem ?? 'Conta criada com sucesso!');
+      navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] }));
     } catch (err: unknown) {
       const apiError = err instanceof ApiError ? err : null;
-      showAlert(
-        'Erro',
-        apiError?.message ??
+      toast.erro(apiError?.message ??
           'Ocorreu um erro ao tentar criar a conta. Tente novamente mais tarde.'
       );
     } finally {
@@ -412,7 +399,7 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
           </View>
 
           <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`${URL_TERMOS}/${VERSAO_TERMOS}`)
-            .catch(() => showAlert('Atenção', 'Não foi possível abrir os termos.'))}>
+            .catch(() => toast.aviso('Não foi possível abrir os termos.'))}>
             <Text style={styles.termosLink}>Ler termos de uso e aviso de privacidade (PDF)</Text>
           </Pressable>
           <Pressable style={styles.termosAceite} accessibilityRole="checkbox" accessibilityState={{ checked: aceitouTermos }}

@@ -1,3 +1,4 @@
+import { toast } from '../../components/feedback/toast';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -64,7 +65,6 @@ export function EvolucaoScreen({ navigation }: Props) {
   const [carregando, setCarregando] = useState(true);
   const [recarregando, setRecarregando] = useState(false);
   const [erro, setErro] = useState('');
-  const [aviso, setAviso] = useState('');
   const [nomePaciente, setNomePaciente] = useState('Paciente');
   const [menuVisible, setMenuVisible] = useState(false);
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoHistorico[]>([]);
@@ -244,7 +244,7 @@ export function EvolucaoScreen({ navigation }: Props) {
       return;
     }
     if (destino !== 'results') {
-      setAviso('Este módulo ainda não está disponível nesta etapa.');
+      toast.informacao('Este módulo ainda não está disponível nesta etapa.');
     }
   };
 
@@ -267,12 +267,6 @@ export function EvolucaoScreen({ navigation }: Props) {
         <View style={styles.heading}>
           <Text style={styles.title} accessibilityRole="header" aria-level={1}>Resultados</Text>
         </View>
-
-        {aviso ? (
-          <View style={styles.avisoBox} aria-live="polite">
-            <Text style={styles.avisoText}>{aviso}</Text>
-          </View>
-        ) : null}
         {carregando ? (
           <View style={[styles.surface, styles.stateCard]} aria-live="polite">
             <ActivityIndicator color={colors.brand} />
@@ -404,8 +398,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border,
     padding: spacing.md, gap: spacing.sm, ...shadows.card
   },
-  avisoBox: { backgroundColor: colors.confirmedBackground, borderRadius: radius.md, padding: spacing.sm },
-  avisoText: { color: colors.brandDeep, fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 21 },
   sectionHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   sectionIcon: {
     width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.confirmedBackground,

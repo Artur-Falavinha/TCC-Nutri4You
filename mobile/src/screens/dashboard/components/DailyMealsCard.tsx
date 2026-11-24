@@ -1,3 +1,4 @@
+import { toast } from '../../../components/feedback/toast';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
@@ -54,7 +55,7 @@ export function DailyMealsCard({ onChanged }: { onChanged: () => Promise<void> }
       setRegistro(await markMeal(id, registro.data, !consumida));
       await onChanged();
     } catch (falha) {
-      setErro(falha instanceof Error ? falha.message : 'Não foi possível salvar o consumo.');
+      toast.erro(falha instanceof Error ? falha.message : 'Não foi possível salvar o consumo.');
     } finally {
       setSalvando(false);
     }

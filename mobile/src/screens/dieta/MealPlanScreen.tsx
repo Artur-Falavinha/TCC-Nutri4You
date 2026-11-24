@@ -1,3 +1,4 @@
+import { toast } from '../../components/feedback/toast';
 import { Feather } from '@expo/vector-icons';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -194,7 +195,7 @@ export function MealPlanScreen({ navigation }: Props) {
     try {
       setHydration(await addWater());
     } catch (failure) {
-      setHydrationError(failure instanceof ApiError ? failure.message : 'Não foi possível registrar a água.');
+      toast.erro(failure instanceof ApiError ? failure.message : 'Não foi possível registrar a água.');
     } finally {
       setSavingWater(false);
     }

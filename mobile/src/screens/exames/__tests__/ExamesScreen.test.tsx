@@ -3,6 +3,7 @@ import renderer, { act } from 'react-test-renderer';
 import * as RN from 'react-native';
 import { Pressable, ScrollView, Text } from 'react-native';
 
+import { toast } from '../../../components/feedback/toast';
 import {
   enviarResultadoExame,
   listarMeusExames,
@@ -26,6 +27,10 @@ jest.mock('../../../features/exames/exames.service', () => {
 
 jest.mock('../../../core/auth/auth.service', () => ({
   logout: jest.fn()
+}));
+
+jest.mock('../../../components/feedback/toast', () => ({
+  toast: { sucesso: jest.fn(), erro: jest.fn() }
 }));
 
 const mockHeaderMenuPress = (onOpenMenu?: () => void) => (
@@ -261,7 +266,7 @@ describe('ExamesScreen', () => {
       versao: 0,
       arquivo: { nome: 'resultado-hemograma-completo.pdf', tipo: 'application/pdf', tamanhoBytes: 245760, uri: 'file:///resultado.pdf' }
     });
-    expect(renderedText(tree)).toContain(
+    expect(toast.sucesso).toHaveBeenCalledWith(
       'Resultado de "Hemograma Completo" enviado com sucesso.'
     );
 
@@ -298,7 +303,7 @@ describe('ExamesScreen', () => {
     });
 
     expect(removerResultadoExame).toHaveBeenCalledWith(2, 1);
-    expect(renderedText(tree)).toContain(
+    expect(toast.sucesso).toHaveBeenCalledWith(
       'Envio de "Perfil Lipídico" removido. O exame voltou para PENDENTE.'
     );
 
