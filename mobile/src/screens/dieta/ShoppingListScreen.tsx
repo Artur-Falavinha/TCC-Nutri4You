@@ -1,8 +1,10 @@
+import { Feather } from '@expo/vector-icons';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -26,7 +28,7 @@ import {
   MIN_SHOPPING_DAYS,
   updateShoppingItem
 } from '../../features/dieta/dieta.service';
-import { ShoppingList } from '../../features/dieta/dieta.models';
+import { ShoppingList, ShoppingListItem } from '../../features/dieta/dieta.models';
 import { RootStackParamList } from '../../navigation/types';
 import { colors, fontFamily, radius, shadows, spacing } from '../../theme/tokens';
 
@@ -36,6 +38,52 @@ function errorMessage(error: unknown): string {
   return error instanceof ApiError
     ? error.message
     : 'Não foi possível carregar ou salvar sua lista de compras. Tente novamente.';
+}
+
+interface ItemCompraProps {
+  item: ShoppingListItem;
+  salvando: boolean;
+  desabilitado: boolean;
+  alternar: (alimentoId: number, comprado: boolean) => void;
+}
+
+function ItemCompra({ item, salvando, desabilitado, alternar }: ItemCompraProps) {
+  const quantidade = formatGrams(item.quantidadeGramas);
+  const marcar = () => alternar(item.alimentoId, !item.comprado);
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.item, item.comprado && styles.itemBought, pressed && styles.pressed]}
+      onPress={marcar}
+      onKeyDown={Platform.OS === 'web' ? evento => {
+        if (evento.nativeEvent.key !== ' ') return;
+        evento.preventDefault();
+        if (!desabilitado && !evento.nativeEvent.repeat) marcar();
+      } : undefined}
+      disabled={desabilitado}
+      accessibilityRole="checkbox"
+      aria-checked={item.comprado}
+      aria-busy={salvando}
+      accessibilityLabel={`${item.comprado ? 'Desmarcar' : 'Marcar'} ${item.nome} como comprado, ${quantidade} gramas`}
+      accessibilityState={{ checked: item.comprado, disabled: desabilitado, busy: salvando }}
+    >
+      <View style={[styles.checkbox, item.comprado && styles.checkboxChecked]} aria-hidden>
+        {salvando ? (
+          <ActivityIndicator size="small" color={item.comprado ? colors.white : colors.brand} />
+        ) : item.comprado ? (
+          <Feather name="check" size={16} color={colors.white} />
+        ) : null}
+      </View>
+      <View style={styles.itemContent}>
+        <View style={styles.itemDetails}>
+          <Text style={[styles.itemName, item.comprado && styles.itemNameBought]}>{item.nome}</Text>
+          <Text style={styles.quantity}>{quantidade} g</Text>
+        </View>
+        <Text style={[styles.itemAction, item.comprado && styles.itemActionBought]}>
+          {item.comprado ? 'Comprado' : 'Marcar'}
+        </Text>
+      </View>
+    </Pressable>
+  );
 }
 
 export function ShoppingListScreen({ navigation }: Props) {
@@ -186,6 +234,9 @@ export function ShoppingListScreen({ navigation }: Props) {
     }
   };
 
+  const listaOcupada = loading || refreshing || savingFoodId !== null;
+  const diminuirDesabilitado = listaOcupada || days <= MIN_SHOPPING_DAYS;
+  const aumentarDesabilitado = listaOcupada || days >= MAX_SHOPPING_DAYS;
   const changePeriod = (difference: number) => changeDays(days + difference);
   const retry = () => void loadList(days);
 
@@ -202,7 +253,7 @@ export function ShoppingListScreen({ navigation }: Props) {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { maxWidth: wide ? 760 : 560 }]}
+        contentContainerStyle={[styles.content, width < 420 && styles.contentCompact, { maxWidth: wide ? 760 : 560 }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -216,52 +267,56 @@ export function ShoppingListScreen({ navigation }: Props) {
         }
       >
         <View style={styles.heading}>
-          <View style={styles.headingText}>
-            <Text style={styles.title} accessibilityRole="header">
-              Lista de compras
-            </Text>
-            <Text style={styles.subtitle}>
-              Inclui apenas os alimentos principais; substituições opcionais não são somadas.
-            </Text>
+          <View style={styles.headingTop}>
+            <Text style={styles.title} accessibilityRole="header" aria-level={1}>Lista de compras</Text>
+            <Pressable
+              style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+              onPress={() => navigation.navigate('Dieta')}
+              accessibilityRole="button"
+              accessibilityLabel="Voltar para dieta ativa"
+            >
+              <Feather name="arrow-left" size={16} color={colors.brandDeep} aria-hidden />
+              <Text style={styles.secondaryButtonText}>Dieta</Text>
+            </Pressable>
           </View>
-          <Pressable
-            style={styles.secondaryButton}
-            onPress={() => navigation.navigate('Dieta')}
-            accessibilityRole="button"
-            accessibilityLabel="Voltar para dieta ativa"
-          >
-            <Text style={styles.secondaryButtonText}>Dieta</Text>
-          </Pressable>
+          <Text style={styles.subtitle}>
+            Inclui apenas os alimentos principais; substituições opcionais não são somadas.
+          </Text>
         </View>
 
-        <View style={[styles.periodCard, wide && styles.periodCardWide]}>
-          <View style={styles.periodText}>
-            <Text style={styles.sectionTitle}>Período</Text>
-            <Text style={styles.bodyText}>A lista considera dias consecutivos do plano diário.</Text>
+        <View style={[styles.surface, styles.periodCard, wide && styles.periodCardWide]}>
+          <View style={styles.periodIntro}>
+            <View style={styles.sectionIcon} aria-hidden>
+              <Feather name="calendar" size={18} color={colors.brand} />
+            </View>
+            <View style={styles.periodText}>
+              <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>Período</Text>
+              <Text style={styles.bodyText}>A lista considera dias consecutivos do plano diário.</Text>
+            </View>
           </View>
           <View style={styles.stepper}>
             <Pressable
-              style={[styles.stepButton, days <= MIN_SHOPPING_DAYS && styles.disabledButton]}
+              style={({ pressed }) => [styles.stepButton, diminuirDesabilitado && styles.disabledButton, pressed && styles.pressed]}
               onPress={() => changePeriod(-1)}
-              disabled={days <= MIN_SHOPPING_DAYS || loading || refreshing || savingFoodId !== null}
+              disabled={diminuirDesabilitado}
               accessibilityRole="button"
               accessibilityLabel="Diminuir período em um dia"
-              accessibilityState={{ disabled: days <= MIN_SHOPPING_DAYS || loading || refreshing || savingFoodId !== null }}
+              accessibilityState={{ disabled: diminuirDesabilitado }}
             >
-              <Text style={styles.stepButtonText}>−</Text>
+              <Feather name="minus" size={22} color={colors.brandDeep} aria-hidden />
             </Pressable>
-            <Text style={styles.daysValue} accessibilityLiveRegion="polite">
+            <Text style={styles.daysValue} aria-live="polite" accessibilityLiveRegion="polite">
               {days} {days === 1 ? 'dia' : 'dias'}
             </Text>
             <Pressable
-              style={[styles.stepButton, days >= MAX_SHOPPING_DAYS && styles.disabledButton]}
+              style={({ pressed }) => [styles.stepButton, aumentarDesabilitado && styles.disabledButton, pressed && styles.pressed]}
               onPress={() => changePeriod(1)}
-              disabled={days >= MAX_SHOPPING_DAYS || loading || refreshing || savingFoodId !== null}
+              disabled={aumentarDesabilitado}
               accessibilityRole="button"
               accessibilityLabel="Aumentar período em um dia"
-              accessibilityState={{ disabled: days >= MAX_SHOPPING_DAYS || loading || refreshing || savingFoodId !== null }}
+              accessibilityState={{ disabled: aumentarDesabilitado }}
             >
-              <Text style={styles.stepButtonText}>+</Text>
+              <Feather name="plus" size={22} color={colors.brandDeep} aria-hidden />
             </Pressable>
           </View>
         </View>
@@ -272,7 +327,7 @@ export function ShoppingListScreen({ navigation }: Props) {
             <Text style={styles.errorText}>{error}</Text>
             {list === null ? (
               <Pressable
-                style={styles.primaryButton}
+                style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
                 onPress={retry}
                 accessibilityRole="button"
                 accessibilityLabel="Tentar carregar a lista novamente"
@@ -286,18 +341,19 @@ export function ShoppingListScreen({ navigation }: Props) {
         ) : null}
 
         {loading && !list ? (
-          <View style={styles.stateCard} testID="shopping-list-loading">
+          <View style={[styles.surface, styles.stateCard]} testID="shopping-list-loading" aria-live="polite">
             <ActivityIndicator color={colors.brand} />
             <Text style={styles.bodyText}>Carregando lista de compras...</Text>
           </View>
         ) : error && !list ? null : list === null ? (
-          <View style={styles.stateCard} testID="shopping-list-empty">
-            <Text style={styles.stateTitle}>Nenhuma lista de compras disponível</Text>
-            <Text style={styles.bodyText}>
+          <View style={[styles.surface, styles.stateCard]} testID="shopping-list-empty">
+            <View style={styles.sectionIcon} aria-hidden><Feather name="shopping-bag" size={20} color={colors.brand} /></View>
+            <Text style={styles.stateTitle} accessibilityRole="header" aria-level={2}>Nenhuma lista de compras disponível</Text>
+            <Text style={[styles.bodyText, styles.centered]}>
               Uma lista será criada a partir da sua dieta ativa quando houver um plano vigente.
             </Text>
             <Pressable
-              style={styles.primaryButton}
+              style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
               onPress={() => navigation.navigate('Dieta')}
               accessibilityRole="button"
             >
@@ -313,16 +369,19 @@ export function ShoppingListScreen({ navigation }: Props) {
               </View>
             ) : null}
 
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryTitle}>{list.planoTitulo}</Text>
+            <View style={styles.surface}>
+              <View style={styles.summaryHeader}>
+                <View style={styles.sectionIcon} aria-hidden><Feather name="shopping-bag" size={18} color={colors.brand} /></View>
+                <Text style={styles.summaryTitle} accessibilityRole="header" aria-level={2}>{list.planoTitulo}</Text>
+              </View>
               {progress ? (
                 <View style={styles.progressSection}>
                   <View style={styles.progressLabels}>
-                    <Text style={styles.progressCount} accessibilityLiveRegion="polite">
+                    <Text style={styles.progressCount} aria-live="polite" accessibilityLiveRegion="polite">
                       {progress.comprados} de {progress.total}{' '}
                       {progress.total === 1 ? 'item comprado' : 'itens comprados'}
                     </Text>
-                    <Text style={styles.progressPercent}>{progress.percentual}%</Text>
+                    <Text style={styles.progressPercent} aria-hidden>{progress.percentual}%</Text>
                   </View>
                   <View
                     style={styles.progressTrack}
@@ -348,7 +407,7 @@ export function ShoppingListScreen({ navigation }: Props) {
                   <Text style={styles.countNumber}>{list.itensPendentes}</Text>
                   <Text style={styles.countLabel}>pendentes</Text>
                 </View>
-                <View style={styles.countBox}>
+                <View style={[styles.countBox, styles.countBoxBought]}>
                   <Text style={styles.countNumber}>{list.itensComprados}</Text>
                   <Text style={styles.countLabel}>comprados</Text>
                 </View>
@@ -360,52 +419,31 @@ export function ShoppingListScreen({ navigation }: Props) {
             </View>
 
             {list.itens.length === 0 ? (
-              <View style={styles.stateCard}>
-                <Text style={styles.stateTitle}>Nenhum alimento neste período</Text>
-                <Text style={styles.bodyText}>
+              <View style={[styles.surface, styles.stateCard]}>
+                <View style={styles.sectionIcon} aria-hidden><Feather name="shopping-bag" size={20} color={colors.brand} /></View>
+                <Text style={styles.stateTitle} accessibilityRole="header" aria-level={2}>Nenhum alimento neste período</Text>
+                <Text style={[styles.bodyText, styles.centered]}>
                   A dieta ativa não contém alimentos para os {days} {days === 1 ? 'dia' : 'dias'} selecionados.
                 </Text>
               </View>
             ) : (
               itemGroups.map((group) => (
-                <View key={group.categoria} style={styles.categorySection}>
-                  <Text style={styles.categoryHeading} accessibilityRole="header">
-                    {group.categoria}
-                  </Text>
-                  {group.itens.map((item) => {
-                    const saving = savingFoodId === item.alimentoId;
-                    return (
-                      <View key={item.alimentoId} style={styles.itemCard}>
-                        <View style={styles.itemDetails}>
-                          <Text style={[styles.itemName, item.comprado && styles.itemNameBought]}>
-                            {item.nome}
-                          </Text>
-                          <Text style={styles.quantity}>{formatGrams(item.quantidadeGramas)} g</Text>
-                        </View>
-                        <Pressable
-                          style={[styles.checkButton, item.comprado && styles.checkedButton]}
-                          onPress={() => void toggleItem(item.alimentoId, !item.comprado)}
-                          disabled={savingFoodId !== null || loading || refreshing}
-                          accessibilityRole="checkbox"
-                          aria-checked={item.comprado}
-                          accessibilityLabel={`${item.comprado ? 'Desmarcar' : 'Marcar'} ${item.nome} como comprado`}
-                          accessibilityState={{
-                            checked: item.comprado,
-                            disabled: savingFoodId !== null || loading || refreshing,
-                            busy: saving
-                          }}
-                        >
-                          {saving ? (
-                            <ActivityIndicator size="small" color={colors.brand} />
-                          ) : (
-                            <Text style={[styles.checkText, item.comprado && styles.checkedText]}>
-                              {item.comprado ? 'Comprado' : 'Marcar'}
-                            </Text>
-                          )}
-                        </Pressable>
-                      </View>
-                    );
-                  })}
+                <View key={group.categoria} style={[styles.surface, styles.categorySection]}>
+                  <View style={styles.categoryHeader}>
+                    <Feather name="tag" size={17} color={colors.brand} aria-hidden />
+                    <Text style={styles.categoryHeading} accessibilityRole="header" aria-level={2}>{group.categoria}</Text>
+                  </View>
+                  <View style={styles.categoryItems}>
+                    {group.itens.map((item) => (
+                      <ItemCompra
+                        key={item.alimentoId}
+                        item={item}
+                        salvando={savingFoodId === item.alimentoId}
+                        desabilitado={listaOcupada}
+                        alternar={toggleItem}
+                      />
+                    ))}
+                  </View>
                 </View>
               ))
             )}
@@ -420,55 +458,103 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.page },
   scroll: { flex: 1 },
   content: { width: '100%', alignSelf: 'center', padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
-  heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  headingText: { flex: 1, gap: spacing.xxs },
-  title: { color: colors.text, fontFamily: fontFamily.extrabold, fontSize: 25, lineHeight: 32 },
-  subtitle: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 20 },
-  secondaryButton: { borderWidth: 1, borderColor: colors.brand, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  secondaryButtonText: { color: colors.brand, fontFamily: fontFamily.bold, fontSize: 13 },
-  periodCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm, ...shadows.card },
-  periodCardWide: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  periodText: { flex: 1, gap: spacing.xxs },
-  sectionTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 16 },
-  bodyText: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 20, textAlign: 'center' },
-  stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
-  stepButton: { width: 42, height: 42, borderRadius: radius.pill, backgroundColor: colors.brandSoft, alignItems: 'center', justifyContent: 'center' },
+  contentCompact: { paddingHorizontal: spacing.sm },
+  heading: { paddingTop: spacing.xs, gap: spacing.xxs },
+  headingTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs },
+  title: {
+    flexGrow: 1, flexShrink: 1, flexBasis: 175,
+    color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 30, lineHeight: 38
+  },
+  subtitle: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 15, lineHeight: 23 },
+  secondaryButton: {
+    minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xxs,
+    paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, backgroundColor: colors.confirmedBackground, borderRadius: radius.md
+  },
+  secondaryButtonText: { flexShrink: 1, color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 14, lineHeight: 20 },
+  surface: {
+    backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border,
+    padding: spacing.md, gap: spacing.sm, ...shadows.card
+  },
+  periodCard: { gap: spacing.sm },
+  periodCardWide: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
+  periodIntro: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, flexGrow: 1, flexShrink: 1 },
+  periodText: { flex: 1, minWidth: 0, gap: spacing.xxs },
+  sectionIcon: {
+    width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.confirmedBackground,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0
+  },
+  sectionTitle: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 18, lineHeight: 25 },
+  bodyText: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 15, lineHeight: 23 },
+  centered: { textAlign: 'center' },
+  stepper: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.xs,
+    backgroundColor: colors.page, borderRadius: radius.lg, padding: spacing.xxs
+  },
+  stepButton: {
+    width: 48, minHeight: 48, flexShrink: 0, borderRadius: radius.md, backgroundColor: colors.confirmedBackground,
+    alignItems: 'center', justifyContent: 'center'
+  },
   disabledButton: { opacity: 0.45 },
-  stepButtonText: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 24, lineHeight: 28 },
-  daysValue: { minWidth: 62, textAlign: 'center', color: colors.text, fontFamily: fontFamily.bold, fontSize: 16 },
-  listSection: { gap: spacing.sm },
-  summaryCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, gap: spacing.md },
-  summaryTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 16 },
+  pressed: { opacity: 0.8 },
+  daysValue: {
+    minWidth: 76, flexShrink: 1, textAlign: 'center', color: colors.brandDeep,
+    fontFamily: fontFamily.extrabold, fontSize: 18, lineHeight: 25, fontVariant: ['tabular-nums']
+  },
+  listSection: { gap: spacing.md },
+  summaryHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  summaryTitle: { flex: 1, color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 20, lineHeight: 27 },
   progressSection: { gap: spacing.xs },
-  progressLabels: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  progressCount: { color: colors.text, fontFamily: fontFamily.semibold, fontSize: 13 },
-  progressPercent: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 14 },
-  progressTrack: { height: 10, backgroundColor: colors.pageAlt, borderRadius: radius.pill, overflow: 'hidden' },
+  progressLabels: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.xs },
+  progressCount: { flexShrink: 1, color: colors.text, fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 20 },
+  progressPercent: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 16, lineHeight: 23, fontVariant: ['tabular-nums'] },
+  progressTrack: { height: 8, backgroundColor: colors.border, borderRadius: radius.pill, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: colors.brand, borderRadius: radius.pill },
-  countsRow: { flexDirection: 'row', gap: spacing.sm },
-  countBox: { flex: 1, alignItems: 'center', backgroundColor: colors.pageAlt, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.xs },
-  countNumber: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 20 },
-  countLabel: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 11, textAlign: 'center' },
-  itemCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, ...shadows.card },
-  itemDetails: { flex: 1, gap: 3 },
+  countsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  countBox: {
+    flexBasis: 76, flexGrow: 1, alignItems: 'center', backgroundColor: colors.page, borderRadius: radius.md,
+    paddingVertical: spacing.xs, paddingHorizontal: spacing.xxs
+  },
+  countBoxBought: { backgroundColor: colors.confirmedBackground },
+  countNumber: {
+    color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 20, lineHeight: 27, fontVariant: ['tabular-nums']
+  },
+  countLabel: { color: colors.text, fontFamily: fontFamily.regular, fontSize: 13, lineHeight: 18, textAlign: 'center' },
+  categorySection: { padding: spacing.sm, gap: spacing.xs },
+  categoryHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.xxs, paddingVertical: spacing.xxs },
+  categoryHeading: { flex: 1, color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 18, lineHeight: 25 },
+  categoryItems: { gap: spacing.xs },
+  item: {
+    minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm,
+    backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border
+  },
+  itemBought: { backgroundColor: colors.page },
+  checkbox: {
+    width: 24, height: 24, flexShrink: 0, borderRadius: 6, borderWidth: 1,
+    borderColor: colors.textSecondary, alignItems: 'center', justifyContent: 'center'
+  },
+  checkboxChecked: { backgroundColor: colors.brand, borderColor: colors.brand },
+  itemContent: { flex: 1, minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs },
+  itemDetails: { flexBasis: 120, flexGrow: 1, flexShrink: 1, gap: spacing.xxs },
   itemName: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 15, lineHeight: 21 },
   itemNameBought: { color: colors.textSecondary, textDecorationLine: 'line-through' },
-  categorySection: { gap: spacing.xs },
-  categoryHeading: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 16, marginTop: spacing.xs },
-  quantity: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 14, marginTop: 2 },
-  checkButton: { minWidth: 82, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.brand, borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
-  checkedButton: { backgroundColor: colors.brandSoft },
-  checkText: { color: colors.brand, fontFamily: fontFamily.bold, fontSize: 12 },
-  checkedText: { color: colors.brandDeep },
-  stateCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, alignItems: 'center', gap: spacing.sm },
-  stateTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 17, textAlign: 'center' },
-  errorBox: { backgroundColor: '#fff4f2', borderColor: colors.danger, borderWidth: 1, borderRadius: radius.lg, padding: spacing.md, gap: spacing.xs },
-  noticeBox: { backgroundColor: colors.brandSoft, borderRadius: radius.md, padding: spacing.sm },
-  noticeText: { color: colors.brandDeep, fontFamily: fontFamily.semibold, fontSize: 13 },
-  errorTitle: { color: colors.dangerText, fontFamily: fontFamily.bold, fontSize: 15 },
-  errorText: { color: colors.text, fontFamily: fontFamily.regular, fontSize: 13, lineHeight: 19 },
-  errorHint: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 12, lineHeight: 18 },
-  primaryButton: { backgroundColor: colors.brand, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, alignItems: 'center' },
-  primaryButtonText: { color: colors.white, fontFamily: fontFamily.bold, fontSize: 14 },
+  quantity: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 14, lineHeight: 20, fontVariant: ['tabular-nums'] },
+  itemAction: { color: colors.brandDeep, fontFamily: fontFamily.bold, flexShrink: 1, fontSize: 13, lineHeight: 19 },
+  itemActionBought: {
+    backgroundColor: colors.confirmedBackground, borderRadius: radius.sm, paddingHorizontal: spacing.xs, paddingVertical: spacing.xxs
+  },
+  stateCard: { padding: spacing.lg, alignItems: 'center', gap: spacing.xs },
+  stateTitle: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 18, lineHeight: 25, textAlign: 'center' },
+  errorBox: {
+    backgroundColor: colors.dangerButtonBackground, borderColor: colors.dangerBackground,
+    borderWidth: 1, borderRadius: radius.lg, padding: spacing.md, gap: spacing.xs
+  },
+  errorTitle: { color: colors.dangerText, fontFamily: fontFamily.bold, fontSize: 16, lineHeight: 22 },
+  errorText: { color: colors.dangerText, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 21 },
+  errorHint: { color: colors.text, fontFamily: fontFamily.regular, fontSize: 13, lineHeight: 20 },
+  primaryButton: {
+    minHeight: 48, backgroundColor: colors.brand, borderRadius: radius.md, paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs, alignItems: 'center', justifyContent: 'center'
+  },
+  primaryButtonText: { color: colors.white, fontFamily: fontFamily.bold, fontSize: 15, lineHeight: 22, textAlign: 'center' },
   refreshingHint: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs }
 });
