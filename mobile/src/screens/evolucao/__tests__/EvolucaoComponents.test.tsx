@@ -12,7 +12,7 @@ import {
 import { carregarPerfil } from '../../../core/perfil/perfil.service';
 
 jest.mock('@expo/vector-icons', () => ({
-  Ionicons: () => null
+  Feather: () => null
 }));
 
 jest.mock('../../../core/evolucao/evolucao.service', () => {

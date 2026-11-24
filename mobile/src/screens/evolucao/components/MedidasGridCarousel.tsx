@@ -1,6 +1,8 @@
-import React, { ComponentRef, useRef, useState } from 'react';
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { AvaliacaoHistorico, calcularVariacao } from '../../../core/evolucao/evolucao.service';
+import { colors, fontFamily, radius, shadows, spacing } from '../../../theme/tokens';
+import { useCarrosselEvolucao } from './useCarrosselEvolucao';
 
 interface Props {
   avaliacoes: AvaliacaoHistorico[];
@@ -15,11 +17,7 @@ interface MedidaCardItem {
 }
 
 export function MedidasGridCarousel({ avaliacoes }: Props) {
-  const [pagina, setPagina] = useState(0);
-  const [containerWidth, setContainerWidth] = useState(
-    Dimensions.get('window').width - 32
-  );
-  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
+  const { fontScale = 1 } = useWindowDimensions();
 
   const atual = avaliacoes[0];
   const anterior = avaliacoes.length > 1 ? avaliacoes[1] : undefined;
@@ -94,100 +92,86 @@ export function MedidasGridCarousel({ avaliacoes }: Props) {
     ]
   ];
 
+  const { definirRef, pagina, largura, irPara, onLayout, aoRolar } = useCarrosselEvolucao(slides.length);
+  const larguraCard = largura && fontScale < 1.45 ? (largura - spacing.xs) / 2 : '100%';
+  const larguraBotao = Platform.OS === 'android' ? 48 : 44;
   return (
-    <View
-      style={styles.container}
-      testID="medidas-grid-carousel"
-      onLayout={(e) => {
-        const w = e.nativeEvent.layout.width;
-        if (w > 0) {
-          setContainerWidth(w);
-        }
-      }}
-    >
+    <View style={styles.container} testID="medidas-grid-carousel">
       <View style={styles.headerRow}>
-        <Text style={styles.secaoTitulo}>Medidas corporais</Text>
-        <Text style={styles.contadorPagina}>
+        <View style={styles.sectionIcon} aria-hidden>
+          <Feather name="activity" size={20} color={colors.brand} />
+        </View>
+        <Text style={styles.secaoTitulo} accessibilityRole="header" aria-level={2}>Medidas corporais</Text>
+        <Text style={styles.contadorPagina} aria-live="polite" accessibilityLiveRegion="polite">
           {pagina + 1} de {slides.length}
         </Text>
       </View>
 
       <ScrollView
-        ref={scrollRef}
+        ref={definirRef}
+        style={styles.carousel}
         horizontal
         pagingEnabled
         nestedScrollEnabled
         showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={(e) => {
-          if (containerWidth > 0) {
-            const nextIdx = Math.round(e.nativeEvent.contentOffset.x / containerWidth);
-            setPagina(Math.max(0, Math.min(nextIdx, slides.length - 1)));
-          }
-        }}
+        onLayout={onLayout}
+        onMomentumScrollEnd={aoRolar}
+        onScroll={Platform.OS === 'web' ? aoRolar : undefined}
+        scrollEventThrottle={32}
       >
-        {slides.map((slide, slideIdx) => (
-          <View
-            key={`slide-grid-${slideIdx}`}
-            style={[styles.grid, { width: containerWidth }]}
-          >
-            {slide.map((item) => {
-              const temVariacao = !!item.variacaoTexto;
-              const isQueda = item.direcao === 'queda';
-              const isAlta = item.direcao === 'alta';
-
-              return (
-                <View key={item.id} style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitulo} numberOfLines={1}>
-                      {item.titulo}
-                    </Text>
-                    {temVariacao && (
-                      <View
-                        style={[
-                          styles.badge,
-                          isQueda && styles.badgeQueda,
-                          isAlta && styles.badgeAlta
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.badgeTexto,
-                            isQueda && styles.badgeTextoQueda,
-                            isAlta && styles.badgeTextoAlta
-                          ]}
-                        >
-                          {item.variacaoTexto}
-                        </Text>
-                      </View>
+        {slides.map((slide, indice) => {
+          const ativo = indice === pagina;
+          return (
+            <View
+              key={slide[0].id}
+              style={[styles.grid, { width: largura || '100%' }]}
+              aria-hidden={!ativo}
+              accessibilityElementsHidden={!ativo}
+              importantForAccessibility={ativo ? 'auto' : 'no-hide-descendants'}
+            >
+              {slide.map(item => (
+                <View key={item.id} style={[styles.card, { width: larguraCard }]}>
+                  <Text style={styles.cardTitulo}>{item.titulo}</Text>
+                  <Text style={styles.cardValor}>{item.valor}</Text>
+                  <View style={styles.cardMeta}>
+                    <Text style={styles.cardSub}>Última medição</Text>
+                    {item.variacaoTexto && (
+                      <Text style={[
+                        styles.badgeTexto,
+                        item.direcao === 'queda' && styles.badgeTextoQueda,
+                        item.direcao === 'alta' && styles.badgeTextoAlta
+                      ]}>
+                        {item.variacaoTexto}
+                      </Text>
                     )}
                   </View>
-
-                  <Text style={styles.cardValor} numberOfLines={1}>
-                    {item.valor}
-                  </Text>
-
-                  <Text style={styles.cardSub}>ÚLTIMA MEDIÇÃO</Text>
                 </View>
-              );
-            })}
-          </View>
-        ))}
+              ))}
+            </View>
+          );
+        })}
       </ScrollView>
 
-      {/* Pagination dots */}
-      <View style={styles.dotsRow}>
-        {slides.map((_, idx) => (
-          <Pressable
-            key={`dot-${idx}`}
-            onPress={() => {
-              setPagina(idx);
-              scrollRef.current?.scrollTo?.({ x: idx * containerWidth, animated: true });
-            }}
-            style={[styles.dot, idx === pagina && styles.dotAtivo]}
-            accessibilityRole="button"
-            accessibilityLabel={`Slide ${idx + 1}`}
-          />
-        ))}
+      <View style={styles.pagesRow}>
+        {slides.map((slide, indice) => {
+          const ativo = indice === pagina;
+          return (
+            <Pressable
+              key={slide[0].id}
+              onPress={() => irPara(indice)}
+              style={({ pressed }) => [
+                styles.pageButton, { minWidth: larguraBotao },
+                ativo && styles.pageButtonActive, pressed && styles.pressed
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={'Slide ' + (indice + 1)}
+              accessibilityState={{ selected: ativo }}
+              {...(Platform.OS === 'web' && { 'aria-pressed': ativo })}
+            >
+              <Text style={[styles.pageNumber, ativo && styles.pageNumberActive]}>{indice + 1}</Text>
+            </Pressable>
+          );
+        })}
       </View>
     </View>
   );
@@ -195,105 +179,41 @@ export function MedidasGridCarousel({ avaliacoes }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 16
+    backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border,
+    padding: spacing.md, gap: spacing.sm, ...shadows.card
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10
+  headerRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs },
+  sectionIcon: {
+    width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.confirmedBackground,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0
   },
-  secaoTitulo: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f172a'
-  },
-  contadorPagina: {
-    fontSize: 12,
-    color: '#64748b'
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12
-  },
+  secaoTitulo: { flexGrow: 1, flexShrink: 1, color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 20, lineHeight: 27 },
+  contadorPagina: { color: colors.textSecondary, fontFamily: fontFamily.semibold, fontSize: 13, lineHeight: 19, fontVariant: ['tabular-nums'] },
+  carousel: { width: '100%', flexGrow: 0 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', alignContent: 'flex-start', gap: spacing.xs },
   card: {
-    width: '48%',
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1
+    backgroundColor: colors.page, borderRadius: radius.md, padding: spacing.sm,
+    borderWidth: 1, borderColor: colors.border, gap: spacing.xxs
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8
-  },
-  cardTitulo: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#334155',
-    flex: 1,
-    marginRight: 4
-  },
-  badge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 999,
-    backgroundColor: '#f1f5f9'
-  },
-  badgeQueda: {
-    backgroundColor: '#e8f5e9'
-  },
-  badgeAlta: {
-    backgroundColor: '#fef3f2'
-  },
-  badgeTexto: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#64748b'
-  },
-  badgeTextoQueda: {
-    color: '#006f1e'
-  },
-  badgeTextoAlta: {
-    color: '#b42318'
-  },
+  cardTitulo: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 14, lineHeight: 20 },
   cardValor: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginVertical: 4
+    color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 23, lineHeight: 30, fontVariant: ['tabular-nums']
   },
-  cardSub: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#94a3b8',
-    letterSpacing: 0.5
+  cardMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xxs },
+  cardSub: { flexShrink: 1, color: colors.textSecondary, fontFamily: fontFamily.semibold, fontSize: 12, lineHeight: 18 },
+  badgeTexto: {
+    flexShrink: 1, color: colors.text, fontFamily: fontFamily.bold, fontSize: 12, lineHeight: 18,
+    borderRadius: radius.sm, paddingHorizontal: spacing.xxs, backgroundColor: colors.subtle
   },
-  dotsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 14
+  badgeTextoQueda: { color: colors.brandDeep, backgroundColor: colors.confirmedBackground },
+  badgeTextoAlta: { color: colors.dangerText, backgroundColor: colors.dangerButtonBackground },
+  pagesRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: spacing.xs },
+  pageButton: {
+    minHeight: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xs, paddingVertical: spacing.xxs,
+    backgroundColor: colors.page, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#cbd5e1'
-  },
-  dotAtivo: {
-    width: 22,
-    backgroundColor: '#006f1e'
-  }
+  pageButtonActive: { backgroundColor: colors.brandDark, borderColor: colors.brandDark },
+  pageNumber: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 14, lineHeight: 20 },
+  pageNumberActive: { color: colors.white },
+  pressed: { opacity: 0.8 }
 });
-

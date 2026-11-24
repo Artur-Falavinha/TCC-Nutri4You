@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { type LayoutChangeEvent, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import Svg, { Line, Path, Polyline } from 'react-native-svg';
+import { colors, fontFamily, radius, spacing } from '../../../theme/tokens';
 
 export interface ChartDataPoint {
   label: string;
@@ -13,287 +15,147 @@ interface Props {
   unidade?: string;
   cor?: string;
   height?: number;
+  interativo?: boolean;
 }
 
 export function EvolucaoLineChart({
   data,
   unidade = '',
-  cor = '#006f1e',
-  height = 140
+  cor = colors.brand,
+  height = 160,
+  interativo = true
 }: Props) {
-  const [containerWidth, setContainerWidth] = useState(300);
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-
+  const { fontScale = 1 } = useWindowDimensions();
+  const [largura, setLargura] = useState(300);
+  const [selecionado, setSelecionado] = useState<number | null>(null);
   const onLayout = (event: LayoutChangeEvent) => {
-    const width = event.nativeEvent.layout.width;
-    if (width > 0 && Math.abs(width - containerWidth) > 2) {
-      setContainerWidth(width);
-    }
+    const medida = event.nativeEvent.layout.width;
+    if (medida > 0) setLargura(medida);
   };
 
-  if (!data || data.length === 0) {
+  if (data.length === 0) {
     return (
-      <View style={[styles.emptyContainer, { height }]}>
+      <View style={[styles.emptyContainer, { minHeight: height }]}>
         <Text style={styles.emptyText}>Sem dados suficientes para o gráfico.</Text>
       </View>
     );
   }
 
-  const activeIndex = selectedIdx !== null && selectedIdx >= 0 && selectedIdx < data.length
-    ? selectedIdx
-    : data.length - 1;
+  const indiceAtivo = selecionado !== null && selecionado < data.length ? selecionado : data.length - 1;
+  const rotuloLargura = Math.min(48 * Math.max(1, fontScale), largura / 2);
+  const alvo = Platform.OS === 'android' ? 48 : 44;
+  const margem = Math.max(alvo / 2, rotuloLargura / 2);
+  const areaUtil = Math.max(1, largura - margem * 2);
+  const topo = alvo / 2;
+  const base = height - alvo / 2;
 
-  const paddingHorizontal = 28;
-  const paddingTop = data.some((ponto) => ponto.dataFormatada) ? 44 : 32;
-  const paddingBottom = 26;
-  const chartWidth = Math.max(containerWidth - paddingHorizontal * 2, 80);
-  const chartHeight = Math.max(height - paddingTop - paddingBottom, 40);
+  const valores = data.map((ponto) => ponto.value);
+  const minimo = Math.min(...valores);
+  const maximo = Math.max(...valores);
+  const intervalo = maximo - minimo;
+  const amplitude = intervalo === 0 ? Math.max(maximo * 0.2, 1) : intervalo * 1.3;
+  const origem = minimo - (intervalo === 0 ? amplitude / 2 : intervalo * 0.15);
+  const distancia = data.length > 1 ? areaUtil / (data.length - 1) : areaUtil;
+  const passoRotulos = Math.max(1, Math.ceil(rotuloLargura / distancia));
 
-  const values = data.map((d) => d.value);
-  const minVal = Math.min(...values);
-  const maxVal = Math.max(...values);
-  const valSpan = maxVal - minVal;
-
-  const effectiveSpan = valSpan === 0 ? Math.max(maxVal * 0.2, 1) : valSpan;
-  const baselineMin = valSpan === 0 ? minVal - effectiveSpan / 2 : minVal - effectiveSpan * 0.15;
-  const baselineSpan = valSpan === 0 ? effectiveSpan : effectiveSpan * 1.3;
-
-  const points = data.map((item, idx) => {
-    const x = data.length === 1
-      ? containerWidth / 2
-      : paddingHorizontal + (idx / (data.length - 1)) * chartWidth;
-    const yRatio = baselineSpan > 0 ? (item.value - baselineMin) / baselineSpan : 0.5;
-    const y = paddingTop + chartHeight - Math.max(0, Math.min(1, yRatio)) * chartHeight;
-    return { x, y, item, idx };
-  });
-
-  const activePoint = points[activeIndex] || points[points.length - 1];
-  const larguraTooltip = activePoint.item.dataFormatada ? 88 : 68;
+  const pontos = data.map((item, indice) => ({
+    x: data.length === 1 ? largura / 2 : margem + indice * distancia,
+    y: base - Math.max(0, Math.min(1, (item.value - origem) / amplitude)) * (base - topo),
+    item
+  }));
+  const pontoAtivo = pontos[indiceAtivo];
+  const coordenadas = pontos.map(({ x, y }) => x + ',' + y).join(' ');
+  const contorno = 'M ' + coordenadas + ' L ' + pontos[pontos.length - 1].x + ',' + base + ' L ' + pontos[0].x + ',' + base + ' Z';
+  const larguraAlvo = Math.min(alvo, data.length > 1 ? distancia : largura);
+  const formatarPonto = (ponto: ChartDataPoint) => ponto.formatted || (ponto.value + ' ' + unidade).trim();
 
   return (
-    <View style={[styles.container, { height }]} onLayout={onLayout} testID="evolucao-line-chart">
-      {/* Background horizontal guide lines */}
-      <View style={[styles.guideLine, { top: paddingTop }]} />
-      <View style={[styles.guideLine, { top: paddingTop + chartHeight / 2 }]} />
-      <View style={[styles.guideLine, { top: paddingTop + chartHeight }]} />
-
-      {/* Area fills under segments */}
-      {points.length > 1 &&
-        points.slice(0, points.length - 1).map((p1, idx) => {
-          const p2 = points[idx + 1];
-          const sliceWidth = p2.x - p1.x;
-          const avgY = (p1.y + p2.y) / 2;
-          const sliceHeight = paddingTop + chartHeight - avgY;
-          return (
-            <View
-              key={`fill-${idx}`}
-              style={[
-                styles.areaSlice,
-                {
-                  left: p1.x,
-                  top: avgY,
-                  width: sliceWidth,
-                  height: Math.max(0, sliceHeight),
-                  backgroundColor: `${cor}15`
-                }
-              ]}
-            />
-          );
-        })}
-
-      {/* Connected line segments */}
-      {points.length > 1 &&
-        points.slice(0, points.length - 1).map((p1, idx) => {
-          const p2 = points[idx + 1];
-          const dx = p2.x - p1.x;
-          const dy = p2.y - p1.y;
-          const length = Math.hypot(dx, dy);
-          const angleRad = Math.atan2(dy, dx);
-          const angleDeg = (angleRad * 180) / Math.PI;
-          const midX = (p1.x + p2.x) / 2;
-          const midY = (p1.y + p2.y) / 2;
-          const strokeWidth = 2.5;
-
-          return (
-            <View
-              key={`seg-${idx}`}
-              style={[
-                styles.lineSegment,
-                {
-                  width: length,
-                  height: strokeWidth,
-                  backgroundColor: cor,
-                  left: midX - length / 2,
-                  top: midY - strokeWidth / 2,
-                  transform: [{ rotate: `${angleDeg}deg` }]
-                }
-              ]}
-            />
-          );
-        })}
-
-      {/* Points and hitboxes */}
-      {points.map((p) => {
-        const isSelected = p.idx === activeIndex;
-        return (
-          <Pressable
-            key={`pt-${p.idx}`}
-            onPress={() => setSelectedIdx(p.idx)}
-            style={[styles.touchTarget, { left: p.x - 16, top: p.y - 16 }]}
-            accessibilityRole="button"
-            accessibilityLabel={`${p.item.dataFormatada || p.item.label}: ${p.item.formatted || p.item.value}`}
-          >
-            <View
-              style={[
-                styles.dot,
-                {
-                  borderColor: cor,
-                  backgroundColor: isSelected ? cor : '#ffffff'
-                },
-                isSelected && styles.dotSelected
-              ]}
-            >
-              {isSelected && <View style={styles.dotInner} />}
-            </View>
-          </Pressable>
-        );
-      })}
-
-      {/* Floating active tooltip */}
-      {activePoint && (
-        <View
-          style={[
-            styles.tooltip,
-            {
-              minWidth: larguraTooltip,
-              left: Math.max(8, Math.min(containerWidth - larguraTooltip - 8, activePoint.x - larguraTooltip / 2)),
-              top: Math.max(2, activePoint.y - paddingTop),
-              borderColor: cor
-            }
-          ]}
-          pointerEvents="none"
-        >
-          {activePoint.item.dataFormatada ? (
-            <Text style={[styles.tooltipText, { color: cor }]}>{activePoint.item.dataFormatada}</Text>
-          ) : null}
-          <Text style={[styles.tooltipText, { color: cor }]}>
-            {activePoint.item.formatted || `${activePoint.item.value} ${unidade}`.trim()}
-          </Text>
-        </View>
-      )}
-
-      {/* Bottom X-axis labels */}
-      <View style={styles.labelsContainer}>
-        {points.map((p) => (
-          <View key={`lbl-${p.idx}`} style={[styles.labelWrapper, { left: p.x - 24 }]}>
-            <Text
-              style={[
-                styles.label,
-                p.idx === activeIndex && { color: cor, fontWeight: '700' }
-              ]}
-              numberOfLines={1}
-            >
-              {p.item.label}
-            </Text>
+    <View style={styles.container} onLayout={onLayout} testID="evolucao-line-chart">
+      <View style={styles.leitura} aria-live="polite" accessibilityLiveRegion="polite">
+        {pontoAtivo.item.dataFormatada ? <Text style={styles.data}>{pontoAtivo.item.dataFormatada}</Text> : null}
+        <Text style={[styles.valor, { color: cor }]}>{formatarPonto(pontoAtivo.item)}</Text>
+      </View>
+      <View style={styles.area}>
+        <View style={{ height }}>
+          <View style={styles.tracado} aria-hidden>
+            <Svg width={largura} height={height}>
+              {[topo, (topo + base) / 2, base].map((y) => (
+                <Line key={y} x1={margem} x2={largura - margem} y1={y} y2={y} stroke={colors.border} strokeDasharray="4 4" />
+              ))}
+              <Line x1={pontoAtivo.x} x2={pontoAtivo.x} y1={topo} y2={base} stroke={cor} strokeOpacity={0.3} />
+              {pontos.length > 1 && (
+                <>
+                  <Path d={contorno} fill={cor} fillOpacity={0.08} />
+                  <Polyline points={coordenadas} fill="none" stroke={cor} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+                </>
+              )}
+            </Svg>
           </View>
-        ))}
+
+          {pontos.map(({ x, y, item }, indice) => {
+            const ativo = indice === indiceAtivo;
+            return (
+              <Pressable
+                key={indice}
+                onPress={() => setSelecionado(indice)}
+                style={({ pressed }) => [
+                  styles.alvo, { left: x - larguraAlvo / 2, top: y - alvo / 2, width: larguraAlvo, height: alvo },
+                  pressed && styles.pressionado
+                ]}
+                tabIndex={interativo ? 0 : -1}
+                accessibilityRole="button"
+                accessibilityState={{ selected: ativo }}
+                {...(Platform.OS === 'web' && { 'aria-pressed': ativo })}
+                accessibilityLabel={(item.dataFormatada || item.label) + ': ' + formatarPonto(item)}
+              >
+                <View style={[styles.ponto, { borderColor: cor }, ativo && [styles.pontoAtivo, { backgroundColor: cor }]]} aria-hidden>
+                  {ativo && <View style={styles.centroPonto} />}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={[styles.rotulos, { height: 24 * Math.max(1, fontScale) }]} aria-hidden>
+          {pontos.map(({ x, item }, indice) => {
+            const ultimo = pontos.length - 1;
+            const exibir = indice === ultimo || (indice % passoRotulos === 0 && (ultimo - indice) * distancia >= rotuloLargura);
+            if (!exibir) return null;
+            return (
+              <Text
+                key={indice}
+                style={[styles.rotulo, { left: x - rotuloLargura / 2, width: rotuloLargura }, indice === indiceAtivo && { color: cor }]}
+                numberOfLines={1}
+              >
+                {item.label}
+              </Text>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-    position: 'relative',
-    overflow: 'hidden'
+  container: { width: '100%', gap: spacing.xs },
+  leitura: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: spacing.xs },
+  data: { color: colors.textSecondary, fontFamily: fontFamily.semibold, fontSize: 13, lineHeight: 19, fontVariant: ['tabular-nums'] },
+  valor: { fontFamily: fontFamily.extrabold, fontSize: 15, lineHeight: 21, fontVariant: ['tabular-nums'] },
+  area: { borderRadius: radius.md, backgroundColor: colors.page },
+  tracado: { ...StyleSheet.absoluteFill, pointerEvents: 'none' },
+  alvo: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  pressionado: { opacity: 0.75 },
+  ponto: {
+    width: 10, height: 10, borderRadius: radius.pill, borderWidth: 2, backgroundColor: colors.card,
+    alignItems: 'center', justifyContent: 'center'
   },
-  emptyContainer: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center'
+  pontoAtivo: { width: 16, height: 16 },
+  centroPonto: { width: 5, height: 5, borderRadius: radius.pill, backgroundColor: colors.white },
+  rotulos: { position: 'relative' },
+  rotulo: {
+    position: 'absolute', textAlign: 'center', color: colors.textSecondary, fontFamily: fontFamily.semibold, fontSize: 12, lineHeight: 18
   },
-  emptyText: {
-    color: '#94a3b8',
-    fontSize: 13
-  },
-  guideLine: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    height: 1,
-    backgroundColor: '#f1f5f9'
-  },
-  areaSlice: {
-    position: 'absolute'
-  },
-  lineSegment: {
-    position: 'absolute',
-    borderRadius: 2
-  },
-  touchTarget: {
-    position: 'absolute',
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 3
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  dotSelected: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2.5
-  },
-  dotInner: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#ffffff'
-  },
-  tooltip: {
-    position: 'absolute',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: '#ffffff',
-    borderRadius: 999,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 5,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3
-  },
-  tooltipText: {
-    fontSize: 11,
-    fontWeight: '700'
-  },
-  labelsContainer: {
-    position: 'absolute',
-    bottom: 2,
-    left: 0,
-    right: 0,
-    height: 20
-  },
-  labelWrapper: {
-    position: 'absolute',
-    width: 48,
-    alignItems: 'center'
-  },
-  label: {
-    fontSize: 11,
-    color: '#64748b'
-  }
+  emptyContainer: { backgroundColor: colors.page, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', padding: spacing.md },
+  emptyText: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 21, textAlign: 'center' }
 });
-
