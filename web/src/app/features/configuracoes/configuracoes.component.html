@@ -94,17 +94,7 @@
 
     @if (preferencias.lembretesConsulta) {
       <div class="consultas" [attr.aria-busy]="carregando()">
-        <div class="consultas__cabecalho">
-          <h3>Consultas de hoje</h3>
-          <app-ui-button
-            label="Atualizar"
-            icon="arrow-clockwise"
-            variant="secondary"
-            [fullWidth]="false"
-            [loading]="carregando()"
-            (click)="carregar()"
-          />
-        </div>
+        <h3>Consultas de hoje</h3>
         @if (carregando()) {
           <p class="estado" role="status">Carregando consultas…</p>
         } @else if (erro()) {

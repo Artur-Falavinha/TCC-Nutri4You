@@ -50,7 +50,7 @@ h3 { font-size: 1rem; }
 .secundario, .estado { color: var(--color-text-secondary); line-height: 1.5; }
 .acao + .acao, .consultas__lista li + li { border-top: 1px solid var(--color-border-default); }
 
-.acao, .preferencia, .consultas__cabecalho {
+.acao, .preferencia {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
