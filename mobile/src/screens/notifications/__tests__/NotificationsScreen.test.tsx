@@ -6,7 +6,7 @@ import { getToken } from '../../../core/auth/token-storage';
 import { carregarPerfil } from '../../../core/perfil/perfil.service';
 import { gravarVistas, lerVistas } from '../../../features/notificacoes/leitura-storage';
 import { NotificacoesProvider, useNotificacoes } from '../../../features/notificacoes/NotificacoesProvider';
-import { listarAvisosConsulta } from '../../../features/notificacoes/notificacoes.service';
+import { listarAvisosConsulta, listarAvisosPlanos } from '../../../features/notificacoes/notificacoes.service';
 
 import { listAppointments } from '../../../features/appointments/appointments.service';
 import { NotificationsScreen } from '../NotificationsScreen';
@@ -14,7 +14,11 @@ import { NotificationsScreen } from '../NotificationsScreen';
 jest.mock('../../../core/auth/token-storage', () => ({ getToken: jest.fn() }));
 jest.mock('../../../core/perfil/perfil.service', () => ({ carregarPerfil: jest.fn() }));
 jest.mock('../../../features/notificacoes/leitura-storage', () => ({ lerVistas: jest.fn(), gravarVistas: jest.fn() }));
-jest.mock('../../../features/notificacoes/notificacoes.service', () => ({ listarAvisosConsulta: jest.fn() }));
+jest.mock('../../../features/notificacoes/notificacoes.service', () => ({
+  ...jest.requireActual('../../../features/notificacoes/notificacoes.service'),
+  listarAvisosConsulta: jest.fn(),
+  listarAvisosPlanos: jest.fn()
+}));
 jest.mock('../../../components/layout/AppHeader', () => ({
   AppHeader: ({ onOpenMenu }: { onOpenMenu: () => void }) => {
     const { View: Botao } = jest.requireActual('react-native');
@@ -54,6 +58,7 @@ describe('NotificationsScreen', () => {
     });
     jest.mocked(lerVistas).mockResolvedValue(new Set());
     jest.mocked(listarAvisosConsulta).mockResolvedValue([]);
+    jest.mocked(listarAvisosPlanos).mockResolvedValue([]);
   });
   afterEach(() => jest.restoreAllMocks());
 
@@ -185,6 +190,24 @@ describe('NotificationsScreen', () => {
     expect(textos).toEqual(expect.arrayContaining(['Consulta cancelada', 'Consulta reagendada', 'Consulta confirmada']));
     expect(tree.root.findByType(Quantidade).findByType(Text).props.children).toBe(0);
     expect(gravarVistas).toHaveBeenCalledWith(2, new Set(['aviso:3', 'aviso:2', 'aviso:1']));
+    await act(async () => tree.unmount());
+  });
+
+  it('mostra o plano publicado e a atualização com destino para Dieta', async () => {
+    const plano = { id: 3, titulo: 'Plano semanal', vigenciaInicio: '2030-01-01',
+      vigenciaFim: '2030-01-07', atualizacao: false, criadaEm: '2029-12-31T10:00:00Z' };
+    jest.mocked(listarAvisosPlanos).mockResolvedValue([
+      { ...plano, id: 4, atualizacao: true, criadaEm: '2029-12-31T11:00:00Z' }, plano
+    ]);
+    appointments.mockResolvedValue([]);
+    const tree = await renderScreen();
+    const textos = tree.root.findAllByType(Text).map(item => item.props.children);
+    expect(textos).toEqual(expect.arrayContaining(['Novo plano alimentar', 'Plano alimentar atualizado', '01/01/2030 a 07/01/2030']));
+    const botao = tree.root.findAllByProps({ accessibilityRole: 'button' })
+      .find(item => item.props.accessibilityLabel?.includes('Abrir dieta'))!;
+    await act(async () => botao.props.onPress());
+    expect(navigation.navigate).toHaveBeenCalledWith('Dieta');
+    expect(gravarVistas).toHaveBeenCalledWith(2, new Set(['plano:4', 'plano:3']));
     await act(async () => tree.unmount());
   });
 });

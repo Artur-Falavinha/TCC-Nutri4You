@@ -8,7 +8,7 @@ import type { Appointment } from '../appointments/appointments.models';
 import { listAppointments } from '../appointments/appointments.service';
 import { chaveLembrete, selecionarLembretes } from './lembretes';
 import { gravarVistas, lerVistas } from './leitura-storage';
-import { listarAvisosConsulta, type AvisoConsulta } from './notificacoes.service';
+import { chaveAviso, listarAvisosConsulta, listarAvisosPlanos, type AvisoPaciente } from './notificacoes.service';
 
 interface Sessao {
   token: string;
@@ -18,7 +18,7 @@ interface Sessao {
 }
 
 interface DadosNotificacoes {
-  avisos: AvisoConsulta[];
+  avisos: AvisoPaciente[];
   lembretes: Appointment[];
   quantidade: number;
   nome: string;
@@ -78,14 +78,19 @@ export function NotificacoesProvider({ children, rota }: PropsWithChildren<{ rot
         sessaoAtual.current = sessao;
       }
 
-      const [consultas, avisos] = await Promise.all([listAppointments(), listarAvisosConsulta()]);
+      const [consultas, avisosConsultas, avisosPlanos] = await Promise.all([
+        listAppointments(), listarAvisosConsulta(), listarAvisosPlanos()
+      ]);
       if (!vigente()) return;
-      const statusNotificados = new Set(avisos.map(({ consultaId, tipo }) =>
+      const avisos = [...avisosConsultas, ...avisosPlanos]
+        .sort((a, b) => Date.parse(b.criadaEm) - Date.parse(a.criadaEm))
+        .slice(0, 50);
+      const statusNotificados = new Set(avisosConsultas.map(({ consultaId, tipo }) =>
         consultaId + ':' + (tipo === 'REAGENDADA' ? 'CONFIRMADA' : tipo)
       ));
       const lembretes = selecionarLembretes(consultas ?? [], new Date(Date.now()))
         .filter(({ id, status }) => !statusNotificados.has(id + ':' + status));
-      const chaves = new Set([...avisos.map(({ id }) => 'aviso:' + id), ...lembretes.map(chaveLembrete)]);
+      const chaves = new Set([...avisos.map(chaveAviso), ...lembretes.map(chaveLembrete)]);
       const quantidade = [...chaves].filter(chave => !sessao.vistas.has(chave)).length;
       if (telaAberta && (quantidade > 0 || chaves.size !== sessao.vistas.size)) {
         sessao.vistas = chaves;

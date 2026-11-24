@@ -56,6 +56,7 @@ public class PrescricaoService {
     private final ListaComprasRepository listas;
     private final EntityManager entityManager;
     private final Clock relogio;
+    private final NotificacaoPlanoAlimentarService notificacoes;
 
     public PrescricaoService(
             GestaoPacienteService acesso,
@@ -64,7 +65,8 @@ public class PrescricaoService {
             AlimentoRepository alimentos,
             ListaComprasRepository listas,
             EntityManager entityManager,
-            Clock relogio) {
+            Clock relogio,
+            NotificacaoPlanoAlimentarService notificacoes) {
         this.acesso = acesso;
         this.atendimentos = atendimentos;
         this.planos = planos;
@@ -72,6 +74,7 @@ public class PrescricaoService {
         this.listas = listas;
         this.entityManager = entityManager;
         this.relogio = relogio;
+        this.notificacoes = notificacoes;
     }
 
     public List<PlanoDTO> listar(Nutricionista autor, Integer pacienteId, Integer atendimentoId) {
@@ -144,8 +147,11 @@ public class PrescricaoService {
             throw new PlanoConflitoException(
                     "Já existe um plano publicado com vigência sobreposta para este paciente.");
         }
+        boolean atualizacao = planos.existsByPaciente_IdAndNutricionista_IdAndPublicadoEmIsNotNull(pacienteId, autor.getId());
         plano.publicar();
-        return resposta(planos.saveAndFlush(plano));
+        PlanoAlimentar publicado = planos.saveAndFlush(plano);
+        notificacoes.registrar(publicado, atualizacao);
+        return resposta(publicado);
     }
 
     public PlanoDTO ativo(Paciente paciente) {

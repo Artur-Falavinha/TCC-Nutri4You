@@ -16,8 +16,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../../components/layout/AppHeader';
 import { SideMenu } from '../../components/navigation/SideMenu';
 import { sectionCardStyles } from '../../components/layout/SectionCardHeader';
-import { formatarDataHoraCivil } from '../../core/utils/date-mask.util';
+import { formatarDataCivil, formatarDataHoraCivil } from '../../core/utils/date-mask.util';
 import { useNotificacoes } from '../../features/notificacoes/NotificacoesProvider';
+import { chaveAviso } from '../../features/notificacoes/notificacoes.service';
 import { RootStackParamList } from '../../navigation/types';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 
@@ -56,7 +57,7 @@ export function NotificationsScreen({ navigation }: Props) {
       >
         <View style={styles.introducao}>
           <Text style={styles.titulo} accessibilityRole="header" aria-level={1}>Notificações</Text>
-          <Text style={styles.subtitulo}>Atualizações e lembretes das suas consultas</Text>
+          <Text style={styles.subtitulo}>Atualizações da sua agenda e do plano alimentar</Text>
         </View>
 
         {carregando ? (
@@ -94,20 +95,25 @@ export function NotificationsScreen({ navigation }: Props) {
               <Text style={[styles.tituloCartao, styles.centralizado]} accessibilityRole="header" aria-level={2}>
                 Tudo em dia
               </Text>
-              <Text style={[styles.texto, styles.centralizado]}>As atualizações e os lembretes das suas consultas aparecem aqui.</Text>
+              <Text style={[styles.texto, styles.centralizado]}>Os avisos sobre consultas e dieta aparecem aqui.</Text>
             </View>
           </View>
         ) : null}
 
         {pronto && avisos.length > 0 ? <Text style={styles.tituloCartao} accessibilityRole="header" aria-level={2}>Atualizações recentes</Text> : null}
-        {pronto ? avisos.map(({ id, tipo, dataHora }) => (
-          <CartaoNotificacao key={'aviso:' + id} tipo={tipo} dataHora={dataHora} onAbrirAgenda={abrirAgenda} />
+        {pronto ? avisos.map(aviso => 'atualizacao' in aviso ? (
+          <CartaoNotificacao key={chaveAviso(aviso)} tipo={aviso.atualizacao ? 'PLANO_ATUALIZADO' : 'NOVO_PLANO'}
+            data={formatarDataCivil(aviso.vigenciaInicio) + ' a ' + formatarDataCivil(aviso.vigenciaFim)}
+            detalhe={aviso.titulo} destino="Dieta" onAbrir={() => navigation.navigate('Dieta')} />
+        ) : (
+          <CartaoNotificacao key={chaveAviso(aviso)} tipo={aviso.tipo}
+            data={formatarDataHoraCivil(aviso.dataHora)} onAbrir={abrirAgenda} />
         )) : null}
         {pronto && lembretes.length > 0 ? <Text style={styles.tituloCartao} accessibilityRole="header" aria-level={2}>Status das consultas</Text> : null}
         {pronto ? lembretes.map(({ id, status, dataHora }) => (
           <CartaoNotificacao key={'lembrete:' + id}
             tipo={status === 'CONFIRMADA' || status === 'RECUSADA' ? status : 'AGUARDANDO_CONFIRMACAO'}
-            dataHora={dataHora} onAbrirAgenda={abrirAgenda} />
+            data={formatarDataHoraCivil(dataHora)} onAbrir={abrirAgenda} />
         )) : null}
       </ScrollView>
     </SafeAreaView>
@@ -115,6 +121,14 @@ export function NotificationsScreen({ navigation }: Props) {
 }
 
 const apresentacoes = {
+  NOVO_PLANO: {
+    titulo: 'Novo plano alimentar', icone: 'book-open', cor: colors.brandDark,
+    fundo: colors.confirmedBackground, detalhe: ''
+  },
+  PLANO_ATUALIZADO: {
+    titulo: 'Plano alimentar atualizado', icone: 'book-open', cor: colors.brandDark,
+    fundo: colors.confirmedBackground, detalhe: ''
+  },
   RECUSADA: {
     titulo: 'Consulta recusada',
     icone: 'x-circle',
@@ -159,17 +173,24 @@ const apresentacoes = {
   }
 } as const;
 
-type CartaoProps = { tipo: keyof typeof apresentacoes; dataHora: string; onAbrirAgenda: () => void };
+type CartaoProps = {
+  tipo: keyof typeof apresentacoes;
+  data: string;
+  detalhe?: string;
+  destino?: 'Agenda' | 'Dieta';
+  onAbrir: () => void;
+};
 
-function CartaoNotificacao({ tipo, dataHora, onAbrirAgenda }: CartaoProps) {
+function CartaoNotificacao({ tipo, data, detalhe, destino = 'Agenda', onAbrir }: CartaoProps) {
   const apresentacao = apresentacoes[tipo];
-  const data = formatarDataHoraCivil(dataHora);
-  const rotulo = [apresentacao.titulo, data, apresentacao.detalhe, 'Abrir agenda'].filter(Boolean).join('. ');
+  const descricao = detalhe ?? apresentacao.detalhe;
+  const area = destino.toLowerCase();
+  const rotulo = [apresentacao.titulo, data, descricao, 'Abrir ' + area].filter(Boolean).join('. ');
 
   return (
     <Pressable
       style={({ pressed }) => [sectionCardStyles.superficie, pressed && styles.pressionado]}
-      onPress={onAbrirAgenda}
+      onPress={onAbrir}
       accessibilityRole="button"
       accessibilityLabel={rotulo}
     >
@@ -182,9 +203,9 @@ function CartaoNotificacao({ tipo, dataHora, onAbrirAgenda }: CartaoProps) {
           <Text style={styles.data}>{data}</Text>
         </View>
       </View>
-      {apresentacao.detalhe ? <Text style={styles.texto}>{apresentacao.detalhe}</Text> : null}
+      {descricao ? <Text style={styles.texto}>{descricao}</Text> : null}
       <View style={styles.acaoCartao}>
-        <Text style={styles.acaoTexto}>Ver agenda</Text>
+        <Text style={styles.acaoTexto}>Ver {area}</Text>
         <Feather name="arrow-right" size={18} color={colors.brandDark} aria-hidden />
       </View>
     </Pressable>

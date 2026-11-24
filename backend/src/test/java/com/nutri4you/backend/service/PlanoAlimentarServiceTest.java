@@ -1,9 +1,11 @@
 package com.nutri4you.backend.service;
 
 import com.nutri4you.backend.dto.PrescricaoDTO.*;
+import com.nutri4you.backend.dto.NotificacaoPlanoAlimentarDTO;
 import com.nutri4you.backend.exception.*;
 import com.nutri4you.backend.model.*;
 import com.nutri4you.backend.support.ClinicalServiceTestSupport;
+import com.nutri4you.backend.support.TestDataFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.math.BigDecimal;
@@ -15,6 +17,7 @@ class PlanoAlimentarServiceTest extends ClinicalServiceTestSupport {
     @Autowired PrescricaoService service;
     @Autowired GestaoPacienteService gestao;
     @Autowired ConsumoRefeicaoService consumo;
+    @Autowired NotificacaoPlanoAlimentarService notificacoes;
     private PlanoRequest dados(LocalDate inicio, LocalDate fim, Long versao) {
         var alimento = alimentos.saveAndFlush(new Alimento("Feijão", BigDecimal.valueOf(100), BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ONE));
         return new PlanoRequest("Plano semanal", null, inicio, fim, new Nutrientes(BigDecimal.ONE, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.TEN), versao,
@@ -23,6 +26,21 @@ class PlanoAlimentarServiceTest extends ClinicalServiceTestSupport {
     private PlanoDTO publicado(LocalDate inicio, LocalDate fim) {
         var p = service.criar(nutri, paciente.getId(), null, dados(inicio, fim, null));
         return service.publicar(nutri, paciente.getId(), null, p.id(), p.versao());
+    }
+
+    @Test void avisaAoPublicarEIdentificaAtualizacaoApenasParaOPacienteDoPlano() {
+        var inicio = hoje();
+        var rascunho = service.criar(nutri, paciente.getId(), null, dados(inicio, inicio.plusDays(3), null));
+        assertThat(notificacoes.listar(paciente)).isEmpty();
+
+        service.publicar(nutri, paciente.getId(), null, rascunho.id(), rascunho.versao());
+        publicado(inicio.plusDays(4), inicio.plusDays(8));
+
+        assertThat(notificacoes.listar(paciente)).extracting(NotificacaoPlanoAlimentarDTO::atualizacao)
+                .containsExactly(true, false);
+        assertThat(notificacoes.listar(paciente)).extracting(NotificacaoPlanoAlimentarDTO::vigenciaInicio)
+                .containsExactly(inicio.plusDays(4), inicio);
+        assertThat(notificacoes.listar(pacientes.save(TestDataFactory.outroPaciente(encoder)))).isEmpty();
     }
 
     @Test void desvinculoPreservaPlanoVigenteParaPacienteMasBloqueiaNutricionista() {

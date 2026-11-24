@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PlanoAlimentarRepository extends JpaRepository<PlanoAlimentar, Integer> {
+    boolean existsByPaciente_IdAndNutricionista_IdAndPublicadoEmIsNotNull(Integer pacienteId, Integer nutricionistaId);
+
     List<PlanoAlimentar> findByPaciente_IdOrderByIdDesc(Integer pacienteId);
     List<PlanoAlimentar> findByPaciente_IdAndStatus(Integer pacienteId, String status);
     Optional<PlanoAlimentar> findByIdAndPaciente_IdAndNutricionista_IdAndStatusNot(

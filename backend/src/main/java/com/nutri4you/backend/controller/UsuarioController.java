@@ -7,6 +7,7 @@ import com.nutri4you.backend.dto.DashboardPacienteDTO;
 import com.nutri4you.backend.dto.HistoricoResponse;
 import com.nutri4you.backend.dto.MensagemResponse;
 import com.nutri4you.backend.dto.NutricionistaVinculoDTO;
+import com.nutri4you.backend.dto.NotificacaoPlanoAlimentarDTO;
 import com.nutri4you.backend.dto.PacientePerfilDTO;
 import com.nutri4you.backend.dto.PacienteUpdateDTO;
 import com.nutri4you.backend.dto.PreferenciaLembreteConsultaDTO;
@@ -16,6 +17,7 @@ import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.service.ClinicoService;
 import com.nutri4you.backend.service.GestaoPacienteService;
+import com.nutri4you.backend.service.NotificacaoPlanoAlimentarService;
 import com.nutri4you.backend.service.PerfilPacienteService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -36,14 +38,17 @@ public class UsuarioController {
     private final GestaoPacienteService gestaoPacienteService;
     private final PerfilPacienteService perfilPacienteService;
     private final ClinicoService clinicoService;
+    private final NotificacaoPlanoAlimentarService notificacoesPlanos;
 
     public UsuarioController(
             GestaoPacienteService gestaoPacienteService,
             PerfilPacienteService perfilPacienteService,
-            ClinicoService clinicoService) {
+            ClinicoService clinicoService,
+            NotificacaoPlanoAlimentarService notificacoesPlanos) {
         this.gestaoPacienteService = gestaoPacienteService;
         this.perfilPacienteService = perfilPacienteService;
         this.clinicoService = clinicoService;
+        this.notificacoesPlanos = notificacoesPlanos;
     }
 
     @GetMapping("/me")
@@ -84,6 +89,11 @@ public class UsuarioController {
     public ApiResponse<PreferenciaLembreteConsultaDTO> lembretesConsulta(Authentication auth) {
         return ApiResponse.ok(new PreferenciaLembreteConsultaDTO(paciente(auth).recebeLembretesConsulta()),
                 "Preferência de lembretes carregada.");
+    }
+
+    @GetMapping("/me/notificacoes-planos")
+    public ApiResponse<List<NotificacaoPlanoAlimentarDTO>> notificacoesPlanos(Authentication auth) {
+        return ApiResponse.ok(notificacoesPlanos.listar(paciente(auth)), "Notificações de planos carregadas.");
     }
 
     @PutMapping("/me/lembretes-consulta")
