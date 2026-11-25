@@ -12,16 +12,18 @@ import {
   TouchableOpacity,
   Platform,
   StyleSheet,
-  ActivityIndicator,
   Modal,
   Pressable,
   Linking,
   type LayoutRectangle
 } from 'react-native';
 
+import { AuthFormButton } from '../components/auth/AuthFormButton';
 import { AuthScreenLayout } from '../components/auth/AuthScreenLayout';
 import { ConfirmarEmailCadastro } from '../components/auth/ConfirmarEmailCadastro';
 import { authFormStyles } from '../components/auth/authFormStyles';
+import { recuperacaoSenhaStyles as formulario } from '../components/auth/recuperacaoSenhaStyles';
+import { SectionCardHeader, sectionCardStyles } from '../components/layout/SectionCardHeader';
 import { toast } from '../components/feedback/toast';
 import { autocadastrarPaciente } from '../core/auth/auth.service';
 import type { ComprovanteCadastro } from '../core/auth/auth.models';
@@ -39,6 +41,8 @@ import {
 } from '../core/utils/date-mask.util';
 import { formatPhoneDisplay, normalizePhone } from '../core/utils/phone-mask.util';
 import type { RootStackParamList } from '../navigation/types';
+import { colors, fontFamily, radius, spacing } from '../theme/tokens';
+import { perfilStyles } from './home/perfil.styles';
 
 const SEXO_OPTIONS = [
   { label: 'Masculino', value: 'Masculino' },
@@ -176,88 +180,109 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
   return (
     <>
       <AuthScreenLayout>
-        <View style={authFormStyles.card}>
-          <View style={authFormStyles.header}>
-            <Text style={authFormStyles.title} accessibilityRole="header">Crie sua conta</Text>
-            <Text style={authFormStyles.description}>E-mail confirmado: {email}</Text>
+        <View style={sectionCardStyles.superficie}>
+          <View style={formulario.cabecalho}>
+            <SectionCardHeader icone="user-plus" titulo="Complete seu cadastro" />
+            <Text style={authFormStyles.etapa}>Cadastro · 3 de 3</Text>
           </View>
 
-          <View style={authFormStyles.inputGroup}>
-            <Text style={authFormStyles.label}>NOME COMPLETO *</Text>
-            <View style={authFormStyles.inputContainer}>
-              <Feather name="user" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+          <View style={formulario.campo}>
+            <Text style={formulario.rotulo}>E-mail confirmado</Text>
+            <View style={[formulario.controle, authFormStyles.somenteLeitura]}>
+              <Feather name="check-circle" size={18} color={colors.brandDark} aria-hidden />
+              <Text style={authFormStyles.valorSomenteLeitura}>{email}</Text>
+            </View>
+          </View>
+
+          <View style={formulario.campo}>
+            <Text style={formulario.rotulo}>Nome completo *</Text>
+            <View style={formulario.controle}>
+              <Feather name="user" size={18} color={colors.textSecondary} aria-hidden />
               <TextInput
-                style={authFormStyles.input}
-                placeholder="Seu Nome"
-                placeholderTextColor="#94a3b8"
+                style={formulario.entrada}
+                placeholder="Seu nome"
+                accessibilityLabel="Nome completo"
+                autoComplete="name"
+                placeholderTextColor={colors.textSecondary}
                 value={nome}
                 onChangeText={setNome}
               />
             </View>
           </View>
 
-          <View style={authFormStyles.inputGroup}>
-            <Text style={authFormStyles.label}>SENHA *</Text>
-            <View style={authFormStyles.inputContainer}>
-              <Feather name="lock" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+          <View style={formulario.campo}>
+            <Text style={formulario.rotulo}>Senha *</Text>
+            <View style={[formulario.controle, authFormStyles.controleComVisibilidade]}>
+              <Feather name="lock" size={18} color={colors.textSecondary} aria-hidden />
               <TextInput
-                style={authFormStyles.input}
+                style={formulario.entrada}
                 placeholder="Mínimo 8 caracteres"
-                placeholderTextColor="#94a3b8"
+                accessibilityLabel="Senha"
+                autoComplete="new-password"
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholderTextColor={colors.textSecondary}
                 secureTextEntry={!senhaVisivel}
                 value={senha}
                 onChangeText={setSenha}
               />
-              <TouchableOpacity
-                style={styles.iconRight}
+              <Pressable
+                style={({ pressed }) => [authFormStyles.visibilidade, pressed && perfilStyles.pressionado]}
                 onPress={() => setSenhaVisivel((visivel) => !visivel)}
                 accessibilityRole="button"
                 accessibilityLabel={senhaVisivel ? 'Ocultar senha' : 'Mostrar senha'}
               >
                 <Feather
                   name={senhaVisivel ? 'eye-off' : 'eye'}
-                  size={20}
-                  color="#64748b"
+                  size={18}
+                  color={colors.brandDark}
+                  aria-hidden
                 />
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
 
-          <View style={authFormStyles.inputGroup}>
-            <Text style={authFormStyles.label}>CONFIRMAR SENHA *</Text>
-            <View style={authFormStyles.inputContainer}>
-              <Feather name="lock" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+          <View style={formulario.campo}>
+            <Text style={formulario.rotulo}>Confirmar senha *</Text>
+            <View style={[formulario.controle, authFormStyles.controleComVisibilidade]}>
+              <Feather name="lock" size={18} color={colors.textSecondary} aria-hidden />
               <TextInput
-                style={authFormStyles.input}
+                style={formulario.entrada}
                 placeholder="Repita a senha"
-                placeholderTextColor="#94a3b8"
+                accessibilityLabel="Confirmar senha"
+                autoComplete="new-password"
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholderTextColor={colors.textSecondary}
                 secureTextEntry={!confirmacaoSenhaVisivel}
                 value={confirmarSenha}
                 onChangeText={setConfirmarSenha}
               />
-              <TouchableOpacity
-                style={styles.iconRight}
+              <Pressable
+                style={({ pressed }) => [authFormStyles.visibilidade, pressed && perfilStyles.pressionado]}
                 onPress={() => setConfirmacaoSenhaVisivel((visivel) => !visivel)}
                 accessibilityRole="button"
                 accessibilityLabel={confirmacaoSenhaVisivel ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
               >
                 <Feather
                   name={confirmacaoSenhaVisivel ? 'eye-off' : 'eye'}
-                  size={20}
-                  color="#64748b"
+                  size={18}
+                  color={colors.brandDark}
+                  aria-hidden
                 />
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
 
-          <View style={authFormStyles.inputGroup}>
-            <Text style={authFormStyles.label}>CPF</Text>
-            <View style={authFormStyles.inputContainer}>
-              <Feather name="credit-card" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+          <View style={formulario.campo}>
+            <Text style={formulario.rotulo}>CPF</Text>
+            <View style={formulario.controle}>
+              <Feather name="credit-card" size={18} color={colors.textSecondary} aria-hidden />
               <TextInput
-                style={authFormStyles.input}
+                style={formulario.entrada}
                 placeholder="000.000.000-00"
-                placeholderTextColor="#94a3b8"
+                accessibilityLabel="CPF"
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
                 maxLength={14}
                 value={cpf}
@@ -266,14 +291,16 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
             </View>
           </View>
 
-          <View style={authFormStyles.inputGroup}>
-            <Text style={authFormStyles.label}>TELEFONE</Text>
-            <View style={authFormStyles.inputContainer}>
-              <Feather name="phone" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+          <View style={formulario.campo}>
+            <Text style={formulario.rotulo}>Telefone</Text>
+            <View style={formulario.controle}>
+              <Feather name="phone" size={18} color={colors.textSecondary} aria-hidden />
               <TextInput
-                style={authFormStyles.input}
+                style={formulario.entrada}
                 placeholder="(00) 00000-0000"
-                placeholderTextColor="#94a3b8"
+                accessibilityLabel="Telefone"
+                autoComplete="tel"
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="phone-pad"
                 maxLength={15}
                 value={telefone}
@@ -283,12 +310,12 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
           </View>
 
           <View
-            style={authFormStyles.inputGroup}
+            style={formulario.campo}
             onLayout={(evento) => setAreaCampoSexo(evento.nativeEvent.layout)}
           >
-            <Text style={authFormStyles.label}>SEXO</Text>
+            <Text style={formulario.rotulo}>Sexo</Text>
             <TouchableOpacity
-              style={authFormStyles.inputContainer}
+              style={formulario.controle}
               onPress={() => setSeletorSexoAberto((aberto) => !aberto)}
               activeOpacity={0.8}
               accessibilityRole="button"
@@ -297,7 +324,7 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
             >
               <Text
                 style={[
-                  authFormStyles.input,
+                  formulario.entrada,
                   styles.selectValue,
                   sexo === null && styles.selectPlaceholder
                 ]}
@@ -305,7 +332,7 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
               >
                 {sexoLabel}
               </Text>
-              <Feather name={seletorSexoAberto ? 'chevron-up' : 'chevron-down'} size={20} color="#64748b" />
+              <Feather name={seletorSexoAberto ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textSecondary} aria-hidden />
             </TouchableOpacity>
           </View>
 
@@ -339,19 +366,19 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
                     <Text style={[styles.textoOpcaoSexo, selecionada && styles.textoOpcaoSexoSelecionada]}>
                       {opcao.label}
                     </Text>
-                    {selecionada && <Feather name="check" size={18} color="#006f1e" />}
+                    {selecionada && <Feather name="check" size={18} color={colors.brand} aria-hidden />}
                   </TouchableOpacity>
                 );
               })}
             </View>
           )}
 
-          <View style={authFormStyles.inputGroup}>
-            <Text style={authFormStyles.label}>DATA NASCIMENTO</Text>
-            <View style={authFormStyles.inputContainer}>
+          <View style={formulario.campo}>
+            <Text style={formulario.rotulo}>Data de nascimento</Text>
+            <View style={[formulario.controle, styles.controleData]}>
               {Platform.OS === 'web' ? (
-                <>
-                  <Feather name="calendar" size={20} color="#005414" style={authFormStyles.inputIcon} />
+                <View style={styles.acaoData}>
+                  <Feather name="calendar" size={18} color={colors.brandDark} aria-hidden />
                   {React.createElement('input', {
                     type: 'date',
                     lang: 'pt-BR',
@@ -365,8 +392,8 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
                       position: 'absolute',
                       left: 0,
                       top: 0,
-                      width: 52,
-                      height: 56,
+                      width: '100%',
+                      height: '100%',
                       opacity: 0,
                       cursor: 'pointer',
                       border: 'none',
@@ -374,21 +401,21 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
                     },
                     'aria-label': 'Abrir seletor de data'
                   })}
-                </>
+                </View>
               ) : (
                 <TouchableOpacity
                   onPress={() => setShowDatePicker(true)}
-                  hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                  style={styles.acaoData}
                   accessibilityRole="button"
                   accessibilityLabel="Abrir seletor de data"
                 >
-                  <Feather name="calendar" size={20} color="#005414" style={authFormStyles.inputIcon} />
+                  <Feather name="calendar" size={18} color={colors.brandDark} aria-hidden />
                 </TouchableOpacity>
               )}
               <TextInput
-                style={authFormStyles.input}
+                style={formulario.entrada}
                 placeholder="DD/MM/AAAA"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
                 maxLength={10}
                 accessibilityLabel="Data de nascimento"
@@ -398,42 +425,21 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
             </View>
           </View>
 
-          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`${URL_TERMOS}/${VERSAO_TERMOS}`)
+          <Pressable style={styles.termosLinkArea} accessibilityRole="link" onPress={() => void Linking.openURL(`${URL_TERMOS}/${VERSAO_TERMOS}`)
             .catch(() => toast.aviso('Não foi possível abrir os termos.'))}>
             <Text style={styles.termosLink}>Ler termos de uso e aviso de privacidade (PDF)</Text>
           </Pressable>
           <Pressable style={styles.termosAceite} accessibilityRole="checkbox" accessibilityState={{ checked: aceitouTermos }}
             onPress={() => setAceitouTermos(valor => !valor)}>
             <View style={[styles.termosCheck, aceitouTermos && styles.termosCheckAtivo]}>
-              {aceitouTermos && <Feather name="check" size={15} color="#fff" />}
+              {aceitouTermos && <Feather name="check" size={15} color={colors.white} aria-hidden />}
             </View>
             <Text style={styles.termosTexto}>Li e aceito os termos de uso.</Text>
           </Pressable>
-          <TouchableOpacity
-            style={authFormStyles.button}
-            onPress={handleRegister}
-            disabled={isLoading}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityState={{ busy: isLoading, disabled: isLoading }}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <>
-                <Text style={authFormStyles.buttonText}>Criar conta</Text>
-                <Feather name="arrow-right" size={16} color="#ffffff" />
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={authFormStyles.secondaryAction}
-            onPress={() => navigation.navigate('Login')}
-            accessibilityRole="button"
-          >
-            <Text style={authFormStyles.secondaryActionText}>Já tenho conta</Text>
-          </TouchableOpacity>
+          <View style={formulario.acoes}>
+            <AuthFormButton titulo="Criar conta" icone="arrow-right" ocupado={isLoading} onPress={() => void handleRegister()} />
+            <AuthFormButton titulo="Já tenho conta" icone="arrow-left" variante="texto" onPress={() => navigation.navigate('Login')} />
+          </View>
         </View>
       </AuthScreenLayout>
 
@@ -475,20 +481,20 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
 }
 
 const styles = StyleSheet.create({
-  termosLink: { color: '#006f1e', fontWeight: '700', paddingVertical: 8 },
-  termosAceite: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, marginBottom: 12 },
-  termosCheck: { width: 22, height: 22, borderWidth: 1, borderColor: '#94a3b8', borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
-  termosCheckAtivo: { backgroundColor: '#006f1e', borderColor: '#006f1e' },
-  termosTexto: { flex: 1, color: '#334155', fontSize: 14 },
-  iconRight: {
-    padding: 5
-  },
+  termosLinkArea: { minHeight: 44, justifyContent: 'center' },
+  termosLink: { color: colors.brandDark, fontFamily: fontFamily.bold },
+  termosAceite: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 44 },
+  termosCheck: { width: 22, height: 22, borderWidth: 1, borderColor: colors.textSecondary, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  termosCheckAtivo: { backgroundColor: colors.brand, borderColor: colors.brand },
+  termosTexto: { flex: 1, color: colors.text, fontFamily: fontFamily.regular, fontSize: 14 },
+  controleData: { paddingLeft: 0, gap: spacing.xxs },
+  acaoData: { width: 44, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   selectValue: {
     textAlignVertical: 'center',
-    paddingVertical: 18
+    paddingVertical: spacing.sm
   },
   selectPlaceholder: {
-    color: '#94a3b8'
+    color: colors.textSecondary
   },
   modalBackdrop: {
     flex: 1,
@@ -500,10 +506,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     zIndex: 3,
     elevation: 4,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
+    borderColor: colors.border,
+    borderRadius: radius.md,
     padding: 4
   },
   opcaoSexo: {
@@ -513,22 +519,22 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8
+    borderRadius: radius.sm
   },
   opcaoSexoSelecionada: {
-    backgroundColor: 'rgba(0, 111, 30, 0.08)'
+    backgroundColor: colors.confirmedBackground
   },
   textoOpcaoSexo: {
     flexShrink: 1,
     fontSize: 15,
-    color: '#2d3335'
+    color: colors.text
   },
   textoOpcaoSexoSelecionada: {
     fontWeight: '700',
-    color: '#006f1e'
+    color: colors.brand
   },
   iosPickerCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     marginTop: 'auto'
@@ -538,11 +544,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e2e8f0'
+    borderBottomColor: colors.border
   },
   iosPickerDone: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#006f1e'
+    color: colors.brand
   }
 });
