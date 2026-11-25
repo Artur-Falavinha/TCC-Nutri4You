@@ -1,3 +1,4 @@
+import { File as ExpoFile } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { launchImageLibraryAsync, UIImagePickerPreferredAssetRepresentationMode } from 'expo-image-picker';
 import { Platform } from 'react-native';
@@ -47,11 +48,7 @@ export async function selecionarEEnviarFotoPerfil(): Promise<string | null> {
     }
     const imagem = await contexto.renderAsync();
     const arquivo = await imagem.saveAsync({ format: SaveFormat.JPEG, compress: 0.85 });
-    formulario.append('arquivo', {
-      uri: arquivo.uri,
-      name: 'perfil.jpg',
-      type: 'image/jpeg'
-    } as unknown as Blob);
+    formulario.append('arquivo', new ExpoFile(arquivo.uri));
   }
   return lerFoto(await apiClient.postFormBlob(ROTA, formulario));
 }
