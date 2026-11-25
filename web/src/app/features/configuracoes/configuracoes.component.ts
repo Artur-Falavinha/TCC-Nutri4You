@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ToastService } from '../../core/services/toast.service';
 import { UsuarioInfo } from '../../core/models/auth.models';
@@ -14,7 +13,7 @@ import { PreferenciasEmailAgendaService } from './preferencias-email-agenda.serv
 
 @Component({
   selector: 'app-configuracoes',
-  imports: [RouterLink, PageHeaderComponent, UiButtonComponent, PrivacidadeComponent, FotoPerfilComponent, PerfilContaComponent],
+  imports: [PageHeaderComponent, UiButtonComponent, PrivacidadeComponent, FotoPerfilComponent, PerfilContaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './configuracoes.component.html',
   styleUrl: './configuracoes.component.css'
@@ -31,7 +30,6 @@ export class ConfiguracoesComponent {
   readonly conta = signal<UsuarioInfo | null>(null);
   readonly carregandoConta = signal(true);
   readonly erroConta = signal('');
-  readonly enviandoSenha = signal(false);
 
   constructor() {
     this.carregarConta();
@@ -53,16 +51,6 @@ export class ConfiguracoesComponent {
     const usuario = this.conta();
     if (usuario) this.auth.atualizarUsuario(usuario);
     if (dados.reaceitouTermos) this.privacidade()?.carregarAceite();
-  }
-
-  solicitarRedefinicao(): void {
-    const email = this.conta()?.email;
-    if (!email || this.enviandoSenha()) return;
-    this.enviandoSenha.set(true);
-    this.auth.solicitarRecuperacaoSenha(email).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: mensagem => { this.toast.sucesso(mensagem); this.enviandoSenha.set(false); },
-      error: () => { this.toast.erro('Não foi possível solicitar o link. Tente novamente.'); this.enviandoSenha.set(false); }
-    });
   }
 
   carregarPreferencia(): void {

@@ -8,7 +8,7 @@
     </header>
 
     @if (conta(); as usuario) {
-      <app-foto-perfil [nome]="usuario.nome" [email]="usuario.email" />
+      <app-foto-perfil [nome]="usuario.nome" />
       <app-perfil-conta [emailAtual]="usuario.email" (contaAtualizada)="atualizarConta($event)" />
     } @else if (carregandoConta()) {
       <p class="estado" role="status">Carregando seus dados…</p>
@@ -18,86 +18,50 @@
     }
   </section>
 
-  <section class="card" aria-labelledby="acesso-titulo">
+  <section class="card card--preferencias" aria-labelledby="preferencias-titulo">
     <header class="card__cabecalho">
-      <span class="icone" aria-hidden="true"><i class="ph ph-lock-key"></i></span>
-      <h2 id="acesso-titulo">Acesso e agenda</h2>
+      <span class="icone" aria-hidden="true"><i class="ph ph-sliders-horizontal"></i></span>
+      <h2 id="preferencias-titulo">Preferências</h2>
     </header>
 
-    <div class="acoes">
-      <div class="acao">
-        <div>
-          <h3>Senha da conta</h3>
-          <p class="secundario">Receba um link de redefinição no e-mail da sua conta.</p>
-        </div>
-        <app-ui-button
-          [label]="enviandoSenha() ? 'Enviando…' : 'Enviar link'"
-          icon="envelope-simple"
-          variant="secondary"
-          [fullWidth]="false"
-          [disabled]="!conta()"
-          [loading]="enviandoSenha()"
-          (click)="solicitarRedefinicao()"
-        />
-      </div>
+    <section class="card__secao" id="notificacoes" aria-labelledby="notificacoes-titulo"
+      [attr.aria-busy]="carregandoPreferencia() || salvandoPreferencia()">
+      <h3 id="notificacoes-titulo">Notificações por e-mail</h3>
 
-      <div class="acao">
-        <div>
-          <h3>Horários de atendimento</h3>
-          <p class="secundario">Defina quando pacientes podem solicitar consultas.</p>
-        </div>
-        <a class="botao-link" routerLink="/agenda">
-          Editar horários <i class="ph ph-arrow-right" aria-hidden="true"></i>
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <section class="card" id="notificacoes" aria-labelledby="notificacoes-titulo"
-    [attr.aria-busy]="carregandoPreferencia() || salvandoPreferencia()">
-    <header class="card__cabecalho">
-      <span class="icone" aria-hidden="true"><i class="ph ph-envelope-simple"></i></span>
-      <h2 id="notificacoes-titulo">Notificações por e-mail</h2>
-    </header>
-
-    @if (carregandoPreferencia()) {
-      <p class="estado" role="status">Carregando sua preferência…</p>
-    } @else if (notificacoesAtivas() !== null) {
-      <label class="preferencia" [class.preferencia--salvando]="salvandoPreferencia()">
-        <span class="preferencia__texto">
+      @if (carregandoPreferencia()) {
+        <p class="estado" role="status">Carregando sua preferência…</p>
+      } @else if (notificacoesAtivas() !== null) {
+        <label class="preferencia" [class.preferencia--salvando]="salvandoPreferencia()">
           <strong id="notificacoes-rotulo">Atualizações da agenda</strong>
           <span class="secundario" id="notificacoes-descricao">
             Receba no e-mail da sua conta avisos sobre solicitações, confirmações, reagendamentos, recusas e cancelamentos.
           </span>
-        </span>
-        <span class="interruptor">
-          <input
-            #controleAgenda
-            type="checkbox"
-            role="switch"
-            aria-labelledby="notificacoes-rotulo"
-            aria-describedby="notificacoes-descricao"
-            [checked]="notificacoesAtivas()"
-            [disabled]="salvandoPreferencia()"
-            (change)="salvarPreferencia(controleAgenda)"
-          />
-          <span class="interruptor__trilho" aria-hidden="true"></span>
-          <span class="interruptor__estado" aria-hidden="true">
-            {{ salvandoPreferencia() ? 'Salvando…' : notificacoesAtivas() ? 'Ativado' : 'Desativado' }}
+          <span class="interruptor">
+            <input
+              #controleAgenda
+              type="checkbox"
+              role="switch"
+              aria-labelledby="notificacoes-rotulo"
+              aria-describedby="notificacoes-descricao"
+              [checked]="notificacoesAtivas()"
+              [disabled]="salvandoPreferencia()"
+              (change)="salvarPreferencia(controleAgenda)"
+            />
+            <span class="interruptor__trilho" aria-hidden="true"></span>
+            <span class="interruptor__estado" aria-hidden="true">
+              {{ salvandoPreferencia() ? 'Salvando…' : notificacoesAtivas() ? 'Ativado' : 'Desativado' }}
+            </span>
           </span>
-        </span>
-      </label>
-    } @else {
-      <p class="feedback feedback--erro" role="alert">Não foi possível carregar sua preferência de e-mail.</p>
-      <app-ui-button label="Tentar novamente" variant="secondary" [fullWidth]="false" (click)="carregarPreferencia()" />
-    }
-  </section>
+        </label>
+      } @else {
+        <p class="feedback feedback--erro" role="alert">Não foi possível carregar sua preferência de e-mail.</p>
+        <app-ui-button label="Tentar novamente" variant="secondary" [fullWidth]="false" (click)="carregarPreferencia()" />
+      }
+    </section>
 
-  <section class="card" aria-labelledby="privacidade-titulo">
-    <header class="card__cabecalho">
-      <span class="icone" aria-hidden="true"><i class="ph ph-shield-check"></i></span>
-      <h2 id="privacidade-titulo">Privacidade</h2>
-    </header>
-    <app-privacidade />
+    <section class="card__secao" aria-labelledby="privacidade-titulo">
+      <h3 id="privacidade-titulo">Privacidade</h3>
+      <app-privacidade />
+    </section>
   </section>
 </div>

@@ -1,5 +1,6 @@
-:host { display: block; }
+:host { display: grid; }
 .privacidade, .direitos { display: grid; gap: var(--space-12); }
+.privacidade { grid-template-rows: auto minmax(min-content, 1fr) minmax(min-content, 1fr); }
 
 .acao-privacidade {
   display: grid;
@@ -24,6 +25,7 @@
 
 .aceite {
   display: grid;
+  align-content: center;
   gap: var(--space-8);
   background: var(--config-verde-claro, var(--color-surface-page));
 }
@@ -34,7 +36,14 @@
 .aceite dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .erro { color: #a11919; background: var(--color-error-surface); }
 
-.direitos { gap: var(--space-6); }
+.direitos {
+  align-content: center;
+  gap: var(--space-6);
+  padding: var(--space-12);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-page);
+}
+.direitos h4 { margin: 0; font: 700 1rem / var(--leading-tight) var(--font-heading); }
 .direitos__link { justify-self: start; padding-block: var(--space-8); min-height: 2.75rem; align-content: center; }
 a { color: var(--color-brand-primary-hover); font-weight: 600; text-underline-offset: 3px; }
 a:focus-visible { outline: 2px solid var(--color-brand-primary); outline-offset: 2px; }

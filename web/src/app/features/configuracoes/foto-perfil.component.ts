@@ -13,7 +13,6 @@ import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.c
 })
 export class FotoPerfilComponent {
   readonly nome = input.required<string>();
-  readonly email = input.required<string>();
   protected readonly foto = inject(FotoPerfilService);
   protected readonly remocaoAberta = signal(false);
   private readonly injector = inject(Injector);

@@ -5,8 +5,10 @@ import { finalize } from 'rxjs';
 
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { ApiService } from '../../core/services/api.service';
+import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { TokenStorageService } from '../../core/services/token-storage.service';
+import { DialogoConfirmacaoComponent } from '../../shared/components/dialogo-confirmacao/dialogo-confirmacao.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
 import { UiCheckboxComponent } from '../../shared/components/ui-checkbox/ui-checkbox.component';
 import { UiInputComponent } from '../../shared/components/ui-input/ui-input.component';
@@ -24,13 +26,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @Component({
   selector: 'app-perfil-conta',
-  imports: [ReactiveFormsModule, UiButtonComponent, UiCheckboxComponent, UiInputComponent],
+  imports: [ReactiveFormsModule, DialogoConfirmacaoComponent, UiButtonComponent, UiCheckboxComponent, UiInputComponent],
   templateUrl: './perfil-conta.component.html',
   styleUrl: './perfil-conta.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PerfilContaComponent {
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
   private readonly tokens = inject(TokenStorageService);
   private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
@@ -39,18 +42,19 @@ export class PerfilContaComponent {
   readonly emailAtual = input.required<string>();
   readonly contaAtualizada = output<{ nome?: string; email?: string; reaceitouTermos?: boolean }>();
   protected readonly perfil = signal<PerfilNutricionista | null>(null);
-  protected readonly editandoCrn = signal(false);
+  protected readonly reaceiteAberto = signal(false);
   protected readonly salvandoPerfil = signal(false);
   protected readonly erroPerfil = signal('');
   protected readonly alterandoEmail = signal(false);
   protected readonly destinoEmail = signal('');
   protected readonly salvandoEmail = signal(false);
   protected readonly erroEmail = signal('');
+  protected readonly enviandoSenha = signal(false);
   protected readonly urlTermos = `${URL_TERMOS}/${VERSAO_TERMOS}`;
 
   protected readonly perfilForm = this.fb.group({
     nome: ['', [Validators.required, Validators.maxLength(150)]],
-    crn: ['', [crnValidator()]],
+    crn: ['', [Validators.required, crnValidator()]],
     termos: [false]
   });
   protected readonly emailForm = this.fb.group({
@@ -71,31 +75,39 @@ export class PerfilContaComponent {
     });
   }
 
-  protected editarCrn(editar: boolean): void {
-    this.editandoCrn.set(editar);
-    this.perfilForm.controls.crn.reset(this.perfil()?.crn ?? '');
+  protected fecharReaceite(): void {
+    this.reaceiteAberto.set(false);
     this.perfilForm.controls.termos.reset(false);
     this.erroPerfil.set('');
   }
 
   protected get crnFoiAlterado(): boolean {
-    return this.editandoCrn() &&
-      normalizeCrnForApi(this.perfilForm.controls.crn.value) !== this.perfil()?.crn;
+    const atual = normalizeCrnForApi(this.perfil()?.crn ?? '').toUpperCase();
+    const informado = normalizeCrnForApi(this.perfilForm.controls.crn.value).toUpperCase();
+    return informado !== atual;
   }
 
   protected salvarPerfil(): void {
     if (this.salvandoPerfil()) return;
     this.erroPerfil.set('');
-    this.perfilForm.markAllAsTouched();
-    const { nome, crn, termos } = this.perfilForm.getRawValue();
+    const { nome, crn, termos } = this.perfilForm.controls;
+    nome.markAsTouched();
+    crn.markAsTouched();
     const alterarCrn = this.crnFoiAlterado;
-    if (!nome.trim() || this.perfilForm.controls.nome.invalid ||
-        (alterarCrn && (!crn.trim() || this.perfilForm.controls.crn.invalid || !termos))) return;
+    if (!nome.value.trim() || nome.invalid || (alterarCrn && crn.invalid)) return;
+    if (alterarCrn) {
+      if (!this.reaceiteAberto()) {
+        this.reaceiteAberto.set(true);
+        return;
+      }
+      termos.markAsTouched();
+      if (!termos.value) return;
+    }
 
     this.salvandoPerfil.set(true);
     const dados = alterarCrn
-      ? { nome: nome.trim(), crn: normalizeCrnForApi(crn), versaoTermos: VERSAO_TERMOS, crnDeclarado: termos }
-      : { nome: nome.trim() };
+      ? { nome: nome.value.trim(), crn: normalizeCrnForApi(crn.value), versaoTermos: VERSAO_TERMOS, crnDeclarado: true }
+      : { nome: nome.value.trim() };
     this.api.put<PerfilNutricionista>(PERFIL, dados).pipe(
       takeUntilDestroyed(this.destroyRef), finalize(() => this.salvandoPerfil.set(false))
     ).subscribe({
@@ -110,6 +122,17 @@ export class PerfilContaComponent {
 
   protected abrirAlteracaoEmail(): void {
     this.alterandoEmail.set(true);
+  }
+
+  protected solicitarRedefinicao(): void {
+    if (this.enviandoSenha()) return;
+    this.enviandoSenha.set(true);
+    this.auth.solicitarRecuperacaoSenha(this.emailAtual()).pipe(
+      takeUntilDestroyed(this.destroyRef), finalize(() => this.enviandoSenha.set(false))
+    ).subscribe({
+      next: mensagem => this.toast.sucesso(mensagem),
+      error: () => this.toast.erro('Não foi possível solicitar o link. Tente novamente.')
+    });
   }
 
   protected reiniciarEmail(): void {
@@ -174,7 +197,7 @@ export class PerfilContaComponent {
 
   private aplicarPerfil(perfil: PerfilNutricionista): void {
     this.perfil.set(perfil);
-    this.editandoCrn.set(false);
+    this.reaceiteAberto.set(false);
     this.perfilForm.reset({ nome: perfil.nome, crn: perfil.crn });
   }
 }

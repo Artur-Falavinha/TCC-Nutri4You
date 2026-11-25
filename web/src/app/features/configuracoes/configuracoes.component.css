@@ -9,12 +9,26 @@
 
 .settings {
   display: grid;
-  flex: 1 0 auto;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-content: start;
+  grid-auto-rows: 1fr;
   gap: var(--space-16);
   padding: var(--space-24);
 }
+
+.card__secao {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-12);
+}
+
+.card__secao + .card__secao { padding-top: var(--space-16); border-top: 1px solid var(--color-border-default); }
+
+.card--preferencias .card__secao {
+  flex: 1;
+  grid-template-rows: auto 1fr;
+}
+
+.card--preferencias .card__secao:last-child { flex-grow: 2; }
 
 .card {
   display: flex;
@@ -48,34 +62,16 @@ h2, h3 { font-family: var(--font-heading); line-height: var(--leading-tight); }
 h2 { font-size: var(--text-md); }
 h3 { font-size: 1rem; }
 .secundario, .estado { color: var(--color-text-secondary); line-height: 1.5; }
-.acao + .acao { border-top: 1px solid var(--color-border-default); }
 
-.acao, .preferencia {
-  display: flex;
-  flex-wrap: wrap;
+.preferencia {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
+  align-content: center;
   gap: var(--space-8) var(--space-16);
 }
 
-.acao { padding-block: var(--space-12); }
-.acao > div, .preferencia__texto { flex: 1 1 12rem; min-width: 0; }
-.acao h3, .preferencia__texto strong { display: block; margin-bottom: var(--space-2); }
-
-.botao-link {
-  display: inline-flex;
-  gap: var(--space-8);
-  align-items: center;
-  min-height: 2.75rem;
-  padding: var(--space-8) var(--space-16);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  color: var(--color-brand-primary-hover);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.botao-link:hover { background: var(--color-surface-page); }
+.preferencia .secundario { grid-column: 1 / -1; grid-row: 2; }
 
 .preferencia, .feedback {
   padding: var(--space-12);
@@ -120,7 +116,7 @@ h3 { font-size: 1rem; }
 }
 
 .interruptor__estado { color: var(--color-text-secondary); font-weight: 600; }
-.botao-link:focus-visible, .interruptor input:focus-visible + .interruptor__trilho {
+.interruptor input:focus-visible + .interruptor__trilho {
   outline: 2px solid var(--color-brand-primary);
   outline-offset: 2px;
 }

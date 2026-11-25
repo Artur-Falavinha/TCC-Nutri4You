@@ -10,6 +10,8 @@
       <p [id]="descricaoId">{{ descricao() }}</p>
     </header>
 
+    <ng-content></ng-content>
+
     @if (erro()) {
       <p class="erro" role="alert">{{ erro() }}</p>
     }

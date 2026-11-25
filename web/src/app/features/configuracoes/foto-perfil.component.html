@@ -1,13 +1,11 @@
 <div class="identidade">
-  <app-avatar-perfil [nome]="nome()" [url]="foto.url()" />
-  <div class="identidade__dados">
-    <h3 #identidade tabindex="-1">{{ nome() }}</h3>
-    <p class="email">{{ email() }}</p>
-    <span class="perfil">Nutricionista</span>
+  <div class="identidade__titular">
+    <app-avatar-perfil [nome]="nome()" [url]="foto.url()" />
+    <div class="identidade__dados">
+      <p #identidade class="identidade__nome" tabindex="-1">{{ nome() }}</p>
+      <p class="perfil">Nutricionista</p>
+    </div>
   </div>
-</div>
-
-<div class="foto-rodape">
   <div class="foto-acoes" role="group" aria-label="Foto de perfil" aria-describedby="foto-formatos"
     [attr.aria-busy]="foto.carregando() || foto.salvando()">
     <input #seletor type="file" accept="image/jpeg,image/png" hidden (change)="selecionar(seletor)" />

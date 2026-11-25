@@ -9,6 +9,8 @@
 .identidade {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
   gap: var(--space-16);
   padding: var(--space-16);
   border: 1px solid color-mix(in srgb, var(--color-brand-primary) 15%, var(--color-surface-card));
@@ -16,33 +18,25 @@
   background: linear-gradient(110deg, var(--foto-verde-claro), var(--color-surface-page) 88%);
 }
 
+.identidade__titular { display: flex; align-items: center; gap: var(--space-12); min-width: 0; }
+
 app-avatar-perfil {
   --tamanho-avatar: 4.5rem;
   --fundo-avatar: color-mix(in srgb, var(--color-brand-primary) 13%, var(--color-surface-card));
+  flex: none;
   border: 3px solid var(--color-surface-card);
 }
 
 .identidade__dados { min-width: 0; }
-h3 {
+.identidade__nome {
   font: 700 var(--text-md) / var(--leading-tight) var(--font-heading);
   overflow-wrap: anywhere;
 }
 
-.email {
+.perfil {
   margin-top: var(--space-2);
   color: var(--color-text-secondary);
-  overflow-wrap: anywhere;
-}
-
-.perfil {
-  display: inline-block;
-  margin-top: var(--space-8);
-  padding: var(--space-2) var(--space-8);
-  border-radius: var(--radius-sm);
-  color: var(--color-brand-primary-hover);
-  background: var(--color-surface-card);
-  font-size: var(--text-xs);
-  font-weight: 700;
+  font-size: var(--text-sm);
 }
 
 .botoes {
@@ -50,15 +44,6 @@ h3 {
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-8);
-}
-
-.foto-rodape {
-  display: flex;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: var(--space-12) var(--space-24);
-  margin-top: var(--space-16);
 }
 
 .foto-acoes { min-width: 0; }
@@ -104,7 +89,7 @@ h3 {
 @media (max-width: 480px) {
   app-avatar-perfil { --tamanho-avatar: 3.5rem; }
   .identidade { gap: var(--space-12); padding: var(--space-12); }
-  .identidade h3 { font-size: 1rem; }
+  .identidade__nome { font-size: 1rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
