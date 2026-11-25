@@ -194,6 +194,7 @@ export function MealPlanScreen({ navigation }: Props) {
     setHydrationError('');
     try {
       setHydration(await addWater());
+      toast.sucesso('Consumo de água registrado.');
     } catch (failure) {
       toast.erro(failure instanceof ApiError ? failure.message : 'Não foi possível registrar a água.');
     } finally {

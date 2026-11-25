@@ -64,6 +64,7 @@ export class ConfirmarEmailComponent {
           this.podeConfirmar.set(false);
           if ('email' in resultado && resultado.tipoUsuario === 'NUTRICIONISTA') {
             this.fluxoCadastro.guardarEmailConfirmado({ ...resultado, token: this.token });
+            this.toast.sucesso('E-mail confirmado.');
             void this.router.navigate(['/cadastro/dados'], { replaceUrl: true });
             return;
           }

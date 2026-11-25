@@ -38,6 +38,7 @@ export function ConfirmarEmailCadastro({ aoConfirmar, aoVoltar }: ConfirmarEmail
     try {
       await iniciarCadastroPaciente(email);
       setEnviado(true);
+      toast.sucesso('Solicitação recebida. Confira sua caixa de entrada e o spam.');
     } catch (falha) {
       if (falha instanceof ApiError && falha.error === 'EMAIL_EM_USO') {
         voltarParaEmail();
@@ -67,6 +68,7 @@ export function ConfirmarEmailCadastro({ aoConfirmar, aoVoltar }: ConfirmarEmail
     try {
       const confirmacao = await confirmarCadastroPaciente(codigo.trim());
       aoConfirmar({ ...confirmacao, token: codigo.trim() });
+      toast.sucesso('E-mail confirmado.');
     } catch (falha) {
       if (falha instanceof ApiError && falha.status === 400) setErro(falha.message);
       else toast.erro(falha instanceof ApiError ? falha.message : 'Não foi possível confirmar. Tente novamente.');

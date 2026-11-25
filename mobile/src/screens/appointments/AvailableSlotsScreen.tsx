@@ -101,6 +101,7 @@ export function AvailableSlotsScreen({ navigation, route }: Props) {
         : await scheduleAppointment({ nutricionistaId, dataHora: horario });
       setSolicitacao({ ...consulta, avulsa: consulta.avulsa ?? (!reagendamento && profissional?.vinculado === false) });
       rolagem.current?.scrollTo({ y: 0, animated: false });
+      toast.sucesso(reagendamento ? 'Solicitação de reagendamento enviada.' : 'Solicitação de consulta enviada.');
     } catch (falha) {
       toast.erro(falha instanceof ApiError ? falha.message : 'Não foi possível enviar a solicitação.');
     } finally {

@@ -24,6 +24,14 @@ import { CAMPOS_MEDIDAS, CampoMedida, ConsultaForm, STATUS_CONSULTA, decimal } f
 import { AtendimentoClinico, AtendimentosService, Consulta, ConsultasService, PaginaConsultas } from './consultas.service';
 import { criarLinkGoogleAgenda } from '../../agenda/google-calendar-link';
 
+const MENSAGENS_ACAO_CONSULTA = {
+  inicio: 'Atendimento iniciado.',
+  confirmacao: 'Consulta confirmada.',
+  cancelamento: 'Consulta cancelada.'
+} as const;
+
+type AcaoConsulta = keyof typeof MENSAGENS_ACAO_CONSULTA;
+
 @Component({
   selector: 'app-consultas',
   imports: [DatePipe, DataHoraClinicaPipe, FormsModule, RouterLink, EstadoVazioComponent, PatientTabsComponent, TituloPacienteComponent, UiButtonComponent,
@@ -267,7 +275,7 @@ export class ConsultasComponent implements OnInit {
   podeIniciar(c: Consulta): boolean {
     return c.status === 'CONFIRMADA' && !c.iniciadaEm;
   }
-  acao(c: Consulta, acao: 'inicio' | 'confirmacao' | 'cancelamento'): void {
+  acao(c: Consulta, acao: AcaoConsulta): void {
     if (this.salvando) return;
     if (acao === 'inicio') this.executarAcao(c, acao);
     else this.decisaoConsulta = { consulta: c, tipo: acao };
@@ -276,12 +284,13 @@ export class ConsultasComponent implements OnInit {
     const decisao = this.decisaoConsulta;
     if (!this.salvando && decisao) this.executarAcao(decisao.consulta, decisao.tipo);
   }
-  private executarAcao(c: Consulta, acao: 'inicio' | 'confirmacao' | 'cancelamento'): void {
+  private executarAcao(c: Consulta, acao: AcaoConsulta): void {
     this.salvando = true; this.erro = '';
     this.service.acao(this.patientId, c, acao).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.salvando = false;
         this.decisaoConsulta = null;
+        this.toast.sucesso(MENSAGENS_ACAO_CONSULTA[acao]);
         if (acao === 'inicio' && !this.editor) void this.router.navigate(['/pacientes', this.patientId, 'consultas', c.id]);
         else this.carregar(this.lista?.pagina || 0);
       },

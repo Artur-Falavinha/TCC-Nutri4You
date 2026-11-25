@@ -48,7 +48,10 @@ export class CadastroEmailComponent {
     this.authService.iniciarCadastro(this.formulario.controls.email.value.trim())
       .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.enviando.set(false)))
       .subscribe({
-        next: () => this.orientacao.set('Confira sua caixa de entrada e abra o link para continuar seu cadastro.'),
+        next: () => {
+          this.orientacao.set('Confira sua caixa de entrada e abra o link para continuar seu cadastro.');
+          this.toast.sucesso('Solicitação de cadastro recebida.');
+        },
         error: (erro: ApiErrorResponse) => this.toast.erro(erro.message || 'Não foi possível enviar. Tente novamente.')
       });
   }

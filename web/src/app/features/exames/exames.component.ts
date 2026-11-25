@@ -82,7 +82,13 @@ export class ExamesComponent implements OnInit {
     this.service.analisar(this.patientId, this.selecionado, this.parecer.trim(), this.atendimentoId)
       .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.salvando = false)).subscribe({
         next: () => { this.selecionado = null; this.parecer = ''; this.toast.sucesso('Análise registrada.'); this.carregar(); },
-        error: e => this.erro = e.message || 'Não foi possível analisar o exame. Recarregue antes de continuar.'
+        error: e => {
+          if (e.status === 409) {
+            this.erro = e.message || 'O exame foi atualizado. Recarregue antes de continuar.';
+            return;
+          }
+          this.toast.erro(e.message || 'Não foi possível registrar a análise. Tente novamente.');
+        }
       });
   }
   baixar(exame: Exame): void {
