@@ -14,6 +14,7 @@ import com.nutri4you.backend.repository.PacienteRepository;
 import com.nutri4you.backend.repository.PerguntaAnamneseRepository;
 import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import com.nutri4you.backend.repository.RespostaAnamneseRepository;
+import com.nutri4you.backend.security.DatabaseUserDetailsService;
 import com.nutri4you.backend.security.TokenService;
 import com.nutri4you.backend.service.PrivacidadeService;
 import com.nutri4you.backend.support.TestDataFactory;
@@ -60,6 +61,7 @@ class AtendimentoClinicoControllerTest {
     @Autowired RespostaAnamneseRepository respostas;
     @Autowired PasswordEncoder encoder;
     @Autowired TokenService tokens;
+    @Autowired DatabaseUserDetailsService titulares;
     @Autowired PrivacidadeService privacidade;
     @Autowired Clock clock;
 
@@ -284,6 +286,6 @@ class AtendimentoClinicoControllerTest {
     }
 
     private String bearer(String email) {
-        return "Bearer " + tokens.gerarToken(email);
+        return "Bearer " + tokens.gerarToken(titulares.loadUserByUsername(email));
     }
 }

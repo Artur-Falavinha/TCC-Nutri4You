@@ -49,7 +49,7 @@ class AnamneseControllerTest {
         TestDataFactory.registrarAceite(privacidade, nutritionist, patient);
         consultations.save(TestDataFactory.consulta(patient, nutritionist));
         relations.save(RelacaoClinica.criar(patient, nutritionist));
-        token = "Bearer " + tokens.gerarToken(nutritionist.getEmail());
+        token = "Bearer " + tokens.gerarToken(nutritionist);
         path = "/api/v1/gestao-pacientes/" + patient.getId() + "/anamnese";
         for (var field : catalog.fields()) {
             var question = new PerguntaAnamnese();
@@ -66,14 +66,14 @@ class AnamneseControllerTest {
         mvc.perform(get(path)).andExpect(status().isUnauthorized());
         mvc.perform(put(path).contentType(MediaType.APPLICATION_JSON).content("{}"))
             .andExpect(status().isUnauthorized());
-        mvc.perform(get(path).header("Authorization", "Bearer " + tokens.gerarToken(patient.getEmail())))
+        mvc.perform(get(path).header("Authorization", "Bearer " + tokens.gerarToken(patient)))
             .andExpect(status().isForbidden());
     }
 
     @Test void unrelatedNutritionistCannotReadOrWrite() throws Exception {
         var other = nutritionists.save(TestDataFactory.nutricionistaConfirmado("Outro", "other@example.test", encoder.encode("secret"), "CRN-OTHER"));
         TestDataFactory.registrarAceite(privacidade, other);
-        String otherToken = "Bearer " + tokens.gerarToken(other.getEmail());
+        String otherToken = "Bearer " + tokens.gerarToken(other);
         mvc.perform(get(path).header("Authorization", otherToken)).andExpect(status().isForbidden());
         mvc.perform(put(path + "/rascunho").header("Authorization", otherToken)
             .contentType(MediaType.APPLICATION_JSON).content("{\"respostas\":{}}")).andExpect(status().isForbidden());

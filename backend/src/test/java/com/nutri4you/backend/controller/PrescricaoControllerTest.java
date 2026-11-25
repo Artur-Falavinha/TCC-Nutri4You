@@ -79,10 +79,10 @@ class PrescricaoControllerTest {
         consultas.save(TestDataFactory.consulta(paciente, segundo));
         relacoes.save(RelacaoClinica.criar(paciente, nutri));
         relacoes.save(RelacaoClinica.criar(paciente, segundo));
-        autorToken = tokens.gerarToken(nutri.getEmail());
-        pacienteToken = tokens.gerarToken(paciente.getEmail());
-        outroToken = tokens.gerarToken(outro.getEmail());
-        segundoToken = tokens.gerarToken(segundo.getEmail());
+        autorToken = tokens.gerarToken(nutri);
+        pacienteToken = tokens.gerarToken(paciente);
+        outroToken = tokens.gerarToken(outro);
+        segundoToken = tokens.gerarToken(segundo);
         url = "/api/v1/gestao-pacientes/" + paciente.getId() + "/planos-alimentares";
         inserirAlimento(1001, "Feijão", "feijao", "Leguminosas", true, true);
         inserirAlimento(1002, "Arroz", "arroz", "Cereais", true, true);

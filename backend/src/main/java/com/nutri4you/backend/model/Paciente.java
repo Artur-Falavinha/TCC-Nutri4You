@@ -10,15 +10,16 @@ import jakarta.persistence.UniqueConstraint;
 import org.hibernate.annotations.ColumnDefault;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 
 @Entity
+@DynamicUpdate
 @Table(name = "Paciente", uniqueConstraints = @UniqueConstraint(name = Paciente.RESTRICAO_CPF_UNICO, columnNames = "cpf"))
-public class Paciente implements UserDetails {
+public class Paciente implements ContaAutenticavel {
 
     public static final String RESTRICAO_CPF_UNICO = "uq_paciente_cpf";
 
@@ -50,6 +51,9 @@ public class Paciente implements UserDetails {
 
     @Column(nullable = false, length = 255)
     private String senha;
+
+    @Column(name = "versao_credencial", nullable = false)
+    private int versaoCredencial;
 
     @Column(name = "email_confirmado", nullable = false)
     private boolean emailConfirmado = false;
@@ -130,6 +134,22 @@ public class Paciente implements UserDetails {
         return email;
     }
 
+    @Override
+    public TipoCadastro getTipoCadastro() {
+        return TipoCadastro.PACIENTE;
+    }
+
+    @Override
+    public int getVersaoCredencial() {
+        return versaoCredencial;
+    }
+
+    @Override
+    public void alterarEmail(String email) {
+        this.email = email;
+        versaoCredencial++;
+    }
+
     public void setEmail(String email) {
         this.email = email;
     }
@@ -140,6 +160,7 @@ public class Paciente implements UserDetails {
 
     public void setSenha(String senha) {
         this.senha = senha;
+        versaoCredencial++;
     }
 
     public boolean isEmailConfirmado() {

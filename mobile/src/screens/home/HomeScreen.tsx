@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiError } from '../../core/api/api-response.types';
 import { logout } from '../../core/auth/auth.service';
+import { AlterarEmailPerfil } from './AlterarEmailPerfil';
 import {
   atualizarPerfil,
   carregarPerfil,
@@ -221,6 +222,7 @@ export function HomeScreen({ navigation }: Props) {
                 />
                 <Feather name="lock" size={16} color={colors.textSecondary} aria-hidden />
               </View>
+              {email ? <AlterarEmailPerfil emailAtual={email} aoAtualizar={setEmail} /> : null}
             </View>
 
             <View style={styles.camposContato}>

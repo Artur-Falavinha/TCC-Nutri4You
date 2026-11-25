@@ -73,12 +73,16 @@ public class AuthEmailService {
         TokenEmail tokenEmail = tokenEmailService.consumirToken(token, TipoTokenEmail.RECUPERACAO_SENHA);
 
         if (tokenEmail.getPaciente() != null) {
-            Paciente paciente = tokenEmail.getPaciente();
+            Paciente paciente = pacienteRepository.findByIdForUpdate(tokenEmail.getPaciente().getId())
+                    .filter(tokenEmail::pertenceACredencial)
+                    .orElseThrow(() -> new IllegalArgumentException(TokenEmailService.MENSAGEM_TOKEN_INVALIDO));
             paciente.setSenha(passwordEncoder.encode(novaSenha));
             paciente.setEmailConfirmado(true);
             pacienteRepository.save(paciente);
         } else if (tokenEmail.getNutricionista() != null) {
-            Nutricionista nutricionista = tokenEmail.getNutricionista();
+            Nutricionista nutricionista = nutricionistaRepository.findByIdForUpdate(tokenEmail.getNutricionista().getId())
+                    .filter(tokenEmail::pertenceACredencial)
+                    .orElseThrow(() -> new IllegalArgumentException(TokenEmailService.MENSAGEM_TOKEN_INVALIDO));
             nutricionista.setSenha(passwordEncoder.encode(novaSenha));
             nutricionistaRepository.save(nutricionista);
         } else {

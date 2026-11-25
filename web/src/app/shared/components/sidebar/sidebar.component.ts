@@ -16,13 +16,12 @@ export class SidebarComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
-  nomeNutricionista = 'Nutricionista';
+  get nomeNutricionista(): string {
+    return this.authService.usuario()?.nome ?? 'Nutricionista';
+  }
 
   constructor() {
     this.authService.fetchMe().subscribe({
-      next: (usuario) => {
-        this.nomeNutricionista = usuario.nome;
-      },
       error: () => {
         /* mantém o fallback em caso de erro */
       }

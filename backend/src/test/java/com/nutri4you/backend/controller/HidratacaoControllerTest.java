@@ -46,7 +46,7 @@ class HidratacaoControllerTest {
     void preparar() {
         paciente = pacientes.save(TestDataFactory.pacienteConfirmado(encoder));
         TestDataFactory.registrarAceite(privacidade, paciente);
-        token = tokens.gerarToken(paciente.getEmail());
+        token = tokens.gerarToken(paciente);
     }
 
     @Test

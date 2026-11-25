@@ -114,7 +114,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.message").value("Sua conta não tem um aceite dos termos de uso registrado."));
 
         mockMvc.perform(get("/api/v1/privacidade/me/termos")
-                        .header("Authorization", "Bearer " + tokens.gerarToken(paciente.getEmail())))
+                        .header("Authorization", "Bearer " + tokens.gerarToken(paciente)))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -127,7 +127,7 @@ class AuthControllerTest {
                 """, paciente.getId());
 
         mockMvc.perform(get("/api/v1/privacidade/me/termos")
-                        .header("Authorization", "Bearer " + tokens.gerarToken(paciente.getEmail())))
+                        .header("Authorization", "Bearer " + tokens.gerarToken(paciente)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.versao").value("2026-11-19"))
                 .andExpect(jsonPath("$.data.aceitoEm").value("2026-11-19T18:00:00Z"));

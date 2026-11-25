@@ -35,6 +35,11 @@ export class PrivacidadeComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.carregarAceite();
+  }
+
+  carregarAceite(): void {
+    this.erro.set('');
     this.api.get<Aceite>('/privacidade/me/termos').pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: aceite => this.aceite.set(aceite),
       error: () => this.erro.set('Não foi possível consultar o aceite dos termos.')

@@ -103,7 +103,7 @@ class AuthEmailControllerTest {
     void jwtContaNaoConfirmadaNaoAutenticaRequisicao() throws Exception {
         criarPacientePendenteLegado("JWT Bloqueado", "jwt.bloqueado@teste.com", "senhaSegura123");
 
-        String token = tokenService.gerarToken("jwt.bloqueado@teste.com");
+        String token = tokenService.gerarToken(pacienteRepository.findByEmail("jwt.bloqueado@teste.com").orElseThrow());
 
         mockMvc.perform(get("/api/v1/usuarios/me")
                         .header("Authorization", "Bearer " + token))

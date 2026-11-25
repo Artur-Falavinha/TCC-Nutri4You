@@ -50,6 +50,21 @@ public class ContaEmailTemplate {
                 paciente ? new Codigo("Código de confirmação", token) : null));
     }
 
+    public Conteudo confirmacaoAlteracaoEmail(UUID codigo, long validadeMinutos) {
+        return renderizar(new Mensagem("Confirme seu novo e-mail",
+                "Cole o código abaixo na tela de alteração de e-mail do Nutri4You.",
+                null, null, "O código expira em %d minutos.".formatted(validadeMinutos),
+                "Se você não solicitou a alteração, ignore este e-mail.",
+                new Codigo("Código de verificação", codigo)));
+    }
+
+    public Conteudo avisoAlteracaoEmail() {
+        return renderizar(new Mensagem("Seu e-mail foi alterado",
+                "A alteração do e-mail da sua conta Nutri4You foi concluída.",
+                null, null, "Use o novo endereço nas próximas vezes em que entrar no sistema.",
+                "Se você não reconhece a alteração, entre em contato com o suporte do Nutri4You.", null));
+    }
+
     public Conteudo recuperacaoSenha(String nome, UUID token, String link, long validadeHoras) {
         return renderizar(new Mensagem(
                 "Redefina sua senha",

@@ -4,6 +4,7 @@ import com.jayway.jsonpath.JsonPath;
 import com.nutri4you.backend.model.Alimento;
 import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.Paciente;
+import com.nutri4you.backend.security.DatabaseUserDetailsService;
 import com.nutri4you.backend.security.TokenService;
 import com.nutri4you.backend.service.PrivacidadeService;
 import com.nutri4you.backend.support.ClinicalServiceTestSupport;
@@ -26,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class RegistrosAtendimentoControllerTest extends ClinicalServiceTestSupport {
     @Autowired MockMvc mvc;
     @Autowired TokenService tokens;
+    @Autowired DatabaseUserDetailsService titulares;
     @Autowired PrivacidadeService privacidade;
 
     @BeforeEach
@@ -165,6 +167,6 @@ class RegistrosAtendimentoControllerTest extends ClinicalServiceTestSupport {
     }
 
     private String bearer(String email) {
-        return "Bearer " + tokens.gerarToken(email);
+        return "Bearer " + tokens.gerarToken(titulares.loadUserByUsername(email));
     }
 }

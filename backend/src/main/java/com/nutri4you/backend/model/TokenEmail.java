@@ -50,6 +50,9 @@ public class TokenEmail {
     @Column(name = "usado_em")
     private LocalDateTime usadoEm;
 
+    @Column(name = "versao_credencial", nullable = false)
+    private int versaoCredencial;
+
     protected TokenEmail() {
     }
 
@@ -57,6 +60,7 @@ public class TokenEmail {
         TokenEmail tokenEmail = new TokenEmail();
         tokenEmail.token = UUID.randomUUID();
         tokenEmail.paciente = paciente;
+        tokenEmail.versaoCredencial = paciente.getVersaoCredencial();
         tokenEmail.tipo = tipo;
         tokenEmail.expiraEm = expiraEm;
         return tokenEmail;
@@ -69,6 +73,7 @@ public class TokenEmail {
         TokenEmail tokenEmail = new TokenEmail();
         tokenEmail.token = UUID.randomUUID();
         tokenEmail.nutricionista = nutricionista;
+        tokenEmail.versaoCredencial = nutricionista.getVersaoCredencial();
         tokenEmail.tipo = tipo;
         tokenEmail.expiraEm = expiraEm;
         return tokenEmail;
@@ -84,6 +89,10 @@ public class TokenEmail {
 
     public boolean isUsado() {
         return usadoEm != null;
+    }
+
+    public boolean pertenceACredencial(ContaAutenticavel conta) {
+        return versaoCredencial == conta.getVersaoCredencial();
     }
 
     public String getEmailDestinatario() {

@@ -36,7 +36,16 @@ public class EmailNotificationService {
     public void agendarInicioCadastro(String email, TipoCadastro tipoUsuario, UUID token) {
         var conteudo = contaEmailTemplate.confirmacaoCadastro(
                 tipoUsuario, token, emailProperties.linkCadastro(token), emailProperties.getConfirmacaoTtlHoras());
-        enviarConfirmacaoAposCommit(email, conteudo);
+        enviarAposCommit(email, "Confirme seu e-mail — Nutri4You", conteudo);
+    }
+
+    public void agendarConfirmacaoAlteracaoEmail(String email, UUID codigo, long minutos) {
+        enviarAposCommit(email, "Código para alterar seu e-mail — Nutri4You",
+                contaEmailTemplate.confirmacaoAlteracaoEmail(codigo, minutos));
+    }
+
+    public void agendarAvisoAlteracaoEmail(String emailAnterior) {
+        enviarAposCommit(emailAnterior, "Seu e-mail foi alterado — Nutri4You", contaEmailTemplate.avisoAlteracaoEmail());
     }
 
     @Transactional
@@ -51,12 +60,12 @@ public class EmailNotificationService {
         enviarRecuperacaoAssincrona(nutricionista.getEmail(), nutricionista.getNome(), token);
     }
 
-    private void enviarConfirmacaoAposCommit(String destinatario, ContaEmailTemplate.Conteudo conteudo) {
+    private void enviarAposCommit(String destinatario, String assunto, ContaEmailTemplate.Conteudo conteudo) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
                 asyncEmailDispatcher.enviarFormatado(
-                        destinatario, "Confirme seu e-mail — Nutri4You", conteudo.texto(), conteudo.html());
+                        destinatario, assunto, conteudo.texto(), conteudo.html());
             }
         });
     }

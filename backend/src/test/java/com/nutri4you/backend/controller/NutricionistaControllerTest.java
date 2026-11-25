@@ -62,7 +62,7 @@ class NutricionistaControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.data.token").doesNotExist());
 
-        String jwt = tokenService.gerarToken("nova.nutri@teste.com");
+        String jwt = tokenService.gerarToken(cadastroLegado);
         mockMvc.perform(get("/api/v1/usuarios/me").header("Authorization", "Bearer " + jwt))
                 .andExpect(status().isUnauthorized());
 

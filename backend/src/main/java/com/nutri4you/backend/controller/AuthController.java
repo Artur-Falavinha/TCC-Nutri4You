@@ -8,6 +8,7 @@ import com.nutri4you.backend.dto.MensagemResponse;
 import com.nutri4you.backend.dto.RecuperarSenhaRequest;
 import com.nutri4you.backend.dto.RedefinirSenhaRequest;
 import com.nutri4you.backend.exception.UnauthorizedException;
+import com.nutri4you.backend.model.ContaAutenticavel;
 import com.nutri4you.backend.security.TokenService;
 import com.nutri4you.backend.service.AuthEmailService;
 import com.nutri4you.backend.service.PrivacidadeService;
@@ -68,15 +69,12 @@ public class AuthController {
             if (!privacidade.aceitou(authentication.getPrincipal())) {
                 throw new UnauthorizedException("Sua conta não tem um aceite dos termos de uso registrado.");
             }
-            String tipoUsuario = authentication.getAuthorities().stream()
-                    .findFirst()
-                    .map(authority -> authority.getAuthority().replace("ROLE_", ""))
-                    .orElse("USUARIO");
+            ContaAutenticavel conta = (ContaAutenticavel) authentication.getPrincipal();
 
             return ResponseEntity.ok(ApiResponse.ok(
                     new LoginResponse(
-                            tokenService.gerarToken(authentication.getName()),
-                            tipoUsuario),
+                            tokenService.gerarToken(conta),
+                            conta.getTipoCadastro().name()),
                     "Login realizado com sucesso."));
         } catch (DisabledException exception) {
             throw new UnauthorizedException(MENSAGEM_EMAIL_NAO_CONFIRMADO);

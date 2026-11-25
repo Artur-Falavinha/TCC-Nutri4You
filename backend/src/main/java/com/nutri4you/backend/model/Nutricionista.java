@@ -8,14 +8,15 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.util.Collection;
 import java.util.List;
 
 @Entity
+@DynamicUpdate
 @Table(name = "Nutricionista")
-public class Nutricionista implements UserDetails {
+public class Nutricionista implements ContaAutenticavel {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,6 +31,9 @@ public class Nutricionista implements UserDetails {
 
     @Column(nullable = false, length = 255)
     private String senha;
+
+    @Column(name = "versao_credencial", nullable = false)
+    private int versaoCredencial;
 
     @Column(nullable = false, unique = true, length = 20)
     private String crn;
@@ -61,8 +65,33 @@ public class Nutricionista implements UserDetails {
         return nome;
     }
 
+    public String getCrn() {
+        return crn;
+    }
+
+    public void atualizarPerfil(String nome, String crn) {
+        this.nome = nome;
+        this.crn = crn;
+    }
+
     public String getEmail() {
         return email;
+    }
+
+    @Override
+    public TipoCadastro getTipoCadastro() {
+        return TipoCadastro.NUTRICIONISTA;
+    }
+
+    @Override
+    public int getVersaoCredencial() {
+        return versaoCredencial;
+    }
+
+    @Override
+    public void alterarEmail(String email) {
+        this.email = email;
+        versaoCredencial++;
     }
 
     public boolean aceitaConsultasAvulsas() {
@@ -83,6 +112,7 @@ public class Nutricionista implements UserDetails {
 
     public void setSenha(String senha) {
         this.senha = senha;
+        versaoCredencial++;
     }
 
     public void confirmarEmail() {

@@ -34,6 +34,19 @@ public class PrivacidadeService {
                 """, titular.tipo(), titular.id(), versao);
     }
 
+    @Transactional
+    public void reaceitar(Object principal, String versao) {
+        exigirVersao(versao);
+        Titular titular = titular(principal);
+        int atualizados = jdbc.update("""
+                update aceite_termo set aceito_em = current_timestamp
+                where tipo = ? and titular_id = ? and versao = ?
+                """, titular.tipo(), titular.id(), versao);
+        if (atualizados == 0) {
+            aceitar(principal, versao);
+        }
+    }
+
     public boolean aceitou(Object principal) {
         Titular titular = titular(principal);
         return Boolean.TRUE.equals(jdbc.query("""

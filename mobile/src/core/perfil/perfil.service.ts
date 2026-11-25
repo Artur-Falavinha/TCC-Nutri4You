@@ -1,4 +1,5 @@
 import { apiClient } from '../api/api-client';
+import { setToken } from '../auth/token-storage';
 
 export interface PacientePerfil {
   id: number;
@@ -42,6 +43,18 @@ export function carregarPerfil(): Promise<PacientePerfil> {
 
 export function atualizarPerfil(payload: AtualizarPerfilPayload): Promise<PacientePerfil> {
   return apiClient.put<PacientePerfil>('/usuarios/me', payload);
+}
+
+export function iniciarAlteracaoEmail(novoEmail: string, senhaAtual: string): Promise<{ email: string }> {
+  return apiClient.post('/usuarios/me/email/iniciar', { novoEmail, senhaAtual });
+}
+
+export async function confirmarAlteracaoEmail(codigo: string): Promise<string> {
+  const { token, email } = await apiClient.post<{ token: string; email: string }>(
+    '/usuarios/me/email/confirmar', { codigo }
+  );
+  await setToken(token);
+  return email;
 }
 
 export function listarNutricionistas(): Promise<NutricionistaVinculo[]> {

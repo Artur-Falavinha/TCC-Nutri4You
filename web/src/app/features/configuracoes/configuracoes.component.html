@@ -9,6 +9,7 @@
 
     @if (conta(); as usuario) {
       <app-foto-perfil [nome]="usuario.nome" [email]="usuario.email" />
+      <app-perfil-conta [emailAtual]="usuario.email" (contaAtualizada)="atualizarConta($event)" />
     } @else if (carregandoConta()) {
       <p class="estado" role="status">Carregando seus dados…</p>
     } @else if (erroConta()) {

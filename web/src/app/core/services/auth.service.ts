@@ -1,5 +1,6 @@
-import { Injectable, inject } from '@angular/core';
-import { Observable, map, of, switchMap, throwError } from 'rxjs';
+import { Injectable, inject, signal } from '@angular/core';
+import { Observable, map, of, switchMap, tap, throwError } from 'rxjs';
+
 
 import {
   CadastroEmailConfirmado,
@@ -17,6 +18,13 @@ import { TokenStorageService } from './token-storage.service';
 export class AuthService {
   private readonly api = inject(ApiService);
   private readonly tokenStorage = inject(TokenStorageService);
+  private readonly estadoUsuario = signal<UsuarioInfo | null>(null);
+  readonly usuario = this.estadoUsuario.asReadonly();
+
+  atualizarUsuario(usuario: UsuarioInfo): void {
+    this.estadoUsuario.set(usuario);
+  }
+
 
   login(email: string, senha: string): Observable<UsuarioInfo> {
     return this.api.post<LoginResponse>('/auth/login', { email, senha }).pipe(
@@ -43,11 +51,14 @@ export class AuthService {
   }
 
   fetchMe(): Observable<UsuarioInfo> {
-    return this.api.get<UsuarioInfo>('/usuarios/me');
+    return this.api.get<UsuarioInfo>('/usuarios/me').pipe(tap(usuario => this.atualizarUsuario(usuario)));
+
   }
 
   logout(): void {
     this.tokenStorage.clear();
+    this.estadoUsuario.set(null);
+
   }
 
   get authenticated(): boolean {

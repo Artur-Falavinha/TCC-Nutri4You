@@ -26,8 +26,8 @@ class PlanoAlimentarControllerTest extends ClinicalServiceTestSupport {
 
     @Test void aliasesCompartilhamContratoEAutorizacao() throws Exception {
         var plano = rascunho(hoje(), hoje());
-        String nutriToken = "Bearer " + tokens.gerarToken(nutri.getEmail());
-        String pacienteToken = "Bearer " + tokens.gerarToken(paciente.getEmail());
+        String nutriToken = "Bearer " + tokens.gerarToken(nutri);
+        String pacienteToken = "Bearer " + tokens.gerarToken(paciente);
         for (String recurso : new String[]{"planos", "planos-alimentares"}) {
             mvc.perform(get("/api/v1/gestao-pacientes/{id}/" + recurso + "/{plano}", paciente.getId(), plano.getId()).header("Authorization", nutriToken))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.data.titulo").value("Plano alimentar"))
@@ -41,7 +41,7 @@ class PlanoAlimentarControllerTest extends ClinicalServiceTestSupport {
     }
     @Test void aliasNaoPublicaPlanoVazioNemVersaoAntiga() throws Exception {
         var plano = rascunho(hoje(), hoje());
-        String token = "Bearer " + tokens.gerarToken(nutri.getEmail());
+        String token = "Bearer " + tokens.gerarToken(nutri);
         String url = "/api/v1/gestao-pacientes/" + paciente.getId() + "/planos/" + plano.getId() + "/publicacao";
         mvc.perform(post(url).header("Authorization", token).contentType(MediaType.APPLICATION_JSON).content("{\"versao\":99}"))
                 .andExpect(status().isConflict());
