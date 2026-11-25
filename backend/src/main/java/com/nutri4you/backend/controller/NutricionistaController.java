@@ -38,7 +38,8 @@ public class NutricionistaController {
     public ApiResponse<NutricionistaService.Perfil> atualizarPerfil(@AuthenticationPrincipal Object principal,
             @RequestBody Perfil dados) {
         return ApiResponse.ok(nutricionistaService.atualizarPerfil(nutricionista(principal),
-                dados.nome(), dados.crn(), dados.versaoTermos(), dados.crnDeclarado()), "Perfil atualizado.");
+                dados.nome(), dados.crn(), dados.versaoTermos(), Boolean.TRUE.equals(dados.crnDeclarado())),
+                "Perfil atualizado.");
     }
 
     private static Nutricionista nutricionista(Object principal) {
@@ -48,7 +49,7 @@ public class NutricionistaController {
         throw new AcessoNegadoException("Acesso restrito a nutricionistas.");
     }
 
-    public record Perfil(String nome, String crn, String versaoTermos, boolean crnDeclarado) {}
+    public record Perfil(String nome, String crn, String versaoTermos, Boolean crnDeclarado) {}
 
     @PostMapping({"/autocadastro", "/cadastro"})
     public ResponseEntity<ApiResponse<MensagemResponse>> autocadastro(@RequestBody NutricionistaCadastroDTO dto) {
