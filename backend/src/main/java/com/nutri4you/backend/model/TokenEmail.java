@@ -2,6 +2,7 @@ package com.nutri4you.backend.model;
 
 import jakarta.persistence.Column;
 import org.hibernate.annotations.Check;
+import org.hibernate.annotations.ColumnDefault;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -51,6 +52,7 @@ public class TokenEmail {
     private LocalDateTime usadoEm;
 
     @Column(name = "versao_credencial", nullable = false)
+    @ColumnDefault("0")
     private int versaoCredencial;
 
     protected TokenEmail() {

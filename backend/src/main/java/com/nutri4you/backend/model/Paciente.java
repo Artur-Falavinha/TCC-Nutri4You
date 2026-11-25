@@ -53,6 +53,7 @@ public class Paciente implements ContaAutenticavel {
     private String senha;
 
     @Column(name = "versao_credencial", nullable = false)
+    @ColumnDefault("0")
     private int versaoCredencial;
 
     @Column(name = "email_confirmado", nullable = false)

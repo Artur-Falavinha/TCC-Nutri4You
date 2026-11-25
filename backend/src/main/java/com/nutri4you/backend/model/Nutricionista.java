@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.ColumnDefault;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.hibernate.annotations.DynamicUpdate;
@@ -33,6 +34,7 @@ public class Nutricionista implements ContaAutenticavel {
     private String senha;
 
     @Column(name = "versao_credencial", nullable = false)
+    @ColumnDefault("0")
     private int versaoCredencial;
 
     @Column(nullable = false, unique = true, length = 20)
