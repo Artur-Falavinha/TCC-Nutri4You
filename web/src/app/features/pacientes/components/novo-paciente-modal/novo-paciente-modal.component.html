@@ -1,6 +1,7 @@
-<app-paciente-dialog
+<app-paciente-dialog #busca
   title="Buscar paciente"
   description="Informe o e-mail ou o CPF de um paciente que já criou a conta. A busca usa apenas um dos dois critérios."
+  [ocupado]="loading"
   (fechar)="fechar.emit()"
 >
   <app-form-alert [message]="errorMessage" />
@@ -38,8 +39,8 @@
     variant="outline"
     type="button"
     [fullWidth]="false"
-    [disabled]="loading || vinculando"
-    (click)="fechar.emit()"
+    [disabled]="loading"
+    (click)="busca.cancelar()"
   />
 
   @if (encontrado) {
@@ -49,8 +50,7 @@
       icon="link"
       type="button"
       [fullWidth]="false"
-      [loading]="vinculando"
-      (click)="onVincular()"
+      (click)="pacienteParaConfirmar = encontrado"
     />
   } @else {
     <app-ui-button
@@ -64,3 +64,8 @@
     />
   }
 </app-paciente-dialog>
+
+@if (pacienteParaConfirmar; as paciente) {
+  <app-relacao-paciente-modal [paciente]="paciente" acao="vincular"
+    (fechar)="pacienteParaConfirmar = null" (concluido)="vinculado.emit()" />
+}

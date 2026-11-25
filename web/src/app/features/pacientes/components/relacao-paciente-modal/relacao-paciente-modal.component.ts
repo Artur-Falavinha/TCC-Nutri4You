@@ -1,22 +1,19 @@
 import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { finalize } from 'rxjs';
 
-import { ToastService } from '../../../../core/services/toast.service';
-import { UiButtonComponent } from '../../../../shared/components/ui-button/ui-button.component';
 import { PacientesService } from '../../../../core/services/pacientes.service';
 import { Paciente } from '../../../../core/models/paciente.models';
 import { ApiErrorResponse } from '../../../../core/models/api-response.model';
-import { PacienteDialogComponent } from '../paciente-dialog/paciente-dialog.component';
+import { DialogoConfirmacaoComponent } from '../../../../shared/components/dialogo-confirmacao/dialogo-confirmacao.component';
 
 export type AcaoRelacao = 'vincular' | 'desvincular';
 
 @Component({
   selector: 'app-relacao-paciente-modal',
-  imports: [UiButtonComponent, PacienteDialogComponent],
+  imports: [DialogoConfirmacaoComponent],
   templateUrl: './relacao-paciente-modal.component.html'
 })
 export class RelacaoPacienteModalComponent {
-  private readonly toast = inject(ToastService);
   @Input({ required: true }) paciente!: Paciente;
   @Input({ required: true }) acao!: AcaoRelacao;
   @Output() fechar = new EventEmitter<void>();
@@ -25,24 +22,27 @@ export class RelacaoPacienteModalComponent {
   private readonly pacientesService = inject(PacientesService);
 
   loading = false;
+  erro = '';
 
   get title(): string {
-    return this.acao === 'desvincular' ? 'Encerrar relação?' : 'Solicitar vínculo?';
+    return this.acao === 'desvincular' ? 'Encerrar vínculo?' : 'Solicitar vínculo?';
   }
 
   get description(): string {
     if (this.acao === 'desvincular') {
-      return 'Este paciente deixará de aparecer na listagem principal. O histórico clínico permanece guardado no sistema.';
+      return `Você deixará de acessar a ficha clínica de ${this.paciente.nome}. Consultas em aberto com esse paciente serão canceladas e o histórico ficará guardado no sistema.`;
     }
-    return 'O paciente precisa aceitar a solicitação no aplicativo para iniciar o vínculo.';
+    return `${this.paciente.nome} precisa aceitar a solicitação no aplicativo para iniciar o vínculo.`;
   }
 
   get confirmLabel(): string {
-    return this.acao === 'desvincular' ? 'Encerrar relação' : 'Enviar solicitação';
+    return this.acao === 'desvincular' ? 'Encerrar vínculo' : 'Enviar solicitação';
   }
 
   onConfirmar(): void {
+    if (this.loading) return;
     this.loading = true;
+    this.erro = '';
 
     const request =
       this.acao === 'desvincular'
@@ -52,12 +52,9 @@ export class RelacaoPacienteModalComponent {
     request.pipe(finalize(() => (this.loading = false))).subscribe({
       next: () => this.concluido.emit(),
       error: (error: ApiErrorResponse) => {
-        this.toast.erro(
-          error.message ??
-          (this.acao === 'desvincular'
-            ? 'Não foi possível encerrar a relação.'
-            : 'Não foi possível enviar a solicitação de vínculo.')
-        );
+        this.erro = error.message || (this.acao === 'desvincular'
+          ? 'Não foi possível encerrar o vínculo. Tente novamente.'
+          : 'Não foi possível enviar a solicitação. Tente novamente.');
       }
     });
   }

@@ -16,7 +16,7 @@
         [fullWidth]="false" [disabled]="foto.carregando()" [loading]="foto.salvando()" (click)="seletor.click()" />
       @if (foto.url()) {
         <button type="button" class="botao-discreto perigo" [disabled]="foto.salvando() || foto.carregando()"
-          (click)="remocao.showModal()">
+          (click)="remocaoAberta.set(true)">
           <i class="ph ph-trash" aria-hidden="true"></i> Remover foto
         </button>
       }
@@ -40,14 +40,16 @@
     <i class="ph ph-warning-circle" aria-hidden="true"></i> {{ foto.erro() }}
   </p>
 }
-<dialog #remocao class="remocao" aria-labelledby="remover-foto-titulo" aria-describedby="remover-foto-descricao">
-  <div class="remocao__conteudo">
-    <h3 id="remover-foto-titulo">Remover a foto de perfil?</h3>
-    <p id="remover-foto-descricao">Seu perfil passará a exibir o avatar padrão.</p>
-  </div>
-  <div class="botoes botoes--remocao">
-    <button type="button" class="botao-discreto" autofocus (click)="remocao.close()">Cancelar</button>
-    <app-ui-button label="Remover foto" variant="danger" [fullWidth]="false"
-      (click)="confirmarRemocao(remocao, identidade)" />
-  </div>
-</dialog>
+@if (remocaoAberta()) {
+  <app-dialogo-confirmacao
+    titulo="Remover foto de perfil?"
+    descricao="Seu perfil voltará a mostrar o avatar padrão."
+    confirmar="Remover foto"
+    voltar="Manter foto"
+    icone="trash"
+    [destrutivo]="true"
+    [ocupado]="foto.salvando()"
+    rotuloOcupado="Removendo…"
+    (fechar)="remocaoAberta.set(false)"
+    (confirmado)="confirmarRemocao(identidade)" />
+}

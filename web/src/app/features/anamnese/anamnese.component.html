@@ -200,8 +200,11 @@
     </div>
 </section>
 @if (confirmacao; as modal) {
-  <app-paciente-dialog [title]="modal.titulo" [description]="modal.descricao" (fechar)="responderConfirmacao(false)">
-    <app-ui-button dialogActions label="Cancelar" variant="outline" (click)="responderConfirmacao(false)" />
-    <app-ui-button dialogActions [label]="modal.confirmar" variant="danger" (click)="responderConfirmacao(true)" />
-  </app-paciente-dialog>
+  <app-dialogo-confirmacao
+    [titulo]="modal.titulo"
+    [descricao]="modal.descricao"
+    [confirmar]="modal.confirmar"
+    icone="note-pencil"
+    [destrutivo]="true"
+    (fechar)="responderConfirmacao(false)" (confirmado)="responderConfirmacao(true)" />
 }

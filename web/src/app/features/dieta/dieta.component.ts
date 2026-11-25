@@ -17,7 +17,7 @@ import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.c
 import { UiInputComponent } from '../../shared/components/ui-input/ui-input.component';
 import { UiSelectComponent } from '../../shared/components/ui-select/ui-select.component';
 import { dataIsoValida, formatarDataBr } from '../../shared/utils/data-br.util';
-import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog/paciente-dialog.component';
+import { DialogoConfirmacaoComponent } from '../../shared/components/dialogo-confirmacao/dialogo-confirmacao.component';
 import { BuscaAlimentosComponent } from './busca-alimentos.component';
 import {
   Alimento,
@@ -63,7 +63,7 @@ const FORMATO_DATA_CLINICA = new Intl.DateTimeFormat('sv-SE', {
 @Component({
   selector: 'app-dieta',
   imports: [DatePipe, NgTemplateOutlet, FormsModule, RouterLink, PatientTabsComponent, TituloPacienteComponent, FormAlertComponent,
-    EstadoVazioComponent, UiButtonComponent, UiInputComponent, UiSelectComponent, BuscaAlimentosComponent, PacienteDialogComponent],
+    EstadoVazioComponent, UiButtonComponent, UiInputComponent, UiSelectComponent, BuscaAlimentosComponent, DialogoConfirmacaoComponent],
   templateUrl: './dieta.component.html',
   styleUrl: './dieta.component.css'
 })
@@ -213,8 +213,6 @@ export class DietaComponent implements OnInit {
   } | null = null;
   private readonly buscasAlimentos$ = new Subject<FiltrosBuscaAlimentos>();
   private elementoAtivoAntesDaBusca: HTMLElement | null = null;
-  private elementoAtivoAntesDaConfirmacao: HTMLElement | null = null;
-  private elementoAtivoAntesDaPublicacao: HTMLElement | null = null;
   private substitutoSelecionado: { refeicaoChave: number; itemChave: number } | null = null;
   private macroAutopreenchido: MacroPercentual | null = null;
   modalDescartarAlteracoes = false;
@@ -563,21 +561,16 @@ export class DietaComponent implements OnInit {
       this.erro = problema;
       return;
     }
-    this.elementoAtivoAntesDaPublicacao = document.activeElement as HTMLElement | null;
     this.planoParaPublicar = plano;
-    setTimeout(() => document.querySelector<HTMLButtonElement>('#cancelar-publicacao button')?.focus());
   }
 
   cancelarPublicacao(): void {
-    this.planoParaPublicar = null;
-    this.elementoAtivoAntesDaPublicacao?.focus();
-    this.elementoAtivoAntesDaPublicacao = null;
+    if (!this.publicando) this.planoParaPublicar = null;
   }
 
   confirmarPublicacao(): void {
     const plano = this.planoParaPublicar;
     if (!plano || this.publicando) return;
-    this.cancelarPublicacao();
     this.publicando = true;
     this.erro = '';
     this.dieta.publicarPlano(this.patientId, plano.id, plano.versao, this.atendimentoId)
@@ -587,10 +580,12 @@ export class DietaComponent implements OnInit {
           this.atualizarPlanoNaLista(publicado);
           this.toast.sucesso(`Plano publicado com sucesso na versão ${publicado.versao}.`);
           this.publicando = false;
+          this.planoParaPublicar = null;
         },
         error: (error: ApiErrorResponse) => {
           this.toast.erro(error.message || 'Não foi possível publicar o plano.');
           this.publicando = false;
+          this.planoParaPublicar = null;
         }
       });
   }
@@ -619,11 +614,13 @@ export class DietaComponent implements OnInit {
           this.planoSelecionado = null;
           this.tela = 'lista';
           this.excluindo = false;
+          this.confirmacaoDestrutiva = null;
           this.toast.sucesso('Plano alimentar excluído.');
         },
         error: (error: ApiErrorResponse) => {
           this.toast.erro(error.message || 'Não foi possível excluir o plano alimentar.');
           this.excluindo = false;
+          this.confirmacaoDestrutiva = null;
         }
       });
   }
@@ -633,7 +630,7 @@ export class DietaComponent implements OnInit {
   }
 
   podeSair(): boolean | Observable<boolean> {
-    if (this.salvando) return false;
+    if (this.salvando || this.publicando || this.excluindo) return false;
     if (!this.alterado) return true;
     if (!this.confirmacaoSaida) this.confirmacaoSaida = new Subject<boolean>();
     this.modalDescartarAlteracoes = true;
@@ -663,15 +660,13 @@ export class DietaComponent implements OnInit {
   }
 
   cancelarConfirmacaoDestrutiva(): void {
-    this.confirmacaoDestrutiva = null;
-    this.elementoAtivoAntesDaConfirmacao?.focus();
-    this.elementoAtivoAntesDaConfirmacao = null;
+    if (!this.excluindo) this.confirmacaoDestrutiva = null;
   }
 
   confirmarAcaoDestrutiva(): void {
-    const confirmacao = this.confirmacaoDestrutiva;
+    if (this.excluindo) return;
+    this.confirmacaoDestrutiva?.acao();
     this.cancelarConfirmacaoDestrutiva();
-    confirmacao?.acao();
   }
 
   get totaisPrevistos(): Nutrientes {
@@ -1084,9 +1079,7 @@ export class DietaComponent implements OnInit {
 
   private pedirConfirmacaoDestrutiva(
       titulo: string, descricao: string, confirmar: string, acao: () => void): void {
-    this.elementoAtivoAntesDaConfirmacao = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.confirmacaoDestrutiva = { titulo, descricao, confirmar, acao };
-    setTimeout(() => document.querySelector<HTMLButtonElement>('#cancelar-acao-destrutiva button')?.focus());
   }
 
   private atualizarPlanoNaLista(plano: Plano): void {

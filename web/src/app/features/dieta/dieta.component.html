@@ -399,29 +399,24 @@
 </main>
 
 @if (modalDescartarAlteracoes) {
-  <app-paciente-dialog
-    title="Sair do planejamento?"
-    description="As alterações não salvas deste plano serão descartadas."
-    (fechar)="cancelarDescarte()"
-  >
-    <app-ui-button dialogActions label="Continuar editando" variant="outline" type="button"
-      [fullWidth]="false" (click)="cancelarDescarte()" />
-    <app-ui-button dialogActions label="Descartar e sair" variant="danger" type="button"
-      [fullWidth]="false" (click)="confirmarDescarte()" />
-  </app-paciente-dialog>
+  <app-dialogo-confirmacao
+    titulo="Sair do planejamento?"
+    descricao="As alterações não salvas deste plano serão descartadas."
+    confirmar="Descartar e sair"
+    voltar="Continuar editando"
+    icone="arrow-square-out"
+    [destrutivo]="true"
+    (fechar)="cancelarDescarte()" (confirmado)="confirmarDescarte()" />
 }
 
 @if (confirmacaoDestrutiva; as confirmacao) {
-  <app-paciente-dialog
-    [title]="confirmacao.titulo"
-    [description]="confirmacao.descricao"
-    (fechar)="cancelarConfirmacaoDestrutiva()"
-  >
-    <app-ui-button id="cancelar-acao-destrutiva" dialogActions label="Cancelar" variant="outline" type="button"
-      [fullWidth]="false" (click)="cancelarConfirmacaoDestrutiva()" />
-    <app-ui-button dialogActions [label]="confirmacao.confirmar" variant="danger" type="button"
-      [fullWidth]="false" (click)="confirmarAcaoDestrutiva()" />
-  </app-paciente-dialog>
+  <app-dialogo-confirmacao
+    [titulo]="confirmacao.titulo"
+    [descricao]="confirmacao.descricao"
+    [confirmar]="confirmacao.confirmar"
+    icone="trash"
+    [destrutivo]="true" [ocupado]="excluindo" rotuloOcupado="Excluindo…"
+    (fechar)="cancelarConfirmacaoDestrutiva()" (confirmado)="confirmarAcaoDestrutiva()" />
 }
 
 @if (modalAlimentos) {
@@ -444,14 +439,11 @@
 }
 
 @if (planoParaPublicar; as plano) {
-  <app-paciente-dialog
-    title="Publicar plano alimentar"
-    [description]="'Publicar “' + plano.titulo + '”, versão ' + plano.versao + ', para ' + formatarPeriodo(plano) + '?'"
-    (fechar)="cancelarPublicacao()"
-  >
-    <app-ui-button id="cancelar-publicacao" dialogActions label="Cancelar" variant="outline" type="button"
-      [fullWidth]="false" (click)="cancelarPublicacao()" />
-    <app-ui-button dialogActions label="Confirmar publicação" type="button"
-      [fullWidth]="false" (click)="confirmarPublicacao()" />
-  </app-paciente-dialog>
+  <app-dialogo-confirmacao
+    titulo="Publicar plano alimentar"
+    [descricao]="'O plano “' + plano.titulo + '”, versão ' + plano.versao + ', ficará disponível ao paciente no período de ' + formatarPeriodo(plano) + '.'"
+    confirmar="Publicar plano"
+    icone="upload-simple"
+    [ocupado]="publicando" rotuloOcupado="Publicando…"
+    (fechar)="cancelarPublicacao()" (confirmado)="confirmarPublicacao()" />
 }

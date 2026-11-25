@@ -38,9 +38,9 @@
           <footer class="card__rodape">
             <div class="acoes" role="group" [attr.aria-label]="'Decisão sobre o vínculo de ' + item.pacienteNome">
               <app-ui-button label="Recusar" variant="secondary"
-                [disabled]="decidindo !== null" (click)="decidirVinculo(item, false)" />
+                [disabled]="decidindo !== null" (click)="pedirDecisao({ tipo: 'vinculo', item, aceitar: false })" />
               <app-ui-button label="Aceitar vínculo"
-                [disabled]="decidindo !== null" (click)="decidirVinculo(item, true)" />
+                [disabled]="decidindo !== null" (click)="pedirDecisao({ tipo: 'vinculo', item, aceitar: true })" />
             </div>
           </footer>
         </li>
@@ -75,9 +75,9 @@
             <div class="acoes" role="group" [attr.aria-label]="'Decisão sobre a consulta de ' + item.pacienteNome"
               [attr.aria-describedby]="item.avulsa ? 'aviso-vinculo-' + item.id : null">
               <app-ui-button label="Recusar" variant="secondary"
-                [disabled]="decidindo !== null" (click)="decidir(item, false)" />
+                [disabled]="decidindo !== null" (click)="pedirDecisao({ tipo: 'consulta', item, aceitar: false })" />
               <app-ui-button label="Confirmar"
-                [disabled]="decidindo !== null" (click)="decidir(item, true)" />
+                [disabled]="decidindo !== null" (click)="pedirDecisao({ tipo: 'consulta', item, aceitar: true })" />
             </div>
           </footer>
         </li>
@@ -112,3 +112,38 @@
     </section>
   }
 </div>
+
+@if (decisao; as pedido) {
+  @if (pedido.tipo === 'consulta') {
+    @let horario = (pedido.item.dataHora | dataHoraClinica);
+    @let detalhes = pedido.item.pacienteNome + ' solicitou o horário de ' + horario + '. ';
+    @let consequencia = pedido.aceitar
+      ? (pedido.item.avulsa ? 'A confirmação também ativa o vínculo com o paciente.' : 'O horário será confirmado na agenda.')
+      : 'A solicitação será recusada.';
+    <app-dialogo-confirmacao
+      [titulo]="pedido.aceitar ? 'Confirmar horário?' : 'Recusar solicitação de consulta?'"
+      [descricao]="detalhes + consequencia"
+      [confirmar]="pedido.aceitar ? 'Confirmar horário' : 'Recusar solicitação'"
+      [icone]="pedido.aceitar ? 'calendar-check' : 'calendar-x'"
+      [destrutivo]="!pedido.aceitar"
+      [ocupado]="decidindo !== null"
+      [rotuloOcupado]="pedido.aceitar ? 'Confirmando…' : 'Recusando…'"
+      [erro]="erroDecisao"
+      (fechar)="decisao = null"
+      (confirmado)="confirmarDecisao()" />
+  } @else {
+    <app-dialogo-confirmacao
+      [titulo]="pedido.aceitar ? 'Aceitar vínculo?' : 'Recusar solicitação de vínculo?'"
+      [descricao]="pedido.aceitar
+        ? 'Você poderá acompanhar ' + pedido.item.pacienteNome + ' e acessar sua ficha clínica enquanto o vínculo estiver ativo.'
+        : 'O vínculo com ' + pedido.item.pacienteNome + ' não será ativado.'"
+      [confirmar]="pedido.aceitar ? 'Aceitar vínculo' : 'Recusar solicitação'"
+      [icone]="pedido.aceitar ? 'link' : 'link-break'"
+      [destrutivo]="!pedido.aceitar"
+      [ocupado]="decidindo !== null"
+      [rotuloOcupado]="pedido.aceitar ? 'Aceitando…' : 'Recusando…'"
+      [erro]="erroDecisao"
+      (fechar)="decisao = null"
+      (confirmado)="confirmarDecisao()" />
+  }
+}

@@ -16,13 +16,13 @@ import { TituloPacienteComponent } from '../../shared/components/avatar-paciente
 import { AnamneseService } from './anamnese.service';
 import { Anamnese, AnamneseField, Answers, Answer, Patient } from './anamnese.models';
 import { rotuloOpcaoAnamnese } from './anamnese-rotulos';
-import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog/paciente-dialog.component';
+import { DialogoConfirmacaoComponent } from '../../shared/components/dialogo-confirmacao/dialogo-confirmacao.component';
 
 @Component({
   selector: 'app-anamnese',
   standalone: true,
   imports: [FormsModule, DatePipe, EstadoVazioComponent, UiButtonComponent, UiCheckboxComponent, UiSelectComponent,
-    PatientTabsComponent, TituloPacienteComponent, PacienteDialogComponent],
+    PatientTabsComponent, TituloPacienteComponent, DialogoConfirmacaoComponent],
   templateUrl: './anamnese.component.html',
   styleUrl: './anamnese.component.css'
 })

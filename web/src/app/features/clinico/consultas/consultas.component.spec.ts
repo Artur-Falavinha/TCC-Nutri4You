@@ -110,20 +110,20 @@ describe('ConsultasComponent', () => {
     fixture.detectChanges();
 
     const root = fixture.nativeElement as HTMLElement;
-    const dialog = root.querySelector('app-paciente-dialog [role="dialog"]');
+    const dialog = root.querySelector('app-dialogo-confirmacao dialog[open]');
     expect(dialog?.textContent).toContain('preservado sem publicação');
     expect(dialog?.textContent).toContain('somente para leitura');
     expect(dieta.listarPlanos).toHaveBeenCalledOnceWith(12, 90);
     expect(atendimentos.salvar).not.toHaveBeenCalled();
 
-    const confirm = Array.from(root.querySelectorAll<HTMLButtonElement>('app-paciente-dialog button'))
+    const confirm = Array.from(root.querySelectorAll<HTMLButtonElement>('app-dialogo-confirmacao button'))
       .find(button => button.textContent?.trim() === 'Concluir e manter rascunho');
     expect(confirm).toBeTruthy();
     confirm!.click();
     fixture.detectChanges();
 
     expect(atendimentos.salvar).toHaveBeenCalledOnceWith(90, jasmine.objectContaining({ status: 'REALIZADA' }));
-    expect(root.querySelector('app-paciente-dialog')).toBeNull();
+    expect(root.querySelector('app-dialogo-confirmacao')).toBeNull();
     expect(component.consultaAtual?.status).toBe('REALIZADA');
     expect(component.podeEditar).toBeFalse();
   });
@@ -133,13 +133,13 @@ describe('ConsultasComponent', () => {
     fixture.detectChanges();
 
     const root = fixture.nativeElement as HTMLElement;
-    const back = Array.from(root.querySelectorAll<HTMLButtonElement>('app-paciente-dialog button'))
+    const back = Array.from(root.querySelectorAll<HTMLButtonElement>('app-dialogo-confirmacao button'))
       .find(button => button.textContent?.trim() === 'Voltar ao atendimento');
     expect(back).toBeTruthy();
     back!.click();
     fixture.detectChanges();
 
-    expect(root.querySelector('app-paciente-dialog')).toBeNull();
+    expect(root.querySelector('app-dialogo-confirmacao')).toBeNull();
     expect(component.form.status).toBe('REALIZADA');
     expect(atendimentos.salvar).not.toHaveBeenCalled();
   });
@@ -150,7 +150,7 @@ describe('ConsultasComponent', () => {
     component.salvar();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('app-paciente-dialog')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-dialogo-confirmacao')).toBeNull();
     expect(atendimentos.salvar).toHaveBeenCalledOnceWith(90, jasmine.objectContaining({ status: 'REALIZADA' }));
   });
 

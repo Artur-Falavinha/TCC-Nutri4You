@@ -150,36 +150,40 @@
   }
 </main>
 @if (modalSaida) {
-  <app-paciente-dialog title="Sair da consulta?" description="As alterações não salvas desta consulta serão descartadas." (fechar)="responderSaida(false)">
-    <app-ui-button dialogActions label="Continuar editando" variant="outline" (click)="responderSaida(false)" />
-    <app-ui-button dialogActions label="Descartar e sair" variant="danger" (click)="responderSaida(true)" />
-  </app-paciente-dialog>
+  <app-dialogo-confirmacao
+    titulo="Sair da consulta?"
+    descricao="As alterações não salvas desta consulta serão descartadas."
+    confirmar="Descartar e sair"
+    voltar="Continuar editando"
+    icone="arrow-square-out"
+    [destrutivo]="true"
+    (fechar)="responderSaida(false)" (confirmado)="responderSaida(true)" />
 }
-@if (consultaParaCancelar) {
-  <app-paciente-dialog title="Cancelar consulta?" description="A consulta será cancelada e o horário ficará disponível." (fechar)="consultaParaCancelar = null">
-    <app-ui-button dialogActions label="Manter consulta" variant="outline" (click)="consultaParaCancelar = null" />
-    <app-ui-button dialogActions label="Cancelar consulta" variant="danger" (click)="confirmarCancelamento()" />
-  </app-paciente-dialog>
+@if (decisaoConsulta; as decisao) {
+  @let cancelar = decisao.tipo === 'cancelamento';
+  @let horario = (decisao.consulta.dataHora | dataHoraClinica);
+  <app-dialogo-confirmacao
+    [titulo]="cancelar ? 'Cancelar consulta?' : 'Confirmar consulta?'"
+    [descricao]="cancelar
+      ? 'A consulta de ' + horario + ' será cancelada e o horário ficará disponível.'
+      : 'O horário de ' + horario + ' será confirmado na agenda.'"
+    [confirmar]="cancelar ? 'Cancelar consulta' : 'Confirmar consulta'"
+    [voltar]="cancelar ? 'Manter consulta' : 'Voltar'"
+    [icone]="cancelar ? 'calendar-x' : 'calendar-check'"
+    [destrutivo]="cancelar"
+    [ocupado]="salvando"
+    [rotuloOcupado]="cancelar ? 'Cancelando…' : 'Confirmando…'"
+    (fechar)="decisaoConsulta = null"
+    (confirmado)="confirmarDecisaoConsulta()" />
 }
 
 @if (avisoConclusaoRascunhoAberto) {
-  <app-paciente-dialog
-    title="Dieta em rascunho"
-    description="Há uma dieta em rascunho vinculada a este atendimento. Ao concluir, o rascunho será preservado sem publicação e ficará somente para leitura."
-    (fechar)="fecharAvisoConclusaoRascunho()"
-  >
-    <app-ui-button
-      dialogActions
-      label="Voltar ao atendimento"
-      variant="outline"
-      [fullWidth]="false"
-      (click)="fecharAvisoConclusaoRascunho()"
-    />
-    <app-ui-button
-      dialogActions
-      label="Concluir e manter rascunho"
-      [fullWidth]="false"
-      (click)="confirmarConclusaoComRascunho()"
-    />
-  </app-paciente-dialog>
+  <app-dialogo-confirmacao
+    titulo="Dieta em rascunho"
+    descricao="Há uma dieta em rascunho vinculada a este atendimento. Ao concluir, o rascunho será preservado sem publicação e ficará somente para leitura."
+    confirmar="Concluir e manter rascunho"
+    voltar="Voltar ao atendimento"
+    icone="clipboard-text"
+    [ocupado]="salvando" rotuloOcupado="Concluindo…"
+    (fechar)="fecharAvisoConclusaoRascunho()" (confirmado)="confirmarConclusaoComRascunho()" />
 }

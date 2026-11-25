@@ -2,7 +2,6 @@ import { Component, EventEmitter, Output, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 
-import { ToastService } from '../../../../core/services/toast.service';
 import { UiInputComponent } from '../../../../shared/components/ui-input/ui-input.component';
 import { UiButtonComponent } from '../../../../shared/components/ui-button/ui-button.component';
 import { FormAlertComponent } from '../../../../shared/components/form-alert/form-alert.component';
@@ -11,6 +10,7 @@ import { PacienteResumo } from '../../../../core/models/paciente.models';
 import { ApiErrorResponse } from '../../../../core/models/api-response.model';
 import { extractCpfDigits } from '../../../../shared/utils/cpf-mask.util';
 import { PacienteDialogComponent } from '../paciente-dialog/paciente-dialog.component';
+import { RelacaoPacienteModalComponent } from '../relacao-paciente-modal/relacao-paciente-modal.component';
 
 @Component({
   selector: 'app-novo-paciente-modal',
@@ -19,13 +19,13 @@ import { PacienteDialogComponent } from '../paciente-dialog/paciente-dialog.comp
     UiInputComponent,
     UiButtonComponent,
     FormAlertComponent,
-    PacienteDialogComponent
+    PacienteDialogComponent,
+    RelacaoPacienteModalComponent
   ],
   templateUrl: './novo-paciente-modal.component.html',
   styleUrl: './novo-paciente-modal.component.css'
 })
 export class NovoPacienteModalComponent {
-  private readonly toast = inject(ToastService);
   @Output() fechar = new EventEmitter<void>();
   @Output() vinculado = new EventEmitter<void>();
 
@@ -33,9 +33,9 @@ export class NovoPacienteModalComponent {
   private readonly pacientesService = inject(PacientesService);
 
   loading = false;
-  vinculando = false;
   errorMessage = '';
   encontrado: PacienteResumo | null = null;
+  pacienteParaConfirmar: PacienteResumo | null = null;
 
   form = this.fb.nonNullable.group({
     email: [''],
@@ -64,25 +64,6 @@ export class NovoPacienteModalComponent {
             error.status === 404
               ? 'Nenhum paciente encontrado com esse critério.'
               : (error.message ?? 'Não foi possível buscar o paciente.');
-        }
-      });
-  }
-
-  onVincular(): void {
-    if (!this.encontrado) {
-      return;
-    }
-
-    this.vinculando = true;
-    this.errorMessage = '';
-
-    this.pacientesService
-      .vincularPaciente(this.encontrado.id)
-      .pipe(finalize(() => (this.vinculando = false)))
-      .subscribe({
-        next: () => this.vinculado.emit(),
-        error: (error: ApiErrorResponse) => {
-          this.toast.erro(error.message ?? 'Não foi possível enviar a solicitação de vínculo.');
         }
       });
   }

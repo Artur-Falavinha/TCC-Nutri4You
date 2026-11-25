@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, input, output, viewChild } from '@angular/core';
 
 @Component({
   selector: 'app-paciente-dialog',
@@ -6,15 +6,28 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
   templateUrl: './paciente-dialog.component.html',
   styleUrl: './paciente-dialog.component.css'
 })
-export class PacienteDialogComponent {
-  @Input({ required: true }) title = '';
-  @Input() description = '';
-  @Output() fechar = new EventEmitter<void>();
+export class PacienteDialogComponent implements AfterViewInit, OnDestroy {
+  readonly title = input.required<string>();
+  readonly description = input('');
+  readonly ocupado = input(false);
+  readonly fechar = output<void>();
 
-  readonly titleId = 'paciente-dialog-title';
+  private readonly painel = viewChild.required<ElementRef<HTMLDialogElement>>('painel');
+  private elemento?: HTMLDialogElement;
 
-  onEscape(event: Event): void {
-    event.stopPropagation();
+  ngAfterViewInit(): void {
+    this.elemento = this.painel().nativeElement;
+    this.elemento.showModal();
+  }
+
+  ngOnDestroy(): void {
+    this.elemento?.close();
+  }
+
+  cancelar(evento?: Event): void {
+    evento?.preventDefault();
+    if (this.ocupado()) return;
+    this.elemento?.close();
     this.fechar.emit();
   }
 }

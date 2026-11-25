@@ -101,19 +101,6 @@ h3 {
 .retorno .botao-discreto { color: inherit; padding-inline: 0; text-decoration: underline; }
 .retorno .botao-discreto:hover { background: transparent; }
 
-.remocao {
-  width: min(26rem, calc(100% - 2rem));
-  padding: var(--space-24);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-card);
-  color: var(--color-text-primary);
-}
-
-.remocao::backdrop { background: rgb(20 38 31 / .52); }
-.remocao__conteudo p { margin-top: var(--space-8); color: var(--color-text-secondary); }
-.botoes--remocao { justify-content: flex-end; margin-top: var(--space-24); }
-
 @media (max-width: 480px) {
   app-avatar-perfil { --tamanho-avatar: 3.5rem; }
   .identidade { gap: var(--space-12); padding: var(--space-12); }

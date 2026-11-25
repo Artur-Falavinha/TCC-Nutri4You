@@ -51,12 +51,14 @@ export class FotoPerfilService {
     );
   }
 
-  remover(): void {
+  remover(aoFinalizar?: () => void): void {
     if (this.salvando() || this.carregando() || !this.url()) return;
-    this.alterar(this.http.delete<null>(this.endpoint), 'remover', 'Foto de perfil removida.', 'Tente novamente.');
+    this.alterar(this.http.delete<null>(this.endpoint), 'remover', 'Foto de perfil removida.', 'Tente novamente.', aoFinalizar);
   }
 
-  private alterar(requisicao: Observable<Blob | null>, acao: string, mensagem: string, orientacao: string): void {
+  private alterar(
+    requisicao: Observable<Blob | null>, acao: string, mensagem: string, orientacao: string, aoFinalizar?: () => void
+  ): void {
     this.salvando.set(true);
     this.erro.set('');
     requisicao.pipe(
@@ -66,10 +68,12 @@ export class FotoPerfilService {
         this.atualizarUrl(imagem);
         this.falhaCarga.set(false);
         this.toast.sucesso(mensagem);
+        aoFinalizar?.();
       },
       error: (falha: ApiErrorResponse) => {
         const detalhe = falha.status === 400 || falha.status === 413 ? orientacao : 'Tente novamente.';
         this.toast.erro(`Não foi possível ${acao} a foto. ${detalhe}`);
+        aoFinalizar?.();
       }
     });
   }

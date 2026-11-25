@@ -15,7 +15,7 @@ import { UiButtonComponent } from '../../../shared/components/ui-button/ui-butto
 import { UiInputComponent } from '../../../shared/components/ui-input/ui-input.component';
 import { UiSelectComponent } from '../../../shared/components/ui-select/ui-select.component';
 import { DataHoraClinicaPipe } from '../../../shared/pipes/data-hora-clinica.pipe';
-import { PacienteDialogComponent } from '../../pacientes/components/paciente-dialog/paciente-dialog.component';
+import { DialogoConfirmacaoComponent } from '../../../shared/components/dialogo-confirmacao/dialogo-confirmacao.component';
 import { AnamneseField } from '../../anamnese/anamnese.models';
 import { rotuloOpcaoAnamnese } from '../../anamnese/anamnese-rotulos';
 import { AnamneseService } from '../../anamnese/anamnese.service';
@@ -27,14 +27,14 @@ import { criarLinkGoogleAgenda } from '../../agenda/google-calendar-link';
 @Component({
   selector: 'app-consultas',
   imports: [DatePipe, DataHoraClinicaPipe, FormsModule, RouterLink, EstadoVazioComponent, PatientTabsComponent, TituloPacienteComponent, UiButtonComponent,
-    UiInputComponent, UiSelectComponent, FormAlertComponent, PacienteDialogComponent],
+    UiInputComponent, UiSelectComponent, FormAlertComponent, DialogoConfirmacaoComponent],
   templateUrl: './consultas.component.html',
   styleUrl: './consultas.component.css'
 })
 export class ConsultasComponent implements OnInit {
   private readonly toast = inject(ToastService);
   modalSaida = false;
-  consultaParaCancelar: Consulta | null = null;
+  decisaoConsulta: { consulta: Consulta; tipo: 'confirmacao' | 'cancelamento' } | null = null;
   private respostaSaida: Subject<boolean> | null = null;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -189,7 +189,6 @@ export class ConsultasComponent implements OnInit {
 
   confirmarConclusaoComRascunho(): void {
     if (this.salvando || !this.avisoConclusaoRascunhoAberto) return;
-    this.avisoConclusaoRascunhoAberto = false;
     this.salvarConsulta();
   }
 
@@ -231,12 +230,14 @@ export class ConsultasComponent implements OnInit {
     operacao.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.original = this.form.assinatura();
+        this.avisoConclusaoRascunhoAberto = false;
         this.salvando = false;
         this.toast.sucesso(this.atendimento ? 'Atendimento salvo com sucesso.' : 'Consulta salva com sucesso.');
         if (this.atendimento) this.carregar();
         else void this.router.navigate(['/pacientes', this.patientId, 'consultas']);
       },
       error: (error: ApiErrorResponse) => {
+        this.avisoConclusaoRascunhoAberto = false;
         this.tratarFalha(error, 'Não foi possível salvar. Seus campos foram mantidos.', true);
         this.salvando = false;
       }
@@ -268,24 +269,25 @@ export class ConsultasComponent implements OnInit {
   }
   acao(c: Consulta, acao: 'inicio' | 'confirmacao' | 'cancelamento'): void {
     if (this.salvando) return;
-    if (acao === 'cancelamento') { this.consultaParaCancelar = c; return; }
-    this.executarAcao(c, acao);
+    if (acao === 'inicio') this.executarAcao(c, acao);
+    else this.decisaoConsulta = { consulta: c, tipo: acao };
   }
-  confirmarCancelamento(): void {
-    const consulta = this.consultaParaCancelar;
-    this.consultaParaCancelar = null;
-    if (consulta) this.executarAcao(consulta, 'cancelamento');
+  confirmarDecisaoConsulta(): void {
+    const decisao = this.decisaoConsulta;
+    if (!this.salvando && decisao) this.executarAcao(decisao.consulta, decisao.tipo);
   }
   private executarAcao(c: Consulta, acao: 'inicio' | 'confirmacao' | 'cancelamento'): void {
     this.salvando = true; this.erro = '';
     this.service.acao(this.patientId, c, acao).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.salvando = false;
+        this.decisaoConsulta = null;
         if (acao === 'inicio' && !this.editor) void this.router.navigate(['/pacientes', this.patientId, 'consultas', c.id]);
         else this.carregar(this.lista?.pagina || 0);
       },
       error: (erro: ApiErrorResponse) => {
         this.salvando = false;
+        this.decisaoConsulta = null;
         this.tratarFalha(erro, 'Não foi possível atualizar a consulta.', true);
       }
     });

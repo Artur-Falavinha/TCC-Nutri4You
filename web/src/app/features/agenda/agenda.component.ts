@@ -10,7 +10,7 @@ import { ApiService } from '../../core/services/api.service';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
-import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog/paciente-dialog.component';
+import { DialogoConfirmacaoComponent } from '../../shared/components/dialogo-confirmacao/dialogo-confirmacao.component';
 
 interface Horario { diaSemana: number; horario: string }
 
@@ -42,7 +42,7 @@ function horarioSeguinte(horario: string): string {
 
 @Component({
   selector: 'app-agenda',
-  imports: [FormsModule, FormAlertComponent, PageHeaderComponent, UiButtonComponent, PacienteDialogComponent],
+  imports: [FormsModule, FormAlertComponent, PageHeaderComponent, UiButtonComponent, DialogoConfirmacaoComponent],
   templateUrl: './agenda.component.html',
   styleUrl: './agenda.component.css'
 })

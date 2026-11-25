@@ -153,8 +153,12 @@
 </div>
 
 @if (modalSaida) {
-  <app-paciente-dialog title="Sair da agenda?" description="As alterações não salvas da disponibilidade serão descartadas." (fechar)="responderSaida(false)">
-    <app-ui-button dialogActions label="Continuar editando" variant="outline" (click)="responderSaida(false)" />
-    <app-ui-button dialogActions label="Descartar e sair" variant="danger" (click)="responderSaida(true)" />
-  </app-paciente-dialog>
+  <app-dialogo-confirmacao
+    titulo="Sair da agenda?"
+    descricao="As alterações não salvas da disponibilidade serão descartadas."
+    confirmar="Descartar e sair"
+    voltar="Continuar editando"
+    icone="arrow-square-out"
+    [destrutivo]="true"
+    (fechar)="responderSaida(false)" (confirmado)="responderSaida(true)" />
 }

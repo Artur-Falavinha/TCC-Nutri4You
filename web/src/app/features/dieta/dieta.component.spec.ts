@@ -494,24 +494,24 @@ describe('DietaComponent', () => {
     publicar.click();
     fixture.detectChanges();
 
-    const modal = raiz.querySelector('app-paciente-dialog [role="dialog"]')!;
+    const modal = raiz.querySelector('app-dialogo-confirmacao dialog[open]')!;
     expect(modal.textContent).toContain(rascunho.titulo);
     expect(dieta.publicarPlano).not.toHaveBeenCalled();
 
-    modal.querySelector<HTMLButtonElement>('#cancelar-publicacao button')!.click();
+    modal.querySelector<HTMLButtonElement>('button')!.click();
     fixture.detectChanges();
-    expect(raiz.querySelector('app-paciente-dialog')).toBeNull();
+    expect(raiz.querySelector('app-dialogo-confirmacao')).toBeNull();
     expect(dieta.publicarPlano).not.toHaveBeenCalled();
 
     publicar.click();
     fixture.detectChanges();
-    const confirmar = Array.from(raiz.querySelectorAll<HTMLButtonElement>('app-paciente-dialog button'))
-      .find(botao => botao.textContent?.trim() === 'Confirmar publicação')!;
+    const confirmar = Array.from(raiz.querySelectorAll<HTMLButtonElement>('app-dialogo-confirmacao button'))
+      .find(botao => botao.textContent?.trim() === 'Publicar plano')!;
     confirmar.click();
     fixture.detectChanges();
 
     expect(dieta.publicarPlano).toHaveBeenCalledOnceWith(paciente.id, rascunho.id, rascunho.versao, null);
-    expect(raiz.querySelector('app-paciente-dialog')).toBeNull();
+    expect(raiz.querySelector('app-dialogo-confirmacao')).toBeNull();
   });
 
   it('exige confirmação para excluir refeições', () => {
@@ -579,7 +579,7 @@ describe('DietaComponent', () => {
     (component.podeSair() as import('rxjs').Observable<boolean>).subscribe(valor => resposta = valor);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('app-paciente-dialog [role="dialog"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-dialogo-confirmacao dialog[open]')).not.toBeNull();
     component.confirmarDescarte();
     expect(resposta).toBeTrue();
   });

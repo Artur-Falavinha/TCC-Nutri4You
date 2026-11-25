@@ -1,0 +1,25 @@
+<dialog #dialogo [attr.aria-labelledby]="tituloId" [attr.aria-describedby]="descricaoId"
+  (cancel)="cancelar($event)">
+  <div class="conteudo">
+    <span class="icone" [class.icone--perigo]="destrutivo()" aria-hidden="true">
+      <i class="ph" [class]="'ph-' + icone()"></i>
+    </span>
+
+    <header>
+      <h2 [id]="tituloId">{{ titulo() }}</h2>
+      <p [id]="descricaoId">{{ descricao() }}</p>
+    </header>
+
+    @if (erro()) {
+      <p class="erro" role="alert">{{ erro() }}</p>
+    }
+
+    <footer class="acoes">
+      <app-ui-button [label]="voltar()" variant="secondary"
+        [disabled]="ocupado()" (click)="cancelar()" />
+      <app-ui-button [label]="ocupado() ? rotuloOcupado() : confirmar()"
+        [variant]="destrutivo() ? 'danger' : 'primary'" [loading]="ocupado()"
+        (click)="confirmarAcao()" />
+    </footer>
+  </div>
+</dialog>
