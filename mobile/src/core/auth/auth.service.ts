@@ -54,7 +54,7 @@ export async function autocadastrarPaciente(
     email: payload.email.trim().toLowerCase(),
     senha: payload.senha,
     tokenCadastro: payload.tokenCadastro,
-    cpf: payload.cpf?.trim() || undefined,
+    cpf: payload.cpf.trim(),
     telefone: payload.telefone?.trim() || undefined,
     sexo: payload.sexo?.trim() || undefined,
     dataNascimento: payload.dataNascimento || undefined,

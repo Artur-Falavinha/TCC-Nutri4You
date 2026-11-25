@@ -163,7 +163,7 @@ class CadastroEmailControllerTest {
         if (perfil == TipoCadastro.PACIENTE) {
             return enviar("/api/v1/pacientes/autocadastro", """
                     {"nome":"Paciente Teste","email":"%s","tokenCadastro":"%s",
-                     "versaoTermos":"%s","senha":"%s"}
+                     "cpf":"012.345.678-90","versaoTermos":"%s","senha":"%s"}
                     """.formatted(email, token, PrivacidadeService.VERSAO, SENHA));
         }
         return enviar("/api/v1/nutricionistas/autocadastro", """

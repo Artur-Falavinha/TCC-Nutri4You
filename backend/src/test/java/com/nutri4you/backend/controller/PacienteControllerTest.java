@@ -75,13 +75,14 @@ class PacienteControllerTest {
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = "   ")
-    void autocadastroAceitaCpfNaoInformado(String cpf) throws Exception {
-        String email = "cpf.opcional@example.test";
+    void autocadastroExigeCpf(String cpf) throws Exception {
+        String email = "cpf.ausente@example.test";
 
-        cadastrarComCpf(email, cpf).andExpect(status().isCreated());
+        cadastrarComCpf(email, cpf)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("CPF é obrigatório."));
 
-        assertThat(pacienteRepository.findByEmail(email)).hasValueSatisfying(
-                paciente -> assertThat(paciente.getCpf()).isNull());
+        assertThat(pacienteRepository.existsByEmail(email)).isFalse();
     }
 
     @Test
@@ -118,12 +119,13 @@ class PacienteControllerTest {
         verify(notificacoes).agendarInicioCadastro(eq(email), eq(TipoCadastro.PACIENTE), captura.capture());
         UUID token = captura.getValue();
         cadastroEmail.confirmar(token, TipoCadastro.PACIENTE);
+        String campoCpf = cpf == null ? "" : "\"cpf\":\"" + cpf + "\",";
 
         return mockMvc.perform(post("/api/v1/pacientes/autocadastro")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {"nome":"Paciente Teste","email":"%s","senha":"SenhaTeste123",
-                         "cpf":%s,"versaoTermos":"%s","tokenCadastro":"%s"}
-                        """.formatted(email, cpf == null ? "null" : "\"" + cpf + "\"", PrivacidadeService.VERSAO, token)));
+                         %s"versaoTermos":"%s","tokenCadastro":"%s"}
+                        """.formatted(email, campoCpf, PrivacidadeService.VERSAO, token)));
     }
 }

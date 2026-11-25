@@ -140,8 +140,10 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
       return;
     }
 
-    if (cpf.trim() && !isCpfValid(cpf)) {
-      toast.aviso('Informe um CPF válido com 11 dígitos ou deixe o campo em branco.');
+    const cpfInformado = cpf.trim();
+    const cpfParaEnvio = isCpfValid(cpfInformado) ? normalizeCpf(cpfInformado) : undefined;
+    if (!cpfParaEnvio) {
+      toast.aviso(cpfInformado ? 'Informe um CPF válido com 11 dígitos.' : 'Informe seu CPF.');
       return;
     }
 
@@ -158,7 +160,7 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
         email,
         tokenCadastro: confirmacao.token,
         senha,
-        cpf: normalizeCpf(cpf),
+        cpf: cpfParaEnvio,
         telefone: normalizePhone(telefone),
         sexo: sexo || undefined,
         dataNascimento: isoDate,
@@ -275,13 +277,14 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
           </View>
 
           <View style={formulario.campo}>
-            <Text style={formulario.rotulo}>CPF (opcional)</Text>
+            <Text style={formulario.rotulo}>CPF *</Text>
             <View style={formulario.controle}>
               <Feather name="credit-card" size={18} color={colors.textSecondary} aria-hidden />
               <TextInput
                 style={formulario.entrada}
                 placeholder="000.000.000-00"
-                accessibilityLabel="CPF (opcional)"
+                accessibilityLabel="CPF"
+                aria-required
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
                 value={cpf}

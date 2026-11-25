@@ -41,7 +41,7 @@ public class PacienteService {
         String email = cadastroEmail.consumir(dto.tokenCadastro(), TipoCadastro.PACIENTE, dto.email());
 
         String cpf = validarCpfCadastro(dto.cpf());
-        if (cpf != null && pacientes.existsByCpf(cpf)) {
+        if (pacientes.existsByCpf(cpf)) {
             throw new CpfEmUsoException();
         }
 
@@ -55,7 +55,7 @@ public class PacienteService {
 
     private static String validarCpfCadastro(String cpf) {
         if (cpf == null || cpf.isBlank()) {
-            return null;
+            throw new IllegalArgumentException("CPF é obrigatório.");
         }
 
         if (!FORMATO_CPF.matcher(cpf.strip()).matches()) {
