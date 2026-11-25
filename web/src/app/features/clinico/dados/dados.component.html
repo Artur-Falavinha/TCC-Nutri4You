@@ -1,4 +1,4 @@
-<section class="workspace workspace--ficha">
+<section class="workspace">
   <header class="page-header">
     <app-titulo-paciente [nome]="paciente?.nome || 'Paciente'" [pacienteId]="paciente?.id ?? null" />
     @if (paciente) { <app-patient-tabs [patientId]="paciente.id" /> }
@@ -7,39 +7,95 @@
     @if (erro) { <p class="alert" role="alert">{{ erro }}</p> }
     @else if (!paciente) { <p role="status">Carregando...</p> }
     @else {
-      <article class="ficha">
-        <section class="ficha__bloco">
-          <h2>Última consulta</h2>
-          @if (consultaIndisponivel) {
-            <p>Não foi possível carregar a última consulta.</p>
-          } @else if (ultimaConsulta) {
-            <p>Realizada em {{ ultimaConsulta.data }}.</p>
-            @if (ultimaConsulta.profissional) {
-              <p>Atendimento com {{ ultimaConsulta.profissional }}.</p>
+      <article class="ficha" aria-labelledby="ficha-titulo">
+        <h2 class="ficha__titulo" id="ficha-titulo">Dados do paciente</h2>
+
+        <section class="ficha__bloco" aria-labelledby="consulta-titulo">
+          <h3 id="consulta-titulo">Última consulta</h3>
+          <div class="ficha__consulta">
+            @if (consultaIndisponivel) {
+              <p>Não foi possível carregar a última consulta.</p>
+            } @else if (ultimaConsulta) {
+              @if (ultimaConsulta.data) {
+                <p>Realizada em <strong>{{ ultimaConsulta.data }}</strong>.</p>
+              } @else {
+                <p>Data da consulta não informada.</p>
+              }
+              @if (ultimaConsulta.profissional) {
+                <p>Atendimento com {{ ultimaConsulta.profissional }}.</p>
+              }
+            } @else {
+              <p>Nenhuma consulta realizada.</p>
             }
-          } @else {
-            <p>Nenhuma consulta realizada.</p>
-          }
+          </div>
         </section>
-        <section class="ficha__bloco">
-          <h2>Dados cadastrais</h2>
-          <p>E-mail {{ paciente.email }} · Tel. {{ telefone }}</p>
-          <p>Nascimento {{ nascimento }} · Sexo {{ paciente.sexo || 'não informado' }}</p>
+
+        <section class="ficha__bloco" aria-labelledby="cadastro-titulo">
+          <h3 id="cadastro-titulo">Dados cadastrais</h3>
+          <dl class="campos campos--cadastro">
+            <div>
+              <dt>E-mail</dt>
+              <dd>{{ valor(paciente.email) }}</dd>
+            </div>
+            <div>
+              <dt>Telefone</dt>
+              <dd>{{ telefone }}</dd>
+            </div>
+            <div>
+              <dt>Data de nascimento</dt>
+              <dd>{{ nascimento }}</dd>
+            </div>
+            <div>
+              <dt>Sexo</dt>
+              <dd>{{ valor(paciente.sexo) }}</dd>
+            </div>
+          </dl>
         </section>
-        <section class="ficha__bloco">
-          <h2>Objetivo e saúde</h2>
-          <p>Meta principal: {{ valor(metaPrincipal) }}</p>
-          <p>Restrições alimentares: {{ valor(restricoes) }}</p>
+
+        <section class="ficha__bloco" aria-labelledby="objetivo-titulo">
+          <h3 id="objetivo-titulo">Objetivo e saúde</h3>
+          <dl class="campos">
+            <div>
+              <dt>Meta principal</dt>
+              <dd>{{ valor(metaPrincipal) }}</dd>
+            </div>
+            <div>
+              <dt>Restrições alimentares</dt>
+              <dd>{{ valor(restricoes) }}</dd>
+            </div>
+          </dl>
         </section>
-        <section class="ficha__bloco">
-          <h2>Histórico clínico</h2>
-          <p>Doenças preexistentes: {{ valor(doencas) }}</p>
-          <p>Medicamentos em uso: {{ valor(medicamentos) }}</p>
+
+        <section class="ficha__bloco" aria-labelledby="historico-titulo">
+          <h3 id="historico-titulo">Histórico clínico</h3>
+          <dl class="campos">
+            <div>
+              <dt>Doenças preexistentes</dt>
+              <dd>{{ valor(doencas) }}</dd>
+            </div>
+            <div>
+              <dt>Medicamentos em uso</dt>
+              <dd>{{ valor(medicamentos) }}</dd>
+            </div>
+          </dl>
         </section>
-        <section class="ficha__bloco">
-          <h2>Estilo de vida</h2>
-          <p>Exercícios: {{ valor(exercicios) }}</p>
-          <p>{{ linhaSonoTrabalho }}</p>
+
+        <section class="ficha__bloco" aria-labelledby="rotina-titulo">
+          <h3 id="rotina-titulo">Estilo de vida</h3>
+          <dl class="campos campos--rotina">
+            <div>
+              <dt>Exercícios</dt>
+              <dd>{{ valor(exercicios) }}</dd>
+            </div>
+            <div>
+              <dt>Sono</dt>
+              <dd>{{ valor(sono) }}</dd>
+            </div>
+            <div>
+              <dt>Trabalho</dt>
+              <dd>{{ valor(trabalho) }}</dd>
+            </div>
+          </dl>
         </section>
       </article>
     }

@@ -68,7 +68,7 @@ export class DadosComponent implements OnInit {
         this.consultaIndisponivel = consulta.falhou;
         if (consulta.consulta) {
           this.ultimaConsulta = {
-            data: formatarDataBr(consulta.consulta.dataHora.slice(0, 10)) || 'não informada',
+            data: formatarDataBr(consulta.consulta.dataHora.slice(0, 10)),
             profissional: nutricionista?.nome ?? ''
           };
         }
@@ -89,11 +89,11 @@ export class DadosComponent implements OnInit {
     if (digitos.length === 10) {
       return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 6)}-${digitos.slice(6)}`;
     }
-    return bruto || 'não informado';
+    return bruto || 'Não informado';
   }
 
   get nascimento(): string {
-    return formatarDataBr(this.paciente?.dataNascimento) || 'não informado';
+    return formatarDataBr(this.paciente?.dataNascimento) || 'Não informado';
   }
 
   get metaPrincipal(): string {
@@ -109,7 +109,7 @@ export class DadosComponent implements OnInit {
     if (alergia) {
       partes.push(alergia);
     } else if (this.respostas['allergy'] === 'Não') {
-      partes.push('nenhuma');
+      partes.push('Nenhuma');
     }
     const dieta = this.livre('diet');
     if (dieta && dieta !== 'Não sigo dieta específica') {
@@ -121,7 +121,7 @@ export class DadosComponent implements OnInit {
   get doencas(): string {
     const selecionados = this.itens(this.respostas['diagnoses']);
     if (selecionados.length === 1 && selecionados[0] === 'Nenhum diagnóstico') {
-      return 'nenhuma';
+      return 'Nenhuma';
     }
     return this.unir([
       this.lista(selecionados.filter(item => item !== 'Outro' && item !== 'Nenhum diagnóstico')),
@@ -131,14 +131,14 @@ export class DadosComponent implements OnInit {
 
   get medicamentos(): string {
     if (this.respostas['medication'] === 'Não') {
-      return 'nenhum';
+      return 'Nenhum';
     }
     return this.livre('medicationDetails');
   }
 
   get exercicios(): string {
     if (this.respostas['physicalActivity'] === 'Não') {
-      return 'não pratica regularmente';
+      return 'Não pratica regularmente';
     }
     const atividades = this.unir([
       this.lista(this.itens(this.respostas['activities']).filter(item => item !== 'Outro')),
@@ -151,16 +151,16 @@ export class DadosComponent implements OnInit {
     return atividades || frequencia;
   }
 
-  get linhaSonoTrabalho(): string {
-    return `Sono: ${this.valor(this.livre('sleepHours'))} Trabalho: ${this.valor(this.livre('profession'))}`;
+  get sono(): string {
+    return this.livre('sleepHours');
   }
 
-  valor(texto: string): string {
-    const limpo = texto.trim();
-    if (!limpo) {
-      return 'Não informado.';
-    }
-    return /[.!?]$/.test(limpo) ? limpo : `${limpo}.`;
+  get trabalho(): string {
+    return this.livre('profession');
+  }
+
+  valor(texto?: string): string {
+    return texto?.trim() || 'Não informado';
   }
 
   private ultimaRealizada(pacienteId: number): Observable<Consulta | null> {
