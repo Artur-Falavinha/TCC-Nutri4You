@@ -47,7 +47,6 @@ export function AppointmentsScreen({ navigation }: Props) {
   const [userName, setUserName] = useState('Paciente');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
   const [pendingCancellation, setPendingCancellation] = useState<Appointment | null>(null);
@@ -86,7 +85,6 @@ export function AppointmentsScreen({ navigation }: Props) {
     if (!pendingCancellation) {
       return;
     }
-    setCancelling(true);
     setError('');
     try {
       await cancelAppointment(pendingCancellation.id, pendingCancellation.versao);
@@ -96,8 +94,6 @@ export function AppointmentsScreen({ navigation }: Props) {
     } catch (failure) {
       setPendingCancellation(null);
       toast.erro(errorMessage(failure, 'Não foi possível cancelar a consulta.'));
-    } finally {
-      setCancelling(false);
     }
   };
 
@@ -240,9 +236,8 @@ export function AppointmentsScreen({ navigation }: Props) {
 
       <CancelAppointmentModal
         appointment={pendingCancellation}
-        loading={cancelling}
         onKeep={() => setPendingCancellation(null)}
-        onConfirm={() => void confirmCancellation()}
+        onConfirm={confirmCancellation}
       />
     </SafeAreaView>
   );

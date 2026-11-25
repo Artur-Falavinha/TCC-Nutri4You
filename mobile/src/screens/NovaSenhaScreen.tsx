@@ -76,9 +76,9 @@ export default function NovaSenhaScreen() {
 
   useEffect(() => {
     if (!token || !isValidUuid(token)) {
-      showAlert('Link inválido', 'Token de redefinição ausente ou inválido.', [
+      showAlert('Link inválido', 'Peça um novo código para redefinir sua senha.', [
         {
-          text: 'OK',
+          text: 'Pedir novo código',
           onPress: () => navigation.navigate('TrocarSenha')
         }
       ]);

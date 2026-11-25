@@ -1,3 +1,4 @@
+import { DialogoConfirmacao } from '../../components/feedback/DialogoConfirmacao';
 import { toast } from '../../components/feedback/toast';
 import { Feather } from '@expo/vector-icons';
 import { CommonActions } from '@react-navigation/native';
@@ -6,7 +7,6 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -356,35 +356,23 @@ export function HomeScreen({ navigation }: Props) {
           </Pressable>
         </ScrollView>
 
-        <Modal visible={pendente !== null} transparent animationType="fade" onRequestClose={() => setPendente(null)}>
-          {pendente && (
-            <ScrollView contentContainerStyle={styles.confirmaOverlay}>
-              <View style={[sectionCardStyles.superficie, styles.confirma]} accessibilityRole="alert" accessibilityViewIsModal>
-                <Text style={styles.confirmaTitulo}>Encerrar vínculo?</Text>
-                <Text style={perfilStyles.descricao}>
-                  Encerrar a relação com {pendente.nome}? A conta permanece ativa.
-                </Text>
-                <View style={styles.confirmaAcoes}>
-                  <Pressable
-                    style={({ pressed }) => [perfilStyles.botao, perfilStyles.secundario, pressed && perfilStyles.pressionado]}
-                    onPress={() => setPendente(null)}
-                    accessibilityRole="button"
-                  >
-                    <Text style={perfilStyles.rotuloBotao}>Cancelar</Text>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [perfilStyles.botao, styles.confirmaPerigo, pressed && perfilStyles.pressionado]}
-                    onPress={() => void executarDesvinculo(pendente)}
-                    accessibilityRole="button"
-                    accessibilityLabel="Confirmar desvínculo"
-                  >
-                    <Text style={perfilStyles.rotuloPrimario}>Encerrar vínculo</Text>
-                  </Pressable>
-                </View>
-              </View>
-            </ScrollView>
-          )}
-        </Modal>
+        {pendente && (
+          <DialogoConfirmacao
+            titulo="Encerrar vínculo?"
+            descricao={`${pendente.nome} deixará de acessar sua ficha clínica. Consultas em aberto com esse profissional serão canceladas e sua conta continuará ativa.`}
+            icone="user-x"
+            fechar={() => setPendente(null)}
+            acoes={[
+              { rotulo: 'Manter vínculo', variante: 'secundaria', executar: () => setPendente(null) },
+              {
+                rotulo: 'Encerrar vínculo',
+                variante: 'perigo',
+                executar: () => executarDesvinculo(pendente),
+                rotuloOcupado: 'Encerrando…'
+              }
+            ]}
+          />
+        )}
       </KeyboardAvoidingView>
       <SideMenu
         visible={menuVisible}
@@ -433,12 +421,5 @@ const styles = StyleSheet.create({
   vinculoTexto: { flex: 1, minWidth: 0, gap: spacing.xxs },
   vinculoNome: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 15 },
   sair: { backgroundColor: colors.card, borderColor: colors.border },
-  confirmaOverlay: {
-    flexGrow: 1, justifyContent: 'center', alignItems: 'center',
-    padding: spacing.lg, backgroundColor: colors.overlay
-  },
-  confirma: { width: '100%', maxWidth: 440, padding: spacing.lg },
-  confirmaTitulo: { color: colors.text, fontFamily: fontFamily.extrabold, fontSize: 20 },
-  confirmaAcoes: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: spacing.xs },
-  confirmaPerigo: { backgroundColor: colors.dangerText }
+
 });

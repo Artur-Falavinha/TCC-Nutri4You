@@ -1,3 +1,4 @@
+import { DialogoConfirmacao } from '../../components/feedback/DialogoConfirmacao';
 import { toast } from '../../components/feedback/toast';
 import { Feather } from '@expo/vector-icons';
 import { SectionCardHeader, sectionCardStyles } from '../../components/layout/SectionCardHeader';
@@ -12,6 +13,7 @@ export function FotoPerfil() {
   const [foto, setFoto] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [ocupado, setOcupado] = useState(false);
+  const [confirmandoRemocao, setConfirmandoRemocao] = useState(false);
   const [tentativa, setTentativa] = useState(0);
   const [falhaCarga, setFalhaCarga] = useState(false);
 
@@ -31,6 +33,7 @@ export function FotoPerfil() {
       if (remover) {
         await removerFotoPerfil();
         setFoto(null);
+        setConfirmandoRemocao(false);
         toast.sucesso('Foto de perfil removida.');
       } else {
         const imagem = await selecionarEEnviarFotoPerfil();
@@ -40,6 +43,7 @@ export function FotoPerfil() {
         toast.sucesso('Foto de perfil salva.');
       }
     } catch (falha) {
+      if (remover) setConfirmandoRemocao(false);
       toast.erro(falha instanceof Error ? falha.message : 'Não foi possível alterar a foto. Tente novamente.');
     } finally {
       setOcupado(false);
@@ -72,13 +76,25 @@ export function FotoPerfil() {
             ]}
             disabled={bloqueado}
             accessibilityRole="button"
-            onPress={() => void alterar(true)}
+            onPress={() => setConfirmandoRemocao(true)}
           >
             <Feather name="trash-2" size={18} color={colors.dangerText} aria-hidden />
             <Text style={perfilStyles.rotuloPerigo}>Remover foto</Text>
           </Pressable>
         )}
       </View>
+      {confirmandoRemocao && (
+        <DialogoConfirmacao
+          titulo="Remover foto de perfil?"
+          descricao="Seu perfil voltará a mostrar o avatar padrão."
+          icone="trash-2"
+          fechar={() => setConfirmandoRemocao(false)}
+          acoes={[
+            { rotulo: 'Manter foto', variante: 'secundaria', executar: () => setConfirmandoRemocao(false) },
+            { rotulo: 'Remover foto', variante: 'perigo', executar: () => alterar(true), rotuloOcupado: 'Removendo…' }
+          ]}
+        />
+      )}
       {bloqueado ? <ActivityIndicator accessibilityLabel="Carregando foto" color={colors.brand} /> : null}
       {falhaCarga && (
         <View style={styles.erroCarga}>

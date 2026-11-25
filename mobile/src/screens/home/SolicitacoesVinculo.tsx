@@ -1,3 +1,4 @@
+import { DialogoConfirmacao } from '../../components/feedback/DialogoConfirmacao';
 import { toast } from '../../components/feedback/toast';
 import { SectionCardHeader, sectionCardStyles } from '../../components/layout/SectionCardHeader';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
@@ -20,7 +21,7 @@ interface Props {
 export function SolicitacoesVinculo({ onAceito }: Props) {
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoVinculo[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [decidindo, setDecidindo] = useState(false);
+  const [decisao, setDecisao] = useState<{ solicitacao: SolicitacaoVinculo; aceitar: boolean } | null>(null);
   const [erro, setErro] = useState('');
 
   useEffect(() => {
@@ -39,7 +40,6 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
   }, []);
 
   const decidir = async (solicitacao: SolicitacaoVinculo, aceitar: boolean) => {
-    setDecidindo(true);
     setErro('');
     try {
       const vinculo = await decidirSolicitacaoVinculo(solicitacao, aceitar);
@@ -49,11 +49,11 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
     } catch (falha) {
       toast.erro(falha instanceof ApiError ? falha.message : 'Não foi possível responder à solicitação.');
     } finally {
-      setDecidindo(false);
+      setDecisao(null);
     }
   };
 
-  const ocupado = carregando || decidindo;
+  const ocupado = carregando || decisao !== null;
   return (
     <View style={sectionCardStyles.superficie}>
       <SectionCardHeader titulo="Solicitações de vínculo" icone="inbox" />
@@ -72,7 +72,7 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
           <Text style={styles.nome}>{solicitacao.nutricionistaNome}</Text>
           <View style={styles.acoes}>
             <Pressable
-              onPress={() => void decidir(solicitacao, false)}
+              onPress={() => setDecisao({ solicitacao, aceitar: false })}
               accessibilityRole="button"
               accessibilityLabel={'Recusar vínculo com ' + solicitacao.nutricionistaNome}
               disabled={ocupado}
@@ -83,7 +83,7 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
               <Text style={perfilStyles.rotuloPerigo}>Recusar</Text>
             </Pressable>
             <Pressable
-              onPress={() => void decidir(solicitacao, true)}
+              onPress={() => setDecisao({ solicitacao, aceitar: true })}
               accessibilityRole="button"
               accessibilityLabel={'Aceitar vínculo com ' + solicitacao.nutricionistaNome}
               disabled={ocupado}
@@ -96,6 +96,25 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
           </View>
         </View>
       ))}
+      {decisao && (
+        <DialogoConfirmacao
+          titulo={decisao.aceitar ? 'Aceitar vínculo?' : 'Recusar solicitação?'}
+          descricao={decisao.aceitar
+            ? `${decisao.solicitacao.nutricionistaNome} poderá acessar sua ficha clínica enquanto o vínculo estiver ativo.`
+            : `O vínculo com ${decisao.solicitacao.nutricionistaNome} não será ativado.`}
+          icone={decisao.aceitar ? 'user-check' : 'user-x'}
+          fechar={() => setDecisao(null)}
+          acoes={[
+            { rotulo: 'Voltar', variante: 'secundaria', executar: () => setDecisao(null) },
+            {
+              rotulo: decisao.aceitar ? 'Aceitar vínculo' : 'Recusar solicitação',
+              variante: decisao.aceitar ? undefined : 'perigo',
+              executar: () => decidir(decisao.solicitacao, decisao.aceitar),
+              rotuloOcupado: 'Enviando…'
+            }
+          ]}
+        />
+      )}
     </View>
   );
 }

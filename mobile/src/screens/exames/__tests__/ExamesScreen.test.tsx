@@ -1,7 +1,7 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import * as RN from 'react-native';
-import { Pressable, ScrollView, Text } from 'react-native';
+import { Modal, Pressable, ScrollView, Text } from 'react-native';
 
 import { toast } from '../../../components/feedback/toast';
 import {
@@ -276,14 +276,12 @@ describe('ExamesScreen', () => {
     act(() => tree.unmount());
   });
 
-  it('permite remover um resultado de exame já enviado voltando o status para PENDENTE', async () => {
+  it('só remove o resultado após confirmar e bloqueia ações até a resposta', async () => {
     (listarMeusExames as jest.Mock).mockResolvedValueOnce(sampleExames());
-    (removerResultadoExame as jest.Mock).mockResolvedValueOnce({
-      id: 2,
-      nome: 'Perfil Lipídico',
-      versao: 0, status: 'PENDENTE', possuiArquivo: false,
-      arquivoNome: null
-    });
+    let concluirRemocao!: (resultado: ExamePedido) => void;
+    (removerResultadoExame as jest.Mock).mockReturnValueOnce(new Promise<ExamePedido>((resolve) => {
+      concluirRemocao = resolve;
+    }));
     const navigation = { navigate: jest.fn(), dispatch: jest.fn() };
     let tree!: renderer.ReactTestRenderer;
 
@@ -302,7 +300,29 @@ describe('ExamesScreen', () => {
       await removeBtn.props.onPress();
     });
 
+    expect(removerResultadoExame).not.toHaveBeenCalled();
+    act(() => tree.root.findByType(Modal).props.onRequestClose());
+    expect(tree.root.findAllByType(Modal)).toHaveLength(0);
+    expect(removerResultadoExame).not.toHaveBeenCalled();
+
+    await act(async () => { removeBtn.props.onPress(); });
+    const confirmar = tree.root.findByProps({ testID: 'exame-confirmar-remocao-botao' });
+    act(() => {
+      void confirmar.props.onPress();
+      void confirmar.props.onPress();
+      tree.root.findByType(Modal).props.onRequestClose();
+    });
+
+    expect(removerResultadoExame).toHaveBeenCalledTimes(1);
     expect(removerResultadoExame).toHaveBeenCalledWith(2, 1);
+    expect(confirmar.props.accessibilityState).toEqual({ busy: true, disabled: true });
+
+    await act(async () => {
+      concluirRemocao({
+        id: 2, nome: 'Perfil Lipídico', versao: 2, status: 'PENDENTE',
+        possuiArquivo: false, arquivoNome: null
+      });
+    });
     expect(toast.sucesso).toHaveBeenCalledWith(
       'Envio de "Perfil Lipídico" removido. O exame voltou para PENDENTE.'
     );

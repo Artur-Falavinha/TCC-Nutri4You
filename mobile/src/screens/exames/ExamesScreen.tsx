@@ -1,3 +1,4 @@
+import { DialogoConfirmacao } from '../../components/feedback/DialogoConfirmacao';
 import { toast } from '../../components/feedback/toast';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -5,7 +6,6 @@ import type { DragEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -80,7 +80,8 @@ export function ExamesScreen({ navigation }: Props) {
   const [selectedFile, setSelectedFile] = useState<ArquivoExameSelecionado | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [removingId, setRemovingId] = useState<number | null>(null);
+  const [exameParaRemover, setExameParaRemover] = useState<ExamePedido | null>(null);
+  const [erroRemocao, setErroRemocao] = useState('');
   const [uploadError, setUploadError] = useState('');
 
   const requestId = useRef(0);
@@ -253,12 +254,13 @@ export function ExamesScreen({ navigation }: Props) {
     }
   };
 
+  const fecharConfirmacaoRemocao = () => {
+    setExameParaRemover(null);
+    setErroRemocao('');
+  };
+
   const handleRemoverExameEnviado = async (exame: ExamePedido) => {
-    if (removingId !== null || uploading) {
-      return;
-    }
-    setRemovingId(exame.id);
-    setUploadError('');
+    setErroRemocao('');
     try {
       const atualizado = await removerResultadoExame(exame.id, exame.versao);
       setExames((prev) =>
@@ -283,18 +285,9 @@ export function ExamesScreen({ navigation }: Props) {
         setSelectedExame(null);
         setSelectedFile(null);
       }
+      fecharConfirmacaoRemocao();
     } catch (failure) {
-      const msg = extractErrorMessage(
-        failure,
-        'Não foi possível remover o arquivo do exame.'
-      );
-      if (selectedExame?.id === exame.id) {
-        setUploadError(msg);
-      } else {
-        toast.erro(msg);
-      }
-    } finally {
-      setRemovingId(null);
+      setErroRemocao(extractErrorMessage(failure, 'Não foi possível remover o arquivo. Tente novamente.'));
     }
   };
 
@@ -456,7 +449,6 @@ export function ExamesScreen({ navigation }: Props) {
               const pendente = exame.status === 'PENDENTE';
               const enviado = exame.status === 'ENVIADO';
               const podeBaixar = Platform.OS === 'web' && exame.possuiArquivo;
-              const removendo = removingId === exame.id;
 
               return (
                 <View key={exame.id} style={styles.surface} testID={`exame-card-${exame.id}`}>
@@ -492,11 +484,9 @@ export function ExamesScreen({ navigation }: Props) {
                       {(pendente || enviado) && (
                         <Pressable
                           style={({ pressed }) => [
-                            styles.button, pendente ? styles.primaryButton : styles.secondaryButton,
-                            removendo && styles.buttonDisabled, pressed && styles.pressed
+                            styles.button, pendente ? styles.primaryButton : styles.secondaryButton, pressed && styles.pressed
                           ]}
                           onPress={() => abrirModalEnvio(exame)}
-                          disabled={removendo}
                           accessibilityRole="button"
                           accessibilityLabel={pendente ? `Enviar resultado de ${exame.nome}` : `Substituir ou gerenciar resultado de ${exame.nome}`}
                           testID={`exame-action-button-${exame.id}`}
@@ -519,17 +509,14 @@ export function ExamesScreen({ navigation }: Props) {
                       {enviado && (
                         <Pressable
                           style={({ pressed }) => [
-                            styles.button, styles.dangerButton, removendo && styles.buttonDisabled, pressed && styles.pressed
+                            styles.button, styles.dangerButton, pressed && styles.pressed
                           ]}
-                          onPress={() => void handleRemoverExameEnviado(exame)}
-                          disabled={removendo}
+                          onPress={() => setExameParaRemover(exame)}
                           accessibilityRole="button"
                           accessibilityLabel={`Remover envio de ${exame.nome}`}
-                          accessibilityState={{ disabled: removendo, busy: removendo }}
                           testID={`exame-remove-button-${exame.id}`}
                         >
-                          {removendo ? <ActivityIndicator size="small" color={colors.dangerText} /> :
-                            <Feather name="trash-2" size={16} color={colors.dangerText} aria-hidden />}
+                          <Feather name="trash-2" size={16} color={colors.dangerText} aria-hidden />
                           <Text style={[styles.buttonText, styles.dangerText]}>Remover</Text>
                         </Pressable>
                       )}
@@ -542,127 +529,109 @@ export function ExamesScreen({ navigation }: Props) {
         )}
       </ScrollView>
 
-      <Modal visible={selectedExame !== null} transparent onRequestClose={fecharModalEnvio}>
-        {selectedExame && (
-          <SafeAreaView
-            style={styles.modalBackdrop}
-            edges={['top', 'left', 'right', 'bottom']}
-            testID="exame-upload-modal"
-          >
-            <View style={styles.modalCard} accessibilityViewIsModal>
-              <ScrollView
-                style={styles.modalScroll}
-                contentContainerStyle={styles.modalContent}
-                keyboardShouldPersistTaps="handled"
-              >
-                <View style={styles.modalHeadingBlock}>
-                  <View style={styles.iconBadge} aria-hidden>
-                    <Feather name="upload" size={20} color={colors.brand} />
+      {(selectedExame || exameParaRemover) && (
+        <DialogoConfirmacao
+          titulo={exameParaRemover ? 'Remover resultado enviado?' : 'Enviar Resultado de Exame'}
+          descricao={exameParaRemover
+            ? `O arquivo de ${exameParaRemover.nome} será removido e o pedido voltará a ficar pendente.`
+            : selectedExame?.nome}
+          icone={exameParaRemover ? 'trash-2' : 'upload'}
+          fechar={exameParaRemover ? fecharConfirmacaoRemocao : fecharModalEnvio}
+          testID={exameParaRemover ? 'exame-confirmar-remocao' : 'exame-upload-modal'}
+          acoes={exameParaRemover ? [
+            { rotulo: 'Manter resultado', variante: 'secundaria', executar: fecharConfirmacaoRemocao },
+            {
+              rotulo: 'Remover resultado',
+              variante: 'perigo',
+              executar: () => handleRemoverExameEnviado(exameParaRemover),
+              rotuloOcupado: 'Removendo…',
+              testID: 'exame-confirmar-remocao-botao'
+            }
+          ] : [
+            { rotulo: 'Cancelar', variante: 'secundaria', executar: fecharModalEnvio, testID: 'exame-upload-cancel-button' },
+            {
+              rotulo: selectedExame?.status === 'ENVIADO' ? 'Substituir resultado' : 'Enviar resultado',
+              executar: confirmarEnvio,
+              desabilitada: envioDesabilitado,
+              rotuloOcupado: 'Enviando…',
+              testID: 'exame-upload-confirm-button'
+            }
+          ]}
+        >
+          {selectedExame && !exameParaRemover && (
+            <>
+              {selectedExame.status === 'ENVIADO' && selectedExame.arquivoNome ? (
+                <View style={styles.attachmentBox} testID="exame-current-sent-box">
+                  <View style={styles.attachmentDetails}>
+                    <Text style={styles.fieldLabel}>Arquivo enviado atualmente:</Text>
+                    <Text style={styles.attachmentName}>{selectedExame.arquivoNome}</Text>
                   </View>
-                  <View style={styles.examIdentity}>
-                    <Text style={styles.modalTitle} accessibilityRole="header">Enviar Resultado de Exame</Text>
-                    <Text style={styles.bodyText}>{selectedExame.nome}</Text>
-                  </View>
-                </View>
-
-                {selectedExame.status === 'ENVIADO' && selectedExame.arquivoNome ? (
-                  <View style={styles.attachmentBox} testID="exame-current-sent-box">
-                    <View style={styles.attachmentDetails}>
-                      <Text style={styles.fieldLabel}>Arquivo enviado atualmente:</Text>
-                      <Text style={styles.attachmentName}>{selectedExame.arquivoNome}</Text>
-                    </View>
-                    <Pressable
-                      style={({ pressed }) => [styles.button, styles.dangerButton, pressed && styles.pressed]}
-                      onPress={() => void handleRemoverExameEnviado(selectedExame)}
-                      disabled={removingId === selectedExame.id || uploading}
-                      accessibilityRole="button"
-                      accessibilityLabel="Remover exame enviado"
-                      testID="exame-modal-remove-sent-button"
-                    >
-                      <Feather name="trash-2" size={16} color={colors.dangerText} aria-hidden />
-                      <Text style={[styles.buttonText, styles.dangerText]}>Remover</Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-
-                {Platform.OS === 'web' ? (
-                  <div
-                    style={{ width: '100%' }}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      setIsDraggingOver(!uploading);
-                    }}
-                    onDragLeave={() => setIsDraggingOver(false)}
-                    onDrop={soltarArquivo}
-                  >
-                    {uploadArea}
-                  </div>
-                ) : uploadArea}
-
-                {selectedFile ? (
-                  <View style={[styles.attachmentBox, styles.selectedFileCard]} testID="exame-selected-file-pill">
-                    <View style={styles.attachmentDetails}>
-                      <Text style={styles.attachmentName} testID="exame-selected-file-name">
-                        {selectedFile.nome}
-                      </Text>
-                      {selectedFile.tamanhoBytes ? <Text style={styles.uploadFormatHint}>{formatFileSize(selectedFile.tamanhoBytes)}</Text> : null}
-                    </View>
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.button, styles.secondaryButton, uploading && styles.buttonDisabled, pressed && styles.pressed
-                      ]}
-                      onPress={limparArquivoSelecionado}
-                      disabled={uploading}
-                      accessibilityRole="button"
-                      accessibilityLabel="Remover arquivo selecionado"
-                      testID="exame-clear-selected-file-button"
-                    >
-                      <Feather name="x" size={16} color={colors.brandDeep} aria-hidden />
-                      <Text style={styles.buttonText}>Remover</Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-
-              </ScrollView>
-              <View style={styles.modalFooter}>
-                {uploadError ? (
-                  <View style={styles.errorBox} accessibilityRole="alert" testID="exame-upload-error">
-                    <Text style={styles.errorText}>{uploadError}</Text>
-                  </View>
-                ) : null}
-                <View style={styles.modalActions}>
                   <Pressable
-                    style={({ pressed }) => [
-                      styles.button, styles.primaryButton, envioDesabilitado && styles.buttonDisabled, pressed && styles.pressed
-                    ]}
-                    onPress={() => void confirmarEnvio()}
-                    disabled={envioDesabilitado}
+                    style={({ pressed }) => [styles.button, styles.dangerButton, pressed && styles.pressed]}
+                    onPress={() => setExameParaRemover(selectedExame)}
+                    disabled={uploading}
                     accessibilityRole="button"
-                    accessibilityState={{ disabled: envioDesabilitado, busy: uploading }}
-                    accessibilityLabel="Confirmar Envio"
-                    testID="exame-upload-confirm-button"
+                    accessibilityLabel="Remover exame enviado"
+                    testID="exame-modal-remove-sent-button"
                   >
-                    {uploading ? <ActivityIndicator color={colors.white} /> :
-                      <Text style={[styles.buttonText, styles.primaryText]}>Confirmar Envio</Text>}
+                    <Feather name="trash-2" size={16} color={colors.dangerText} aria-hidden />
+                    <Text style={[styles.buttonText, styles.dangerText]}>Remover</Text>
                   </Pressable>
+                </View>
+              ) : null}
+
+              {Platform.OS === 'web' ? (
+                <div
+                  style={{ width: '100%' }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setIsDraggingOver(!uploading);
+                  }}
+                  onDragLeave={() => setIsDraggingOver(false)}
+                  onDrop={soltarArquivo}
+                >
+                  {uploadArea}
+                </div>
+              ) : uploadArea}
+
+              {selectedFile ? (
+                <View style={[styles.attachmentBox, styles.selectedFileCard]} testID="exame-selected-file-pill">
+                  <View style={styles.attachmentDetails}>
+                    <Text style={styles.attachmentName} testID="exame-selected-file-name">
+                      {selectedFile.nome}
+                    </Text>
+                    {selectedFile.tamanhoBytes ? <Text style={styles.uploadFormatHint}>{formatFileSize(selectedFile.tamanhoBytes)}</Text> : null}
+                  </View>
                   <Pressable
                     style={({ pressed }) => [
                       styles.button, styles.secondaryButton, uploading && styles.buttonDisabled, pressed && styles.pressed
                     ]}
-                    onPress={fecharModalEnvio}
+                    onPress={limparArquivoSelecionado}
                     disabled={uploading}
                     accessibilityRole="button"
-                    accessibilityLabel="Cancelar"
-                    testID="exame-upload-cancel-button"
+                    accessibilityLabel="Remover arquivo selecionado"
+                    testID="exame-clear-selected-file-button"
                   >
-                    <Text style={styles.buttonText}>Cancelar</Text>
+                    <Feather name="x" size={16} color={colors.brandDeep} aria-hidden />
+                    <Text style={styles.buttonText}>Remover</Text>
                   </Pressable>
                 </View>
-              </View>
+              ) : null}
+
+              {uploadError ? (
+                <View style={styles.errorBox} accessibilityRole="alert" testID="exame-upload-error">
+                  <Text style={styles.errorText}>{uploadError}</Text>
+                </View>
+              ) : null}
+            </>
+          )}
+          {exameParaRemover && erroRemocao ? (
+            <View style={styles.errorBox} accessibilityRole="alert">
+              <Text style={styles.errorText}>{erroRemocao}</Text>
             </View>
-          </SafeAreaView>
-        )}
-      </Modal>
+          ) : null}
+        </DialogoConfirmacao>
+      )}
     </SafeAreaView>
   );
 }
@@ -725,17 +694,6 @@ const styles = StyleSheet.create({
   dangerText: { color: colors.dangerText },
   buttonDisabled: { opacity: 0.5 },
   pressed: { opacity: 0.8 },
-  modalBackdrop: {
-    flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center', padding: spacing.md
-  },
-  modalCard: {
-    width: '100%', maxWidth: 520, maxHeight: '100%', flexShrink: 1, borderRadius: radius.xl,
-    backgroundColor: colors.card, overflow: 'hidden', ...shadows.card
-  },
-  modalScroll: { width: '100%', flexGrow: 0, flexShrink: 1 },
-  modalContent: { padding: spacing.md, gap: spacing.sm },
-  modalHeadingBlock: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  modalTitle: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 21, lineHeight: 28 },
   uploadDropArea: {
     width: '100%', minHeight: 84, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm,
     borderWidth: 1, borderStyle: 'dashed', borderColor: colors.textSecondary, borderRadius: radius.md, backgroundColor: colors.page
@@ -750,7 +708,5 @@ const styles = StyleSheet.create({
   },
   selectedFileCard: { borderColor: colors.brand },
   attachmentDetails: { flexGrow: 1, flexShrink: 1, flexBasis: 140, minWidth: 0, gap: spacing.xxs },
-  attachmentName: { color: colors.text, fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 21 },
-  modalFooter: { flexShrink: 0, padding: spacing.md, gap: spacing.xs, borderTopWidth: 1, borderTopColor: colors.border },
-  modalActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }
+  attachmentName: { color: colors.text, fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 21 }
 });
