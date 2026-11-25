@@ -6,6 +6,9 @@ import com.nutri4you.backend.service.CadastroEmailService;
 import com.nutri4you.backend.service.EmailNotificationService;
 import com.nutri4you.backend.service.PrivacidadeService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -57,6 +60,30 @@ class PacienteControllerTest {
         assertThat(pacienteRepository.existsByEmail(emailDuplicado)).isFalse();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"0123456789", "012345678900", "01234567891", "01234567880", "11111111111", "abc01234567890"})
+    void autocadastroRecusaCpfInvalido(String cpf) throws Exception {
+        String email = "cpf.invalido@example.test";
+
+        cadastrarComCpf(email, cpf)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("CPF inválido."));
+
+        assertThat(pacienteRepository.existsByEmail(email)).isFalse();
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = "   ")
+    void autocadastroAceitaCpfNaoInformado(String cpf) throws Exception {
+        String email = "cpf.opcional@example.test";
+
+        cadastrarComCpf(email, cpf).andExpect(status().isCreated());
+
+        assertThat(pacienteRepository.findByEmail(email)).hasValueSatisfying(
+                paciente -> assertThat(paciente.getCpf()).isNull());
+    }
+
     @Test
     void autocadastroDePacienteExigeConfirmacaoPrevia() throws Exception {
         mockMvc.perform(post("/api/v1/pacientes/autocadastro")
@@ -96,7 +123,7 @@ class PacienteControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {"nome":"Paciente Teste","email":"%s","senha":"SenhaTeste123",
-                         "cpf":"%s","versaoTermos":"%s","tokenCadastro":"%s"}
-                        """.formatted(email, cpf, PrivacidadeService.VERSAO, token)));
+                         "cpf":%s,"versaoTermos":"%s","tokenCadastro":"%s"}
+                        """.formatted(email, cpf == null ? "null" : "\"" + cpf + "\"", PrivacidadeService.VERSAO, token)));
     }
 }

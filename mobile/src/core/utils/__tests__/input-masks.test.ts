@@ -1,4 +1,4 @@
-import { formatCpfDisplay, extractCpfDigits, normalizeCpf } from '../cpf-mask.util';
+import { formatCpfDisplay, extractCpfDigits, isCpfValid, normalizeCpf } from '../cpf-mask.util';
 import { formatPhoneDisplay, extractPhoneDigits, normalizePhone } from '../phone-mask.util';
 import {
   dataNascimentoParaIso,
@@ -21,6 +21,23 @@ describe('formatCpfDisplay', () => {
   it('ignora nao digitos e limita a 11', () => {
     expect(extractCpfDigits('111.222.333-4455')).toBe('11122233344');
     expect(normalizeCpf('11122233344')).toBe('111.222.333-44');
+  });
+});
+
+describe('isCpfValid', () => {
+  it.each(['01234567890', '012.345.678-90', '52998224725', '00123456797'])(
+    'aceita um CPF válido (%s)',
+    (cpf) => expect(isCpfValid(cpf)).toBe(true)
+  );
+
+  it.each(['', '0123456789', '012345678900', '01234567891', '01234567880', '111.111.111-11', 'abc01234567890'])(
+    'rejeita um CPF inválido (%s)',
+    (cpf) => expect(isCpfValid(cpf)).toBe(false)
+  );
+
+  it('mantém um valor inválido colado para que possa ser corrigido', () => {
+    expect(formatCpfDisplay('012.345.678-900')).toBe('012.345.678-900');
+    expect(formatCpfDisplay('abc')).toBe('abc');
   });
 });
 

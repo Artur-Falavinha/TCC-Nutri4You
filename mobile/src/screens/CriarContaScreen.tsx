@@ -29,7 +29,7 @@ import { autocadastrarPaciente } from '../core/auth/auth.service';
 import type { ComprovanteCadastro } from '../core/auth/auth.models';
 import { URL_TERMOS, VERSAO_TERMOS } from '../core/perfil/privacidade';
 import { ApiError } from '../core/api/api-response.types';
-import { formatCpfDisplay, isCpfComplete, normalizeCpf } from '../core/utils/cpf-mask.util';
+import { formatCpfDisplay, isCpfValid, normalizeCpf } from '../core/utils/cpf-mask.util';
 import {
   DATA_MINIMA_NASCIMENTO,
   dataNascimentoParaIso,
@@ -140,8 +140,8 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
       return;
     }
 
-    if (cpf.trim() && !isCpfComplete(cpf)) {
-      toast.aviso('CPF incompleto. Use o formato 000.000.000-00.');
+    if (cpf.trim() && !isCpfValid(cpf)) {
+      toast.aviso('Informe um CPF válido com 11 dígitos ou deixe o campo em branco.');
       return;
     }
 
@@ -275,16 +275,15 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
           </View>
 
           <View style={formulario.campo}>
-            <Text style={formulario.rotulo}>CPF</Text>
+            <Text style={formulario.rotulo}>CPF (opcional)</Text>
             <View style={formulario.controle}>
               <Feather name="credit-card" size={18} color={colors.textSecondary} aria-hidden />
               <TextInput
                 style={formulario.entrada}
                 placeholder="000.000.000-00"
-                accessibilityLabel="CPF"
+                accessibilityLabel="CPF (opcional)"
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
-                maxLength={14}
                 value={cpf}
                 onChangeText={(text) => setCpf(formatCpfDisplay(text))}
               />

@@ -11,8 +11,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.regex.Pattern;
+
 @Service
 public class PacienteService {
+
+    private static final Pattern FORMATO_CPF = Pattern.compile("(?:[0-9]{11}|[0-9]{3}\\.[0-9]{3}\\.[0-9]{3}-[0-9]{2})");
 
     private final PacienteRepository pacientes;
     private final PasswordEncoder passwordEncoder;
@@ -36,10 +40,7 @@ public class PacienteService {
         PrivacidadeService.exigirVersao(dto.versaoTermos());
         String email = cadastroEmail.consumir(dto.tokenCadastro(), TipoCadastro.PACIENTE, dto.email());
 
-        String cpf = Paciente.normalizarCpf(dto.cpf());
-        if (cpf == null && dto.cpf() != null && !dto.cpf().isBlank()) {
-            throw new IllegalArgumentException("CPF inválido.");
-        }
+        String cpf = validarCpfCadastro(dto.cpf());
         if (cpf != null && pacientes.existsByCpf(cpf)) {
             throw new CpfEmUsoException();
         }
@@ -50,6 +51,33 @@ public class PacienteService {
         Paciente cadastrado = salvarPaciente(paciente);
         privacidade.aceitar(cadastrado, dto.versaoTermos());
         return cadastrado;
+    }
+
+    private static String validarCpfCadastro(String cpf) {
+        if (cpf == null || cpf.isBlank()) {
+            return null;
+        }
+
+        if (!FORMATO_CPF.matcher(cpf.strip()).matches()) {
+            throw new IllegalArgumentException("CPF inválido.");
+        }
+
+        String digitos = Paciente.normalizarCpf(cpf);
+        if (digitos.chars().allMatch(digito -> digito == digitos.charAt(0))
+                || digitoVerificador(digitos, 9) != digitos.charAt(9) - '0'
+                || digitoVerificador(digitos, 10) != digitos.charAt(10) - '0') {
+            throw new IllegalArgumentException("CPF inválido.");
+        }
+        return digitos;
+    }
+
+    private static int digitoVerificador(String cpf, int quantidade) {
+        int soma = 0;
+        for (int i = 0; i < quantidade; i++) {
+            soma += (cpf.charAt(i) - '0') * (quantidade + 1 - i);
+        }
+        int digito = 11 - soma % 11;
+        return digito >= 10 ? 0 : digito;
     }
 
     private Paciente salvarPaciente(Paciente paciente) {
