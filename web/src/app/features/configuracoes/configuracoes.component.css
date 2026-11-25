@@ -21,15 +21,6 @@
   gap: var(--space-12);
 }
 
-.card__secao + .card__secao { padding-top: var(--space-16); border-top: 1px solid var(--color-border-default); }
-
-.card--preferencias .card__secao {
-  flex: 1;
-  grid-template-rows: auto 1fr;
-}
-
-.card--preferencias .card__secao:last-child { flex-grow: 2; }
-
 .card {
   display: flex;
   flex-direction: column;
@@ -39,6 +30,12 @@
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background: var(--color-surface-card);
+}
+
+.card--preferencias {
+  display: grid;
+  grid-template-rows: repeat(4, auto);
+  align-content: space-between;
 }
 
 .card__cabecalho {
@@ -66,19 +63,23 @@ h3 { font-size: 1rem; }
 .preferencia {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(2.75rem, auto) auto;
   align-items: center;
-  align-content: center;
-  gap: var(--space-8) var(--space-16);
-}
-
-.preferencia .secundario { grid-column: 1 / -1; grid-row: 2; }
-
-.preferencia, .feedback {
-  padding: var(--space-12);
+  border: 1px solid var(--color-border-default);
   border-radius: var(--radius-md);
+  cursor: pointer;
 }
 
-.preferencia { background: var(--color-surface-page); cursor: pointer; }
+.preferencia strong { padding: var(--space-8) var(--space-12); }
+.preferencia .interruptor { margin-right: var(--space-12); }
+
+.preferencia .secundario {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  padding: var(--space-8) var(--space-12);
+  border-top: 1px solid var(--color-border-default);
+}
+
 .preferencia--salvando, .interruptor input:disabled { cursor: wait; }
 .interruptor { position: relative; display: inline-flex; align-items: center; gap: var(--space-8); }
 
@@ -121,7 +122,12 @@ h3 { font-size: 1rem; }
   outline-offset: 2px;
 }
 
-.feedback--erro { color: #a11919; background: var(--color-error-surface); }
+.feedback--erro {
+  padding: var(--space-12);
+  border-radius: var(--radius-md);
+  color: #a11919;
+  background: var(--color-error-surface);
+}
 
 @container (max-width: 56rem) {
   .settings { grid-template-columns: minmax(0, 1fr); }
