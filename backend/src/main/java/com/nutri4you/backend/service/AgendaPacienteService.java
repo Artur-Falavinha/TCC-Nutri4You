@@ -229,11 +229,9 @@ public class AgendaPacienteService {
             List<Consulta> consultasExistentes,
             LocalDateTime novoInicio,
             Integer ignorarConsultaId) {
-        LocalDateTime novoFim = novoInicio.plusMinutes(DURACAO_MINUTOS);
         return consultasExistentes.stream()
                 .filter(consulta -> ignorarConsultaId == null || !ignorarConsultaId.equals(consulta.getId()))
-                .anyMatch(consulta -> consulta.getDataHora().isBefore(novoFim)
-                        && consulta.getDataHora().plusMinutes(DURACAO_MINUTOS).isAfter(novoInicio));
+                .anyMatch(consulta -> consulta.sobrepoe(novoInicio));
     }
 
     private void exigirFutura(Consulta consulta) {

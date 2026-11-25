@@ -29,6 +29,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
@@ -77,6 +78,40 @@ class AgendaPacienteControllerTest {
         horarios.salvar(nutricionista, configuracao);
         tokenPaciente = login("paciente@teste.com");
         tokenNutricionista = login("nutri@teste.com");
+    }
+
+    @Test
+    void calendarioProfissionalRespeitaReservasSobrepostasEVisibilidadeEntreContas() throws Exception {
+        LocalDate inicio = LocalDate.now(FUSO_HORARIO).plusWeeks(2)
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate dia = inicio.plusDays(1);
+        Consulta pendente = consultas.save(new Consulta(paciente, nutricionista, dia.atTime(9, 0)));
+        Consulta cancelada = new Consulta(paciente, nutricionista, dia.atTime(10, 15));
+        cancelada.cancelar();
+        consultas.save(cancelada);
+        Paciente semVinculo = pacientes.save(TestDataFactory.outroPaciente(encoder));
+        consultas.save(new Consulta(semVinculo, nutricionista, dia.atTime(11, 0)));
+        Nutricionista outroNutri = nutricionistas.save(TestDataFactory.nutricionistaConfirmado(
+                "Outro nutricionista", "outro-nutri@teste.com", encoder.encode("senha123"), "CRN8-98765"));
+        consultas.saveAndFlush(new Consulta(paciente, outroNutri, dia.atTime(14, 0)));
+
+        String url = "/api/v1/agenda-nutricionista/calendario";
+        mvc.perform(get(url).param("inicio", dia.toString()).header("Authorization", tokenPaciente))
+                .andExpect(status().isForbidden());
+        mvc.perform(get(url).param("inicio", dia.toString()).header("Authorization", tokenNutricionista))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.inicio").value(inicio.toString()))
+                .andExpect(jsonPath("$.data.duracaoMinutos").value(45))
+                .andExpect(jsonPath("$.data.dias.length()").value(7))
+                .andExpect(jsonPath("$.data.dias[1].horariosLivres.length()").value(5))
+                .andExpect(jsonPath("$.data.dias[1].horariosLivres").value(hasItem("10:15:00")))
+                .andExpect(jsonPath("$.data.dias[1].horariosLivres").value(hasItem("14:00:00")))
+                .andExpect(jsonPath("$.data.dias[1].consultas.length()").value(3))
+                .andExpect(jsonPath("$.data.dias[1].consultas[0].id").value(pendente.getId()))
+                .andExpect(jsonPath("$.data.dias[1].consultas[0].pacienteNome").value(paciente.getNome()))
+                .andExpect(jsonPath("$.data.dias[1].consultas[1].status").value("CANCELADA"))
+                .andExpect(jsonPath("$.data.dias[1].consultas[2].pacienteNome").doesNotExist())
+                .andExpect(jsonPath("$.data.dias[6].temDisponibilidade").value(false));
     }
 
     @Test

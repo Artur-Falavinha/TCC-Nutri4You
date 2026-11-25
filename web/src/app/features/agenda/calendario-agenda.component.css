@@ -1,0 +1,121 @@
+:host { display: block; min-width: 0; container-type: inline-size; }
+
+.calendario {
+  min-width: 0;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-card);
+}
+
+.calendario__topo, .calendario__semana, .calendario__navegacao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.calendario__topo {
+  justify-content: space-between;
+  gap: var(--space-16);
+  padding: var(--space-24);
+}
+
+.calendario__topo h2 { font: 700 var(--text-md) / var(--leading-tight) var(--font-heading); }
+.calendario__fuso, .dia-calendario__vazio { color: var(--color-text-secondary); }
+.calendario__periodo { font-weight: 700; }
+
+.calendario button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: var(--space-6) var(--space-12);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-card);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.calendario button:hover:not(:disabled) { background: var(--agenda-verde-claro); }
+.calendario button:disabled { cursor: default; opacity: .55; }
+.calendario button:focus-visible { outline: 2px solid var(--color-brand-primary); outline-offset: 2px; }
+.calendario__estado { display: grid; justify-items: start; gap: var(--space-12); padding: var(--space-24); }
+.calendario__seletor { display: none; }
+
+.calendario__dias {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-height: 16rem;
+  border-top: 1px solid var(--color-border-default);
+}
+
+.dia-calendario { min-width: 0; }
+.dia-calendario + .dia-calendario { border-inline-start: 1px solid var(--color-border-default); }
+
+.dia-calendario__titulo { font-size: var(--text-sm); }
+.dia-calendario__titulo time {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 3rem;
+  padding-inline: var(--space-12);
+  border-bottom: 1px solid var(--color-border-default);
+  background: var(--color-surface-page);
+  text-transform: capitalize;
+}
+
+.dia-calendario__titulo strong { font: 800 var(--text-md) var(--font-heading); }
+.dia-calendario__titulo [aria-current], .calendario__seletor button[aria-pressed="true"] {
+  border-color: var(--agenda-borda-verde);
+  background: var(--agenda-verde-claro);
+  color: var(--color-brand-primary-hover);
+}
+
+.dia-calendario__horarios {
+  display: grid;
+  gap: var(--space-8);
+  margin: 0;
+  padding: var(--space-8);
+  list-style: none;
+}
+
+.dia-calendario__vazio { padding: var(--space-6); }
+.compromisso {
+  --compromisso-cor: var(--color-text-secondary);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2) var(--space-2);
+  align-items: baseline;
+  padding: var(--space-8);
+  border-inline-start: 3px solid var(--compromisso-cor);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--compromisso-cor) 8%, var(--color-surface-card));
+  font-variant-numeric: tabular-nums;
+}
+
+.compromisso[data-estado="livre"] { --compromisso-cor: var(--color-brand-primary-hover); }
+.compromisso[data-estado="pendente"] { --compromisso-cor: #805b10; }
+.compromisso[data-estado="confirmada"] { --compromisso-cor: #174c81; }
+.compromisso[data-estado="realizada"] { --compromisso-cor: #135a59; }
+.compromisso time { font-weight: 700; }
+.compromisso__fim { font-size: var(--text-xs); }
+.compromisso__estado { color: var(--compromisso-cor); font-size: var(--text-xs); font-weight: 700; }
+.compromisso__estado, .compromisso__paciente { grid-column: 1 / -1; overflow-wrap: anywhere; }
+
+@container (max-width: 52rem) {
+  .calendario__topo { padding: var(--space-16); }
+  .calendario__semana { width: 100%; justify-content: space-between; }
+  .calendario__seletor {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--space-2);
+    padding: 0 var(--space-8) var(--space-8);
+  }
+  .calendario__seletor button { min-width: 0; padding-inline: 0; font-size: var(--text-xs); line-height: 1.15; }
+  .calendario__seletor button strong { font-size: var(--text-sm); }
+  .calendario__dias { grid-template-columns: minmax(0, 1fr); min-height: 8rem; }
+  .dia-calendario:not(.dia-calendario--selecionado), .dia-calendario__titulo { display: none; }
+  .dia-calendario + .dia-calendario { border-inline-start: 0; }
+}

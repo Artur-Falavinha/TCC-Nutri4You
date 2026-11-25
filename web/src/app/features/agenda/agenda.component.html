@@ -1,6 +1,24 @@
 <app-page-header titulo="Agenda" />
 
-<div class="agenda" [attr.aria-busy]="carregando || salvando">
+<div class="alternancia" role="group" aria-label="Visualização da agenda">
+  <button type="button" [attr.aria-pressed]="verCalendario()" [disabled]="salvando" (click)="verCalendario.set(true)">
+    <i class="ph ph-calendar-blank" aria-hidden="true"></i> Agenda geral
+  </button>
+  <button type="button" [attr.aria-pressed]="!verCalendario()" (click)="verCalendario.set(false)">
+    <i class="ph ph-sliders-horizontal" aria-hidden="true"></i> Configurar disponibilidade
+  </button>
+</div>
+
+@if (verCalendario()) {
+  <div class="agenda">
+    @if (alterado()) {
+      <p class="nota" role="status"><i class="ph ph-info" aria-hidden="true"></i> O calendário mostra a disponibilidade salva.</p>
+    }
+    <app-calendario-agenda />
+  </div>
+}
+
+<div class="agenda" [hidden]="verCalendario()" [attr.aria-busy]="carregando || salvando">
   <section class="introducao" aria-labelledby="titulo-disponibilidade">
     <div class="introducao__texto">
       <div class="introducao__titulo">

@@ -7,11 +7,14 @@ import com.nutri4you.backend.dto.PreferenciaAgendaDTO;
 import com.nutri4you.backend.dto.PreferenciaEmailAgendaDTO;
 import com.nutri4you.backend.dto.SolicitacaoAvulsaDTO;
 import com.nutri4you.backend.dto.NotificacaoConsultaDTO;
+import com.nutri4you.backend.dto.SemanaAgendaDTO;
 import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.model.Nutricionista;
+import com.nutri4you.backend.service.CalendarioAgendaService;
 import com.nutri4you.backend.service.ConsultaService;
 import com.nutri4you.backend.service.HorarioAtendimentoService;
 import com.nutri4you.backend.service.SolicitacaoVinculoService;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,8 +22,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -41,12 +46,20 @@ public class AgendaNutricionistaController {
     }
     private final HorarioAtendimentoService horarios;
     private final ConsultaService consultas;
+    private final CalendarioAgendaService calendario;
 
     public AgendaNutricionistaController(HorarioAtendimentoService horarios, ConsultaService consultas,
-                                          SolicitacaoVinculoService solicitacoesVinculo) {
+                                          SolicitacaoVinculoService solicitacoesVinculo, CalendarioAgendaService calendario) {
         this.horarios = horarios;
         this.consultas = consultas;
         this.solicitacoesVinculo = solicitacoesVinculo;
+        this.calendario = calendario;
+    }
+
+    @GetMapping("/calendario")
+    public ApiResponse<SemanaAgendaDTO> carregarCalendario(Authentication auth,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio) {
+        return ApiResponse.ok(calendario.carregar(nutricionista(auth), inicio), "Semana da agenda carregada.");
     }
 
     @GetMapping("/horarios")

@@ -123,7 +123,7 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Integer> {
     List<Consulta> findByPaciente_IdOrderByDataHoraDesc(Integer pacienteId);
 
     @Query("""
-            select c from Consulta c where c.nutricionista.id = :nutricionistaId
+            select c from Consulta c join fetch c.paciente where c.nutricionista.id = :nutricionistaId
               and c.dataHora >= :inicio and c.dataHora < :fim
               and (exists (select r.id from RelacaoClinica r where r.paciente.id = c.paciente.id
                       and r.nutricionista.id = c.nutricionista.id and r.status = :ativa)

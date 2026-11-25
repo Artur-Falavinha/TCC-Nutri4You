@@ -16,6 +16,38 @@
   padding: var(--space-24) var(--space-24) var(--space-12);
 }
 
+.agenda[hidden] { display: none; }
+
+.alternancia {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin: var(--space-16) var(--space-24) 0;
+}
+
+.alternancia button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  min-height: 2.75rem;
+  padding: var(--space-6) var(--space-12);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-card);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.alternancia button[aria-pressed="true"] {
+  border-color: var(--color-brand-primary);
+  background: var(--agenda-verde-claro);
+  color: var(--color-brand-primary-hover);
+}
+
+.alternancia button:disabled { opacity: .55; cursor: default; }
+
 .introducao {
   display: flex;
   flex-wrap: wrap;
@@ -232,6 +264,7 @@ h3 { font-size: 1.125rem; }
 
 @media (max-width: 720px) {
   .agenda { padding-inline: var(--space-16); }
+  .alternancia { margin-inline: var(--space-16); }
 }
 
 @media (prefers-reduced-motion: reduce) {

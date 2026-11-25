@@ -89,6 +89,11 @@ public class Consulta {
         return dataHora;
     }
 
+    public boolean sobrepoe(LocalDateTime inicio) {
+        return dataHora.isBefore(inicio.plusMinutes(DURACAO_MINUTOS))
+                && dataHora.plusMinutes(DURACAO_MINUTOS).isAfter(inicio);
+    }
+
     public String getStatus() {
         return status;
     }

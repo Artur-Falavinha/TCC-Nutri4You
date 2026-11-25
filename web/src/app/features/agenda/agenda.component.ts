@@ -11,6 +11,7 @@ import { FormAlertComponent } from '../../shared/components/form-alert/form-aler
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
 import { DialogoConfirmacaoComponent } from '../../shared/components/dialogo-confirmacao/dialogo-confirmacao.component';
+import { CalendarioAgendaComponent } from './calendario-agenda.component';
 
 interface Horario { diaSemana: number; horario: string }
 
@@ -42,7 +43,8 @@ function horarioSeguinte(horario: string): string {
 
 @Component({
   selector: 'app-agenda',
-  imports: [FormsModule, FormAlertComponent, PageHeaderComponent, UiButtonComponent, DialogoConfirmacaoComponent],
+  imports: [FormsModule, FormAlertComponent, PageHeaderComponent, UiButtonComponent, DialogoConfirmacaoComponent,
+    CalendarioAgendaComponent],
   templateUrl: './agenda.component.html',
   styleUrl: './agenda.component.css'
 })
@@ -64,6 +66,7 @@ export class AgendaComponent implements OnInit {
   readonly diasAbertos = computed(() => this.semana().filter(dia => dia.horarios.length > 0).length);
   readonly totalHorarios = computed(() => this.horarios().length);
   readonly alterado = computed(() => JSON.stringify(this.horarios()) !== JSON.stringify(this.horariosSalvos()));
+  protected readonly verCalendario = signal(false);
 
   hora = '08:00';
   carregando = true;
