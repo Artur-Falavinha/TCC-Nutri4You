@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiError } from '../../core/api/api-response.types';
 import { logout } from '../../core/auth/auth.service';
+import { CampoSexo } from '../../components/forms/CampoSexo';
 import { AlterarEmailPerfil } from './AlterarEmailPerfil';
 import {
   atualizarPerfil,
@@ -43,8 +44,6 @@ import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 import { perfilStyles } from './perfil.styles';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DadosPessoais'>;
-
-const SEXO_OPTIONS = ['Masculino', 'Feminino', 'Prefiro não informar'] as const;
 
 function mensagemErro(erro: unknown, fallback: string): string {
   return erro instanceof ApiError ? erro.message : fallback;
@@ -213,15 +212,12 @@ export function HomeScreen({ navigation }: Props) {
 
             <View style={styles.grupoCampo}>
               <Text style={styles.rotulo}>E-mail</Text>
-              <View style={styles.campoSomenteLeitura}>
-                <TextInput
-                  style={[styles.campo, styles.email]}
-                  value={email}
-                  editable={false}
-                  accessibilityLabel="E-mail"
-                />
-                <Feather name="lock" size={16} color={colors.textSecondary} aria-hidden />
-              </View>
+              <TextInput
+                style={styles.campo}
+                value={email}
+                editable={false}
+                accessibilityLabel="E-mail"
+              />
               {email ? <AlterarEmailPerfil emailAtual={email} aoAtualizar={setEmail} /> : null}
             </View>
 
@@ -254,29 +250,11 @@ export function HomeScreen({ navigation }: Props) {
               </View>
             </View>
 
-            <View style={styles.grupoCampo}>
-              <Text style={styles.rotulo}>Sexo</Text>
-              <View style={styles.opcoes}>
-                {SEXO_OPTIONS.map((opcao) => {
-                  const ativo = sexo === opcao;
-                  return (
-                    <Pressable
-                      key={opcao}
-                      style={({ pressed }) => [
-                        perfilStyles.botao, styles.opcao, ativo && styles.opcaoAtiva,
-                        pressed && perfilStyles.pressionado
-                      ]}
-                      onPress={() => setSexo(opcao)}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: ativo }}
-                    >
-                      {ativo && <Feather name="check" size={16} color={colors.brandDark} aria-hidden />}
-                      <Text style={[perfilStyles.rotuloBotao, !ativo && styles.rotulo]}>{opcao}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
+            <CampoSexo
+              valor={sexo === 'Prefiro não informar' ? '' : sexo || null}
+              aoSelecionar={valor => setSexo(valor || 'Prefiro não informar')}
+              desabilitado={formularioOcupado}
+            />
 
             <Pressable
               style={({ pressed }) => [
@@ -405,16 +383,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm, paddingVertical: spacing.xs,
     backgroundColor: colors.white, color: colors.text, fontFamily: fontFamily.regular, fontSize: 16
   },
-  campoSomenteLeitura: {
-    flexDirection: 'row', alignItems: 'center', paddingRight: spacing.sm,
-    borderRadius: radius.md, backgroundColor: colors.page
-  },
-  email: { flex: 1, borderWidth: 0, backgroundColor: colors.page, color: colors.textSecondary },
   camposContato: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   campoContato: { flexGrow: 1, flexBasis: 160, gap: spacing.xxs },
-  opcoes: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  opcao: { backgroundColor: colors.page, paddingHorizontal: spacing.sm },
-  opcaoAtiva: { borderColor: colors.brand, backgroundColor: colors.confirmedBackground },
   vinculo: {
     flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between',
     gap: spacing.sm, padding: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.page

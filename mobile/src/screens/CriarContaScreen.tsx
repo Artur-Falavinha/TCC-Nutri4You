@@ -14,8 +14,7 @@ import {
   StyleSheet,
   Modal,
   Pressable,
-  Linking,
-  type LayoutRectangle
+  Linking
 } from 'react-native';
 
 import { AuthFormButton } from '../components/auth/AuthFormButton';
@@ -24,6 +23,7 @@ import { ConfirmarEmailCadastro } from '../components/auth/ConfirmarEmailCadastr
 import { authFormStyles } from '../components/auth/authFormStyles';
 import { recuperacaoSenhaStyles as formulario } from '../components/auth/recuperacaoSenhaStyles';
 import { SectionCardHeader, sectionCardStyles } from '../components/layout/SectionCardHeader';
+import { CampoSexo, type ValorSexo } from '../components/forms/CampoSexo';
 import { toast } from '../components/feedback/toast';
 import { autocadastrarPaciente } from '../core/auth/auth.service';
 import type { ComprovanteCadastro } from '../core/auth/auth.models';
@@ -41,16 +41,8 @@ import {
 } from '../core/utils/date-mask.util';
 import { formatPhoneDisplay, normalizePhone } from '../core/utils/phone-mask.util';
 import type { RootStackParamList } from '../navigation/types';
-import { colors, fontFamily, radius, spacing } from '../theme/tokens';
+import { colors, fontFamily, spacing } from '../theme/tokens';
 import { perfilStyles } from './home/perfil.styles';
-
-const SEXO_OPTIONS = [
-  { label: 'Masculino', value: 'Masculino' },
-  { label: 'Feminino', value: 'Feminino' },
-  { label: 'Prefiro não informar', value: '' }
-] as const;
-
-type SexoOption = (typeof SEXO_OPTIONS)[number];
 
 const MIN_BIRTH_DATE = new Date(`${DATA_MINIMA_NASCIMENTO}T00:00:00`);
 
@@ -79,24 +71,15 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [cpf, setCpf] = useState('');
   const [telefone, setTelefone] = useState('');
-  const [sexo, setSexo] = useState<SexoOption['value'] | null>(null);
+  const [sexo, setSexo] = useState<ValorSexo | null>(null);
   const [dataNascimento, setDataNascimento] = useState('');
   const [senhaVisivel, setSenhaVisivel] = useState(false);
   const [confirmacaoSenhaVisivel, setConfirmacaoSenhaVisivel] = useState(false);
-  const [seletorSexoAberto, setSeletorSexoAberto] = useState(false);
-  const [areaCampoSexo, setAreaCampoSexo] = useState<LayoutRectangle | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const hoje = new Date();
   const hojeIso = toIsoDate(formatDateFromDate(hoje)) ?? '';
   const isoDate = dataNascimentoParaIso(dataNascimento);
-
-  const sexoLabel = useMemo(() => {
-    if (sexo === null) {
-      return 'Selecione';
-    }
-    return SEXO_OPTIONS.find((option) => option.value === sexo)?.label ?? 'Selecione';
-  }, [sexo]);
 
   const pickerDate = useMemo(() => {
     return (isoDate && isoDate <= hojeIso ? parseDisplayDate(isoDate) : null) ?? new Date(2000, 0, 1);
@@ -311,69 +294,7 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
             </View>
           </View>
 
-          <View
-            style={formulario.campo}
-            onLayout={(evento) => setAreaCampoSexo(evento.nativeEvent.layout)}
-          >
-            <Text style={formulario.rotulo}>Sexo</Text>
-            <TouchableOpacity
-              style={formulario.controle}
-              onPress={() => setSeletorSexoAberto((aberto) => !aberto)}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel={`Sexo, ${sexoLabel}`}
-              aria-expanded={seletorSexoAberto}
-            >
-              <Text
-                style={[
-                  formulario.entrada,
-                  styles.selectValue,
-                  sexo === null && styles.selectPlaceholder
-                ]}
-                numberOfLines={1}
-              >
-                {sexoLabel}
-              </Text>
-              <Feather name={seletorSexoAberto ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textSecondary} aria-hidden />
-            </TouchableOpacity>
-          </View>
-
-          {seletorSexoAberto && areaCampoSexo && (
-            <View
-              style={[
-                styles.opcoesSexo,
-                {
-                  left: areaCampoSexo.x,
-                  top: areaCampoSexo.y + areaCampoSexo.height + 4,
-                  width: areaCampoSexo.width
-                }
-              ]}
-              accessibilityRole="radiogroup"
-              accessibilityLabel="Opções de sexo"
-            >
-              {SEXO_OPTIONS.map((opcao) => {
-                const selecionada = sexo === opcao.value;
-                return (
-                  <TouchableOpacity
-                    key={opcao.value}
-                    style={[styles.opcaoSexo, selecionada && styles.opcaoSexoSelecionada]}
-                    onPress={() => {
-                      setSexo(opcao.value);
-                      setSeletorSexoAberto(false);
-                    }}
-                    accessibilityRole="radio"
-                    accessibilityLabel={opcao.label}
-                    aria-checked={selecionada}
-                  >
-                    <Text style={[styles.textoOpcaoSexo, selecionada && styles.textoOpcaoSexoSelecionada]}>
-                      {opcao.label}
-                    </Text>
-                    {selecionada && <Feather name="check" size={18} color={colors.brand} aria-hidden />}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
+          <CampoSexo valor={sexo} aoSelecionar={setSexo} desabilitado={isLoading} />
 
           <View style={formulario.campo}>
             <Text style={formulario.rotulo}>Data de nascimento</Text>
@@ -491,49 +412,11 @@ const styles = StyleSheet.create({
   termosTexto: { flex: 1, color: colors.text, fontFamily: fontFamily.regular, fontSize: 14 },
   controleData: { paddingLeft: 0, gap: spacing.xxs },
   acaoData: { width: 44, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-  selectValue: {
-    textAlignVertical: 'center',
-    paddingVertical: spacing.sm
-  },
-  selectPlaceholder: {
-    color: colors.textSecondary
-  },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.45)',
     justifyContent: 'center',
     padding: 24
-  },
-  opcoesSexo: {
-    position: 'absolute',
-    zIndex: 3,
-    elevation: 4,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: 4
-  },
-  opcaoSexo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 44,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radius.sm
-  },
-  opcaoSexoSelecionada: {
-    backgroundColor: colors.confirmedBackground
-  },
-  textoOpcaoSexo: {
-    flexShrink: 1,
-    fontSize: 15,
-    color: colors.text
-  },
-  textoOpcaoSexoSelecionada: {
-    fontWeight: '700',
-    color: colors.brand
   },
   iosPickerCard: {
     backgroundColor: colors.card,

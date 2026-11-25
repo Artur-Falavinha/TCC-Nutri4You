@@ -61,6 +61,7 @@ export function LembretesConsulta() {
             {salvando ? 'Salvando…' : ativa ? 'Ativados' : 'Desativados'}
           </Text>
           <Switch
+            style={styles.alternador}
             accessibilityLabel="Lembretes de consulta"
             accessibilityState={{ checked: ativa, disabled: salvando, busy: salvando }}
             disabled={salvando}
@@ -90,5 +91,6 @@ const styles = StyleSheet.create({
   controle: {
     minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     gap: spacing.sm, paddingHorizontal: spacing.sm, borderRadius: radius.md, backgroundColor: colors.page
-  }
+  },
+  alternador: { alignSelf: 'center' }
 });
