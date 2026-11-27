@@ -31,8 +31,9 @@ public class ConsumoRefeicaoService {
     public record Marcacao(LocalDate data, Boolean consumida) {}
 
     public Diario consultar(Paciente paciente, LocalDate data) {
-        LocalDate dia = data == null ? LocalDate.now(clock) : data;
-        if (dia.isAfter(LocalDate.now(clock))) throw new IllegalArgumentException("Não é possível consultar consumo futuro.");
+        LocalDate hoje = LocalDate.now(clock);
+        LocalDate dia = data == null ? hoje : data;
+        if (dia.isAfter(hoje)) throw new IllegalArgumentException("Não é possível consultar consumo futuro.");
         Map<Integer, Refeicao> refeicoesPorId = new HashMap<>();
         planos.sobrepostos(paciente.getId(), dia, dia).stream()
                 .flatMap(plano -> plano.getRefeicoes().stream())
@@ -50,14 +51,15 @@ public class ConsumoRefeicaoService {
                 .toList();
         Nutrientes totais = refeicoes.stream().filter(RefeicaoConsumo::consumida).map(RefeicaoConsumo::totais)
                 .reduce(Nutrientes.zero(), Nutrientes::somar).arredondar();
-        return new Diario(dia, dia.equals(LocalDate.now(clock)), refeicoes, totais);
+        return new Diario(dia, dia.equals(hoje), refeicoes, totais);
     }
     @Transactional
     public Diario marcar(Paciente paciente, Integer refeicaoId, Marcacao request) {
-        if (request == null || request.data() == null || request.consumida() == null
-                || !request.data().equals(LocalDate.now(clock)))
-            throw new IllegalArgumentException("Marque ou desmarque somente refeições de hoje.");
+        if (request == null || request.data() == null || request.consumida() == null)
+            throw new IllegalArgumentException("Informe o dia e a marcação da refeição.");
         Paciente titular = em.find(Paciente.class, paciente.getId(), LockModeType.PESSIMISTIC_WRITE);
+        if (!request.data().equals(LocalDate.now(clock)))
+            throw new IllegalArgumentException("O dia mudou. Recarregue as refeições de hoje.");
         ConsumoRefeicao consumo = consumos.findByPaciente_IdAndData(titular.getId(), request.data()).stream()
                 .filter(c -> c.getRefeicao().getId().equals(refeicaoId)).findFirst()
                 .orElseGet(() -> {

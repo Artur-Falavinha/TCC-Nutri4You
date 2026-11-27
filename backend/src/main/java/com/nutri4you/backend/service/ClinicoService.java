@@ -168,17 +168,8 @@ public class ClinicoService {
     }
 
     private Optional<PlanoAlimentar> buscarPlanoAtivo(Integer pacienteId) {
-        List<PlanoAlimentar> planos = planoAlimentarRepository.findByPaciente_IdOrderByIdDesc(pacienteId);
         LocalDate hoje = LocalDate.now(FUSO_HORARIO);
-
-
-        Optional<PlanoAlimentar> publicadoVigente = planos.stream()
-                .filter(plano -> "PUBLICADO".equalsIgnoreCase(plano.getStatus()))
-                .filter(plano -> plano.getVigenciaInicio() == null || !plano.getVigenciaInicio().isAfter(hoje))
-                .filter(plano -> plano.getVigenciaFim() == null || !plano.getVigenciaFim().isBefore(hoje))
-                .findFirst();
-
-        return publicadoVigente;
+        return planoAlimentarRepository.sobrepostos(pacienteId, hoje, hoje).stream().findFirst();
     }
 
     private Optional<MetasNutricionais> buscarMetasNutricionais(Integer pacienteId) {

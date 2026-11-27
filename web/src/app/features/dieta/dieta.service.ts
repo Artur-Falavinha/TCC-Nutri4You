@@ -43,6 +43,13 @@ export class DietaService {
     return this.api.post<Plano>(this.escopo(this.caminhoPlanos(pacienteId), atendimentoId), request);
   }
 
+  criarEdicao(pacienteId: number, original: Plano, plano: PlanoRequest, atendimentoId: number | null) {
+    return this.api.post<Plano>(
+      this.escopo(`${this.caminhoPlanos(pacienteId)}/${original.id}/edicao`, atendimentoId),
+      { versao: original.versao, plano }
+    );
+  }
+
   atualizarPlano(pacienteId: number, planoId: number, request: PlanoRequest, atendimentoId: number | null = null) {
     return this.api.put<Plano>(this.escopo(`${this.caminhoPlanos(pacienteId)}/${planoId}`, atendimentoId), request);
   }
@@ -53,10 +60,10 @@ export class DietaService {
       .pipe(map(() => undefined));
   }
 
-  publicarPlano(pacienteId: number, planoId: number, versao: number, atendimentoId: number | null = null) {
+  publicarPlano(pacienteId: number, planoId: number, versao: number, atendimentoId: number | null = null, inicioConfirmado?: string) {
     return this.api.post<Plano>(
       this.escopo(`${this.caminhoPlanos(pacienteId)}/${planoId}/publicacao`, atendimentoId),
-      { versao }
+      { versao, ...(inicioConfirmado ? { inicioConfirmado } : {}) }
     );
   }
 

@@ -186,6 +186,7 @@ export class DietaComponent implements OnInit {
   salvando = false;
   publicando = false;
   planoParaPublicar: Plano | null = null;
+  origemEdicao: Plano | null = null;
   excluindo = false;
   erro = '';
   errors: Record<string, string> = {};
@@ -320,6 +321,7 @@ export class DietaComponent implements OnInit {
     if (this.atendimentoId !== null && !this.podeEditarAtendimento) return;
     this.executarComDescarte(() => {
       this.tela = 'editor';
+      this.origemEdicao = null;
       this.planoEmEdicaoId = null;
       this.planoSelecionado = null;
       this.form = this.novoFormulario();
@@ -348,11 +350,49 @@ export class DietaComponent implements OnInit {
     if (this.atendimentoId !== null && !this.podeEditarAtendimento) return;
     const plano = this.planoSelecionado;
     if (!plano || plano.status !== 'RASCUNHO') return;
+    this.origemEdicao = null;
     this.planoEmEdicaoId = plano.id;
     this.form = this.formularioDoPlano(plano);
+    if (plano.planoAnteriorId && plano.inicioEdicao) this.form.vigenciaInicio = plano.inicioEdicao;
     this.original = this.assinatura();
     this.tela = 'editor';
     this.limparMensagens();
+  }
+
+  editarDieta(): void {
+    const plano = this.planoSelecionado;
+    if (!plano?.inicioEdicao || this.salvando || (this.atendimentoId !== null && !this.podeEditarAtendimento)) return;
+    this.salvando = true;
+    this.dieta.buscarPlano(this.patientId, plano.id, this.atendimentoId)
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: original => {
+          this.salvando = false;
+          this.planoSelecionado = original;
+          if (original.rascunhoEdicaoId) {
+            const rascunho = this.planos.find(item => item.id === original.rascunhoEdicaoId);
+            if (rascunho) this.abrirDetalhe(rascunho);
+            else this.recarregarListaDePlanos();
+            return;
+          }
+          if (!original.inicioEdicao) {
+            this.toast.aviso('A dieta vigente mudou. Confira a edição agendada no histórico.');
+            this.recarregarListaDePlanos();
+            return;
+          }
+          this.origemEdicao = original;
+          this.planoEmEdicaoId = null;
+          this.form = this.formularioDoPlano(original);
+          this.form.vigenciaInicio = original.inicioEdicao;
+          if (this.form.vigenciaFim < original.inicioEdicao) this.form.vigenciaFim = '';
+          this.original = this.assinatura();
+          this.tela = 'editor';
+          this.limparMensagens();
+        },
+        error: (error: ApiErrorResponse) => {
+          this.salvando = false;
+          this.toast.erro(error.message || 'Não foi possível abrir a edição da dieta.');
+        }
+      });
   }
 
   duplicarPlano(): void {
@@ -360,6 +400,7 @@ export class DietaComponent implements OnInit {
     const plano = this.planoSelecionado;
     if (!plano || plano.status === 'RASCUNHO') return;
     this.executarComDescarte(() => {
+      this.origemEdicao = null;
       this.planoEmEdicaoId = null;
       this.form = this.formularioDoPlano(plano);
       this.form.titulo = `Cópia de ${plano.titulo}`.slice(0, 150);
@@ -381,7 +422,8 @@ export class DietaComponent implements OnInit {
 
   cancelarEdicao(): void {
     this.executarComDescarte(() => {
-      this.tela = this.planoEmEdicaoId !== null && this.planoSelecionado ? 'detalhe' : 'lista';
+      this.tela = this.planoSelecionado && (this.planoEmEdicaoId !== null || this.origemEdicao) ? 'detalhe' : 'lista';
+      this.origemEdicao = null;
       this.limparMensagens();
     });
   }
@@ -533,7 +575,9 @@ export class DietaComponent implements OnInit {
     const request = this.payload();
     this.salvando = true;
     const operacao = this.planoEmEdicaoId === null
-      ? this.dieta.criarPlano(this.patientId, request, this.atendimentoId)
+      ? (this.origemEdicao
+          ? this.dieta.criarEdicao(this.patientId, this.origemEdicao, request, this.atendimentoId)
+          : this.dieta.criarPlano(this.patientId, request, this.atendimentoId))
       : this.dieta.atualizarPlano(this.patientId, this.planoEmEdicaoId, request, this.atendimentoId);
     operacao.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: plano => {
@@ -542,6 +586,8 @@ export class DietaComponent implements OnInit {
         this.tela = 'detalhe';
         this.salvando = false;
         this.atualizarPlanoNaLista(plano);
+        this.origemEdicao = null;
+        if (plano.planoAnteriorId) this.recarregarListaDePlanos();
         this.toast.sucesso('Rascunho salvo com sucesso.');
         this.original = this.assinatura();
         this.errors = {};
@@ -556,6 +602,31 @@ export class DietaComponent implements OnInit {
   publicar(): void {
     const plano = this.planoSelecionado;
     if (!plano || plano.status !== 'RASCUNHO' || this.publicando || this.planoParaPublicar) return;
+    if (plano.planoAnteriorId) {
+      this.publicando = true;
+      this.dieta.buscarPlano(this.patientId, plano.id, this.atendimentoId)
+        .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+          next: atual => {
+            this.publicando = false;
+            this.planoSelecionado = atual;
+            if (atual.status !== 'RASCUNHO') {
+              this.toast.aviso('Esta edição já foi publicada. Confira o histórico de dietas.');
+              this.recarregarListaDePlanos();
+              return;
+            }
+            this.prepararPublicacao(atual);
+          },
+          error: (error: ApiErrorResponse) => {
+            this.publicando = false;
+            this.toast.erro(error.message || 'Não foi possível conferir a vigência.');
+          }
+        });
+      return;
+    }
+    this.prepararPublicacao(plano);
+  }
+
+  private prepararPublicacao(plano: Plano): void {
     const problema = this.validarPublicacao(plano);
     if (problema) {
       this.erro = problema;
@@ -573,12 +644,16 @@ export class DietaComponent implements OnInit {
     if (!plano || this.publicando) return;
     this.publicando = true;
     this.erro = '';
-    this.dieta.publicarPlano(this.patientId, plano.id, plano.versao, this.atendimentoId)
+    const publicacao = plano.planoAnteriorId && plano.inicioEdicao
+      ? this.dieta.publicarPlano(this.patientId, plano.id, plano.versao, this.atendimentoId, plano.inicioEdicao)
+      : this.dieta.publicarPlano(this.patientId, plano.id, plano.versao, this.atendimentoId);
+    publicacao
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: publicado => {
           this.planoSelecionado = publicado;
           this.atualizarPlanoNaLista(publicado);
-          this.toast.sucesso(`Plano publicado com sucesso na versão ${publicado.versao}.`);
+          if (publicado.planoAnteriorId) this.recarregarListaDePlanos();
+          this.toast.sucesso(publicado.planoAnteriorId ? 'Edição da dieta agendada.' : 'Plano publicado com sucesso.');
           this.publicando = false;
           this.planoParaPublicar = null;
         },
@@ -611,6 +686,7 @@ export class DietaComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
           this.planos = this.planos.filter(item => item.id !== plano.id);
+          if (plano.planoAnteriorId) this.recarregarListaDePlanos();
           this.planoSelecionado = null;
           this.tela = 'lista';
           this.excluindo = false;
@@ -727,8 +803,32 @@ export class DietaComponent implements OnInit {
     return valor === null || valor === undefined ? 'Não informado' : this.formatarNutriente(valor);
   }
 
-  statusLabel(status: Plano['status']): string {
-    return { RASCUNHO: 'Rascunho', PUBLICADO: 'Publicado', SUBSTITUIDO: 'Substituído' }[status];
+  statusLabel(plano: Plano): string {
+    if (plano.status === 'SUBSTITUIDO') return 'Substituída';
+    if (plano.status === 'RASCUNHO') return plano.planoAnteriorId ? 'Rascunho de edição' : 'Rascunho';
+    const hoje = this.dataAtualNaClinica();
+    if (plano.vigenciaInicio && plano.vigenciaInicio > hoje) return 'Início futuro';
+    if (plano.vigenciaFim && plano.vigenciaFim < hoje) return 'Vigência encerrada';
+    return 'Vigente';
+  }
+
+  get inicioEdicaoFixo(): boolean {
+    return this.origemEdicao !== null || !!this.planoSelecionado?.planoAnteriorId;
+  }
+
+  mensagemPublicacao(plano: Plano): string {
+    if (plano.planoAnteriorId && plano.inicioEdicao) {
+      return `As alterações entrarão em vigor em ${formatarDataBr(plano.inicioEdicao)}. A dieta atual continuará disponível até o fim de hoje.`;
+    }
+    return `O plano “${plano.titulo}” ficará disponível ao paciente no período de ${this.formatarPeriodo(plano)}.`;
+  }
+
+  private recarregarListaDePlanos(): void {
+    this.dieta.listarPlanos(this.patientId, this.atendimentoId)
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: planos => { this.planos = planos; },
+        error: () => this.toast.aviso('Não foi possível atualizar o histórico de dietas.')
+      });
   }
 
   formatarHorario(horario: string): string {
@@ -743,7 +843,9 @@ export class DietaComponent implements OnInit {
   formatarPeriodo(plano: Plano): string {
     const inicio = formatarDataBr(plano.vigenciaInicio);
     const fim = formatarDataBr(plano.vigenciaFim);
-    return inicio && fim ? `${inicio} a ${fim}` : 'período sem vigência definida';
+    if (inicio && fim) return `${inicio} a ${fim}`;
+    if (fim) return `Até ${fim}`;
+    return inicio ? `A partir de ${inicio}` : 'Não definida';
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -951,9 +1053,11 @@ export class DietaComponent implements OnInit {
   }
 
   private validarPublicacao(plano: Plano): string {
-    if (!plano.vigenciaInicio || !plano.vigenciaFim) return 'Informe as datas de início e fim da vigência antes de publicar.';
-    if (plano.vigenciaFim < plano.vigenciaInicio) return 'O fim da vigência deve ser igual ou posterior ao início.';
-    if (plano.vigenciaInicio < this.dataAtualNaClinica()) return 'Defina o início da vigência para hoje ou uma data futura.';
+    const inicio = plano.planoAnteriorId ? plano.inicioEdicao : plano.vigenciaInicio;
+    if (plano.planoAnteriorId && inicio && (!plano.vigenciaFim || plano.vigenciaFim < inicio)) return 'Edite o rascunho e informe uma data final válida para a nova vigência.';
+    if (!inicio || !plano.vigenciaFim) return 'Informe as datas de início e fim da vigência antes de publicar.';
+    if (plano.vigenciaFim < inicio) return 'O fim da vigência deve ser igual ou posterior ao início.';
+    if (inicio < this.dataAtualNaClinica()) return 'Defina o início da vigência para hoje ou uma data futura.';
     if (plano.refeicoes.length === 0 || plano.refeicoes.some(refeicao => refeicao.itens.length === 0)) {
       return 'A publicação exige ao menos uma refeição, e todas as refeições precisam ter alimentos.';
     }

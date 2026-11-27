@@ -126,7 +126,9 @@ function CartaoAviso({ aviso, navigation }: { aviso: AvisoPaciente; navigation: 
     return (
       <CartaoNotificacao tipo={aviso.atualizacao ? 'PLANO_ATUALIZADO' : 'NOVO_PLANO'}
         data={formatarDataCivil(aviso.vigenciaInicio) + ' a ' + formatarDataCivil(aviso.vigenciaFim)}
-        detalhe={aviso.titulo} destino="Dieta" onAbrir={() => navigation.navigate('Dieta')} />
+        detalhe={aviso.edicaoAgendada
+          ? 'As alterações estarão disponíveis a partir de ' + formatarDataCivil(aviso.vigenciaInicio) + '.'
+          : aviso.titulo} destino="Dieta" onAbrir={() => navigation.navigate('Dieta')} />
     );
   }
   return <CartaoNotificacao tipo={aviso.tipo} data={formatarDataHoraCivil(aviso.dataHora)} onAbrir={() => navigation.navigate('Agenda')} />;

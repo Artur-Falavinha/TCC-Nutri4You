@@ -12,6 +12,7 @@ export interface AvisoPlanoAlimentar {
   id: number;
   titulo: string;
   atualizacao: boolean;
+  edicaoAgendada?: boolean;
   vigenciaInicio: string;
   vigenciaFim: string;
   criadaEm: string;

@@ -103,7 +103,8 @@ describe('DietaComponent', () => {
       'criarPlano',
       'atualizarPlano',
       'excluirPlano',
-      'publicarPlano'
+      'publicarPlano',
+      'criarEdicao'
     ]);
     dieta.listarAlimentos.and.returnValue(of(paginaAlimentos([])));
     dieta.listarCategorias.and.returnValue(of(['Cereais']));
@@ -512,6 +513,51 @@ describe('DietaComponent', () => {
 
     expect(dieta.publicarPlano).toHaveBeenCalledOnceWith(paciente.id, rascunho.id, rascunho.versao, null);
     expect(raiz.querySelector('app-dialogo-confirmacao')).toBeNull();
+  });
+
+  it('abre a dieta vigente no editor sem gravar e solicita outra data final quando necessário', () => {
+    const inicio = '2099-11-28';
+    const original: Plano = {
+      ...planoSalvo, status: 'PUBLICADO', inicioEdicao: inicio, vigenciaFim: '2099-11-27'
+    };
+    dieta.buscarPlano.and.returnValue(of(original));
+    component.tela = 'detalhe';
+    component.planoSelecionado = original;
+    fixture.detectChanges();
+    const botao = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'))
+      .find(item => item.textContent?.trim() === 'Editar dieta')!;
+    botao.click();
+    expect(component.tela).toBe('editor');
+    expect(component.form.titulo).toBe(original.titulo);
+    expect(component.form.vigenciaInicio).toBe(inicio);
+    expect(component.form.vigenciaFim).toBe('');
+    expect(dieta.criarEdicao).not.toHaveBeenCalled();
+    component.cancelarEdicao();
+    expect(component.planoSelecionado).toEqual(original);
+    expect(component.tela).toBe('detalhe');
+  });
+
+  it('confirma a data calculada pela API antes de publicar uma edição', () => {
+    const inicio = '2099-11-28';
+    const rascunho: Plano = {
+      ...planoSalvo,
+      planoAnteriorId: 1,
+      inicioEdicao: inicio,
+      vigenciaInicio: inicio,
+      vigenciaFim: '2099-12-10'
+    };
+    dieta.buscarPlano.and.returnValue(of(rascunho));
+    dieta.publicarPlano.and.returnValue(of({ ...rascunho, status: 'PUBLICADO' }));
+    component.planoSelecionado = rascunho;
+    component.tela = 'detalhe';
+    component.publicar();
+    fixture.detectChanges();
+    const raiz = fixture.nativeElement as HTMLElement;
+    expect(raiz.querySelector('app-dialogo-confirmacao')?.textContent)
+      .toContain('As alterações entrarão em vigor em 28/11/2099. A dieta atual continuará disponível até o fim de hoje.');
+    expect(dieta.publicarPlano).not.toHaveBeenCalled();
+    component.confirmarPublicacao();
+    expect(dieta.publicarPlano).toHaveBeenCalledOnceWith(paciente.id, rascunho.id, rascunho.versao, null, inicio);
   });
 
   it('exige confirmação para excluir refeições', () => {

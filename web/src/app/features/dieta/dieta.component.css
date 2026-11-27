@@ -32,6 +32,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .status { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 10px; border-radius: 999px; background: #eef2f6; color: #475569; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .status--draft { background: #fff7e6; color: #865c00; }
 .status--published { background: #e7f5ea; color: #17662e; }
+.status--scheduled { background: #e5f2fb; color: #185176; }
+.status--replaced { background: #eef0f2; color: #4b5563; }
 .text-action { display: inline-flex; align-items: center; gap: 7px; padding: 4px 0; border: 0; color: var(--color-brand-primary); background: transparent; font-weight: 700; cursor: pointer; }
 .text-action:hover { text-decoration: underline; }
 .detail-toolbar { align-items: flex-end; }

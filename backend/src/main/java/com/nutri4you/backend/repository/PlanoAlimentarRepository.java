@@ -17,6 +17,8 @@ public interface PlanoAlimentarRepository extends JpaRepository<PlanoAlimentar, 
             Integer id, Integer pacienteId, Integer nutricionistaId, String status);
     boolean existsByConsulta_IdAndStatusNot(Integer consultaId, String status);
 
+    boolean existsByPlanoAnterior_Id(Integer id);
+
     @Query("""
             select p from PlanoAlimentar p left join p.consulta c
             where p.paciente.id = :pacienteId and p.nutricionista.id = :nutricionistaId
@@ -28,7 +30,8 @@ public interface PlanoAlimentarRepository extends JpaRepository<PlanoAlimentar, 
 
     @Query("""
             select p from PlanoAlimentar p
-            where p.paciente.id = :pacienteId and p.status = 'PUBLICADO'
+            where p.paciente.id = :pacienteId
+              and (p.status = 'PUBLICADO' or (p.status = 'SUBSTITUIDO' and p.substituidaEm is not null))
               and (p.vigenciaInicio is null or p.vigenciaInicio <= :fim)
               and (p.vigenciaFim is null or p.vigenciaFim >= :inicio)
             order by p.id desc

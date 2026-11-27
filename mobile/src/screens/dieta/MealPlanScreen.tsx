@@ -2,7 +2,7 @@ import { toast } from '../../components/feedback/toast';
 import { Feather } from '@expo/vector-icons';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -23,7 +23,8 @@ import { AppHeader } from '../../components/layout/AppHeader';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { ApiError } from '../../core/api/api-response.types';
 import { logout } from '../../core/auth/auth.service';
-import { formatDateFromDate } from '../../core/utils/date-mask.util';
+import { useAtualizacaoDieta, useCargaVigente } from '../../features/dieta/dieta.atualizacao';
+import { dataIsoDaClinica, formatDateFromDate } from '../../core/utils/date-mask.util';
 import {
   formatDate,
   formatFoodSource,
@@ -153,47 +154,51 @@ export function MealPlanScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [plan, setPlan] = useState<MealPlan | null>(null);
-  const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
-  const week = semanaAtual(new Date());
+  const diaClinica = useRef(dataIsoDaClinica());
+  const [selectedDay, setSelectedDay] = useState(() => new Date(diaClinica.current + 'T12:00:00').getDay());
+  const week = semanaAtual(new Date(diaClinica.current + 'T12:00:00'));
   const [swapModalMeal, setSwapModalMeal] = useState<Meal | null>(null);
   const [swapSearch, setSwapSearch] = useState('');
   const [hydration, setHydration] = useState<HydrationProgress | null>(null);
   const [hydrationError, setHydrationError] = useState('');
   const [savingWater, setSavingWater] = useState(false);
-  const requestId = useRef(0);
+  const { executar } = useCargaVigente();
+  const revisaoAgua = useRef(0);
 
-  const atualizarDieta = useCallback((
-    [plano, agua]: Awaited<ReturnType<typeof carregarDieta>>,
-    currentRequest: number
-  ) => {
-    if (currentRequest !== requestId.current) return;
-    if (plano.status === 'fulfilled') setPlan(plano.value);
-    setError(plano.status === 'rejected' ? errorMessage(plano.reason) : '');
-    if (agua.status === 'fulfilled') setHydration(agua.value);
-    setHydrationError(agua.status === 'rejected' ? 'Não foi possível consultar a hidratação.' : '');
-    setLoading(false);
-    setRefreshing(false);
-  }, []);
+  const recarregarPlano = useCallback((refresh = false) => {
+    const dia = dataIsoDaClinica();
+    if (dia !== diaClinica.current) {
+      diaClinica.current = dia;
+      setSelectedDay(new Date(dia + 'T12:00:00').getDay());
+      setSwapModalMeal(null);
+    }
+    return executar(dia, async atual => {
+      const versaoAgua = revisaoAgua.current;
+      if (refresh) setRefreshing(true);
+      else setLoading(true);
+      const [plano, agua] = await carregarDieta();
+      if (!atual()) return;
+      if (plano.status === 'fulfilled') setPlan(plano.value);
+      setError(plano.status === 'rejected' ? errorMessage(plano.reason) : '');
+      if (versaoAgua === revisaoAgua.current) {
+        if (agua.status === 'fulfilled') setHydration(agua.value);
+        setHydrationError(agua.status === 'rejected' ? 'Não foi possível consultar a hidratação.' : '');
+      }
+      setLoading(false);
+      setRefreshing(false);
+    });
+  }, [executar]);
 
-  useEffect(() => {
-    const currentRequest = ++requestId.current;
-    void carregarDieta().then(resultado => atualizarDieta(resultado, currentRequest));
-    return () => { requestId.current += 1; };
-  }, [atualizarDieta]);
-
-  const recarregarPlano = (refresh = false) => {
-    if (refresh) setRefreshing(true);
-    else setLoading(true);
-    const currentRequest = ++requestId.current;
-    void carregarDieta().then(resultado => atualizarDieta(resultado, currentRequest));
-  };
+  useAtualizacaoDieta(recarregarPlano);
 
   const registrarAgua = async () => {
     if (!hydration || savingWater) return;
     setSavingWater(true);
     setHydrationError('');
     try {
-      setHydration(await addWater());
+      const agua = await addWater();
+      revisaoAgua.current += 1;
+      if (diaClinica.current === agua.data) setHydration(agua);
       toast.sucesso('Consumo de água registrado.');
     } catch (failure) {
       toast.erro(failure instanceof ApiError ? failure.message : 'Não foi possível registrar a água.');

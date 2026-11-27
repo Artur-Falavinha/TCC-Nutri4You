@@ -1,35 +1,42 @@
 import { toast } from '../../../components/feedback/toast';
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { dataIsoDaClinica, formatarDataCivil } from '../../../core/utils/date-mask.util';
+import { useAtualizacaoDieta, useCargaVigente } from '../../../features/dieta/dieta.atualizacao';
 import { DailyConsumption, getConsumption, markMeal } from '../../../features/dieta/consumo.service';
 import { SectionCardHeader, sectionCardStyles } from '../../../components/layout/SectionCardHeader';
 import { colors, fontFamily, radius, spacing } from '../../../theme/tokens';
 
-export function DailyMealsCard({ onChanged }: { onChanged: () => Promise<void> }) {
+export function DailyMealsCard({ onChanged, atualizacao = 0 }: { onChanged: () => Promise<void>; atualizacao?: number }) {
   const [registro, setRegistro] = useState<DailyConsumption | null>(null);
   const [selecao, setSelecao] = useState<{ data?: string }>({});
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
 
-  useFocusEffect(useCallback(() => {
-    let ativo = true;
-    setCarregando(true);
-    setErro('');
-    void getConsumption(selecao.data)
-      .then(resposta => { if (ativo) setRegistro(resposta); })
-      .catch((falha: unknown) => {
-        if (!ativo) return;
+  const { executar, invalidar } = useCargaVigente();
+  const diaDaMarcacao = useRef<string | null>(null);
+  const recarregar = useCallback(() => {
+    const hoje = dataIsoDaClinica();
+    if (diaDaMarcacao.current === hoje) return;
+    void executar(`${hoje}/${selecao.data ?? 'hoje'}`, async atual => {
+      setCarregando(true);
+      setErro('');
+      try {
+        const resposta = await getConsumption(selecao.data);
+        if (atual()) setRegistro(resposta);
+      } catch (falha) {
+        if (!atual()) return;
         setRegistro(null);
         setErro(falha instanceof Error ? falha.message : 'Não foi possível carregar as refeições.');
-      })
-      .finally(() => { if (ativo) setCarregando(false); });
-    return () => { ativo = false; };
-  }, [selecao]));
+      } finally {
+        if (atual()) setCarregando(false);
+      }
+    });
+  }, [atualizacao, executar, selecao]);
+  useAtualizacaoDieta(recarregar);
 
   const dataExibida = selecao.data ?? registro?.data ?? dataIsoDaClinica();
   const total = registro?.refeicoes.length ?? 0;
@@ -48,16 +55,21 @@ export function DailyMealsCard({ onChanged }: { onChanged: () => Promise<void> }
   }
 
   async function alternarConsumo(id: number, consumida: boolean) {
-    if (!registro?.editavel || ocupado) return;
+    if (!registro?.editavel || ocupado || diaDaMarcacao.current) return;
+    diaDaMarcacao.current = registro.data;
+    invalidar();
     setSalvando(true);
     setErro('');
     try {
-      setRegistro(await markMeal(id, registro.data, !consumida));
+      const resposta = await markMeal(id, registro.data, !consumida);
+      if (dataIsoDaClinica() === resposta.data) setRegistro(resposta);
       await onChanged();
     } catch (falha) {
       toast.erro(falha instanceof Error ? falha.message : 'Não foi possível salvar o consumo.');
     } finally {
+      diaDaMarcacao.current = null;
       setSalvando(false);
+      if (registro.data !== dataIsoDaClinica()) recarregar();
     }
   }
 

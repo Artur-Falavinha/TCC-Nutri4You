@@ -29,6 +29,9 @@ public class NotificacaoPlanoAlimentar {
     @Column(nullable = false)
     private boolean atualizacao;
 
+    @Column(name = "edicao_agendada", nullable = false)
+    private boolean edicaoAgendada;
+
     @Column(nullable = false)
     private LocalDate vigenciaInicio;
 
@@ -46,6 +49,7 @@ public class NotificacaoPlanoAlimentar {
         this.planoId = plano.getId();
         this.titulo = plano.getTitulo();
         this.atualizacao = atualizacao;
+        this.edicaoAgendada = plano.getPlanoAnterior() != null;
         this.vigenciaInicio = plano.getVigenciaInicio();
         this.vigenciaFim = plano.getVigenciaFim();
         this.criadaEm = plano.getPublicadoEm();
@@ -54,6 +58,7 @@ public class NotificacaoPlanoAlimentar {
     public Long getId() { return id; }
     public String getTitulo() { return titulo; }
     public boolean isAtualizacao() { return atualizacao; }
+    public boolean isEdicaoAgendada() { return edicaoAgendada; }
     public LocalDate getVigenciaInicio() { return vigenciaInicio; }
     public LocalDate getVigenciaFim() { return vigenciaFim; }
     public Instant getCriadaEm() { return criadaEm; }

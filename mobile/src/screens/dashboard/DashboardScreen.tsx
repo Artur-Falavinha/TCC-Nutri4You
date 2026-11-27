@@ -1,6 +1,6 @@
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -16,6 +16,8 @@ import { AppHeader } from '../../components/layout/AppHeader';
 import { toast } from '../../components/feedback/toast';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { logout } from '../../core/auth/auth.service';
+import { dataIsoDaClinica } from '../../core/utils/date-mask.util';
+import { useAtualizacaoDieta, useCargaVigente } from '../../features/dieta/dieta.atualizacao';
 import {
   calcularPercentualMeta,
   carregarDashboardPaciente,
@@ -38,69 +40,38 @@ export function DashboardScreen({ navigation }: Props) {
   const [erro, setErro] = useState<string | null>(null);
   const [dados, setDados] = useState<DashboardPacienteDados | null>(null);
 
-  useEffect(() => {
-    let cancelado = false;
+  const { executar, invalidar } = useCargaVigente();
+  const [atualizacaoConsumo, setAtualizacaoConsumo] = useState(0);
 
-    void carregarDashboardPaciente()
-      .then((resposta) => {
-        if (!cancelado) {
-          setDados(resposta);
-          setErro(null);
-        }
-      })
-      .catch((e: unknown) => {
-        if (!cancelado) {
-          setErro(
-            e instanceof Error
-              ? e.message
-              : 'Não foi possível carregar os dados da tela inicial.'
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelado) {
-          setCarregando(false);
-        }
-      });
-
-    return () => {
-      cancelado = true;
-    };
-  }, []);
-
-  const recarregar = useCallback(async () => {
-    setCarregando(true);
+  const carregar = useCallback((manual = false) => executar(dataIsoDaClinica(), async atual => {
+    if (manual) setAtualizando(true);
+    else setCarregando(true);
     setErro(null);
     try {
       const resposta = await carregarDashboardPaciente();
-      setDados(resposta);
+      if (atual()) setDados(resposta);
     } catch (e) {
-      setErro(
-        e instanceof Error
-          ? e.message
-          : 'Não foi possível carregar os dados da tela inicial.'
-      );
+      if (atual()) setErro(e instanceof Error ? e.message : 'Não foi possível carregar os dados da tela inicial.');
     } finally {
-      setCarregando(false);
+      if (atual()) {
+        setCarregando(false);
+        setAtualizando(false);
+      }
     }
-  }, []);
+  }), [executar]);
 
-  const handleRefresh = useCallback(async () => {
-    setAtualizando(true);
-    try {
-      const resposta = await carregarDashboardPaciente();
-      setDados(resposta);
-      setErro(null);
-    } catch (e) {
-      setErro(
-        e instanceof Error
-          ? e.message
-          : 'Não foi possível carregar os dados da tela inicial.'
-      );
-    } finally {
-      setAtualizando(false);
-    }
-  }, []);
+  const recarregar = useCallback(() => carregar(), [carregar]);
+  useAtualizacaoDieta(recarregar);
+
+  const handleRefresh = useCallback(() => {
+    setAtualizacaoConsumo(valor => valor + 1);
+    return carregar(true);
+  }, [carregar]);
+
+  const atualizarAposConsumo = useCallback(() => {
+    invalidar();
+    return carregar(true);
+  }, [carregar, invalidar]);
 
   const sair = async () => {
     await logout();
@@ -214,7 +185,7 @@ export function DashboardScreen({ navigation }: Props) {
             </Text>
           </View>
 
-          <DailyMealsCard onChanged={handleRefresh} />
+          <DailyMealsCard onChanged={atualizarAposConsumo} atualizacao={atualizacaoConsumo} />
           <DailyIntakeCard
             calorias={{ valor: kcalConsumidas, meta: metaKcal, percentual: percKcal }}
             proteinas={{ valor: proteinaConsumida, percentual: percProteina }}

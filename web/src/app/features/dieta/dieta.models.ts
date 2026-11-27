@@ -68,6 +68,11 @@ export interface Refeicao {
 export type PlanoStatus = 'RASCUNHO' | 'PUBLICADO' | 'SUBSTITUIDO';
 
 export interface Plano {
+  planoAnteriorId?: number | null;
+  planoSubstitutoId?: number | null;
+  rascunhoEdicaoId?: number | null;
+  substituidaEm?: string | null;
+  inicioEdicao?: string | null;
   id: number;
   pacienteId: number;
   nutricionistaId: number;

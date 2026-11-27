@@ -10,8 +10,13 @@ import { buildGoalRows } from '../components/NutrientSummaryCard';
 
 jest.mock('../../../features/dieta/dieta.service', () => ({
   getActiveMealPlan: jest.fn(),
-  addWater: jest.fn().mockResolvedValue({ data: "2026-11-05", consumidoMl: 250, metaMl: 2500 }),
+  addWater: jest.fn().mockImplementation(async () => ({ data: jest.requireActual('../../../core/utils/date-mask.util').dataIsoDaClinica(), consumidoMl: 250, metaMl: 2500 })),
   getHydrationProgress: jest.fn().mockResolvedValue({ data: '2026-11-05', consumidoMl: 0, metaMl: 2500 })
+}));
+
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useFocusEffect: (callback: () => void) => jest.requireActual('react').useEffect(callback, [callback])
 }));
 
 jest.mock('../../../core/auth/auth.service', () => ({ logout: jest.fn() }));

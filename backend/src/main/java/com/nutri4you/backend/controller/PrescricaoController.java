@@ -2,6 +2,7 @@ package com.nutri4you.backend.controller;
 
 import com.nutri4you.backend.dto.ApiResponse;
 import com.nutri4you.backend.dto.PrescricaoDTO.CompraRequest;
+import com.nutri4you.backend.dto.PrescricaoDTO.EdicaoPublicadaRequest;
 import com.nutri4you.backend.dto.PrescricaoDTO.ListaComprasDTO;
 import com.nutri4you.backend.dto.PrescricaoDTO.PaginaAlimentos;
 import com.nutri4you.backend.dto.PrescricaoDTO.PlanoDTO;
@@ -114,7 +115,14 @@ public class PrescricaoController {
             @RequestParam(required = false) Integer atendimentoId,
             @RequestBody PublicacaoRequest request) {
         return ApiResponse.ok(
-                prescricoes.publicar(nutricionista(auth), pacienteId, atendimentoId, id, request.versao()));
+                prescricoes.publicar(nutricionista(auth), pacienteId, atendimentoId, id, request.versao(), request.inicioConfirmado()));
+    }
+
+    @PostMapping("/gestao-pacientes/{pacienteId}/planos-alimentares/{id}/edicao")
+    public ApiResponse<PlanoDTO> criarEdicao(
+            Authentication auth, @PathVariable Integer pacienteId, @PathVariable Integer id,
+            @RequestParam(required = false) Integer atendimentoId, @RequestBody EdicaoPublicadaRequest request) {
+        return ApiResponse.ok(prescricoes.criarEdicao(nutricionista(auth), pacienteId, atendimentoId, id, request));
     }
 
     @GetMapping({"/me/plano-alimentar", "/usuarios/me/dieta-ativa"})

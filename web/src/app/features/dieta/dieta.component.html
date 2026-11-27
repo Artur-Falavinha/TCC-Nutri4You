@@ -69,11 +69,12 @@
               <div class="plan-card__heading">
                 <h3>{{ plano.titulo }}</h3>
                 <span class="status" [class.status--draft]="plano.status === 'RASCUNHO'"
-                  [class.status--published]="plano.status === 'PUBLICADO'"
-                  [class.status--replaced]="plano.status === 'SUBSTITUIDO'">{{ statusLabel(plano.status) }}</span>
+                  [class.status--published]="statusLabel(plano) === 'Vigente'"
+                  [class.status--scheduled]="statusLabel(plano) === 'Início futuro'"
+                  [class.status--replaced]="plano.status === 'SUBSTITUIDO'">{{ statusLabel(plano) }}</span>
               </div>
-              <p class="plan-card__meta">Versão {{ plano.versao }} · {{ plano.refeicoes.length }} refeição(ões)</p>
-              @if (plano.vigenciaInicio && plano.vigenciaFim) {
+              <p class="plan-card__meta">{{ plano.refeicoes.length }} refeição(ões)</p>
+              @if (plano.vigenciaInicio || plano.vigenciaFim) {
                 <p class="plan-card__meta">Vigência: {{ formatarPeriodo(plano) }}</p>
               } @else {
                 <p class="plan-card__meta">Vigência ainda não definida</p>
@@ -92,18 +93,23 @@
         <div class="detail-title">
           <h2>{{ plano.titulo }}</h2>
           <span class="status" [class.status--draft]="plano.status === 'RASCUNHO'"
-            [class.status--published]="plano.status === 'PUBLICADO'"
-            [class.status--replaced]="plano.status === 'SUBSTITUIDO'">{{ statusLabel(plano.status) }} · v{{ plano.versao }}</span>
+            [class.status--published]="statusLabel(plano) === 'Vigente'"
+            [class.status--scheduled]="statusLabel(plano) === 'Início futuro'"
+            [class.status--replaced]="plano.status === 'SUBSTITUIDO'">{{ statusLabel(plano) }}</span>
         </div>
       </div>
       <div class="actions">
         @if (plano.status === 'RASCUNHO' && (atendimentoId === null || podeEditarAtendimento)) {
           <app-ui-button label="Editar rascunho" icon="pencil-simple" variant="secondary" [fullWidth]="false" [disabled]="excluindo" (click)="abrirEdicao()" />
           <app-ui-button label="Publicar" icon="check-circle" [fullWidth]="false" [loading]="publicando" [disabled]="excluindo" (click)="publicar()" />
-        } @else if (plano.status !== 'RASCUNHO' && (atendimentoId === null || podeEditarAtendimento)) {
+        } @else if (plano.status === 'PUBLICADO' && plano.inicioEdicao && (atendimentoId === null || podeEditarAtendimento)) {
+          <app-ui-button [label]="plano.rascunhoEdicaoId ? 'Abrir rascunho de edição' : 'Editar dieta'" icon="pencil-simple" variant="secondary"
+            [fullWidth]="false" [loading]="salvando" [disabled]="excluindo" (click)="editarDieta()" />
+        } @else if (plano.status === 'PUBLICADO' && !plano.planoAnteriorId && (atendimentoId === null || podeEditarAtendimento)) {
           <app-ui-button label="Criar novo rascunho" icon="copy" variant="secondary" [fullWidth]="false" [disabled]="excluindo" (click)="duplicarPlano()" />
         }
-        @if (atendimentoId === null || podeEditarAtendimento) {
+        @if ((atendimentoId === null || podeEditarAtendimento) && (plano.status === 'RASCUNHO' ||
+            (plano.status === 'PUBLICADO' && !plano.planoAnteriorId && !plano.rascunhoEdicaoId))) {
           <app-ui-button label="Excluir" icon="trash" variant="danger" [fullWidth]="false" [disabled]="publicando" [loading]="excluindo" (click)="excluir()" />
         }
       </div>
@@ -112,9 +118,21 @@
     <section class="summary-card" aria-labelledby="plan-summary-title">
       <h3 id="plan-summary-title">Resumo do plano</h3>
       <dl class="summary-grid">
-        <div><dt>Vigência</dt><dd>{{ plano.vigenciaInicio && plano.vigenciaFim ? formatarPeriodo(plano) : 'Não definida' }}</dd></div>
+        <div><dt>Vigência</dt><dd>{{ formatarPeriodo(plano) }}</dd></div>
         <div><dt>Nutricionista</dt><dd>{{ plano.nutricionistaNome }}</dd></div>
         <div><dt>Publicado em</dt><dd>{{ plano.publicadoEm ? (plano.publicadoEm | date:'dd/MM/yyyy HH:mm') : 'Ainda não publicado' }}</dd></div>
+        @if (plano.planoSubstitutoId) {
+          <div><dt>Dieta que substituiu esta</dt>
+            <dd>
+              Nº {{ plano.planoSubstitutoId }}
+              @for (substituta of planos; track substituta.id) {
+                @if (substituta.id === plano.planoSubstitutoId) {
+                  <button type="button" class="action secondary" (click)="abrirDetalhe(substituta)">{{ substituta.titulo }}</button>
+                }
+              }
+            </dd>
+          </div>
+        }
       </dl>
       @if (plano.orientacoes) {
         <div class="guidance"><h4>Orientações</h4><p>{{ plano.orientacoes }}</p></div>
@@ -228,11 +246,14 @@
           </label>
           <div class="field-grid">
             <app-ui-input class="campo-vigencia" label="Início da vigência" inputId="vigenciaInicio" name="vigenciaInicio"
-              type="date" [(ngModel)]="form.vigenciaInicio" [min]="vigenciaInicioMinima"
+              type="date" [(ngModel)]="form.vigenciaInicio" [min]="vigenciaInicioMinima" [readonly]="inicioEdicaoFixo"
               [errorMessage]="errors['vigenciaInicio'] || ''" />
             <app-ui-input class="campo-vigencia" label="Fim da vigência" inputId="vigenciaFim" name="vigenciaFim"
               type="date" [(ngModel)]="form.vigenciaFim" [min]="vigenciaFimMinima"
               [errorMessage]="errors['vigenciaFim'] || ''" />
+            @if (inicioEdicaoFixo && !form.vigenciaFim) {
+              <p>Informe uma nova data final para publicar a edição.</p>
+            }
           </div>
           <label class="field" for="orientacoes">
             <span>Orientações</span>
@@ -440,8 +461,8 @@
 
 @if (planoParaPublicar; as plano) {
   <app-dialogo-confirmacao
-    titulo="Publicar plano alimentar"
-    [descricao]="'O plano “' + plano.titulo + '”, versão ' + plano.versao + ', ficará disponível ao paciente no período de ' + formatarPeriodo(plano) + '.'"
+    [titulo]="plano.planoAnteriorId ? 'Publicar edição da dieta' : 'Publicar plano alimentar'"
+    [descricao]="mensagemPublicacao(plano)"
     confirmar="Publicar plano"
     icone="upload-simple"
     [ocupado]="publicando" rotuloOcupado="Publicando…"

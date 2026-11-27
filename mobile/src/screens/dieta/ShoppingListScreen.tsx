@@ -2,7 +2,7 @@ import { toast } from '../../components/feedback/toast';
 import { Feather } from '@expo/vector-icons';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -20,6 +20,8 @@ import { AppHeader } from '../../components/layout/AppHeader';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { ApiError } from '../../core/api/api-response.types';
 import { logout } from '../../core/auth/auth.service';
+import { dataIsoDaClinica } from '../../core/utils/date-mask.util';
+import { useAtualizacaoDieta, useCargaVigente } from '../../features/dieta/dieta.atualizacao';
 import { formatGrams } from '../../features/dieta/dieta.formatters';
 import { getShoppingListProgress, groupShoppingItemsByCategory } from '../../features/dieta/dieta.shopping-list';
 import {
@@ -97,63 +99,34 @@ export function ShoppingListScreen({ navigation }: Props) {
   const [savingFoodId, setSavingFoodId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [list, setList] = useState<ShoppingList | null>(null);
-  const requestId = useRef(0);
+  const { executar, invalidar } = useCargaVigente();
+  const diaDaMarcacao = useRef<string | null>(null);
   const itemGroups = list ? groupShoppingItemsByCategory(list.itens) : [];
   const progress = list ? getShoppingListProgress(list.itens) : null;
 
-  const loadList = useCallback(async (requestedDays: number, refresh = false) => {
-    const currentRequest = ++requestId.current;
-    if (refresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-    setError('');
-    try {
-      const response = await getShoppingList(requestedDays);
-      if (currentRequest === requestId.current) {
-        setList(response);
-      }
-    } catch (failure) {
-      if (currentRequest === requestId.current) {
-        setError(errorMessage(failure));
-      }
-    } finally {
-      if (currentRequest === requestId.current) {
-        setLoading(false);
-        setRefreshing(false);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    const currentRequest = ++requestId.current;
-
-    void getShoppingList(days)
-      .then((response) => {
-        if (active && currentRequest === requestId.current) {
-          setList(response);
-        }
-      })
-      .catch((failure: unknown) => {
-        if (active && currentRequest === requestId.current) {
-          setError(errorMessage(failure));
-        }
-      })
-      .finally(() => {
-        if (active && currentRequest === requestId.current) {
+  const loadList = useCallback((requestedDays: number, refresh = false) => {
+    const dia = dataIsoDaClinica();
+    if (diaDaMarcacao.current === dia) return;
+    return executar(`${dia}/${requestedDays}`, async atual => {
+      if (refresh) setRefreshing(true);
+      else setLoading(true);
+      setError('');
+      try {
+        const response = await getShoppingList(requestedDays);
+        if (atual()) setList(response);
+      } catch (failure) {
+        if (atual()) setError(errorMessage(failure));
+      } finally {
+        if (atual()) {
           setLoading(false);
+          setRefreshing(false);
         }
-      });
-
-    return () => {
-      active = false;
-      if (currentRequest === requestId.current) {
-        requestId.current += 1;
       }
-    };
-  }, [days]);
+    });
+  }, [executar]);
+
+  const recarregarLista = useCallback(() => { void loadList(days); }, [days, loadList]);
+  useAtualizacaoDieta(recarregarLista);
 
   const changeDays = (nextDays: number) => {
     if (
@@ -171,11 +144,14 @@ export function ShoppingListScreen({ navigation }: Props) {
   };
 
   const toggleItem = async (foodId: number, comprado: boolean) => {
-    if (!list || savingFoodId !== null) {
+    if (!list || diaDaMarcacao.current || loading || refreshing) {
       return;
     }
 
-    const currentRequest = ++requestId.current;
+    const dia = dataIsoDaClinica();
+    diaDaMarcacao.current = dia;
+    invalidar();
+    let recarregar = false;
     setSavingFoodId(foodId);
     setError('');
     try {
@@ -184,17 +160,14 @@ export function ShoppingListScreen({ navigation }: Props) {
         dias: days,
         comprado
       });
-      if (currentRequest === requestId.current) {
-        setList(response);
-      }
+      if (dia === dataIsoDaClinica()) setList(response);
     } catch (failure) {
-      if (currentRequest === requestId.current) {
-        toast.erro(errorMessage(failure));
-      }
+      toast.erro(errorMessage(failure));
+      recarregar = failure instanceof ApiError && failure.status === 409;
     } finally {
-      if (currentRequest === requestId.current) {
-        setSavingFoodId(null);
-      }
+      diaDaMarcacao.current = null;
+      setSavingFoodId(null);
+      if (recarregar || dia !== dataIsoDaClinica()) void loadList(days);
     }
   };
 

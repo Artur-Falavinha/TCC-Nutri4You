@@ -81,6 +81,12 @@ public class ContaEmailTemplate {
                 "Gerencie os avisos por e-mail em Configurações no Nutri4You.", null));
     }
 
+    public Conteudo notificacaoEdicaoDieta(String inicio) {
+        return renderizar(new Mensagem("Sua dieta foi atualizada",
+                "O nutricionista atualizou sua dieta. As alterações estarão disponíveis a partir de " + inicio + ".",
+                null, null, "", "Abra o app Nutri4You para consultar sua dieta.", null));
+    }
+
     public Conteudo notificacaoConsultaPaciente(String titulo, String introducao, LocalDateTime horario) {
         return renderizar(new Mensagem(titulo, introducao, null, null,
                 "Horário da consulta: " + horario.format(FORMATO_HORARIO),

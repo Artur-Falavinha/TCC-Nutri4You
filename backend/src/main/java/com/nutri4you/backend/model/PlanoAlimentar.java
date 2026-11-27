@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -47,6 +48,16 @@ public class PlanoAlimentar {
 
     @Column(name = "status", nullable = false, length = 20)
     private String status = "RASCUNHO";
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_plano_anterior", updatable = false)
+    private PlanoAlimentar planoAnterior;
+
+    @OneToOne(mappedBy = "planoAnterior", fetch = FetchType.LAZY)
+    private PlanoAlimentar sucessor;
+
+    @Column(name = "substituida_em")
+    private LocalDate substituidaEm;
 
     @Column(name = "vigencia_inicio")
     private LocalDate vigenciaInicio;
@@ -136,6 +147,24 @@ public class PlanoAlimentar {
         status = "PUBLICADO";
         publicadoEm = Instant.now();
     }
+
+    public void vincularEdicao(PlanoAlimentar anterior) {
+        this.planoAnterior = anterior;
+    }
+
+    public void iniciarEm(LocalDate inicio) {
+        this.vigenciaInicio = inicio;
+    }
+
+    public void substituirEm(LocalDate data) {
+        terminarEm(data);
+        substituir();
+        this.substituidaEm = data;
+    }
+
+    public PlanoAlimentar getPlanoAnterior() { return planoAnterior; }
+    public PlanoAlimentar getSucessor() { return sucessor; }
+    public LocalDate getSubstituidaEm() { return substituidaEm; }
 
     public void terminarEm(LocalDate fim) { this.vigenciaFim = fim; tocar(); }
     public void substituir() { this.status = "SUBSTITUIDO"; tocar(); }

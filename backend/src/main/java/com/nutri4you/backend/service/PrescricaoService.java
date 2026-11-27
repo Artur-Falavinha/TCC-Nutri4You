@@ -1,6 +1,7 @@
 package com.nutri4you.backend.service;
 
 import com.nutri4you.backend.dto.PrescricaoDTO.CompraRequest;
+import com.nutri4you.backend.dto.PrescricaoDTO.EdicaoPublicadaRequest;
 import com.nutri4you.backend.dto.PrescricaoDTO.ItemCompraDTO;
 import com.nutri4you.backend.dto.PrescricaoDTO.ItemRefeicaoDTO;
 import com.nutri4you.backend.dto.PrescricaoDTO.ItemRequest;
@@ -114,6 +115,23 @@ public class PrescricaoService {
     }
 
     @Transactional
+    public PlanoDTO criarEdicao(Nutricionista autor, Integer pacienteId, Integer atendimentoId,
+                                Integer id, EdicaoPublicadaRequest request) {
+        PlanoAlimentar original = bloquearPlanoParaEdicao(autor, pacienteId, atendimentoId, id);
+        exigirVersao(original, request == null ? null : request.versao());
+        exigirPublicadaVigente(original, LocalDate.now(relogio));
+        if (planos.existsByPlanoAnterior_Id(id))
+            throw new PlanoConflitoException("Já existe uma edição desta dieta. Abra o rascunho na lista de dietas.");
+        PlanoRequest dados = request.plano();
+        if (dados == null) throw new IllegalArgumentException("Informe os dados da edição.");
+        validarConsultaDoPlano(original.getConsulta(), dados.consultaId());
+        PlanoAlimentar edicao = new PlanoAlimentar(original.getPaciente(), autor, original.getConsulta());
+        edicao.vincularEdicao(original);
+        aplicar(edicao, dados);
+        return resposta(planos.saveAndFlush(edicao));
+    }
+
+    @Transactional
     public PlanoDTO editar(
             Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer id, PlanoRequest request) {
         PlanoAlimentar plano = bloquearPlanoParaEdicao(autor, pacienteId, atendimentoId, id);
@@ -130,6 +148,9 @@ public class PrescricaoService {
         if ("RASCUNHO".equals(plano.getStatus())) {
             planos.delete(plano);
         } else {
+            if ("SUBSTITUIDO".equals(plano.getStatus()) || plano.getPlanoAnterior() != null
+                    || planos.existsByPlanoAnterior_Id(plano.getId()))
+                throw new PlanoConflitoException("Esta dieta faz parte de uma edição e deve ser preservada no histórico.");
             plano.excluir();
         }
         planos.flush();
@@ -137,32 +158,56 @@ public class PrescricaoService {
 
     @Transactional
     public PlanoDTO publicar(Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer id, Long versao) {
+        return publicar(autor, pacienteId, atendimentoId, id, versao, null);
+    }
+
+    @Transactional
+    public PlanoDTO publicar(Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer id,
+                             Long versao, LocalDate inicioConfirmado) {
         // O paciente é o recurso comum a todos os autores e deve ser bloqueado antes de consultar a
         // vigência.
         PlanoAlimentar plano = bloquearPlanoParaEdicao(autor, pacienteId, atendimentoId, id);
         exigirRascunho(plano, versao);
+        PlanoAlimentar anterior = plano.getPlanoAnterior();
+        LocalDate hoje = LocalDate.now(relogio);
+        if (anterior != null) {
+            exigirPublicadaVigente(anterior, hoje);
+            LocalDate inicio = hoje.plusDays(1);
+            if (!inicio.equals(inicioConfirmado))
+                throw new PlanoConflitoException("A data de início mudou. Recarregue a dieta e confirme a nova data.");
+            if (plano.getVigenciaFim() == null || plano.getVigenciaFim().isBefore(inicio))
+                throw new IllegalArgumentException("Informe uma data final igual ou posterior ao início da edição.");
+            plano.iniciarEm(inicio);
+        }
         validarPublicacao(plano);
-        if (!planos.sobrepostos(pacienteId, plano.getVigenciaInicio(), plano.getVigenciaFim())
-                .isEmpty()) {
+        if (planos.sobrepostos(pacienteId, plano.getVigenciaInicio(), plano.getVigenciaFim()).stream()
+                .anyMatch(conflito -> !Objects.equals(conflito.getId(), anterior == null ? null : anterior.getId()))) {
             throw new PlanoConflitoException(
                     "Já existe um plano publicado com vigência sobreposta para este paciente.");
         }
         boolean atualizacao = planos.existsByPaciente_IdAndNutricionista_IdAndPublicadoEmIsNotNull(pacienteId, autor.getId());
+        if (anterior != null) anterior.substituirEm(hoje);
         plano.publicar();
         PlanoAlimentar publicado = planos.saveAndFlush(plano);
         notificacoes.registrar(publicado, atualizacao);
         return resposta(publicado);
     }
 
+    private void exigirPublicadaVigente(PlanoAlimentar plano, LocalDate hoje) {
+        if (!"PUBLICADO".equals(plano.getStatus()) || !dentroDaVigencia(plano, hoje))
+            throw new PlanoConflitoException("Só é possível editar a dieta publicada que está vigente. Confira as dietas agendadas no histórico.");
+    }
+
     public PlanoDTO ativo(Paciente paciente) {
-        PlanoAlimentar plano = planoAtivo(paciente);
-        return plano == null ? null : resposta(plano);
+        PlanoAlimentar plano = planoAtivo(paciente, LocalDate.now(relogio));
+        return plano == null ? null : resposta(plano, false);
     }
 
     public ListaComprasDTO compras(Paciente paciente, int dias) {
         validarDias(dias);
-        PlanoAlimentar plano = planoAtivo(paciente);
-        return plano == null ? null : respostaCompras(plano, dias);
+        LocalDate hoje = LocalDate.now(relogio);
+        PlanoAlimentar plano = planoAtivo(paciente, hoje);
+        return plano == null ? null : respostaCompras(plano, dias, hoje);
     }
 
     @Transactional
@@ -177,15 +222,22 @@ public class PrescricaoService {
         Paciente titular =
                 entityManager.find(
                         Paciente.class, paciente.getId(), LockModeType.PESSIMISTIC_WRITE);
-        PlanoAlimentar plano = planoAtivo(titular);
-        if (plano == null || !plano.getId().equals(request.planoId()))
+        LocalDate hoje = LocalDate.now(relogio);
+        PlanoAlimentar plano = planoAtivo(titular, hoje);
+        if (plano == null || !plano.getId().equals(request.planoId())) {
+            boolean dietaAnterior = planos.findById(request.planoId())
+                    .filter(anterior -> anterior.getPaciente().getId().equals(titular.getId()))
+                    .filter(anterior -> anterior.getPublicadoEm() != null && !PlanoAlimentar.STATUS_EXCLUIDO.equals(anterior.getStatus()))
+                    .isPresent();
+            if (dietaAnterior) throw new PlanoConflitoException("A dieta vigente mudou. Recarregue a lista de compras.");
             throw new PlanoNaoEncontradoException();
+        }
         Alimento alimento =
                 plano.getRefeicoes().stream()
                         .flatMap(r -> r.getItens().stream())
                         .map(ItemRefeicao::getAlimento)
                         .filter(a -> a.getId().equals(alimentoId))
-                        .filter(a -> respostaCompras(plano, request.dias(), Map.of()).itens().stream()
+                        .filter(a -> respostaCompras(plano, request.dias(), hoje, Map.of()).itens().stream()
                                 .anyMatch(i -> i.alimentoId().equals(alimentoId)))
                         .findFirst()
                         .orElseThrow(
@@ -197,7 +249,7 @@ public class PrescricaoService {
                         .orElseGet(() -> new ListaCompras(plano, request.dias()));
         lista.marcar(alimento, request.comprado());
         listas.saveAndFlush(lista);
-        return respostaCompras(plano, request.dias());
+        return respostaCompras(plano, request.dias(), hoje);
     }
 
     @Transactional
@@ -324,14 +376,15 @@ public class PrescricaoService {
         validarTexto(request.titulo(), 150, "Título");
         if (request.orientacoes() != null && request.orientacoes().length() > 4000)
             throw new IllegalArgumentException("Orientações devem ter até 4000 caracteres.");
-        if (request.vigenciaInicio() != null
+        LocalDate inicio = plano.getPlanoAnterior() == null ? request.vigenciaInicio() : LocalDate.now(relogio).plusDays(1);
+        if (inicio != null
                 && request.vigenciaFim() != null
-                && request.vigenciaFim().isBefore(request.vigenciaInicio())) {
+                && request.vigenciaFim().isBefore(inicio)) {
             throw new IllegalArgumentException(
                     "O fim da vigência deve ser igual ou posterior ao início.");
         }
-        if (!Objects.equals(plano.getVigenciaInicio(), request.vigenciaInicio())) {
-            validarDataDaVigencia(request.vigenciaInicio(), "Início");
+        if (!Objects.equals(plano.getVigenciaInicio(), inicio)) {
+            validarDataDaVigencia(inicio, "Início");
         }
         if (!Objects.equals(plano.getVigenciaFim(), request.vigenciaFim())) {
             validarDataDaVigencia(request.vigenciaFim(), "Fim");
@@ -344,7 +397,7 @@ public class PrescricaoService {
         plano.editar(
                 request.titulo().trim(),
                 request.orientacoes(),
-                request.vigenciaInicio(),
+                inicio,
                 request.vigenciaFim(),
                 metas,
                 request.percentuais());
@@ -494,8 +547,7 @@ public class PrescricaoService {
         }
     }
 
-    private PlanoAlimentar planoAtivo(Paciente paciente) {
-        LocalDate hoje = LocalDate.now(relogio);
+    private PlanoAlimentar planoAtivo(Paciente paciente, LocalDate hoje) {
         return planos.sobrepostos(paciente.getId(), hoje, hoje).stream().findFirst().orElse(null);
     }
 
@@ -518,6 +570,10 @@ public class PrescricaoService {
     }
 
     private PlanoDTO resposta(PlanoAlimentar plano) {
+        return resposta(plano, true);
+    }
+
+    private PlanoDTO resposta(PlanoAlimentar plano, boolean historico) {
         List<RefeicaoDTO> refeicoes =
                 plano.getRefeicoes().stream()
                         .sorted(
@@ -569,6 +625,12 @@ public class PrescricaoService {
                 ? null
                 : new DistribuicaoMacros(plano.getPercentualProteina(),
                         plano.getPercentualCarboidratos(), plano.getPercentualGordura());
+        PlanoAlimentar anterior = historico ? plano.getPlanoAnterior() : null;
+        PlanoAlimentar sucessor = historico ? plano.getSucessor() : null;
+        boolean temRascunho = sucessor != null && "RASCUNHO".equals(sucessor.getStatus());
+        LocalDate hoje = LocalDate.now(relogio);
+        boolean podeProgramarEdicao = historico && (("PUBLICADO".equals(plano.getStatus()) && dentroDaVigencia(plano, hoje))
+                || ("RASCUNHO".equals(plano.getStatus()) && anterior != null));
         return new PlanoDTO(
                 plano.getId(),
                 plano.getPaciente().getId(),
@@ -585,10 +647,15 @@ public class PrescricaoService {
                 percentuais,
                 totais,
                 refeicoes,
-                plano.getConsulta() == null ? null : plano.getConsulta().getId());
+                plano.getConsulta() == null ? null : plano.getConsulta().getId(),
+                anterior == null ? null : anterior.getId(),
+                sucessor == null || temRascunho ? null : sucessor.getId(),
+                temRascunho ? sucessor.getId() : null,
+                plano.getSubstituidaEm(),
+                podeProgramarEdicao ? hoje.plusDays(1) : null);
     }
 
-    private ListaComprasDTO respostaCompras(PlanoAlimentar plano, int dias) {
+    private ListaComprasDTO respostaCompras(PlanoAlimentar plano, int dias, LocalDate hoje) {
         Map<Integer, Boolean> marcacoes = new HashMap<>();
         listas.findByPlano_IdAndDias(plano.getId(), dias)
                 .ifPresent(
@@ -600,13 +667,12 @@ public class PrescricaoService {
                                                         marcacoes.put(
                                                                 i.getAlimento().getId(),
                                                                 i.isComprado())));
-        return respostaCompras(plano, dias, marcacoes);
+        return respostaCompras(plano, dias, hoje, marcacoes);
     }
 
-    private ListaComprasDTO respostaCompras(PlanoAlimentar plano, int dias, Map<Integer, Boolean> marcacoes) {
+    private ListaComprasDTO respostaCompras(PlanoAlimentar plano, int dias, LocalDate hoje, Map<Integer, Boolean> marcacoes) {
         Map<Integer, BigDecimal> gramas = new LinkedHashMap<>();
         Map<Integer, Alimento> catalogo = new HashMap<>();
-        LocalDate hoje = LocalDate.now(relogio);
         plano.getRefeicoes()
                 .forEach(
                         r ->
