@@ -121,19 +121,19 @@
               @for (campo of grupo.campos; track campo.key) {
                 @if (campo.key === 'percentualGordura') {
                   <app-ui-input label="IMC" inputId="imc" [ngModel]="form.imc" [ngModelOptions]="{ standalone: true }"
-                    [readonly]="true" placeholder="—" />
+                    [readonly]="true" placeholder="—" [helperText]="form.ajudaImc" />
+                  <app-ui-select label="Método da gordura corporal" selectId="modoPercentualGordura" name="modoPercentualGordura"
+                    [ngModel]="form.modoPercentualGordura" (ngModelChange)="atualizarModoPercentualGordura($event)"
+                    [options]="modosPercentualGordura" />
                 }
                 <app-ui-input [label]="campo.label" [inputId]="campo.key" [name]="campo.key"
                   [ngModel]="form.medidas[campo.key]" (ngModelChange)="atualizarMedida(campo.key, $event)"
                   [readonly]="form.campoSomenteLeitura(campo.key)" [maxlength]="6" [inputmode]="campo.inteiro ? 'numeric' : 'decimal'"
                   [class.full-row]="campo.key === 'circunferenciaBraco'"
                   [required]="form.exigeMedidas && (campo.key === 'peso' || campo.key === 'altura')"
-                  [errorMessage]="errors[campo.key] || ''" />
+                  [helperText]="form.ajudaMedida(campo.key)" [errorMessage]="errors[campo.key] || ''" />
               }
             </div>
-            @if (grupoIndex === 1) {
-              <p class="subtitle">Preencha as sete pregas para calcular automaticamente gordura corporal, massa magra e massa gorda. {{ form.metodoComposicao }}</p>
-            }
           </section>
         }
         <section class="form-section" aria-labelledby="observacoes-title">

@@ -1,5 +1,5 @@
-import { horarioCivilIso } from '../../../shared/utils/data-br.util';
-import { Consulta, ConsultaPayload, MedidasConsulta } from './consultas.service';
+import { dataIsoValida, horarioCivilIso } from '../../../shared/utils/data-br.util';
+import { Consulta, ConsultaPayload, MedidasConsulta, ModoPercentualGordura } from './consultas.service';
 
 export type CampoMedida = keyof MedidasConsulta;
 export interface CampoConsulta {
@@ -11,7 +11,7 @@ export const CAMPOS_MEDIDAS: CampoConsulta[] = [
   { key: 'percentualGordura', label: 'Gordura corporal (%)', min: 0, max: 100 },
   { key: 'massaMagraKg', label: 'Massa magra (kg)', min: 0, max: 500 },
   { key: 'massaGordaKg', label: 'Massa gorda (kg)', min: 0, max: 500 },
-  { key: 'massaMuscularKg', label: 'Massa muscular (kg)', min: 0, max: 300 },
+  { key: 'massaMuscularKg', label: 'Massa muscular (kg)', min: 0, max: 500 },
   { key: 'pregaBicipital', label: 'Prega bicipital (mm)', min: 0.1, max: 100 },
   { key: 'pregaPeitoral', label: 'Prega peitoral (mm)', min: 0.1, max: 100 },
   { key: 'pregaAxilarMedia', label: 'Prega axilar média (mm)', min: 0.1, max: 100 },
@@ -24,6 +24,11 @@ export const CAMPOS_MEDIDAS: CampoConsulta[] = [
   { key: 'circunferenciaQuadril', label: 'Quadril (cm)', min: 0.1, max: 300 },
   { key: 'circunferenciaBraco', label: 'Braço (cm)', min: 0.1, max: 150 }
 ];
+const SETE_PREGAS: CampoMedida[] = ['pregaPeitoral', 'pregaAxilarMedia', 'pregaTricipital',
+  'pregaSubescapular', 'pregaAbdominal', 'pregaSuprailiaca', 'pregaCoxa'];
+const CALCULADO = 'Calculado automaticamente.';
+const MEDIDAS_INVALIDAS = 'Não foi possível calcular com as medidas informadas. Confira os valores.';
+
 export const STATUS_CONSULTA = [
   { value: 'AGUARDANDO_CONFIRMACAO', label: 'Aguardando confirmação' },
   { value: 'CONFIRMADA', label: 'Confirmada' },
@@ -38,7 +43,8 @@ export function decimal(valor: number | null | undefined): string {
   return valor == null ? '' : Number(valor.toFixed(2)).toString().replace('.', ',');
 }
 export class ConsultaForm {
-  dataHora = '';
+  private dataHoraAtual = '';
+  modoPercentualGordura: ModoPercentualGordura = 'MANUAL';
   status = '';
   observacao = '';
   versao: number | null = null;
@@ -49,12 +55,32 @@ export class ConsultaForm {
   private iniciada = false;
   private dataNascimento: string | null = null;
   private sexo: string | null = null;
-  private calculoSetePregas = false;
+  get dataHora(): string {
+    return this.dataHoraAtual;
+  }
+
+  set dataHora(valor: string) {
+    if (this.dataHoraAtual === valor) return;
+    this.dataHoraAtual = valor;
+    if (this.automatico) this.recalcularGordura();
+  }
+
+  private get automatico(): boolean {
+    return this.modoPercentualGordura === 'AUTOMATICO';
+  }
 
   definirContextoAntropometrico(dataNascimento: string | null, sexo: string | null): void {
+    if (this.dataNascimento === dataNascimento && this.sexo === sexo) return;
     this.dataNascimento = dataNascimento;
     this.sexo = sexo;
-    this.recalcularComposicao();
+    if (this.automatico) this.recalcularGordura();
+  }
+
+  atualizarModoPercentualGordura(modo: ModoPercentualGordura): void {
+    if (this.modoPercentualGordura === modo) return;
+    this.modoPercentualGordura = modo;
+    this.medidas.percentualGordura = '';
+    this.recalcularGordura();
   }
 
   preencherDaAnamnese(respostas: Record<string, unknown> | null | undefined): void {
@@ -63,26 +89,39 @@ export class ConsultaForm {
     const altura = typeof respostas['height'] === 'number' ? respostas['height'] : Number(respostas['height']);
     if (!this.medidas.peso && Number.isFinite(peso) && peso >= 1 && peso <= 500) this.medidas.peso = decimal(peso);
     if (!this.medidas.altura && Number.isFinite(altura) && altura >= 0.3 && altura <= 2.7) this.medidas.altura = decimal(altura * 100);
-    this.recalcularComposicao();
+    this.recalcularMassas();
   }
 
   atualizarMedida(campo: CampoMedida, valor: string): void {
-    if (campo === 'massaMagraKg' || campo === 'massaGordaKg') return;
+    if (this.campoSomenteLeitura(campo)) return;
     this.medidas[campo] = valor;
-    this.recalcularComposicao();
+    if (this.automatico && SETE_PREGAS.includes(campo)) {
+      this.recalcularGordura();
+    } else if (campo === 'peso' || campo === 'percentualGordura') {
+      this.recalcularMassas();
+    }
   }
 
   campoSomenteLeitura(campo: CampoMedida): boolean {
     return campo === 'massaMagraKg' || campo === 'massaGordaKg'
-      || (campo === 'percentualGordura' && this.calculoSetePregas);
+      || (campo === 'percentualGordura' && this.automatico);
   }
 
-  get metodoComposicao(): string {
-    return this.calculoSetePregas ? 'Jackson-Pollock (7 pregas) + equação de Siri' : '';
+  ajudaMedida(campo: CampoMedida): string {
+    if (!this.campoSomenteLeitura(campo)) return '';
+    if (campo === 'percentualGordura') {
+      const { motivos } = this.calcularGordura();
+      if (motivos.length) {
+        return [this.medidas.percentualGordura ? 'Resultado registrado.' : '', ...motivos].filter(Boolean).join(' ');
+      }
+    }
+    if (this.medidas[campo]) return CALCULADO;
+    if (!this.pesoValido(numero(this.medidas.peso))) return 'Informe um peso válido para calcular.';
+    return this.automatico ? 'Aguardando o cálculo da gordura corporal.' : 'Informe um percentual de gordura válido para calcular.';
   }
 
   carregar(consulta: Consulta): void {
-    this.dataHora = consulta.dataHora.slice(0, 16);
+    this.dataHoraAtual = consulta.dataHora.slice(0, 16);
     this.dataHoraExibida = this.dataHora;
     this.dataHoraOriginal = consulta.dataHora;
     this.status = consulta.status;
@@ -94,8 +133,8 @@ export class ConsultaForm {
       const value = consulta.avaliacao?.[c.key];
       this.medidas[c.key] = decimal(value == null ? null : c.key === 'altura' ? value * 100 : value);
     }
-    this.calculoSetePregas = consulta.avaliacao?.metodoPercentualGordura?.startsWith('Jackson-Pollock') ?? false;
-    this.recalcularComposicao();
+    this.modoPercentualGordura = consulta.avaliacao?.metodoPercentualGordura?.startsWith('Jackson-Pollock')
+      ? 'AUTOMATICO' : 'MANUAL';
   }
   get exigeMedidas(): boolean {
     return this.status === 'REALIZADA' || this.tinhaAvaliacao || Object.values(this.medidas).some(v => !!v.trim());
@@ -106,50 +145,86 @@ export class ConsultaForm {
       ? decimal(peso / (altura / 100) ** 2) : '';
   }
 
-  private recalcularComposicao(): void {
-    const chaves: CampoMedida[] = ['pregaPeitoral', 'pregaAxilarMedia', 'pregaTricipital',
-      'pregaSubescapular', 'pregaAbdominal', 'pregaSuprailiaca', 'pregaCoxa'];
-    const pregas = chaves.map(chave => numero(this.medidas[chave]));
-    const peso = numero(this.medidas.peso);
-    const idade = this.idadeNaConsulta();
-    const sexo = (this.sexo ?? '').trim().toLocaleLowerCase('pt-BR');
-    const masculino = sexo.startsWith('m');
-    const feminino = sexo.startsWith('f');
-    const faixaValida = idade !== null && idade >= 18 && idade <= (masculino ? 61 : feminino ? 55 : -1);
-    const podeCalcular = pregas.every(valor => valor !== null && Number.isFinite(valor)) && faixaValida;
-    if (podeCalcular) {
-      const soma = pregas.reduce<number>((total, valor) => total + (valor ?? 0), 0);
-      const densidade = masculino
-        ? 1.112 - 0.00043499 * soma + 0.00000055 * soma ** 2 - 0.00028826 * idade!
-        : 1.097 - 0.00046971 * soma + 0.00000056 * soma ** 2 - 0.00012828 * idade!;
-      const percentual = 495 / densidade - 450;
-      if (Number.isFinite(percentual) && percentual >= 0 && percentual <= 100) {
-        this.medidas.percentualGordura = decimal(percentual);
-        this.calculoSetePregas = true;
-      }
-    } else if (this.calculoSetePregas) {
-      this.medidas.percentualGordura = '';
-      this.calculoSetePregas = false;
-    }
-    const gordura = numero(this.medidas.percentualGordura);
-    if (peso !== null && gordura !== null && Number.isFinite(peso) && Number.isFinite(gordura)) {
-      const massaGorda = peso * gordura / 100;
-      this.medidas.massaGordaKg = decimal(massaGorda);
-      this.medidas.massaMagraKg = decimal(peso - massaGorda);
-    } else {
-      this.medidas.massaGordaKg = '';
-      this.medidas.massaMagraKg = '';
-    }
+  get ajudaImc(): string {
+    return this.imc ? CALCULADO : 'Informe peso e altura válidos para calcular.';
   }
 
-  private idadeNaConsulta(): number | null {
-    if (!this.dataNascimento || !/^\d{4}-\d{2}-\d{2}/.test(this.dataNascimento)
-      || !/^\d{4}-\d{2}-\d{2}/.test(this.dataHora)) return null;
-    const nascimento = this.dataNascimento.slice(0, 10).split('-').map(Number);
-    const consulta = this.dataHora.slice(0, 10).split('-').map(Number);
-    let idade = consulta[0] - nascimento[0];
-    if (consulta[1] < nascimento[1] || (consulta[1] === nascimento[1] && consulta[2] < nascimento[2])) idade--;
-    return idade;
+  private recalcularGordura(): void {
+    if (this.automatico) this.medidas.percentualGordura = this.calcularGordura().percentual;
+    this.recalcularMassas();
+  }
+
+  private calcularGordura(): { percentual: string; motivos: string[] } {
+    const motivos: string[] = [];
+    const sexo = (this.sexo ?? '').trim().toLowerCase();
+    const masculino = sexo === 'masculino' || sexo === 'm';
+    const feminino = sexo === 'feminino' || sexo === 'f';
+    if (!sexo || sexo === 'prefiro não informar') {
+      motivos.push('Informe o sexo do paciente no cadastro para utilizar o cálculo automático.');
+    } else if (!masculino && !feminino) {
+      motivos.push('O cálculo automático requer sexo masculino ou feminino no cadastro.');
+    }
+
+    const dataConsulta = this.dataHora.slice(0, 10);
+    const nascimento = this.dataNascimento ?? '';
+    const idade = this.idadeNaConsulta(nascimento, dataConsulta);
+    if (!dataIsoValida(nascimento) || (dataIsoValida(dataConsulta) && nascimento > dataConsulta)) {
+      motivos.push('Informe uma data de nascimento válida no cadastro.');
+    } else if (idade === null) {
+      motivos.push('Informe uma data de avaliação válida.');
+    } else if ((masculino || feminino) && (idade < 18 || idade > (masculino ? 61 : 55))) {
+      motivos.push(masculino
+        ? 'O método está disponível para pacientes do sexo masculino entre 18 e 61 anos.'
+        : 'O método está disponível para pacientes do sexo feminino entre 18 e 55 anos.');
+    }
+
+    const pregas = SETE_PREGAS.map(chave => numero(this.medidas[chave]));
+    if (pregas.some(valor => valor === null)) {
+      motivos.push('Preencha as sete pregas para calcular automaticamente.');
+    }
+    if (pregas.some(valor => valor !== null && (!Number.isFinite(valor) || valor < 0.1 || valor > 100))) {
+      motivos.push(MEDIDAS_INVALIDAS);
+    }
+    if (motivos.length || idade === null) return { percentual: '', motivos };
+
+    const soma = pregas.reduce<number>((total, valor) => total + (valor ?? 0), 0);
+    const densidade = masculino
+      ? 1.112 - 0.00043499 * soma + 0.00000055 * soma ** 2 - 0.00028826 * idade
+      : 1.097 - 0.00046971 * soma + 0.00000056 * soma ** 2 - 0.00012828 * idade;
+    const percentual = 495 / densidade - 450;
+    if (!this.percentualValido(percentual)) return { percentual: '', motivos: [MEDIDAS_INVALIDAS] };
+    const arredondado = decimal(percentual);
+    return this.percentualValido(numero(arredondado))
+      ? { percentual: arredondado, motivos }
+      : { percentual: '', motivos: [MEDIDAS_INVALIDAS] };
+  }
+
+  private recalcularMassas(): void {
+    const peso = numero(this.medidas.peso);
+    const gordura = numero(this.medidas.percentualGordura);
+    if (!this.pesoValido(peso) || !this.percentualValido(gordura)) {
+      this.medidas.massaGordaKg = '';
+      this.medidas.massaMagraKg = '';
+      return;
+    }
+    const pesoEmCentesimos = Math.round(peso * 100);
+    const massaGordaEmCentesimos = Math.round(pesoEmCentesimos * Math.round(gordura * 100) / 10_000);
+    this.medidas.massaGordaKg = decimal(massaGordaEmCentesimos / 100);
+    this.medidas.massaMagraKg = decimal((pesoEmCentesimos - massaGordaEmCentesimos) / 100);
+  }
+
+  private pesoValido(peso: number | null): peso is number {
+    return peso !== null && peso >= 1 && peso <= 500;
+  }
+
+  private percentualValido(percentual: number | null): percentual is number {
+    return percentual !== null && percentual > 0 && percentual < 100;
+  }
+
+  private idadeNaConsulta(nascimento: string, consulta: string): number | null {
+    if (!dataIsoValida(nascimento) || !dataIsoValida(consulta) || nascimento > consulta) return null;
+    const anos = Number(consulta.slice(0, 4)) - Number(nascimento.slice(0, 4));
+    return consulta.slice(5) < nascimento.slice(5) ? anos - 1 : anos;
   }
   validar(): Record<string, string> {
     const errors: Record<string, string> = {};
@@ -164,34 +239,30 @@ export class ConsultaForm {
       if (this.dataHora > agora) errors['dataHora'] = 'Uma consulta futura não pode ser concluída.';
     }
     if (!STATUS_CONSULTA.some(s => s.value === this.status)) errors['status'] = 'Selecione o status.';
+    const peso = numero(this.medidas.peso);
     for (const c of CAMPOS_MEDIDAS) {
+      if (this.campoSomenteLeitura(c.key)) continue;
       const value = numero(this.medidas[c.key]);
       if (value === null) {
         if (this.exigeMedidas && (c.key === 'peso' || c.key === 'altura')) errors[c.key] = 'Este campo é obrigatório.';
+      } else if (c.key === 'percentualGordura' && !this.percentualValido(value)) {
+        errors[c.key] = 'Informe um percentual maior que 0 e menor que 100, com até 2 casas decimais.';
+      } else if (c.key === 'massaMuscularKg' && (!(value > 0) || (this.pesoValido(peso) && value >= peso))) {
+        errors[c.key] = 'A massa muscular deve ser positiva e menor que o peso corporal.';
       } else if (!Number.isFinite(value) || value < c.min || value > c.max || (c.inteiro && !Number.isInteger(value))) {
         errors[c.key] = `Informe ${c.inteiro ? 'um valor inteiro' : 'um valor com até 2 casas decimais'} entre ${decimal(c.min)} e ${decimal(c.max)}.`;
-      }
-    }
-    const pregasSete: CampoMedida[] = ['pregaPeitoral', 'pregaAxilarMedia', 'pregaTricipital',
-      'pregaSubescapular', 'pregaAbdominal', 'pregaSuprailiaca', 'pregaCoxa'];
-    const pregasExclusivas: CampoMedida[] = ['pregaPeitoral', 'pregaAxilarMedia', 'pregaAbdominal', 'pregaCoxa'];
-    const informouProtocolo = pregasExclusivas.some(chave => this.medidas[chave].trim() !== '');
-    if (informouProtocolo) {
-      const faltantes = pregasSete.filter(chave => this.medidas[chave].trim() === '');
-      for (const chave of faltantes) errors[chave] = 'Preencha as sete pregas do protocolo.';
-      if (!faltantes.length && !this.calculoSetePregas) {
-        errors['pregaPeitoral'] = 'Não foi possível aplicar o método. Verifique sexo, data de nascimento e faixa etária do paciente.';
       }
     }
     if (this.observacao.length > 5000) errors['observacao'] = 'Máximo de 5.000 caracteres.';
     return errors;
   }
   payload(): ConsultaPayload {
-    const avaliacao = this.exigeMedidas ? Object.fromEntries(CAMPOS_MEDIDAS.map(c => {
-      const value = numero(this.medidas[c.key]);
+    const medidas = Object.fromEntries(CAMPOS_MEDIDAS.map(c => {
+      const value = this.campoSomenteLeitura(c.key) ? null : numero(this.medidas[c.key]);
       return [c.key, value !== null && c.key === 'altura' ? value / 100 : value];
-    })) as unknown as MedidasConsulta : null;
+    })) as unknown as MedidasConsulta;
+    const avaliacao = this.exigeMedidas ? { ...medidas, modoPercentualGordura: this.modoPercentualGordura } : null;
     return { dataHora: this.dataHora === this.dataHoraExibida ? this.dataHoraOriginal : this.dataHora, status: this.status, observacao: this.observacao.trim(), avaliacao, versao: this.versao };
   }
-  assinatura(): string { return JSON.stringify([this.dataHora, this.status, this.observacao, this.medidas]); }
+  assinatura(): string { return JSON.stringify([this.dataHora, this.status, this.observacao, this.modoPercentualGordura, this.medidas]); }
 }

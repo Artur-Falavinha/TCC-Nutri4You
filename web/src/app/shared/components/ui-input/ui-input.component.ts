@@ -25,6 +25,7 @@ export class UiInputComponent implements ControlValueAccessor {
   @Input() inputId = '';
   @Input() autocomplete = '';
   @Input() errorMessage = '';
+  @Input() helperText = '';
   @Input() required = false;
   @Input() readonly = false;
   @Input() inputmode: 'text' | 'decimal' | 'numeric' = 'text';

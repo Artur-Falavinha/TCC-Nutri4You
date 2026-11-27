@@ -18,10 +18,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -83,6 +86,95 @@ class ConsultaControllerTest {
                         .content(completa(82, "Antiga", String.valueOf(versao))))
                 .andExpect(status().isConflict());
         assertThat(avaliacoes.findByConsulta_Id(id).orElseThrow().getPeso()).isEqualByComparingTo("81");
+    }
+
+    @Test
+    void preservaGorduraManualComSetePregasEModoAposReabrir() throws Exception {
+        paciente.setDataNascimento(LocalDate.of(1995, 1, 15));
+        String json = criar(composicao("null", """
+                "modoPercentualGordura":"MANUAL","percentualGordura":2,
+                "massaGordaKg":80,"massaMagraKg":0,
+                """ + setePregas("20")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(2))
+                .andExpect(jsonPath("$.data.avaliacao.massaGordaKg").value(1.47))
+                .andExpect(jsonPath("$.data.avaliacao.massaMagraKg").value(71.78))
+                .andExpect(jsonPath("$.data.avaliacao.massaMuscularKg").value(nullValue()))
+                .andReturn().getResponse().getContentAsString();
+        int id = JsonPath.read(json, "$.data.id");
+        int versao = JsonPath.read(json, "$.data.versao");
+
+        mvc.perform(get(base + "/" + id).header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.metodoPercentualGordura").value("Informado manualmente"))
+                .andExpect(jsonPath("$.data.avaliacao.pregaCoxa").value(20));
+
+        editarComposicao(id, versao, "\"pregaCoxa\":22")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.metodoPercentualGordura").value("Informado manualmente"))
+                .andExpect(jsonPath("$.data.avaliacao.pregaCoxa").value(22))
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(nullValue()));
+    }
+
+    @Test
+    void recalculaAutomaticoELimpaResultadoInvalidoSemAlterarHistorico() throws Exception {
+        paciente.setDataNascimento(LocalDate.of(1995, 1, 15));
+        var anterior = new AvaliacaoAntropometrica(paciente, LocalDateTime.of(2024, 12, 10, 10, 0));
+        anterior.setPercentualGordura(new BigDecimal("17.50"));
+        anterior.setPregaPeitoral(new BigDecimal("15"));
+        anterior = avaliacoes.saveAndFlush(anterior);
+
+        String modo = "\"modoPercentualGordura\":\"AUTOMATICO\",";
+        String json = criar(composicao("null", modo + setePregas("20")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(19.98))
+                .andExpect(jsonPath("$.data.avaliacao.massaGordaKg").value(14.64))
+                .andExpect(jsonPath("$.data.avaliacao.massaMagraKg").value(58.61))
+                .andReturn().getResponse().getContentAsString();
+        int id = JsonPath.read(json, "$.data.id");
+        int versao = JsonPath.read(json, "$.data.versao");
+        String recalculada = editarComposicao(id, versao, modo + setePregas("22"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(21.69))
+                .andExpect(jsonPath("$.data.avaliacao.massaGordaKg").value(15.89))
+                .andExpect(jsonPath("$.data.avaliacao.massaMagraKg").value(57.36))
+                .andReturn().getResponse().getContentAsString();
+        versao = JsonPath.read(recalculada, "$.data.versao");
+
+        editarComposicao(id, versao, modo + "\"percentualGordura\":19.98," + setePregas("0.1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.massaGordaKg").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.massaMagraKg").value(nullValue()));
+
+        mvc.perform(get(base + "/" + id).header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.metodoPercentualGordura").value("Jackson-Pollock 7 pregas + Siri"))
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.pregaPeitoral").value(0.1));
+        var registroAnterior = avaliacoes.findById(anterior.getId()).orElseThrow();
+        assertThat(registroAnterior.getPercentualGordura()).isEqualByComparingTo("17.50");
+        assertThat(registroAnterior.getPregaPeitoral()).isEqualByComparingTo("15");
+        assertThat(registroAnterior.getMetodoPercentualGordura()).isNull();
+    }
+
+    @Test
+    void registraPregasParciaisComCalculoIndisponivel() throws Exception {
+        String modo = "\"modoPercentualGordura\":\"AUTOMATICO\",";
+        String json = criar(composicao("null", modo + "\"pregaCoxa\":22"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.pregaCoxa").value(22))
+                .andExpect(jsonPath("$.data.avaliacao.pregaPeitoral").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(nullValue()))
+                .andReturn().getResponse().getContentAsString();
+        int id = JsonPath.read(json, "$.data.id");
+        int versao = JsonPath.read(json, "$.data.versao");
+
+        editarComposicao(id, versao, modo + setePregas("20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.somaSetePregas").value(140))
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.massaGordaKg").value(nullValue()));
     }
 
     @Test
@@ -160,7 +252,12 @@ class ConsultaControllerTest {
         "{\"dataHora\":\"2025-01-01T10:00\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.755}}",
         "{\"dataHora\":\"2025-01-01T10:00\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":0,\"altura\":1.75}}",
         "{\"dataHora\":\"2025-01-01T10:00\",\"status\":\"CONFIRMADA\",\"avaliacao\":{\"peso\":70}}",
-        "{\"dataHora\":\"2025-01-01T10:00\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.75,\"percentualGordura\":101}}"
+        "{\"dataHora\":\"2025-01-01T10:00\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.75,\"percentualGordura\":101}}",
+        "{\"dataHora\":\"2025-01-15T14:30\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.75,\"percentualGordura\":0}}",
+        "{\"dataHora\":\"2025-01-15T14:30\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.75,\"percentualGordura\":100}}",
+        "{\"dataHora\":\"2025-01-15T14:30\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.75,\"massaMuscularKg\":0}}",
+        "{\"dataHora\":\"2025-01-15T14:30\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.75,\"massaMuscularKg\":70}}",
+        "{\"dataHora\":\"2025-01-15T14:30\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.75,\"massaMuscularKg\":70.01}}"
     })
     void rejeitaDadosInvalidosSemPersistenciaParcial(String body) throws Exception {
         Consulta c = consultaIniciada();
@@ -227,6 +324,25 @@ class ConsultaControllerTest {
                         .content(completa(500, "x".repeat(5000), String.valueOf(consulta.getVersao()))
                                 .replace("1.80", "0.30")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.avaliacao.imc").value(5555.56));
+    }
+
+    private ResultActions editarComposicao(int id, int versao, String medidas) throws Exception {
+        return mvc.perform(put(base + "/" + id).header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).content(composicao(Integer.toString(versao), medidas)));
+    }
+
+    private String composicao(String versao, String medidas) {
+        return """
+                {"dataHora":"2025-01-15T14:30","status":"REALIZADA","versao":%s,
+                 "avaliacao":{"peso":73.25,"altura":1.80,%s}}
+                """.formatted(versao, medidas);
+    }
+
+    private String setePregas(String valor) {
+        return """
+                "pregaPeitoral":%1$s,"pregaAxilarMedia":%1$s,"pregaTricipital":%1$s,"pregaSubescapular":%1$s,
+                "pregaAbdominal":%1$s,"pregaSuprailiaca":%1$s,"pregaCoxa":%1$s
+                """.formatted(valor);
     }
 
     private ResultActions criar(String body) throws Exception {

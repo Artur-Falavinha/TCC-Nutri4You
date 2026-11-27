@@ -105,6 +105,27 @@ describe('ConsultasComponent', () => {
     expect(component.form.payload().dataHora).toBe(atendimentoEmAndamento.dataHora);
   }));
 
+  it('liga o seletor ao campo de gordura e apresenta a explicação junto ao input', fakeAsync(() => {
+    fixture.detectChanges();
+    tick();
+    const pagina = fixture.nativeElement as HTMLElement;
+    const seletor = pagina.querySelector<HTMLSelectElement>('#modoPercentualGordura')!;
+    const gordura = pagina.querySelector<HTMLInputElement>('#percentualGordura')!;
+    expect(seletor.selectedOptions[0].textContent?.trim()).toBe('Informar manualmente');
+    expect(gordura.readOnly).toBeFalse();
+    expect(pagina.querySelector('#imc-help')?.textContent).toContain('Calculado automaticamente.');
+
+    seletor.value = 'AUTOMATICO';
+    seletor.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    tick();
+
+    expect(gordura.readOnly).toBeTrue();
+    expect(gordura.getAttribute('aria-describedby')).toBe('percentualGordura-help');
+    expect(pagina.querySelector('#percentualGordura-help')?.textContent).toContain('Preencha as sete pregas');
+    expect(pagina.querySelector<HTMLInputElement>('#massaGordaKg')?.readOnly).toBeTrue();
+  }));
+
   it('asks before completing an appointment with a draft and preserves it as read only', () => {
     component.salvar();
     fixture.detectChanges();

@@ -19,5 +19,8 @@ public record AvaliacaoRequest(
         BigDecimal pregaCoxa,
         BigDecimal circunferenciaCintura,
         BigDecimal circunferenciaQuadril,
-        BigDecimal circunferenciaBraco) {
+        BigDecimal circunferenciaBraco,
+        ModoPercentualGordura modoPercentualGordura) {
+
+    public enum ModoPercentualGordura { AUTOMATICO, MANUAL }
 }

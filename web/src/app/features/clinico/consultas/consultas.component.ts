@@ -21,7 +21,7 @@ import { rotuloOpcaoAnamnese } from '../../anamnese/anamnese-rotulos';
 import { AnamneseService } from '../../anamnese/anamnese.service';
 import { DietaService } from '../../dieta/dieta.service';
 import { CAMPOS_MEDIDAS, CampoMedida, ConsultaForm, STATUS_CONSULTA, decimal } from './consulta-form';
-import { AtendimentoClinico, AtendimentosService, Consulta, ConsultasService, PaginaConsultas } from './consultas.service';
+import { AtendimentoClinico, AtendimentosService, Consulta, ConsultasService, ModoPercentualGordura, PaginaConsultas } from './consultas.service';
 import { criarLinkGoogleAgenda } from '../../agenda/google-calendar-link';
 
 const MENSAGENS_ACAO_CONSULTA = {
@@ -61,6 +61,10 @@ export class ConsultasComponent implements OnInit {
     ? Number(this.route.snapshot.paramMap.get('consultaId')) : null;
   readonly editor = !!this.route.snapshot.data['editor'];
   readonly statusOptions = STATUS_CONSULTA.filter(s => ['CONFIRMADA', 'REALIZADA'].includes(s.value));
+  readonly modosPercentualGordura = [
+    { value: 'AUTOMATICO', label: 'Calcular pelas 7 pregas' },
+    { value: 'MANUAL', label: 'Informar manualmente' }
+  ];
   consultaAtual: Consulta | null = null;
   readonly grupos = [
     { titulo: 'Medidas antropométricas e composição corporal', campos: CAMPOS_MEDIDAS.slice(0, 6) },
@@ -187,12 +191,12 @@ export class ConsultasComponent implements OnInit {
   atualizarMedida(campo: CampoMedida, valor: string): void {
     this.form.atualizarMedida(campo, valor);
     delete this.errors[campo];
-    const pregas = CAMPOS_MEDIDAS.slice(7, 14).map(item => item.key);
-    if (pregas.every(chave => this.form.medidas[chave].trim() !== '')) {
-      for (const chave of pregas) {
-        if (this.errors[chave]?.includes('sete pregas')) delete this.errors[chave];
-      }
-    }
+    if (campo === 'peso') delete this.errors['massaMuscularKg'];
+  }
+
+  atualizarModoPercentualGordura(modo: ModoPercentualGordura): void {
+    this.form.atualizarModoPercentualGordura(modo);
+    delete this.errors['percentualGordura'];
   }
 
   confirmarConclusaoComRascunho(): void {

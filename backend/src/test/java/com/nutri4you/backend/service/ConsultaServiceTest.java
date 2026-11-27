@@ -57,7 +57,7 @@ class ConsultaServiceTest extends ClinicalServiceTestSupport {
         var iniciada = service.iniciar(nutri, paciente.getId(), consulta.getId(), consulta.getVersao());
         var avaliacao = new AvaliacaoRequest(
                 new BigDecimal("75"), new BigDecimal("1.80"),
-                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         var request = new ConsultaRequest(
                 consulta.getDataHora(), "REALIZADA", "Consulta concluída", avaliacao, iniciada.versao());
 

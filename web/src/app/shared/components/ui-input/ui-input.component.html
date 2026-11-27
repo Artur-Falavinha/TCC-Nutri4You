@@ -26,7 +26,7 @@
       [attr.inputmode]="campoData ? 'numeric' : inputmode"
       [attr.maxlength]="campoData ? 10 : maxlength"
       [attr.aria-invalid]="errorMessage ? 'true' : null"
-      [attr.aria-describedby]="errorMessage ? id + '-error' : null"
+      [attr.aria-describedby]="((errorMessage ? id + '-error ' : '') + (helperText ? id + '-help' : '')).trim() || null"
       [autocomplete]="autocomplete"
       (input)="onInput($event)"
       (blur)="onBlur()"
@@ -58,6 +58,9 @@
       </button>
     }
   </div>
+  @if (helperText) {
+    <p class="ui-input__help" [id]="id + '-help'">{{ helperText }}</p>
+  }
   @if (errorMessage) {
     <p class="ui-input__error" [id]="id + '-error'" role="alert">{{ errorMessage }}</p>
   }

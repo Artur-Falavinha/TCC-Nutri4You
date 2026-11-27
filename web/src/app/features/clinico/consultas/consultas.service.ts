@@ -21,11 +21,13 @@ export interface MedidasConsulta {
   circunferenciaBraco: number | null;
 }
 
+export type ModoPercentualGordura = 'AUTOMATICO' | 'MANUAL';
+
 export interface ConsultaPayload {
   dataHora: string;
   status: string;
   observacao: string;
-  avaliacao: MedidasConsulta | null;
+  avaliacao: (MedidasConsulta & { modoPercentualGordura?: ModoPercentualGordura }) | null;
   versao: number | null;
 }
 

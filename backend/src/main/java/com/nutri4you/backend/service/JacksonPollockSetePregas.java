@@ -14,42 +14,24 @@ import java.util.Locale;
 final class JacksonPollockSetePregas {
     static final String METODO = "Jackson-Pollock 7 pregas + Siri";
 
-    record Resultado(BigDecimal percentualGordura, BigDecimal massaMagraKg,
-                     BigDecimal massaGordaKg, BigDecimal somaPregas) {}
-
     private JacksonPollockSetePregas() {}
-
-    static boolean temAlgumaPregaExclusivaDoMetodo(AvaliacaoRequest request) {
-        return Arrays.asList(
-                request.pregaPeitoral(),
-                request.pregaAxilarMedia(),
-                request.pregaAbdominal(),
-                request.pregaCoxa())
-                .stream()
-                .anyMatch(valor -> valor != null);
-    }
 
     static boolean temSetePregas(AvaliacaoRequest request) {
         return pregas(request).stream().allMatch(valor -> valor != null);
     }
 
-    static Resultado calcular(Paciente paciente, LocalDate dataAvaliacao, AvaliacaoRequest request) {
-        if (!temSetePregas(request)) {
-            throw new IllegalArgumentException("Informe as sete pregas de Jackson-Pollock para calcular a composição corporal.");
+    static BigDecimal calcularPercentual(Paciente paciente, LocalDate dataAvaliacao, AvaliacaoRequest request) {
+        LocalDate nascimento = paciente.getDataNascimento();
+        if (!temSetePregas(request) || nascimento == null || nascimento.isAfter(dataAvaliacao)
+                || paciente.getSexo() == null) {
+            return null;
         }
-        if (paciente.getDataNascimento() == null || paciente.getSexo() == null) {
-            throw new IllegalArgumentException("Data de nascimento e sexo do paciente são necessários para o método de Jackson-Pollock.");
-        }
-        long idade = ChronoUnit.YEARS.between(paciente.getDataNascimento(), dataAvaliacao);
         String sexo = paciente.getSexo().trim().toLowerCase(Locale.ROOT);
-        boolean masculino = sexo.startsWith("m");
-        boolean feminino = sexo.startsWith("f");
-        if (!masculino && !feminino) {
-            throw new IllegalArgumentException("O método de Jackson-Pollock exige sexo feminino ou masculino informado no cadastro.");
-        }
-        long idadeMaxima = masculino ? 61 : 55;
-        if (idade < 18 || idade > idadeMaxima) {
-            throw new IllegalArgumentException("O método de Jackson-Pollock 7 pregas é aplicado somente dentro da faixa etária validada para este sexo.");
+        boolean masculino = sexo.equals("masculino") || sexo.equals("m");
+        boolean feminino = sexo.equals("feminino") || sexo.equals("f");
+        long idade = ChronoUnit.YEARS.between(nascimento, dataAvaliacao);
+        if ((!masculino && !feminino) || idade < 18 || idade > (masculino ? 61 : 55)) {
+            return null;
         }
 
         BigDecimal soma = pregas(request).stream().reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -58,14 +40,11 @@ final class JacksonPollockSetePregas {
                 ? 1.112 - 0.00043499 * x + 0.00000055 * x * x - 0.00028826 * idade
                 : 1.097 - 0.00046971 * x + 0.00000056 * x * x - 0.00012828 * idade;
         double gordura = 495.0 / densidade - 450.0;
-        if (!Double.isFinite(gordura) || gordura < 0 || gordura > 100) {
-            throw new IllegalArgumentException("As sete pregas resultaram em uma composição corporal fora dos limites válidos.");
+        if (!Double.isFinite(gordura) || gordura <= 0 || gordura >= 100) {
+            return null;
         }
         BigDecimal percentual = BigDecimal.valueOf(gordura).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal massaGorda = request.peso().multiply(percentual)
-                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-        BigDecimal massaMagra = request.peso().subtract(massaGorda).setScale(2, RoundingMode.HALF_UP);
-        return new Resultado(percentual, massaMagra, massaGorda, soma.setScale(2, RoundingMode.HALF_UP));
+        return MedidasAntropometricas.percentualValido(percentual) ? percentual : null;
     }
 
     static List<BigDecimal> pregas(AvaliacaoRequest request) {
