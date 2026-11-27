@@ -154,9 +154,11 @@ export function MealPlanScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [plan, setPlan] = useState<MealPlan | null>(null);
-  const diaClinica = useRef(dataIsoDaClinica());
-  const [selectedDay, setSelectedDay] = useState(() => new Date(diaClinica.current + 'T12:00:00').getDay());
-  const week = semanaAtual(new Date(diaClinica.current + 'T12:00:00'));
+  const [diaExibido, setDiaExibido] = useState(dataIsoDaClinica);
+  const diaClinica = useRef(diaExibido);
+  const dataDaSemana = new Date(diaExibido + 'T12:00:00');
+  const [selectedDay, setSelectedDay] = useState(() => dataDaSemana.getDay());
+  const week = semanaAtual(dataDaSemana);
   const [swapModalMeal, setSwapModalMeal] = useState<Meal | null>(null);
   const [swapSearch, setSwapSearch] = useState('');
   const [hydration, setHydration] = useState<HydrationProgress | null>(null);
@@ -169,6 +171,7 @@ export function MealPlanScreen({ navigation }: Props) {
     const dia = dataIsoDaClinica();
     if (dia !== diaClinica.current) {
       diaClinica.current = dia;
+      setDiaExibido(dia);
       setSelectedDay(new Date(dia + 'T12:00:00').getDay());
       setSwapModalMeal(null);
     }
@@ -187,7 +190,7 @@ export function MealPlanScreen({ navigation }: Props) {
       setLoading(false);
       setRefreshing(false);
     });
-  }, [executar]);
+  }, [executar, setSwapModalMeal]);
 
   useAtualizacaoDieta(recarregarPlano);
 
