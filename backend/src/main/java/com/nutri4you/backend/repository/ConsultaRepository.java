@@ -1,6 +1,5 @@
 package com.nutri4you.backend.repository;
 
-import com.nutri4you.backend.dto.SolicitacaoAvulsaDTO;
 import com.nutri4you.backend.dto.NotificacaoConsultaDTO;
 import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.NotificacaoConsultaPaciente.Tipo;
@@ -74,15 +73,6 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Integer> {
             Integer pacienteId, Integer nutricionistaId, Pageable pageable);
 
     @Query("""
-            select new com.nutri4you.backend.dto.SolicitacaoAvulsaDTO(c.id, p.nome, c.dataHora, c.versao)
-            from Consulta c join c.paciente p
-            where c.nutricionista.id = :nutricionistaId and c.avulsa = true
-            and c.status = 'AGUARDANDO_CONFIRMACAO' and c.dataHora > :agora
-            order by c.dataHora, c.id
-            """)
-    List<SolicitacaoAvulsaDTO> listarAvulsasPendentes(Integer nutricionistaId, LocalDateTime agora);
-
-    @Query("""
             select new com.nutri4you.backend.dto.NotificacaoConsultaDTO(
                 c.id, p.id, p.nome, c.dataHora, c.versao, c.avulsa, c.reagendada)
             from Consulta c join c.paciente p
@@ -94,28 +84,6 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Integer> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Consulta> findByIdAndNutricionista_Id(Integer id, Integer nutricionistaId);
-
-    Optional<Consulta> findByIdAndNutricionista_IdAndAvulsaTrue(Integer id, Integer nutricionistaId);
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
-            select c from Consulta c
-            where c.id = :id and c.nutricionista.id = :nutricionistaId and c.avulsa = true
-            """)
-    Optional<Consulta> buscarAvulsaParaAtualizar(Integer id, Integer nutricionistaId);
-
-    @Query("""
-            select c from Consulta c join fetch c.paciente
-            where c.nutricionista.id = :nutricionistaId and c.avulsa = true
-              and not exists (select r.id from RelacaoClinica r where r.paciente.id = c.paciente.id
-                  and r.nutricionista.id = c.nutricionista.id and r.encerradaEm is not null)
-              and (c.status = 'CONFIRMADA'
-                   or (c.status = 'REALIZADA' and c.iniciadaEm is not null))
-            order by case when c.status = 'REALIZADA' then 1 else 0 end,
-                case when c.status = 'CONFIRMADA' then c.dataHora end asc,
-                c.dataHora desc, c.id desc
-            """)
-    List<Consulta> listarAtendimentosAvulsos(Integer nutricionistaId);
 
     List<Consulta> findByPaciente_IdAndNutricionista_IdAndAvulsaFalseOrderByDataHoraDesc(
             Integer pacienteId, Integer nutricionistaId);

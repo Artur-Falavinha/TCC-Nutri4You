@@ -1,3 +1,5 @@
+@import '../../shared/styles/tooltip.css';
+
 :host { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 100%; }
 h4, h5, dl, dd { margin: 0; }
 h2, h3, h4, h5 { font-family: var(--font-heading); overflow-wrap: anywhere; }
@@ -60,10 +62,11 @@ dd, .food-name strong, .food-preview strong { overflow-wrap: anywhere; }
 .section-heading > span, table, .optional { font-size: 13px; }
 .meal-card__heading { gap: 14px; margin-bottom: 16px; }
 .table-scroll { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; }
-th, td { padding: 10px 12px; border-bottom: 1px solid #e5e9ed; white-space: nowrap; }
+table { width: 100%; min-width: 1000px; table-layout: fixed; border-collapse: collapse; }
+th, td { padding: 10px 12px; border-bottom: 1px solid #e5e9ed; white-space: nowrap; text-align: right; vertical-align: middle; font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { width: 34%; text-align: left; white-space: normal; overflow-wrap: anywhere; }
 th { font-size: 11px; text-transform: uppercase; }
-.meal-total { margin-top: 16px; padding-top: 14px; border-top: 1px solid #e5e9ed; }
+.meal-total { grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 16px; padding-top: 14px; border-top: 1px solid #e5e9ed; }
 .form-section + .form-section, .preview-total, .preview-card { margin-top: 14px; }
 .field { display: grid; align-content: start; gap: 7px; font-weight: 600; }
 .field input, .field textarea, .field select { width: 100%; min-width: 0; min-height: 42px; padding: 9px 12px; border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); color: var(--color-text-primary); background: #fff; }
@@ -111,3 +114,5 @@ fieldset { padding: 0; border: 0; }
   .food-editor-row > .icon-action { grid-column: 2; grid-row: 1; }
   .grams-field, .food-preview { grid-column: 1 / -1; grid-row: auto; }
 }
+
+.goal-help { display: inline-flex; align-items: center; padding: 2px; border: 0; background: transparent; color: inherit; font: inherit; vertical-align: middle; cursor: help; }

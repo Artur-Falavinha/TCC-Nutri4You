@@ -89,21 +89,18 @@ class PlanoAlimentarServiceTest extends ClinicalServiceTestSupport {
         assertThat(publicado(hoje(), hoje().plusDays(7)).status()).isEqualTo("PUBLICADO");
     }
 
-    @Test void permiteNovaPrescricaoNoMesmoAtendimentoAvulsoAposRetirarOPlano() {
+    @Test void rejeitaPrescricaoNoEscopoDeAtendimentoAvulso() {
         relacoes.delete(relacoes.findByPaciente_IdAndNutricionista_Id(paciente.getId(), nutri.getId()).orElseThrow());
         var consulta = new Consulta(paciente, nutri, agora(), true);
         consulta.atualizar(agora(), "CONFIRMADA", null);
         consulta.iniciar(agora());
         int atendimentoId = consultas.saveAndFlush(consulta).getId();
 
-        var rascunho = service.criar(nutri, paciente.getId(), atendimentoId, dados(hoje(), hoje().plusDays(7), null));
-        var plano = service.publicar(nutri, paciente.getId(), atendimentoId, rascunho.id(), rascunho.versao());
         assertThatThrownBy(() -> service.criar(nutri, paciente.getId(), atendimentoId, dados(hoje(), null, null)))
-                .isInstanceOf(PlanoConflitoException.class);
-        service.excluir(nutri, paciente.getId(), atendimentoId, plano.id(), plano.versao());
-        var novo = service.criar(nutri, paciente.getId(), atendimentoId, dados(hoje(), null, null));
-        assertThat(service.listar(nutri, paciente.getId(), atendimentoId)).extracting(PlanoDTO::id).containsExactly(novo.id());
-        assertThat(planos.findById(plano.id()).orElseThrow().getConsulta().getId()).isEqualTo(atendimentoId);
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("não está mais disponível");
+        assertThatThrownBy(() -> service.listar(nutri, paciente.getId(), atendimentoId))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(planos.count()).isZero();
     }
 
     @Test void calculaGramasAPartirDasCaloriasEDosPercentuais() {

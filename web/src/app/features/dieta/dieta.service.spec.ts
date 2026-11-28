@@ -18,11 +18,11 @@ describe('DietaService', () => {
     service = TestBed.inject(DietaService);
   });
 
-  it('envia a versão e o atendimento ao excluir um plano', () => {
-    service.excluirPlano(12, 76, 3, 42);
+  it('envia a versão ao excluir um plano na ficha do paciente', () => {
+    service.excluirPlano(12, 76, 3);
 
     expect(api.delete).toHaveBeenCalledWith(
-      '/gestao-pacientes/12/planos-alimentares/76?versao=3&atendimentoId=42'
+      '/gestao-pacientes/12/planos-alimentares/76?versao=3'
     );
   });
 });

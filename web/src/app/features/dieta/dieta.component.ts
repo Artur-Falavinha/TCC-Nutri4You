@@ -2,8 +2,8 @@ import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { Component, DestroyRef, HostListener, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, CanDeactivateFn, RouterLink } from '@angular/router';
-import { EMPTY, Observable, Subject, catchError, forkJoin, of, switchMap, take, throwError } from 'rxjs';
+import { ActivatedRoute, CanDeactivateFn } from '@angular/router';
+import { EMPTY, Observable, Subject, catchError, forkJoin, of, switchMap, take } from 'rxjs';
 
 import { ToastService } from '../../core/services/toast.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
@@ -34,7 +34,6 @@ import {
   RefeicaoEdicao,
   SubstitutoEdicao
 } from './dieta.models';
-import { AtendimentosService } from '../clinico/consultas/consultas.service';
 import { Avaliacao, ClinicoService } from '../clinico/clinico.service';
 import { Anamnese, Answers } from '../anamnese/anamnese.models';
 import { AnamneseService } from '../anamnese/anamnese.service';
@@ -62,7 +61,7 @@ const FORMATO_DATA_CLINICA = new Intl.DateTimeFormat('sv-SE', {
 
 @Component({
   selector: 'app-dieta',
-  imports: [DatePipe, NgTemplateOutlet, FormsModule, RouterLink, PatientTabsComponent, TituloPacienteComponent, FormAlertComponent,
+  imports: [DatePipe, NgTemplateOutlet, FormsModule, PatientTabsComponent, TituloPacienteComponent, FormAlertComponent,
     EstadoVazioComponent, UiButtonComponent, UiInputComponent, UiSelectComponent, BuscaAlimentosComponent, DialogoConfirmacaoComponent],
   templateUrl: './dieta.component.html',
   styleUrl: './dieta.component.css'
@@ -72,14 +71,11 @@ export class DietaComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly pacientes = inject(PacientesService);
   private readonly dieta = inject(DietaService);
-  private readonly atendimentos = inject(AtendimentosService);
   private readonly clinico = inject(ClinicoService);
   private readonly anamneses = inject(AnamneseService);
   private readonly destroyRef = inject(DestroyRef);
   readonly patientId = Number(this.route.snapshot.paramMap.get('id'));
 
-  readonly atendimentoId = this.route.snapshot.queryParamMap.has('atendimentoId') ? Number(this.route.snapshot.queryParamMap.get('atendimentoId')) : null;
-  podeEditarAtendimento = false;
   paciente: Pick<Paciente, 'nome'> & { dataNascimento?: string; sexo?: string } | null = null;
   anamnese: Anamnese | null = null;
   avaliacaoAtual: Avaliacao | null = null;
@@ -96,6 +92,7 @@ export class DietaComponent implements OnInit {
   planoEmEdicaoId: number | null = null;
   tela: TelaDieta = 'lista';
   readonly dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+  readonly formatarData = formatarDataBr;
   dia = 1;
   get refeicoesEdicao(): RefeicaoEdicao[] {
     return this.form.refeicoes.filter(r => r.diaSemana == null || r.diaSemana === this.dia);
@@ -238,18 +235,11 @@ export class DietaComponent implements OnInit {
     }
     this.carregando = true;
     this.erro = '';
-    const dadosPaciente = this.atendimentoId === null ? this.pacientes.buscarPorId(this.patientId)
-      : this.atendimentos.buscar(this.atendimentoId).pipe(switchMap(a => {
-        if (a.pacienteId !== this.patientId || !a.iniciadaEm) return throwError(() => new Error('Atendimento indisponível.'));
-        this.podeEditarAtendimento = a.status === 'CONFIRMADA';
-        return of({ nome: a.pacienteNome, dataNascimento: a.contextoClinico?.dataNascimento ?? undefined,
-          sexo: a.contextoClinico?.sexo ?? undefined });
-      }));
     forkJoin({
-      paciente: dadosPaciente,
-      planos: this.dieta.listarPlanos(this.patientId, this.atendimentoId),
-      anamnese: this.atendimentoId === null ? this.anamneses.get(this.patientId).pipe(catchError(() => of(null))) : of(null),
-      historico: this.atendimentoId === null ? this.clinico.historico(this.patientId).pipe(catchError(() => of(null))) : of(null)
+      paciente: this.pacientes.buscarPorId(this.patientId),
+      planos: this.dieta.listarPlanos(this.patientId),
+      anamnese: this.anamneses.get(this.patientId).pipe(catchError(() => of(null))),
+      historico: this.clinico.historico(this.patientId).pipe(catchError(() => of(null)))
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ paciente, planos, anamnese, historico }) => {
         this.paciente = paciente;
@@ -301,24 +291,32 @@ export class DietaComponent implements OnInit {
 
   atualizarPercentual(chave: MacroPercentual, valor: CampoNumericoEdicao): void {
     this.form.metas[chave] = valor;
-    if (this.macroAutopreenchido === chave) this.macroAutopreenchido = null;
     const chaves: MacroPercentual[] = ['percentualProteinas', 'percentualCarboidratos', 'percentualGorduras'];
-    let destino = this.macroAutopreenchido;
-    if (!destino) {
-      const vazios = chaves.filter(item => this.textoNumerico(this.form.metas[item]).trim() === '');
-      if (vazios.length === 1) destino = vazios[0];
+    if (this.textoNumerico(valor).trim() === '') {
+      if (this.macroAutopreenchido && this.macroAutopreenchido !== chave) {
+        this.form.metas[this.macroAutopreenchido] = '';
+      }
+      return;
     }
-    if (!destino || destino === chave) return;
-    const outros = chaves.filter(item => item !== destino).map(item => this.numero(this.form.metas[item]));
-    if (outros.some(item => item === null || item < 0 || item > 100)) return;
-    const restante = Number((100 - (outros[0]! + outros[1]!)).toFixed(2));
-    if (restante < 0 || restante > 100) return;
-    this.form.metas[destino] = restante;
+    let destino = this.macroAutopreenchido === chave ? null : this.macroAutopreenchido;
+    if (!destino) {
+      const outros = chaves.filter(item => item !== chave);
+      const vazios = outros.filter(item => this.textoNumerico(this.form.metas[item]).trim() === '');
+      if (vazios.length === 1) destino = vazios[0];
+      else if (vazios.length === 0) destino = outros.at(-1)!;
+    }
+    if (!destino) return;
     this.macroAutopreenchido = destino;
+    const campos = chaves.filter(item => item !== destino);
+    const outros = campos.map(item => this.numero(this.form.metas[item]));
+    const validos = outros.every((item, indice) => item !== null && Number.isFinite(item)
+      && item >= 0 && item <= 100 && this.temNoMaximoDuasCasas(this.form.metas[campos[indice]]));
+    const restante = validos ? Number((100 - (outros[0]! + outros[1]!)).toFixed(2)) : -1;
+    this.form.metas[destino] = restante >= 0 && restante <= 100 ? restante : '';
+    delete this.errors['metas'];
   }
 
   abrirNovoRascunho(): void {
-    if (this.atendimentoId !== null && !this.podeEditarAtendimento) return;
     this.executarComDescarte(() => {
       this.tela = 'editor';
       this.origemEdicao = null;
@@ -333,7 +331,7 @@ export class DietaComponent implements OnInit {
   abrirDetalhe(plano: Plano): void {
     this.executarComDescarte(() => {
       this.erro = '';
-      this.dieta.buscarPlano(this.patientId, plano.id, this.atendimentoId)
+      this.dieta.buscarPlano(this.patientId, plano.id)
         .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
           next: detalhe => {
             this.planoSelecionado = detalhe;
@@ -347,7 +345,6 @@ export class DietaComponent implements OnInit {
   }
 
   abrirEdicao(): void {
-    if (this.atendimentoId !== null && !this.podeEditarAtendimento) return;
     const plano = this.planoSelecionado;
     if (!plano || plano.status !== 'RASCUNHO') return;
     this.origemEdicao = null;
@@ -361,9 +358,9 @@ export class DietaComponent implements OnInit {
 
   editarDieta(): void {
     const plano = this.planoSelecionado;
-    if (!plano?.inicioEdicao || this.salvando || (this.atendimentoId !== null && !this.podeEditarAtendimento)) return;
+    if (!plano?.inicioEdicao || this.salvando) return;
     this.salvando = true;
-    this.dieta.buscarPlano(this.patientId, plano.id, this.atendimentoId)
+    this.dieta.buscarPlano(this.patientId, plano.id)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: original => {
           this.salvando = false;
@@ -396,15 +393,15 @@ export class DietaComponent implements OnInit {
   }
 
   duplicarPlano(): void {
-    if (this.atendimentoId !== null && !this.podeEditarAtendimento) return;
     const plano = this.planoSelecionado;
     if (!plano || plano.status === 'RASCUNHO') return;
     this.executarComDescarte(() => {
       this.origemEdicao = null;
       this.planoEmEdicaoId = null;
       this.form = this.formularioDoPlano(plano);
+      this.planoSelecionado = null;
       this.form.titulo = `Cópia de ${plano.titulo}`.slice(0, 150);
-      this.form.vigenciaInicio = '';
+      this.form.vigenciaInicio = this.vigenciaInicioMinima;
       this.form.vigenciaFim = '';
       this.original = this.assinatura();
       this.tela = 'editor';
@@ -576,9 +573,9 @@ export class DietaComponent implements OnInit {
     this.salvando = true;
     const operacao = this.planoEmEdicaoId === null
       ? (this.origemEdicao
-          ? this.dieta.criarEdicao(this.patientId, this.origemEdicao, request, this.atendimentoId)
-          : this.dieta.criarPlano(this.patientId, request, this.atendimentoId))
-      : this.dieta.atualizarPlano(this.patientId, this.planoEmEdicaoId, request, this.atendimentoId);
+          ? this.dieta.criarEdicao(this.patientId, this.origemEdicao, request)
+          : this.dieta.criarPlano(this.patientId, request))
+      : this.dieta.atualizarPlano(this.patientId, this.planoEmEdicaoId, request);
     operacao.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: plano => {
         this.planoSelecionado = plano;
@@ -604,7 +601,7 @@ export class DietaComponent implements OnInit {
     if (!plano || plano.status !== 'RASCUNHO' || this.publicando || this.planoParaPublicar) return;
     if (plano.planoAnteriorId) {
       this.publicando = true;
-      this.dieta.buscarPlano(this.patientId, plano.id, this.atendimentoId)
+      this.dieta.buscarPlano(this.patientId, plano.id)
         .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
           next: atual => {
             this.publicando = false;
@@ -645,8 +642,8 @@ export class DietaComponent implements OnInit {
     this.publicando = true;
     this.erro = '';
     const publicacao = plano.planoAnteriorId && plano.inicioEdicao
-      ? this.dieta.publicarPlano(this.patientId, plano.id, plano.versao, this.atendimentoId, plano.inicioEdicao)
-      : this.dieta.publicarPlano(this.patientId, plano.id, plano.versao, this.atendimentoId);
+      ? this.dieta.publicarPlano(this.patientId, plano.id, plano.versao, plano.inicioEdicao)
+      : this.dieta.publicarPlano(this.patientId, plano.id, plano.versao);
     publicacao
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: publicado => {
@@ -667,7 +664,7 @@ export class DietaComponent implements OnInit {
 
   excluir(): void {
     const plano = this.planoSelecionado;
-    if (!plano || this.excluindo || this.publicando || (this.atendimentoId !== null && !this.podeEditarAtendimento)) return;
+    if (!plano || this.excluindo || this.publicando) return;
     const rascunho = plano.status === 'RASCUNHO';
     this.pedirConfirmacaoDestrutiva(
       'Excluir plano alimentar?',
@@ -682,7 +679,7 @@ export class DietaComponent implements OnInit {
     if (this.excluindo) return;
     this.excluindo = true;
     this.erro = '';
-    this.dieta.excluirPlano(this.patientId, plano.id, plano.versao, this.atendimentoId)
+    this.dieta.excluirPlano(this.patientId, plano.id, plano.versao)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
           this.planos = this.planos.filter(item => item.id !== plano.id);
@@ -824,7 +821,7 @@ export class DietaComponent implements OnInit {
   }
 
   private recarregarListaDePlanos(): void {
-    this.dieta.listarPlanos(this.patientId, this.atendimentoId)
+    this.dieta.listarPlanos(this.patientId)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: planos => { this.planos = planos; },
         error: () => this.toast.aviso('Não foi possível atualizar o histórico de dietas.')
@@ -916,13 +913,30 @@ export class DietaComponent implements OnInit {
   }
 
   get vigenciaInicioMinima(): string {
-    return this.dataMinimaVigencia(this.form.vigenciaInicio, this.planoSelecionado?.vigenciaInicio);
+    const minima = this.dataMinimaVigencia(this.form.vigenciaInicio, this.planoSelecionado?.vigenciaInicio);
+    const aposVigente = !this.inicioEdicaoFixo ? this.inicioAposDietaVigente : null;
+    return aposVigente && aposVigente > minima ? aposVigente : minima;
+  }
+
+  get inicioAposDietaVigente(): string | null {
+    const hoje = this.dataAtualNaClinica();
+    const fim = [...this.planos, ...(this.planoSelecionado ? [this.planoSelecionado] : [])]
+      .filter(plano => plano.id !== this.planoEmEdicaoId
+        && (plano.status === 'PUBLICADO' || (plano.status === 'SUBSTITUIDO' && !!plano.substituidaEm))
+        && !!plano.vigenciaInicio && plano.vigenciaInicio <= hoje
+        && !!plano.vigenciaFim && plano.vigenciaFim >= hoje)
+      .map(plano => plano.vigenciaFim!).sort().at(-1);
+    if (!fim || !dataIsoValida(fim)) return null;
+    const data = new Date(`${fim}T12:00:00Z`);
+    data.setUTCDate(data.getUTCDate() + 1);
+    return data.toISOString().slice(0, 10);
   }
 
   get vigenciaFimMinima(): string {
     const minima = this.dataMinimaVigencia(this.form.vigenciaFim, this.planoSelecionado?.vigenciaFim);
     const inicio = this.form.vigenciaInicio;
-    return dataIsoValida(inicio) && inicio > minima ? inicio : minima;
+    const limiteInicio = dataIsoValida(inicio) ? inicio : this.vigenciaInicioMinima;
+    return limiteInicio > minima ? limiteInicio : minima;
   }
 
   private dataMinimaVigencia(data: string, original?: string | null): string {
@@ -941,7 +955,9 @@ export class DietaComponent implements OnInit {
     if (vigenciaInicio && !inicioValido) {
       errors['vigenciaInicio'] = formatoInvalido;
     } else if (vigenciaInicio && vigenciaInicio < this.vigenciaInicioMinima) {
-      errors['vigenciaInicio'] = 'Escolha hoje ou uma data futura.';
+      errors['vigenciaInicio'] = this.inicioAposDietaVigente && !this.inicioEdicaoFixo
+        ? `O início deve ser em ${formatarDataBr(this.vigenciaInicioMinima)} ou depois, após o fim da dieta vigente.`
+        : 'Escolha hoje ou uma data futura.';
     }
     if (vigenciaFim && !dataIsoValida(vigenciaFim)) {
       errors['vigenciaFim'] = formatoInvalido;
@@ -1224,6 +1240,7 @@ export class DietaComponent implements OnInit {
   private limparMensagens(): void {
     this.erro = '';
     this.errors = {};
+    this.macroAutopreenchido = null;
   }
 }
 

@@ -180,21 +180,15 @@ export class AnamneseComponent implements OnInit {
   }
 
   toggle(field: AnamneseField, option: string, event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    const value = this.answers[field.key];
-    let options = Array.isArray(value) ? [...value] : [];
-    if (!checked) options = options.filter(v => v !== option);
-    else if (option === field.exclusive) options = [option];
-    else options = [...options.filter(v => v !== field.exclusive), option];
-    this.change(field, options);
+    this.toggleValue(field, option, (event.target as HTMLInputElement).checked);
   }
 
   toggleValue(field: AnamneseField, option: string, checked: boolean): void {
     const value = this.answers[field.key];
-    let options = Array.isArray(value) ? [...value] : [];
+    let options = Array.isArray(value) ? [...new Set(value)] : [];
     if (!checked) options = options.filter(item => item !== option);
     else if (option === field.exclusive) options = [option];
-    else options = [...options.filter(item => item !== field.exclusive), option];
+    else options = [...options.filter(item => item !== field.exclusive && item !== option), option];
     this.change(field, options);
   }
 

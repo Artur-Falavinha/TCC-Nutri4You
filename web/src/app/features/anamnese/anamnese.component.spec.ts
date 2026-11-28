@@ -181,6 +181,40 @@ describe('AnamneseComponent', () => {
     expect(api.save).toHaveBeenCalled();
   });
 
+  it('saves checkbox selections without duplicates after repeated change events', async () => {
+    component.fields = [field('objectives', {
+      type: 'checkbox', options: ['Perder peso', 'Ganhar massa muscular']
+    })];
+    component.startEditing();
+    const formulario = form();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const checkboxes = formulario.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+
+    checkboxes[0].checked = true;
+    checkboxes[0].dispatchEvent(new Event('change', { bubbles: true }));
+    checkboxes[0].dispatchEvent(new Event('change', { bubbles: true }));
+    checkboxes[1].checked = true;
+    checkboxes[1].dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+    expect(component.answers['objectives']).toEqual(['Perder peso', 'Ganhar massa muscular']);
+
+    api.save.and.returnValue(of({ ...empty, versao: 0, status: 'RASCUNHO',
+      rascunho: { objectives: ['Perder peso', 'Ganhar massa muscular'] } }));
+    await component.save(true, formulario);
+    expect(api.save).toHaveBeenCalledWith(patient.id, null,
+      { objectives: ['Perder peso', 'Ganhar massa muscular'] }, true);
+
+    component.startEditing();
+    const retomado = form();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const primeiro = retomado.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    primeiro.checked = false;
+    primeiro.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(component.answers['objectives']).toEqual(['Ganhar massa muscular']);
+  });
+
   it('makes the none diagnosis option exclusive', () => {
     const diagnosis = field('diagnoses', { type: 'checkbox', options: ['Nenhum', 'Diabetes'], exclusive: 'Nenhum' });
     component.answers['diagnoses'] = ['Diabetes'];

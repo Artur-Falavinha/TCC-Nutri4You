@@ -1,5 +1,4 @@
-<header class="page-header"><app-titulo-paciente [nome]="nomePaciente || 'Paciente'" [pacienteId]="nomePaciente ? patientId : null" />@if (atendimentoId === null) { <app-patient-tabs [patientId]="patientId" /> } @else { <a [routerLink]="['/agenda/atendimentos', atendimentoId]">Voltar ao atendimento</a> }</header>
-@let podeAbrirFormulario = atendimentoId === null || podeSolicitar;
+<header class="page-header"><app-titulo-paciente [nome]="nomePaciente || 'Paciente'" [pacienteId]="nomePaciente ? patientId : null" /><app-patient-tabs [patientId]="patientId" (reabrir)="voltarParaLista()" /></header>
 @let semExames = dados?.total === 0;
 @let exibirEstadoVazio = semExames && !carregando && !erro && !formularioAberto;
 <main class="canvas" [class.canvas--vazio]="exibirEstadoVazio" [attr.aria-busy]="carregando || salvando">
@@ -11,14 +10,12 @@
       tabindex="-1"
       [imagem]="{ url: '/exames/sem-exames.webp', largura: 840, altura: 752 }"
       titulo="Nenhum exame solicitado"
-      [descricao]="podeAbrirFormulario ? 'Solicite um exame para que o paciente possa enviar o resultado.' : ''"
+      descricao="Solicite um exame para que o paciente possa enviar o resultado."
     >
-      @if (podeAbrirFormulario) {
-        <app-ui-button label="Solicitar exame" icon="plus-circle" [fullWidth]="false" (click)="abrirFormulario()" />
-      }
+      <app-ui-button label="Solicitar exame" icon="plus-circle" [fullWidth]="false" (click)="abrirFormulario()" />
     </app-estado-vazio>
   }
-  @if (podeAbrirFormulario && dados && (!semExames || formularioAberto)) {
+  @if (dados && (!semExames || formularioAberto)) {
     <form (ngSubmit)="solicitar()">
       <fieldset [disabled]="salvando || carregando">
         <legend>Solicitar exame</legend>

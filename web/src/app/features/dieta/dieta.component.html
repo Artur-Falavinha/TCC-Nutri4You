@@ -1,6 +1,6 @@
 <header class="page-header">
   <app-titulo-paciente [nome]="paciente?.nome || 'Paciente'" [pacienteId]="paciente ? patientId : null" />
-  @if (atendimentoId === null) { <app-patient-tabs [patientId]="patientId" /> }
+  <app-patient-tabs [patientId]="patientId" (reabrir)="voltarParaLista()" />
 </header>
 
 <main class="canvas" [attr.aria-busy]="carregando || salvando || publicando || excluindo">
@@ -8,10 +8,6 @@
     <button type="button" class="page-back-action" (click)="voltarParaLista()" [disabled]="excluindo || publicando">
       <i class="ph ph-arrow-left" aria-hidden="true"></i> Voltar
     </button>
-  } @else if (tela === 'lista' && atendimentoId !== null) {
-    <a class="page-back-action" [routerLink]="['/agenda/atendimentos', atendimentoId]">
-      <i class="ph ph-arrow-left" aria-hidden="true"></i> Voltar ao atendimento
-    </a>
   }
   <app-form-alert [message]="erro" type="error" />
 
@@ -41,16 +37,13 @@
       <app-ui-button label="Tentar novamente" icon="arrow-clockwise" [fullWidth]="false" (click)="carregar()" />
     </section>
   } @else if (tela === 'lista') {
-    @let podeCriarPlano = atendimentoId === null || podeEditarAtendimento;
     @if (planos.length === 0) {
       <app-estado-vazio
         [imagem]="{ url: '/dieta/prescricao-vazia.png', largura: 401, altura: 378 }"
         titulo="Nenhum plano alimentar"
-        [descricao]="podeCriarPlano ? 'Crie um rascunho para organizar as refeições e os alimentos deste paciente.' : ''"
+        descricao="Crie um rascunho para organizar as refeições e os alimentos deste paciente."
       >
-        @if (podeCriarPlano) {
-          <app-ui-button label="Criar primeiro plano" icon="plus-circle" [fullWidth]="false" (click)="abrirNovoRascunho()" />
-        }
+        <app-ui-button label="Criar primeiro plano" icon="plus-circle" [fullWidth]="false" (click)="abrirNovoRascunho()" />
       </app-estado-vazio>
     } @else {
       <div class="toolbar">
@@ -58,9 +51,7 @@
           <h2>Planos alimentares</h2>
           <p class="subtitle">{{ planos.length }} plano(s) registrado(s)</p>
         </div>
-        @if (podeCriarPlano) {
-          <app-ui-button label="Novo plano" icon="plus-circle" [fullWidth]="false" (click)="abrirNovoRascunho()" />
-        }
+        <app-ui-button label="Novo plano" icon="plus-circle" [fullWidth]="false" (click)="abrirNovoRascunho()" />
       </div>
       <section class="plan-list" aria-label="Planos alimentares do paciente">
         @for (plano of planos; track plano.id) {
@@ -99,17 +90,18 @@
         </div>
       </div>
       <div class="actions">
-        @if (plano.status === 'RASCUNHO' && (atendimentoId === null || podeEditarAtendimento)) {
+        @if (plano.status === 'RASCUNHO') {
           <app-ui-button label="Editar rascunho" icon="pencil-simple" variant="secondary" [fullWidth]="false" [disabled]="excluindo" (click)="abrirEdicao()" />
           <app-ui-button label="Publicar" icon="check-circle" [fullWidth]="false" [loading]="publicando" [disabled]="excluindo" (click)="publicar()" />
-        } @else if (plano.status === 'PUBLICADO' && plano.inicioEdicao && (atendimentoId === null || podeEditarAtendimento)) {
+        } @else if (plano.status === 'PUBLICADO' && plano.inicioEdicao) {
           <app-ui-button [label]="plano.rascunhoEdicaoId ? 'Abrir rascunho de edição' : 'Editar dieta'" icon="pencil-simple" variant="secondary"
             [fullWidth]="false" [loading]="salvando" [disabled]="excluindo" (click)="editarDieta()" />
-        } @else if (plano.status === 'PUBLICADO' && !plano.planoAnteriorId && (atendimentoId === null || podeEditarAtendimento)) {
-          <app-ui-button label="Criar novo rascunho" icon="copy" variant="secondary" [fullWidth]="false" [disabled]="excluindo" (click)="duplicarPlano()" />
         }
-        @if ((atendimentoId === null || podeEditarAtendimento) && (plano.status === 'RASCUNHO' ||
-            (plano.status === 'PUBLICADO' && !plano.planoAnteriorId && !plano.rascunhoEdicaoId))) {
+        @if (plano.status === 'PUBLICADO' || plano.status === 'SUBSTITUIDO') {
+          <app-ui-button label="Copiar como nova dieta" icon="copy" variant="secondary" [fullWidth]="false" [disabled]="excluindo || publicando || salvando" (click)="duplicarPlano()" />
+        }
+        @if (plano.status === 'RASCUNHO' ||
+            (plano.status === 'PUBLICADO' && !plano.planoAnteriorId && !plano.rascunhoEdicaoId)) {
           <app-ui-button label="Excluir" icon="trash" variant="danger" [fullWidth]="false" [disabled]="publicando" [loading]="excluindo" (click)="excluir()" />
         }
       </div>
@@ -143,7 +135,11 @@
 
     @if (plano.metas; as metas) {
       <section class="summary-card" aria-labelledby="goals-title">
-        <h3 id="goals-title">Metas diárias <span tabindex="0" title="Uma meta comum para cada dia da semana. Os totais previstos não representam consumo registrado.">ⓘ</span></h3>
+        <h3 id="goals-title" class="dica">Metas diárias
+          <button #dicaMetas type="button" class="goal-help" aria-label="Sobre as metas diárias"
+            aria-describedby="goals-help" (keydown.escape)="dicaMetas.blur()"><i class="ph ph-info" aria-hidden="true"></i></button>
+          <span id="goals-help" class="dica__badge" role="tooltip">As mesmas metas se aplicam a cada dia da semana. Os totais planejados da dieta não representam o consumo registrado pelo paciente.</span>
+        </h3>
         @if (resumoMetas(metas, plano.percentuais); as resumo) {
           <dl class="goal-list" data-testid="metas-diarias">
             <div class="goal-row goal-row--energy"><dt>Calorias</dt><dd class="goal-main">{{ formatarNutriente(resumo.energia) }} kcal</dd></div>
@@ -251,6 +247,9 @@
             <app-ui-input class="campo-vigencia" label="Fim da vigência" inputId="vigenciaFim" name="vigenciaFim"
               type="date" [(ngModel)]="form.vigenciaFim" [min]="vigenciaFimMinima"
               [errorMessage]="errors['vigenciaFim'] || ''" />
+            @if (!inicioEdicaoFixo && inicioAposDietaVigente) {
+              <p>O início deve ser em {{ formatarData(inicioAposDietaVigente) }} ou depois, pois o último dia da dieta vigente ainda está incluído na prescrição atual.</p>
+            }
             @if (inicioEdicaoFixo && !form.vigenciaFim) {
               <p>Informe uma nova data final para publicar a edição.</p>
             }

@@ -16,7 +16,7 @@ Base: `/api/v1/gestao-pacientes/{pacienteId}/consultas`.
 | POST | Base + `/{id}/inicio` | Inicia consulta confirmada; exige `versao` |
 | POST | Base + `/{id}/cancelamento` | Cancela pendente/confirmada não iniciada; exige `versao` |
 | GET | Base + `/{id}` | Consulta e avaliacao vinculada |
-| PUT | Base + `/{id}` | Atualiza o mesmo registro; exige `versao` |
+| PUT | Base + `/{id}` | Atualiza consulta confirmada e iniciada; exige `versao`; concluídas retornam 400 |
 
 As respostas usam `ApiResponse`. Listagem retorna `itens`, `pagina`,
 `totalPaginas` e `total`. Erros: 400 validacao, 401 sem autenticacao,
@@ -108,6 +108,6 @@ e restrito ao checksum conhecido; nao apagar volumes nem recalcular horarios.
 
 ## Início do atendimento
 
-O profissional responsável pode iniciar uma consulta confirmada a qualquer momento. O servidor retorna `iniciadaEm` e `podeIniciar` e valida a versão e o status no momento da ação. Uma consulta iniciada pode durar o tempo necessário e não pode ser iniciada novamente. Uma avulsa confirmada que não ocorreu deve ser cancelada pelo profissional para liberar uma nova solicitação sem vínculo.
+O profissional responsável pode iniciar uma consulta confirmada a qualquer momento. O servidor retorna `iniciadaEm` e `podeIniciar` e valida a versão e o status no momento da ação. Uma consulta iniciada pode durar o tempo necessário e não pode ser iniciada novamente. O fluxo separado de atendimento avulso foi removido; a confirmação da primeira consulta ativa o vínculo e integra o agendamento às consultas do paciente.
 
-V10 acrescenta o início sem fabricar dados para consultas legadas. Consultas históricas realizadas continuam editáveis; novos atendimentos exigem início. A edição aceita CONFIRMADA ou REALIZADA, sem reabrir uma realizada. Aprovação/cancelamento usam ações próprias. A rota web `/consultas/nova` redireciona à listagem. Novos atendimentos devem partir de solicitação aprovada.
+V10 acrescenta o início sem fabricar dados para consultas legadas. Consultas concluídas, inclusive históricas, ficam somente para leitura. A edição exige status CONFIRMADA e início registrado; a gravação pode concluir a consulta com status REALIZADA, mas depois nenhuma alteração ou reabertura é aceita. A tela mantém os registros visíveis, desabilita os campos e oculta Salvar. Aprovação/cancelamento usam ações próprias. A rota web `/consultas/nova` redireciona à listagem. Novos atendimentos devem partir de solicitação aprovada.

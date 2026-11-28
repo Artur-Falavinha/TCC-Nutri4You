@@ -71,6 +71,27 @@ class ConsultaControllerTest {
     }
 
     @Test
+    void consultaConcluidaContinuaVisivelMasNaoPodeSerAlteradaOuReaberta() throws Exception {
+        String corpo = completa(80, "Registro original", "null")
+                .replace("\"status\":\"CONFIRMADA\"", "\"status\":\"REALIZADA\"");
+        String json = criar(corpo).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        int id = JsonPath.read(json, "$.data.id");
+        int versao = JsonPath.read(json, "$.data.versao");
+        for (String estado : java.util.List.of("REALIZADA", "CONFIRMADA")) {
+            mvc.perform(put(base + "/" + id).header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                            .content(completa(81, "Alterada", String.valueOf(versao))
+                                    .replace("\"status\":\"CONFIRMADA\"", "\"status\":\"" + estado + "\"")))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Consulta concluída está disponível somente para leitura."));
+        }
+        mvc.perform(get(base + "/" + id).header("Authorization", token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("REALIZADA"))
+                .andExpect(jsonPath("$.data.observacao").value("Registro original"))
+                .andExpect(jsonPath("$.data.avaliacao.peso").value(80))
+                .andExpect(jsonPath("$.data.versao").value(versao));
+    }
+
+    @Test
     void editaMedidasSemDuplicarERejeitaVersaoAntiga() throws Exception {
         String json = criar(completa(80, "", "null")).andReturn().getResponse().getContentAsString();
         int id = JsonPath.read(json, "$.data.id");
@@ -333,7 +354,7 @@ class ConsultaControllerTest {
 
     private String composicao(String versao, String medidas) {
         return """
-                {"dataHora":"2025-01-15T14:30","status":"REALIZADA","versao":%s,
+                {"dataHora":"2025-01-15T14:30","status":"CONFIRMADA","versao":%s,
                  "avaliacao":{"peso":73.25,"altura":1.80,%s}}
                 """.formatted(versao, medidas);
     }
@@ -371,7 +392,7 @@ class ConsultaControllerTest {
     }
     private String completa(int peso, String observacao, String versao) {
         return """
-                {"dataHora":"2025-01-15T14:30","status":"REALIZADA","observacao":"%s","versao":%s,
+                {"dataHora":"2025-01-15T14:30","status":"CONFIRMADA","observacao":"%s","versao":%s,
                  "avaliacao":{"peso":%d,"altura":1.80,"percentualGordura":20,"massaMuscularKg":35,
                  "pregaBicipital":10,"pregaTricipital":11,"pregaSubescapular":12,"pregaSuprailiaca":12.5,
                  "circunferenciaCintura":80,"circunferenciaQuadril":100,"circunferenciaBraco":30}}

@@ -65,6 +65,26 @@ class ConsultaServiceTest extends ClinicalServiceTestSupport {
         assertThat(concluida.status()).isEqualTo("REALIZADA");
         assertThat(concluida.contextoClinico()).isNull();
     }
+    @Test void consultaConcluidaPermaneceVisivelERejeitaAlteracaoOuReabertura() {
+        var consulta = consulta(agora().minusHours(1), "CONFIRMADA");
+        var iniciada = service.iniciar(nutri, paciente.getId(), consulta.getId(), consulta.getVersao());
+        var avaliacao = new AvaliacaoRequest(
+                new BigDecimal("75"), new BigDecimal("1.80"),
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var concluida = service.atualizar(nutri, paciente.getId(), consulta.getId(), new ConsultaRequest(
+                consulta.getDataHora(), "REALIZADA", "Registro original", avaliacao, iniciada.versao()));
+
+        for (String status : java.util.List.of("REALIZADA", "CONFIRMADA")) {
+            assertThatThrownBy(() -> service.atualizar(nutri, paciente.getId(), consulta.getId(),
+                    new ConsultaRequest(consulta.getDataHora(), status, "Alterada", avaliacao, concluida.versao())))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("somente para leitura");
+        }
+        var preservada = service.buscar(nutri, paciente.getId(), consulta.getId());
+        assertThat(preservada.status()).isEqualTo("REALIZADA");
+        assertThat(preservada.observacao()).isEqualTo("Registro original");
+        assertThat(preservada.versao()).isEqualTo(concluida.versao());
+        assertThat(preservada.avaliacao().peso()).isEqualByComparingTo("75");
+    }
     @Test void criacaoLivrePermaneceBloqueada() {
         assertThatThrownBy(() -> service.criar(nutri, paciente.getId(), null)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("agendamento");

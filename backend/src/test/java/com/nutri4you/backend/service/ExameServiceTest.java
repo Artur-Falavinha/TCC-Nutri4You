@@ -50,16 +50,18 @@ class ExameServiceTest extends ClinicalServiceTestSupport {
         assertThat(notificacoes.listarPaciente(pacientes.save(TestDataFactory.outroPaciente(encoder)))).isEmpty();
     }
 
-    @Test void resultadoDeAtendimentoAbreNoEscopoClinicoEODesvinculoRetiraOAviso() {
+    @Test void resultadoAbreNaFichaDoPacienteEODesvinculoRetiraOAviso() {
         var consulta = new Consulta(paciente, nutri, agora().plusHours(1), true);
         consulta.atualizar(consulta.getDataHora(), "CONFIRMADA", null);
         consulta.iniciar(agora());
         consultas.saveAndFlush(consulta);
-        var exame = service.solicitar(nutri, paciente.getId(), consulta.getId(), new ExameService.Solicitacao("Exame", null));
+        assertThatThrownBy(() -> service.solicitar(nutri, paciente.getId(), consulta.getId(), new ExameService.Solicitacao("Exame", null)))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("não está mais disponível");
+        var exame = service.solicitar(nutri, paciente.getId(), null, new ExameService.Solicitacao("Exame", null));
         service.enviar(paciente, exame.id(), exame.versao(), pdf(20));
 
         assertThat(notificacoes.listarResultados(nutri)).singleElement()
-                .satisfies(resultado -> assertThat(resultado.atendimentoId()).isEqualTo(consulta.getId()));
+                .satisfies(resultado -> assertThat(resultado.atendimentoId()).isNull());
         gestao.desvincularNutricionista(nutri, paciente.getId());
         assertThat(notificacoes.listarResultados(nutri)).isEmpty();
         assertThat(notificacoes.listarPaciente(paciente)).extracting(NotificacaoExameDTO::tipo)

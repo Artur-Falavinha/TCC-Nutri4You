@@ -51,7 +51,6 @@ import java.util.Set;
 @Transactional(readOnly = true)
 public class PrescricaoService {
     private final GestaoPacienteService acesso;
-    private final AtendimentoClinicoService atendimentos;
     private final PlanoAlimentarRepository planos;
     private final AlimentoRepository alimentos;
     private final ListaComprasRepository listas;
@@ -61,7 +60,6 @@ public class PrescricaoService {
 
     public PrescricaoService(
             GestaoPacienteService acesso,
-            AtendimentoClinicoService atendimentos,
             PlanoAlimentarRepository planos,
             AlimentoRepository alimentos,
             ListaComprasRepository listas,
@@ -69,7 +67,6 @@ public class PrescricaoService {
             Clock relogio,
             NotificacaoPlanoAlimentarService notificacoes) {
         this.acesso = acesso;
-        this.atendimentos = atendimentos;
         this.planos = planos;
         this.alimentos = alimentos;
         this.listas = listas;
@@ -95,17 +92,10 @@ public class PrescricaoService {
     @Transactional
     public PlanoDTO criar(Nutricionista autor, Integer pacienteId, Integer atendimentoId, PlanoRequest request) {
         entityManager.find(Paciente.class, pacienteId, LockModeType.PESSIMISTIC_WRITE);
-        Consulta consulta;
-        Paciente paciente;
+        exigirLeitura(autor, pacienteId, atendimentoId);
         Integer consultaId = request == null ? null : request.consultaId();
-        if (atendimentoId == null) {
-            paciente = acesso.exigirAcesso(autor, pacienteId);
-            consulta = consultaLongitudinal(autor, pacienteId, consultaId);
-        } else {
-            consulta = atendimentos.exigirEmAndamento(autor, atendimentoId, pacienteId);
-            validarConsultaDoPlano(consulta, consultaId);
-            paciente = consulta.getPaciente();
-        }
+        Paciente paciente = acesso.exigirAcesso(autor, pacienteId);
+        Consulta consulta = consultaLongitudinal(autor, pacienteId, consultaId);
         if (consulta != null && planos.existsByConsulta_IdAndStatusNot(consulta.getId(), PlanoAlimentar.STATUS_EXCLUIDO)) {
             throw new PlanoConflitoException("Consulta já possui um plano alimentar.");
         }
@@ -310,21 +300,16 @@ public class PrescricaoService {
     }
 
     private void exigirLeitura(Nutricionista autor, Integer pacienteId, Integer atendimentoId) {
-        if (atendimentoId == null) {
-            acesso.exigirAcesso(autor, pacienteId);
-        } else {
-            atendimentos.exigirComRegistro(autor, atendimentoId, pacienteId);
+        if (atendimentoId != null) {
+            throw new IllegalArgumentException("Atendimento avulso não está mais disponível. Use os planos do paciente.");
         }
+        acesso.exigirAcesso(autor, pacienteId);
     }
 
     private PlanoAlimentar bloquearPlanoParaEdicao(
             Nutricionista autor, Integer pacienteId, Integer atendimentoId, Integer id) {
         entityManager.find(Paciente.class, pacienteId, LockModeType.PESSIMISTIC_WRITE);
-        if (atendimentoId == null) {
-            acesso.exigirAcesso(autor, pacienteId);
-        } else {
-            atendimentos.exigirEmAndamento(autor, atendimentoId, pacienteId);
-        }
+        exigirLeitura(autor, pacienteId, atendimentoId);
         return exigirPlanoNoEscopo(autor, pacienteId, atendimentoId, id);
     }
 

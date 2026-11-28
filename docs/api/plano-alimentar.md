@@ -37,7 +37,9 @@ Criação/edição:
 
 Versão obrigatória na edição, ignorada na criação. Metas diárias comuns aos sete dias e opcionais. Quando `percentuais` é informado, os três valores devem ficar entre 0 e 100 e somar exatamente 100%. O servidor recalcula os gramas a partir das kcal usando 4 kcal/g para proteínas e carboidratos e 9 kcal/g para gorduras; os gramas enviados pelo cliente não são a fonte de verdade. Fim da vigência inclusivo. Datas informadas na criação de um rascunho e novas datas na edição devem ser de hoje em diante no fuso de São Paulo. Rascunhos podem ter vigência incompleta. Publicar exige início e fim, com início de hoje em diante. A consulta vinculada é opcional, deve pertencer ao mesmo atendimento e pode ter um plano visível por vez. Paciente e nutricionista permanecem no plano como escopo e autoria explícitos; uma FK composta impede divergência quando há consulta.
 
-A publicação rejeita qualquer sobreposição com outro plano publicado para o paciente. Revisões exigem novo rascunho. Excluir um plano publicado remove sua prescrição e preserva os registros de consumo. A dieta ativa do paciente exibe apenas o plano publicado e vigente, inclusive após o fim do vínculo clínico.
+A publicação rejeita qualquer sobreposição com outro plano publicado para o paciente. Edições exigem novo rascunho. Excluir um plano publicado remove sua prescrição e preserva os registros de consumo. A dieta ativa do paciente exibe apenas o plano publicado e vigente, inclusive após o fim do vínculo clínico.
+
+Na aba Dieta do paciente, a ação “Copiar como nova dieta” abre um rascunho independente a partir de um plano publicado ou substituído, reutilizando a criação existente. Copia refeições, alimentos, substitutos e metas, sem vincular a cópia como edição do plano original. O início pode ser alterado, respeitando hoje e o dia seguinte ao fim inclusivo da dieta vigente; o fim deve ser informado antes da publicação. A cópia só é persistida ao salvar, e a publicação continua sujeita à validação de sobreposição do servidor.
 
 ## Refeições
 
@@ -74,6 +76,6 @@ Os cinco exemplos anteriores permanecem com os mesmos IDs e nutrientes para pres
 
 A web soma apenas refeições do dia selecionado. Exceder metas não bloqueia inclusão/publicação. O percentual pode superar 100%; a barra é limitada visualmente. Esse progresso representa planejamento prescrito, não consumo. Exclusão pede confirmação; busca cancela respostas antigas durante a digitação.
 
-Não inclui consumo por refeição, metas diferentes para cada dia nem cópia integral de plano publicado. Refeições anteriores à V11 recebem segunda-feira; revisar registros legados na integração.
+Não inclui consumo por refeição nem metas diferentes para cada dia. Refeições anteriores à V11 recebem segunda-feira; revisar registros legados na integração.
 
 Erros: 400 validação, 403 perfil/acesso, 404 plano/refeição inexistente ou de outro autor, 409 versão/publicação/vigência.

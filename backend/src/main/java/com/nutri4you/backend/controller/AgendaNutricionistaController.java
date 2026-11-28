@@ -3,9 +3,7 @@ package com.nutri4you.backend.controller;
 import com.nutri4you.backend.dto.ApiResponse;
 import com.nutri4you.backend.dto.DecisaoConsultaRequest;
 import com.nutri4you.backend.dto.HorarioAtendimentoDTO;
-import com.nutri4you.backend.dto.PreferenciaAgendaDTO;
 import com.nutri4you.backend.dto.PreferenciaEmailAgendaDTO;
-import com.nutri4you.backend.dto.SolicitacaoAvulsaDTO;
 import com.nutri4you.backend.dto.NotificacaoConsultaDTO;
 import com.nutri4you.backend.dto.SemanaAgendaDTO;
 import com.nutri4you.backend.exception.AcessoNegadoException;
@@ -73,17 +71,6 @@ public class AgendaNutricionistaController {
         return ApiResponse.ok(horarios.salvar(nutricionista(auth), entrada), "Horários salvos.");
     }
 
-    @GetMapping("/preferencias")
-    public ApiResponse<PreferenciaAgendaDTO> preferencia(Authentication auth) {
-        return ApiResponse.ok(horarios.preferencia(nutricionista(auth)), "Preferência carregada.");
-    }
-
-    @PutMapping("/preferencias")
-    public ApiResponse<PreferenciaAgendaDTO> salvarPreferencia(
-            Authentication auth, @RequestBody PreferenciaAgendaDTO preferencia) {
-        return ApiResponse.ok(horarios.salvarPreferencia(nutricionista(auth), preferencia), "Preferência salva.");
-    }
-
     @GetMapping("/preferencias/notificacoes-email")
     public ApiResponse<PreferenciaEmailAgendaDTO> preferenciaEmail(Authentication auth) {
         return ApiResponse.ok(new PreferenciaEmailAgendaDTO(nutricionista(auth).notificaAgendaPorEmail()),
@@ -97,11 +84,6 @@ public class AgendaNutricionistaController {
                 "Preferência de e-mail salva.");
     }
 
-    @GetMapping("/solicitacoes-avulsas")
-    public ApiResponse<List<SolicitacaoAvulsaDTO>> listarAvulsas(Authentication auth) {
-        return ApiResponse.ok(consultas.listarAvulsasPendentes(nutricionista(auth)), "Solicitações carregadas.");
-    }
-
     @GetMapping("/notificacoes")
     public ApiResponse<List<NotificacaoConsultaDTO>> listarNotificacoes(Authentication auth) {
         return ApiResponse.ok(consultas.listarNotificacoes(nutricionista(auth)), "Notificações carregadas.");
@@ -111,13 +93,6 @@ public class AgendaNutricionistaController {
     public ApiResponse<Void> decidirNotificacao(
             Authentication auth, @PathVariable Integer id, @RequestBody DecisaoConsultaRequest decisao) {
         consultas.decidirNotificacao(nutricionista(auth), id, decisao);
-        return ApiResponse.ok(null, Boolean.TRUE.equals(decisao.aceitar()) ? "Consulta confirmada." : "Consulta recusada.");
-    }
-
-    @PostMapping("/solicitacoes-avulsas/{id}/decisao")
-    public ApiResponse<Void> decidirAvulsa(
-            Authentication auth, @PathVariable Integer id, @RequestBody DecisaoConsultaRequest decisao) {
-        consultas.decidirAvulsa(nutricionista(auth), id, decisao);
         return ApiResponse.ok(null, Boolean.TRUE.equals(decisao.aceitar()) ? "Consulta confirmada." : "Consulta recusada.");
     }
 

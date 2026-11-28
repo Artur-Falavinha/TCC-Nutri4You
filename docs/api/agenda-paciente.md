@@ -2,14 +2,14 @@
 
 Base `/api/v1/agenda`. Todas as rotas exigem JWT de paciente. O paciente pode
 agendar com profissionais vinculados ou escolher um nutricionista que tenha
-aberto a agenda para consultas avulsas.
+horários disponíveis para uma primeira consulta.
 
 ## Rotas
 
 | Método | Rota | Resultado |
 | --- | --- | --- |
-| `GET` | `/nutricionistas` | Retorna `id`, `nome` e `vinculado` de profissionais vinculados e dos que aceitam avulsas com horários cadastrados |
-| `GET` | `/consultas` | Lista pedidos e consultas futuras, consultas em andamento e cancelamentos avulsos até o horário marcado |
+| `GET` | `/nutricionistas` | Retorna `id`, `nome` e `vinculado` de profissionais vinculados e dos disponíveis para primeira consulta com horários cadastrados |
+| `GET` | `/consultas` | Lista pedidos e consultas futuras, consultas em andamento e cancelamentos de primeiras solicitações até o horário marcado |
 | `GET` | `/disponibilidade?nutricionistaId={id}&data=YYYY-MM-DD` | Lista horários livres do dia. Aceita `consultaId` no reagendamento de uma consulta própria |
 | `POST` | `/consultas` | Cria solicitação com status `AGUARDANDO_CONFIRMACAO`; HTTP 201 |
 | `PUT` | `/consultas/{id}/reagendamento` | Altera uma consulta confirmada e volta o status para aguardando confirmação |
@@ -63,8 +63,8 @@ também a duração de 45 minutos. A lista semanal cadastrada pelo nutricionista
 
 - Somente consultas `CONFIRMADA`, futuras e ainda não iniciadas podem ser reagendadas ou canceladas pelo paciente. A resposta inclui `iniciadaEm`; o card mobile oculta ações após o início.
 - Consultas iniciadas continuam visíveis mesmo após o horário agendado, até sua conclusão pelo nutricionista.
-- Uma solicitação sem vínculo nasce como consulta avulsa pendente. A confirmação pelo nutricionista não cria acompanhamento recorrente.
-- Reagendamento requer nova confirmação do nutricionista. Uma avulsa já confirmada pode ser reagendada mesmo quando o profissional deixa de aceitar novos pedidos.
+- Uma solicitação sem vínculo é uma primeira consulta pendente. A confirmação pelo nutricionista ativa o vínculo e integra a consulta ao acompanhamento. O campo legado `avulsa` indica apenas que a solicitação ainda depende dessa confirmação e passa a falso ao confirmar.
+- Reagendamento requer nova confirmação do nutricionista. Após confirmar a primeira consulta, o paciente passa a utilizar o fluxo normal de consultas vinculadas.
 - `versao` é obrigatória nas alterações e protege contra edição concorrente.
 - Horário ocupado ou versão desatualizada retorna `409 CONFLITO`.
 - A criação usa bloqueio pessimista do nutricionista para impedir dupla reserva concorrente.

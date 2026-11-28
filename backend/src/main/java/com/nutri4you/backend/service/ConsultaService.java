@@ -135,11 +135,6 @@ public class ConsultaService {
     }
 
     @Transactional(readOnly = true)
-    public List<SolicitacaoAvulsaDTO> listarAvulsasPendentes(Nutricionista nutricionista) {
-        return consultas.listarAvulsasPendentes(nutricionista.getId(), LocalDateTime.now(clock));
-    }
-
-    @Transactional(readOnly = true)
     public List<NotificacaoConsultaDTO> listarNotificacoes(Nutricionista nutricionista) {
         return consultas.listarNotificacoesPendentes(nutricionista.getId(), LocalDateTime.now(clock));
     }
@@ -151,19 +146,6 @@ public class ConsultaService {
         }
         bloquearAgenda(nutricionista.getId());
         Consulta consulta = consultas.findByIdAndNutricionista_Id(id, nutricionista.getId())
-                .orElseThrow(ConsultaNaoEncontradaException::new);
-        decidirSolicitacao(consulta, decisao.versao(), decisao.aceitar());
-    }
-
-    @Transactional
-    public void decidirAvulsa(Nutricionista nutricionista, Integer id, DecisaoConsultaRequest decisao) {
-        if (decisao == null || decisao.aceitar() == null) {
-            throw new IllegalArgumentException("Informe se deseja confirmar ou recusar a consulta.");
-        }
-        if (decisao.aceitar()) {
-            bloquearAgenda(nutricionista.getId());
-        }
-        Consulta consulta = consultas.findByIdAndNutricionista_IdAndAvulsaTrue(id, nutricionista.getId())
                 .orElseThrow(ConsultaNaoEncontradaException::new);
         decidirSolicitacao(consulta, decisao.versao(), decisao.aceitar());
     }
@@ -216,6 +198,9 @@ public class ConsultaService {
     }
 
     ConsultaResponse atualizarConsulta(Consulta consulta, ConsultaRequest request) {
+        if ("REALIZADA".equals(consulta.getStatus())) {
+            throw new IllegalArgumentException("Consulta concluída está disponível somente para leitura.");
+        }
         validar(request, consulta);
         if (!request.dataHora().equals(consulta.getDataHora())) {
             throw new IllegalArgumentException("Use o fluxo de reagendamento para alterar o horário.");
