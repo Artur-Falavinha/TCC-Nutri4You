@@ -1,9 +1,9 @@
 <section class="workspace">
     <header class="patient-header page-header">
       <div>
-        <h1>{{ data?.paciente?.nome || 'Pacientes' }}</h1>
+        <app-titulo-paciente [nome]="data?.paciente?.nome || 'Pacientes'" [pacienteId]="data?.paciente ? patientId : null" />
         @if (hasRoutePatient && patientId) {
-          <app-patient-tabs [patientId]="patientId" />
+          <app-patient-tabs [patientId]="patientId" (reabrir)="cancel()" />
         }
       </div>
     </header>
@@ -19,7 +19,6 @@
           }
         </div>
       }
-      @if (message) { <p class="anamnese-alert" role="status">{{ message }}</p> }
       @if (auth.authenticated) {
         @if (!hasRoutePatient) {
           <app-ui-select
@@ -32,14 +31,23 @@
           />
         }
         @if (loading) { <p role="status">Carregando...</p> }
-        @else if (!patients.length && !error) { <p>Nenhum paciente vinculado.</p> }
+        @else if (!hasRoutePatient && !patients.length && !error) { <p>Nenhum paciente vinculado.</p> }
 
         @if (data && !loading) {
-          @if (!editing) {
+          @if (!editing && data.rascunho === null && !data.finalizadaEm) {
+            <app-estado-vazio
+              [imagem]="{ url: '/anamnese/sem-anamnese.webp', largura: 840, altura: 504 }"
+              titulo="Nenhuma anamnese cadastrada"
+              descricao="Preencha o questionário para registrar o histórico e os hábitos do paciente."
+            >
+              <app-ui-button label="Nova anamnese" icon="plus-circle" [fullWidth]="false"
+                [disabled]="saving" (click)="startEditing()" />
+            </app-estado-vazio>
+          } @else if (!editing) {
             <section class="anamnese-overview">
               <div>
                 <h2>Anamnese</h2>
-                <p class="anamnese-status">{{ data.status === 'NAO_INICIADA' ? 'Não iniciada' : data.status === 'RASCUNHO' ? 'Rascunho salvo' : 'Finalizada' }}</p>
+                <p class="anamnese-status">{{ data.status === 'RASCUNHO' ? 'Rascunho salvo' : 'Finalizada' }}</p>
                 @if (data.finalizadaEm) { <p>Finalizada em {{ data.finalizadaEm | date:'dd/MM/yyyy HH:mm' }}</p> }
                 @if (data.atualizadaEm) { <p>Última atualização: {{ data.atualizadaEm | date:'dd/MM/yyyy HH:mm' }}</p> }
               </div>
@@ -48,8 +56,7 @@
                   <app-ui-button label="Descartar rascunho" variant="secondary" [fullWidth]="false" (click)="discardDraft()" [disabled]="saving" />
                 }
                 <app-ui-button
-                  [label]="data.rascunho !== null ? 'Continuar rascunho' : data.finalizadaEm ? 'Editar anamnese' : 'Nova Anamnese'"
-                  [icon]="data.rascunho === null && !data.finalizadaEm ? 'plus' : ''"
+                  [label]="data.rascunho !== null ? 'Continuar rascunho' : 'Editar anamnese'"
                   [fullWidth]="false"
                   (click)="startEditing()"
                   [disabled]="saving"
@@ -57,7 +64,7 @@
               </div>
             </section>
             @if (!data.finalizadaEm) {
-              <p class="anamnese-empty">{{ data.rascunho !== null ? 'Anamnese em preenchimento.' : 'Nenhuma anamnese cadastrada.' }}</p>
+              <p class="anamnese-empty">Anamnese em preenchimento.</p>
             } @else {
               @for (section of sections; track section) {
                 <section class="form-section anamnese-summary">
@@ -65,7 +72,7 @@
                   <dl>
                     @for (field of fieldsFor(section); track field.key) {
                       @if (visible(field, data.respostas)) {
-                        <div><dt>{{ field.label }}</dt><dd>{{ display(data.respostas[field.key]) }}</dd></div>
+                        <div><dt>{{ field.label }}</dt><dd>{{ display(field.key, data.respostas[field.key]) }}</dd></div>
                       }
                     }
                   </dl>
@@ -193,8 +200,11 @@
     </div>
 </section>
 @if (confirmacao; as modal) {
-  <app-paciente-dialog [title]="modal.titulo" [description]="modal.descricao" (fechar)="responderConfirmacao(false)">
-    <app-ui-button dialogActions label="Cancelar" variant="outline" (click)="responderConfirmacao(false)" />
-    <app-ui-button dialogActions [label]="modal.confirmar" variant="danger" (click)="responderConfirmacao(true)" />
-  </app-paciente-dialog>
+  <app-dialogo-confirmacao
+    [titulo]="modal.titulo"
+    [descricao]="modal.descricao"
+    [confirmar]="modal.confirmar"
+    icone="note-pencil"
+    [destrutivo]="true"
+    (fechar)="responderConfirmacao(false)" (confirmado)="responderConfirmacao(true)" />
 }

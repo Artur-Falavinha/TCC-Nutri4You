@@ -17,11 +17,6 @@
 <app-page-header titulo="Gestão de Pacientes" />
 
 <main class="pacientes-main">
-  @if (mensagemRelacao) {
-    <div class="pacientes-main__mensagem">
-      <app-form-alert type="success" [message]="mensagemRelacao" />
-    </div>
-  }
 
   @if (state === 'loading') {
     <div class="pacientes-main__state" role="status" aria-label="Carregando pacientes">
@@ -101,7 +96,10 @@
       <ul class="pacientes-table__body" role="list">
         @for (paciente of pacientesPagina; track paciente.id) {
           <li class="pacientes-table__row">
-            <div class="pacientes-table__col-nome font-semibold">{{ paciente.nome }}</div>
+            <div class="pacientes-table__col-nome font-semibold">
+              <app-avatar-paciente [pacienteId]="paciente.relacaoAtiva ? paciente.id : null" />
+              <span>{{ paciente.nome }}</span>
+            </div>
             <div class="pacientes-table__col-email">{{ paciente.email }}</div>
             <div class="pacientes-table__col-telefone">{{ telefoneMascarado(paciente.telefone) }}</div>
             <div class="pacientes-table__col-status">

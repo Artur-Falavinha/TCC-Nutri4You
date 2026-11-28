@@ -2,7 +2,6 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 
 import { ApiService } from '../../core/services/api.service';
-import { ListaCompras } from './dieta.models';
 import { DietaService } from './dieta.service';
 
 describe('DietaService', () => {
@@ -10,8 +9,8 @@ describe('DietaService', () => {
   let service: DietaService;
 
   beforeEach(() => {
-    api = jasmine.createSpyObj<ApiService>('ApiService', ['get']);
-    api.get.and.returnValue(of({} as ListaCompras));
+    api = jasmine.createSpyObj<ApiService>('ApiService', ['delete']);
+    api.delete.and.returnValue(of(undefined));
 
     TestBed.configureTestingModule({
       providers: [DietaService, { provide: ApiService, useValue: api }]
@@ -19,12 +18,11 @@ describe('DietaService', () => {
     service = TestBed.inject(DietaService);
   });
 
-  it('requests the read-only preview for the selected saved plan and period', () => {
-    service.previsualizarListaCompras(12, 76, 14);
+  it('envia a versão ao excluir um plano na ficha do paciente', () => {
+    service.excluirPlano(12, 76, 3);
 
-    expect(api.get).toHaveBeenCalledWith(
-      '/gestao-pacientes/12/planos-alimentares/76/lista-compras',
-      { params: { dias: 14 } }
+    expect(api.delete).toHaveBeenCalledWith(
+      '/gestao-pacientes/12/planos-alimentares/76?versao=3'
     );
   });
 });

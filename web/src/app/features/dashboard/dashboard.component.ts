@@ -1,24 +1,20 @@
-import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, OnInit, inject } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
-import { catchError, of, switchMap, timer } from 'rxjs';
+import { Component, OnInit, inject } from '@angular/core';
+import { AvatarPacienteComponent } from '../../shared/components/avatar-paciente/avatar-paciente.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { DataHoraClinicaPipe } from '../../shared/pipes/data-hora-clinica.pipe';
 
 import { Agenda, ClinicoService, Contagem } from '../clinico/clinico.service';
-import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import { criarLinkGoogleAgenda } from '../agenda/google-calendar-link';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [DatePipe, PageHeaderComponent, RouterLink],
+  imports: [DataHoraClinicaPipe, PageHeaderComponent, AvatarPacienteComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent implements OnInit {
+  readonly googleAgendaUrl = criarLinkGoogleAgenda;
   private readonly clinico = inject(ClinicoService);
-  private readonly notificacoes = inject(NotificacoesService);
-  private readonly destroyRef = inject(DestroyRef);
-  solicitacoesPendentes = 0;
 
   readonly raio = 68;
   readonly circunferencia = 2 * Math.PI * 68;
@@ -29,10 +25,6 @@ export class DashboardComponent implements OnInit {
   erro = '';
 
   ngOnInit(): void {
-    timer(0, 30_000).pipe(
-      switchMap(() => this.notificacoes.listar().pipe(catchError(() => of([])))),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(itens => { this.solicitacoesPendentes = itens.length; });
     this.clinico.agenda().subscribe({
       next: agenda => {
         this.agenda = agenda;

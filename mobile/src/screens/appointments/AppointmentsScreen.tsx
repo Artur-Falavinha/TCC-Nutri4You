@@ -1,9 +1,11 @@
+import { Feather } from '@expo/vector-icons';
 import { CommonActions, useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -13,7 +15,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '../../components/layout/AppHeader';
-import { useAppAlert } from '../../components/feedback/AppAlertProvider';
+import { SectionCardHeader, sectionCardStyles } from '../../components/layout/SectionCardHeader';
+import { toast } from '../../components/feedback/toast';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { ApiError } from '../../core/api/api-response.types';
 import { logout } from '../../core/auth/auth.service';
@@ -23,10 +26,9 @@ import {
   listAgendaNutritionists,
   listAppointments
 } from '../../features/appointments/appointments.service';
-import { dateKeyFromLocalDateTime, toDateKey } from '../../features/appointments/appointments-date.util';
+import { dateKeyFromLocalDateTime } from '../../features/appointments/appointments-date.util';
 import { AgendaNutritionist, Appointment } from '../../features/appointments/appointments.models';
 import { AppointmentCard } from '../../features/appointments/components/AppointmentCard';
-import { CalendarCard } from '../../features/appointments/components/CalendarCard';
 import { NutritionistCatalog } from '../../features/appointments/components/NutritionistCatalog';
 import { CancelAppointmentModal } from '../../features/appointments/components/CancelAppointmentModal';
 import { buildGoogleCalendarUrl } from '../../features/appointments/google-calendar-link';
@@ -40,15 +42,11 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 export function AppointmentsScreen({ navigation }: Props) {
-  const { showAlert } = useAppAlert();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [nutritionists, setNutritionists] = useState<AgendaNutritionist[]>([]);
-  const [selectedNutritionistId, setSelectedNutritionistId] = useState<number | null>(null);
   const [userName, setUserName] = useState('Paciente');
-  const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
   const [pendingCancellation, setPendingCancellation] = useState<Appointment | null>(null);
@@ -67,12 +65,7 @@ export function AppointmentsScreen({ navigation }: Props) {
         carregarPerfil()
       ]);
       setAppointments(appointmentData ?? []);
-      const options = nutritionistData ?? [];
-      setNutritionists(options);
-      setSelectedNutritionistId((previous) => {
-        if (options.some((item) => item.id === previous)) return previous;
-        return options.length === 1 && options[0].vinculado ? options[0].id : null;
-      });
+      setNutritionists(nutritionistData ?? []);
       setUserName(profile.nome || 'Paciente');
     } catch (failure) {
       setError(errorMessage(failure, 'Não foi possível carregar a agenda.'));
@@ -88,42 +81,19 @@ export function AppointmentsScreen({ navigation }: Props) {
     }, [load])
   );
 
-  const appointmentDates = useMemo(
-    () => new Set(appointments.filter((item) => !['CANCELADA', 'RECUSADA'].includes(item.status))
-      .map((item) => dateKeyFromLocalDateTime(item.dataHora))),
-    [appointments]
-  );
-
-  const selectedNutritionist = nutritionists.find((item) => item.id === selectedNutritionistId);
-
-  const openAvailability = (date: string, nutritionistId: number, appointment?: Appointment) => {
-    setSelectedDate(date);
-    navigation.navigate('HorariosDisponiveis', {
-      nutricionistaId: nutritionistId,
-      data: date,
-      consultaId: appointment?.id,
-      versao: appointment?.versao
-    });
-  };
-
   const confirmCancellation = async () => {
     if (!pendingCancellation) {
       return;
     }
-    setCancelling(true);
     setError('');
     try {
       await cancelAppointment(pendingCancellation.id, pendingCancellation.versao);
       setPendingCancellation(null);
       await load(true);
-      showAlert(
-        'Consulta cancelada',
-        'Se você adicionou essa consulta ao Google Agenda, remova o evento manualmente.'
-      );
+      toast.sucesso('Consulta cancelada. Se você adicionou essa consulta ao Google Agenda, remova o evento manualmente.');
     } catch (failure) {
-      setError(errorMessage(failure, 'Não foi possível cancelar a consulta.'));
-    } finally {
-      setCancelling(false);
+      setPendingCancellation(null);
+      toast.erro(errorMessage(failure, 'Não foi possível cancelar a consulta.'));
     }
   };
 
@@ -132,7 +102,7 @@ export function AppointmentsScreen({ navigation }: Props) {
     try {
       await Linking.openURL(buildGoogleCalendarUrl(appointment));
     } catch (failure) {
-      setError(errorMessage(failure, 'Não foi possível abrir o Google Agenda.'));
+      toast.erro(errorMessage(failure, 'Não foi possível abrir o Google Agenda.'));
     }
   };
 
@@ -174,16 +144,69 @@ export function AppointmentsScreen({ navigation }: Props) {
       navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] }));
       return;
     }
-    setError('Este módulo ainda não está disponível nesta etapa.');
+    toast.informacao('Este módulo ainda não está disponível nesta etapa.');
   };
 
+  const secaoConsultas = (
+    <View style={sectionCardStyles.superficie} testID="agenda-consultas">
+      <SectionCardHeader icone="clipboard" titulo="Consultas agendadas" />
+
+      {error ? (
+        <View style={styles.erro}>
+          <Text style={styles.textoErro} accessibilityRole="alert">{error}</Text>
+          <Pressable
+            style={({ pressed }) => [styles.recarregar, pressed && styles.recarregarPressionado]}
+            accessibilityRole="button"
+            onPress={() => void load()}
+          >
+            <Text style={styles.textoRecarregar}>Recarregar agenda</Text>
+          </Pressable>
+        </View>
+      ) : loading ? (
+        <View style={styles.loading} aria-busy>
+          <ActivityIndicator color={colors.brand} />
+          <Text style={styles.loadingText}>Carregando consultas...</Text>
+        </View>
+      ) : appointments.length === 0 ? (
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIcon} aria-hidden>
+            <Feather name="inbox" size={20} color={colors.brandDeep} />
+          </View>
+          <View style={styles.emptyContent}>
+            <Text style={styles.emptyTitle}>Nenhuma consulta agendada</Text>
+            <Text style={styles.emptyText}>
+              Seus pedidos e consultas confirmadas aparecem aqui.
+            </Text>
+          </View>
+        </View>
+      ) : (
+        appointments.map((appointment) => (
+          <AppointmentCard
+            key={appointment.id}
+            appointment={appointment}
+            onAddToCalendar={(item) => void addToGoogleCalendar(item)}
+            onReschedule={(item) => navigation.navigate('HorariosDisponiveis', {
+              data: dateKeyFromLocalDateTime(item.dataHora),
+              nutricionistaId: item.nutricionistaId,
+              consultaId: item.id,
+              versao: item.versao
+            })}
+            onCancel={setPendingCancellation}
+          />
+        ))
+      )}
+    </View>
+  );
+
   return (
-    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
       <AppHeader onOpenMenu={() => setMenuVisible(true)} />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -192,60 +215,15 @@ export function AppointmentsScreen({ navigation }: Props) {
           />
         }
       >
-        {!loading && !error && (
+        <Text style={styles.tituloPagina} accessibilityRole="header" aria-level={1}>Agenda</Text>
+        {!loading && !error ? (
           <NutritionistCatalog
             nutritionists={nutritionists}
-            selected={selectedNutritionist}
-            onSelect={setSelectedNutritionistId}
-          />
-        )}
-        {selectedNutritionist && (
-          <CalendarCard
-            selectedDate={selectedDate}
-            appointmentDates={appointmentDates}
-            onSelectDate={(date) => openAvailability(date, selectedNutritionist.id)}
-          />
-        )}
-
-        <View style={styles.appointmentsSection}>
-          <Text style={styles.sectionTitle}>Consultas Agendadas</Text>
-
-          {error ? (
-            <Text style={styles.error} accessibilityRole="alert">
-              {error}
-            </Text>
-          ) : loading ? (
-            <View style={styles.loading}>
-              <ActivityIndicator color={colors.brand} />
-              <Text style={styles.loadingText}>Carregando consultas...</Text>
-            </View>
-          ) : appointments.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>Nenhuma consulta agendada</Text>
-              <Text style={styles.emptyText}>
-                {selectedNutritionist
-                  ? 'Escolha um dia no calendário para solicitar um horário.'
-                  : 'Seus pedidos e consultas confirmadas aparecem aqui.'}
-              </Text>
-            </View>
-          ) : (
-            appointments.map((appointment) => (
-              <AppointmentCard
-                key={appointment.id}
-                appointment={appointment}
-                onAddToCalendar={(item) => void addToGoogleCalendar(item)}
-                onReschedule={(item) =>
-                  openAvailability(
-                    dateKeyFromLocalDateTime(item.dataHora),
-                    item.nutricionistaId,
-                    item
-                  )
-                }
-                onCancel={setPendingCancellation}
-              />
-            ))
-          )}
-        </View>
+            onSelect={(nutricionistaId) => navigation.navigate('HorariosDisponiveis', { nutricionistaId })}
+          >
+            {secaoConsultas}
+          </NutritionistCatalog>
+        ) : secaoConsultas}
       </ScrollView>
 
       <SideMenu
@@ -258,9 +236,8 @@ export function AppointmentsScreen({ navigation }: Props) {
 
       <CancelAppointmentModal
         appointment={pendingCancellation}
-        loading={cancelling}
         onKeep={() => setPendingCancellation(null)}
-        onConfirm={() => void confirmCancellation()}
+        onConfirm={confirmCancellation}
       />
     </SafeAreaView>
   );
@@ -276,22 +253,19 @@ const styles = StyleSheet.create({
   },
   content: {
     width: '100%',
-    maxWidth: 428,
+    maxWidth: 560,
+    flexGrow: 1,
     alignSelf: 'center',
     paddingHorizontal: spacing.md,
-    paddingBottom: spacing.lg,
-    gap: spacing.lg
-  },
-  appointmentsSection: {
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
     gap: spacing.md
   },
-  sectionTitle: {
-    paddingHorizontal: spacing.xs,
-    color: colors.text,
-    fontFamily: fontFamily.bold,
-    fontSize: 18,
-    lineHeight: 28,
-    letterSpacing: -0.45
+  tituloPagina: {
+    color: colors.brandDeep,
+    fontFamily: fontFamily.extrabold,
+    fontSize: 28,
+    lineHeight: 36
   },
   loading: {
     minHeight: 96,
@@ -304,20 +278,47 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.regular,
     fontSize: 14
   },
-  error: {
-    color: colors.dangerText,
+  erro: {
     backgroundColor: colors.dangerButtonBackground,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     padding: spacing.sm,
-    fontFamily: fontFamily.regular,
-    fontSize: 13
+    gap: spacing.sm
+  },
+  textoErro: {
+    color: colors.dangerText,
+    fontFamily: fontFamily.semibold,
+    fontSize: 14,
+    lineHeight: 21
+  },
+  recarregar: {
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+    minHeight: 48,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.card
+  },
+  recarregarPressionado: { backgroundColor: colors.dangerBackground },
+  textoRecarregar: { color: colors.dangerText, fontFamily: fontFamily.bold, fontSize: 14 },
+  emptyContent: {
+    flex: 1,
+    gap: spacing.xxs
   },
   emptyState: {
-    backgroundColor: colors.card,
+    backgroundColor: colors.page,
     borderRadius: radius.md,
-    padding: spacing.xl,
+    padding: spacing.sm,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs
+    gap: spacing.sm
+  },
+  emptyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.pill,
+    backgroundColor: colors.subtle,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   emptyTitle: {
     color: colors.text,
@@ -329,7 +330,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontFamily: fontFamily.regular,
     fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center'
+    lineHeight: 21
   }
 });

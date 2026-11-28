@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 
+import { ToastService } from '../../../../core/services/toast.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ApiErrorResponse } from '../../../../core/models/api-response.model';
 import { AuthFormCardComponent } from '../../../../shared/components/auth-form-card/auth-form-card.component';
@@ -27,12 +28,12 @@ import { resolveFieldError } from '../../../../shared/utils/form-field-error.uti
   styleUrl: './forgot-password.component.css'
 })
 export class ForgotPasswordComponent {
+  private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
 
   sending = false;
   submitted = false;
-  errorMessage = '';
   successMessage = '';
 
   form = this.fb.nonNullable.group({
@@ -48,7 +49,6 @@ export class ForgotPasswordComponent {
     }
 
     this.sending = true;
-    this.errorMessage = '';
     this.successMessage = '';
 
     this.authService
@@ -59,7 +59,7 @@ export class ForgotPasswordComponent {
           this.successMessage = mensagem;
         },
         error: (error: ApiErrorResponse) => {
-          this.errorMessage = error.message ?? 'Não foi possível enviar o token.';
+          this.toast.erro(error.message ?? 'Não foi possível enviar o token.');
         }
       });
   }

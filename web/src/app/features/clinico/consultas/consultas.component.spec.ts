@@ -1,22 +1,18 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
+import { of, throwError } from 'rxjs';
 
-import { AnamneseService } from '../../anamnese/anamnese.service';
-import { DietaService } from '../../dieta/dieta.service';
-import { Plano } from '../../dieta/dieta.models';
+import { ToastService } from '../../../core/services/toast.service';
 import { PacientesService } from '../../../core/services/pacientes.service';
 import { ConsultasComponent } from './consultas.component';
-import { AtendimentoClinico, AtendimentosService, ConsultasService } from './consultas.service';
+import { Consulta, ConsultasService } from './consultas.service';
 
 describe('ConsultasComponent', () => {
   let fixture: ComponentFixture<ConsultasComponent>;
   let component: ConsultasComponent;
-  let atendimentos: jasmine.SpyObj<AtendimentosService>;
-  let dieta: jasmine.SpyObj<DietaService>;
-  let anamnese: jasmine.SpyObj<AnamneseService>;
+  let consultas: jasmine.SpyObj<ConsultasService>;
 
-  const atendimentoEmAndamento: AtendimentoClinico = {
+  const consultaEmAndamento: Consulta = {
     id: 90,
     idPaciente: 12,
     dataHora: '2025-01-15T14:30:00',
@@ -26,46 +22,24 @@ describe('ConsultasComponent', () => {
     iniciadaEm: '2025-01-15T14:30:00-03:00',
     podeIniciar: false,
     avaliacao: null,
-    pacienteNome: 'Paciente de teste',
-    pacienteId: 12,
     contextoClinico: null
   };
 
-  const atendimentoConcluido: AtendimentoClinico = {
-    ...atendimentoEmAndamento,
+  const consultaConcluida: Consulta = {
+    ...consultaEmAndamento,
     status: 'REALIZADA',
     versao: 4
   };
 
-  const dietaRascunho: Plano = {
-    id: 21,
-    pacienteId: 12,
-    nutricionistaId: 5,
-    nutricionistaNome: 'Nutricionista de teste',
-    titulo: 'Plano em rascunho',
-    orientacoes: null,
-    status: 'RASCUNHO',
-    versao: 1,
-    vigenciaInicio: null,
-    vigenciaFim: null,
-    publicadoEm: null,
-    metas: null,
-    totais: { kcal: 0, proteinas: 0, carboidratos: 0, gorduras: 0, fibras: null },
-    refeicoes: []
-  };
-
   beforeEach(async () => {
-    atendimentos = jasmine.createSpyObj('AtendimentosService', ['buscar', 'salvar']);
-    atendimentos.buscar.and.returnValues(of(atendimentoEmAndamento), of(atendimentoConcluido));
-    atendimentos.salvar.and.returnValue(of(atendimentoConcluido));
-    dieta = jasmine.createSpyObj('DietaService', ['listarPlanos']);
-    dieta.listarPlanos.and.returnValue(of([dietaRascunho]));
-    anamnese = jasmine.createSpyObj('AnamneseService', ['fields']);
-    anamnese.fields.and.returnValue(of([]));
-
+    consultas = jasmine.createSpyObj('ConsultasService', ['buscar', 'listar', 'salvar', 'acao', 'verificarAcesso']);
+    consultas.buscar.and.returnValues(of(consultaEmAndamento), of(consultaConcluida));
+    consultas.salvar.and.returnValue(of(consultaConcluida));
+    consultas.verificarAcesso.and.returnValue(of(undefined));
     await TestBed.configureTestingModule({
       imports: [ConsultasComponent],
       providers: [
+        { provide: ToastService, useValue: jasmine.createSpyObj('ToastService', ['sucesso', 'erro', 'aviso', 'informacao']) },
         provideRouter([]),
         {
           provide: ActivatedRoute,
@@ -73,18 +47,16 @@ describe('ConsultasComponent', () => {
             snapshot: {
               paramMap: convertToParamMap({ id: '12', consultaId: '90' }),
               queryParamMap: convertToParamMap({}),
-              data: { atendimento: true, editor: true }
+              data: { editor: true }
             }
           }
         },
-        { provide: PacientesService, useValue: jasmine.createSpyObj('PacientesService', ['buscarPorId']) },
-        { provide: ConsultasService, useValue: jasmine.createSpyObj('ConsultasService', ['buscar', 'listar', 'salvar', 'acao']) },
-        { provide: AtendimentosService, useValue: atendimentos },
-        { provide: AnamneseService, useValue: anamnese },
-        { provide: DietaService, useValue: dieta }
+        { provide: PacientesService, useValue: jasmine.createSpyObj('PacientesService', { buscarPorId: of({ id: 12, nome: 'Paciente de teste' }), carregarFoto: of(null) }) },
+        { provide: ConsultasService, useValue: consultas },
       ]
     }).compileComponents();
 
+    spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
     fixture = TestBed.createComponent(ConsultasComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
@@ -93,52 +65,151 @@ describe('ConsultasComponent', () => {
     component.form.medidas.altura = '170';
   });
 
-  it('asks before completing an appointment with a draft and preserves it as read only', () => {
-    component.salvar();
+  it('mantém aprovação na lista sem abrir consulta pendente e permite abrir após aprovar', () => {
+    fixture.destroy();
+    TestBed.inject(ActivatedRoute).snapshot.data['editor'] = false;
+    consultas.listar.and.returnValue(of({ pagina: 0, total: 2, totalPaginas: 1, itens: [
+      { ...consultaEmAndamento, id: 91, status: 'AGUARDANDO_CONFIRMACAO', iniciadaEm: null },
+      consultaEmAndamento
+    ] }));
+    fixture = TestBed.createComponent(ConsultasComponent);
+    fixture.detectChanges();
+    const linhas = fixture.nativeElement.querySelectorAll('.consulta-row') as NodeListOf<HTMLElement>;
+    expect(linhas[0].textContent).toContain('Confirmar');
+    expect(linhas[0].textContent).toContain('Recusar');
+    expect(linhas[0].textContent).not.toContain('Cancelar');
+    expect(linhas[0].querySelector('a[aria-label^="Abrir consulta"]')).toBeNull();
+    expect(linhas[1].querySelector('a[aria-label^="Abrir consulta"]')).not.toBeNull();
+  });
+
+  it('exibe data e hora da consulta em formato brasileiro e mantém o ISO ao salvar', fakeAsync(() => {
+    tick();
+    fixture.detectChanges();
+    const pagina = fixture.nativeElement as HTMLElement;
+    expect(pagina.querySelector('.consulta-meta time')?.textContent).toContain('15/01/2025 14:30');
+    expect(pagina.querySelector('#dataHora')).toBeNull();
+    expect(component.form.payload().dataHora).toBe(consultaEmAndamento.dataHora);
+  }));
+
+  it('liga o seletor ao campo de gordura e apresenta a explicação junto ao input', fakeAsync(() => {
+    fixture.detectChanges();
+    tick();
+    const pagina = fixture.nativeElement as HTMLElement;
+    const seletor = pagina.querySelector<HTMLSelectElement>('#modoPercentualGordura')!;
+    const gordura = pagina.querySelector<HTMLInputElement>('#percentualGordura')!;
+    expect(seletor.selectedOptions[0].textContent?.trim()).toBe('Informar manualmente');
+    expect(gordura.readOnly).toBeFalse();
+    expect(gordura.disabled).toBeFalse();
+    for (const id of ['imc', 'massaMagraKg', 'massaGordaKg']) {
+      const campo = pagina.querySelector<HTMLInputElement>(`#${id}`)!;
+      expect(campo.disabled).withContext(id).toBeTrue();
+      campo.focus();
+      expect(document.activeElement).not.toBe(campo);
+    }
+    expect(pagina.querySelector('#imc-help')?.textContent).toContain('Calculado automaticamente.');
+
+    seletor.value = 'AUTOMATICO';
+    seletor.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    tick();
     fixture.detectChanges();
 
-    const root = fixture.nativeElement as HTMLElement;
-    const dialog = root.querySelector('app-paciente-dialog [role="dialog"]');
-    expect(dialog?.textContent).toContain('preservado sem publicação');
-    expect(dialog?.textContent).toContain('somente para leitura');
-    expect(dieta.listarPlanos).toHaveBeenCalledOnceWith(12, 90);
-    expect(atendimentos.salvar).not.toHaveBeenCalled();
+    expect(gordura.readOnly).toBeTrue();
+    expect(gordura.disabled).toBeTrue();
+    expect(gordura.getAttribute('aria-describedby')).toBe('percentualGordura-help');
+    expect(pagina.querySelector('#percentualGordura-help')?.textContent).toContain('Preencha as sete pregas');
+    expect(pagina.querySelector<HTMLInputElement>('#massaGordaKg')?.readOnly).toBeTrue();
 
-    const confirm = Array.from(root.querySelectorAll<HTMLButtonElement>('app-paciente-dialog button'))
-      .find(button => button.textContent?.trim() === 'Concluir e manter rascunho');
-    expect(confirm).toBeTruthy();
-    confirm!.click();
+    seletor.value = 'MANUAL';
+    seletor.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+    expect(gordura.disabled).toBeFalse();
+    expect(gordura.readOnly).toBeFalse();
+  }));
+
+  it('permite concluir a consulta iniciada e bloqueia novas alterações após salvar', () => {
+    component.salvar(true);
     fixture.detectChanges();
 
-    expect(atendimentos.salvar).toHaveBeenCalledOnceWith(90, jasmine.objectContaining({ status: 'REALIZADA' }));
-    expect(root.querySelector('app-paciente-dialog')).toBeNull();
+    expect(consultas.salvar).toHaveBeenCalledOnceWith(12, 90, jasmine.objectContaining({ status: 'REALIZADA' }));
     expect(component.consultaAtual?.status).toBe('REALIZADA');
     expect(component.podeEditar).toBeFalse();
-  });
-
-  it('returns to the appointment without completing or discarding the draft', () => {
+    expect(fixture.nativeElement.querySelector('button[type="submit"]')).toBeNull();
     component.salvar();
-    fixture.detectChanges();
-
-    const root = fixture.nativeElement as HTMLElement;
-    const back = Array.from(root.querySelectorAll<HTMLButtonElement>('app-paciente-dialog button'))
-      .find(button => button.textContent?.trim() === 'Voltar ao atendimento');
-    expect(back).toBeTruthy();
-    back!.click();
-    fixture.detectChanges();
-
-    expect(root.querySelector('app-paciente-dialog')).toBeNull();
-    expect(component.form.status).toBe('REALIZADA');
-    expect(atendimentos.salvar).not.toHaveBeenCalled();
+    expect(consultas.salvar).toHaveBeenCalledTimes(1);
   });
 
-  it('completes without opening the warning when there is no draft', () => {
-    dieta.listarPlanos.and.returnValue(of([]));
-
+  it('salva andamento sem medidas, permite sair e recupera os dados ao reabrir', () => {
+    component.form.medidas.peso = '';
+    component.form.medidas.altura = '';
+    component.form.observacao = 'Continuar avaliação depois';
+    const salva = { ...consultaEmAndamento, observacao: component.form.observacao, versao: 4 };
+    consultas.salvar.and.returnValue(of(salva));
     component.salvar();
+    expect(consultas.salvar).toHaveBeenCalledOnceWith(12, 90, jasmine.objectContaining({ status: 'CONFIRMADA', avaliacao: null }));
+    expect(component.podeEditar).toBeTrue();
+    expect(component.alterado).toBeFalse();
+    expect(component.podeSair()).toBeTrue();
+    consultas.buscar.and.returnValue(of(salva));
+    component.carregar();
+    expect(component.form.observacao).toBe('Continuar avaliação depois');
+    expect(component.statusLabel(component.consultaAtual!.status, component.consultaAtual!.iniciadaEm)).toBe('Em atendimento');
+  });
+
+  it('exige medidas para concluir e mantém a consulta em andamento quando inválida', () => {
+    component.form.medidas.peso = '';
+    component.form.medidas.altura = '';
+    component.salvar(true);
+    expect(consultas.salvar).not.toHaveBeenCalled();
+    expect(component.errors['peso']).toBeTruthy();
+    expect(component.podeEditar).toBeTrue();
+  });
+
+  it('abre consulta concluída somente para leitura e não envia alterações', fakeAsync(() => {
+    fixture.destroy();
+    consultas.buscar.and.returnValue(of(consultaConcluida));
+    fixture = TestBed.createComponent(ConsultasComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    tick();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('app-paciente-dialog')).toBeNull();
-    expect(atendimentos.salvar).toHaveBeenCalledOnceWith(90, jasmine.objectContaining({ status: 'REALIZADA' }));
-  });
+    const pagina = fixture.nativeElement as HTMLElement;
+    expect(pagina.textContent).toContain('Consulta concluída — somente leitura.');
+    expect(pagina.querySelector<HTMLFieldSetElement>('fieldset')?.disabled).toBeTrue();
+    expect(pagina.querySelector('button[type="submit"]')).toBeNull();
+    expect(pagina.querySelector<HTMLInputElement>('#peso')?.matches(':disabled')).toBeTrue();
+    component.form.status = 'CONFIRMADA';
+    component.form.observacao = 'Tentativa de alteração';
+    component.salvar();
+    expect(consultas.salvar).not.toHaveBeenCalled();
+  }));
+
+  it('informa o encerramento e remove o formulário durante o atendimento aberto', fakeAsync(() => {
+    fixture.destroy();
+    consultas.buscar.and.returnValue(of(consultaEmAndamento));
+    consultas.verificarAcesso.and.returnValue(throwError(() => ({
+      status: 403,
+      error: 'VINCULO_ENCERRADO',
+      message: 'O vínculo com este paciente foi encerrado.'
+    })));
+    fixture = TestBed.createComponent(ConsultasComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    component.form.observacao = 'Anotação temporária';
+
+    tick(15_000);
+    fixture.detectChanges();
+
+    const pagina = fixture.nativeElement as HTMLElement;
+    expect(consultas.verificarAcesso).toHaveBeenCalledOnceWith(12, 90);
+    expect(pagina.textContent).toContain('O vínculo com este paciente foi encerrado.');
+    expect(pagina.querySelector('form')).toBeNull();
+    expect(pagina.querySelector('a[href="/pacientes"]')).not.toBeNull();
+    expect(component.form.observacao).toBe('');
+    expect(component.podeSair()).toBeTrue();
+    fixture.destroy();
+  }));
 });

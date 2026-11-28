@@ -1,26 +1,29 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { Component, DestroyRef, HostListener, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, CanDeactivateFn, RouterLink } from '@angular/router';
-import { EMPTY, Observable, Subject, catchError, forkJoin, of, switchMap, take, throwError } from 'rxjs';
+import { ActivatedRoute, CanDeactivateFn } from '@angular/router';
+import { EMPTY, Observable, Subject, catchError, forkJoin, of, switchMap, take } from 'rxjs';
 
+import { ToastService } from '../../core/services/toast.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
 import { Paciente } from '../../core/models/paciente.models';
 import { PacientesService } from '../../core/services/pacientes.service';
+import { EstadoVazioComponent } from '../../shared/components/estado-vazio/estado-vazio.component';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
 import { PatientTabsComponent } from '../../shared/components/patient-tabs/patient-tabs.component';
+import { TituloPacienteComponent } from '../../shared/components/avatar-paciente/titulo-paciente.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
+import { UiInputComponent } from '../../shared/components/ui-input/ui-input.component';
 import { UiSelectComponent } from '../../shared/components/ui-select/ui-select.component';
-import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog/paciente-dialog.component';
+import { dataIsoValida, formatarDataBr } from '../../shared/utils/data-br.util';
+import { DialogoConfirmacaoComponent } from '../../shared/components/dialogo-confirmacao/dialogo-confirmacao.component';
 import { BuscaAlimentosComponent } from './busca-alimentos.component';
 import {
   Alimento,
   CampoNumericoEdicao,
   DistribuicaoMacros,
   ItemEdicao,
-  ItemListaCompras,
-  ListaCompras,
   MetasEdicao,
   MetasNutricionais,
   Nutrientes,
@@ -31,7 +34,6 @@ import {
   RefeicaoEdicao,
   SubstitutoEdicao
 } from './dieta.models';
-import { AtendimentosService } from '../clinico/consultas/consultas.service';
 import { Avaliacao, ClinicoService } from '../clinico/clinico.service';
 import { Anamnese, Answers } from '../anamnese/anamnese.models';
 import { AnamneseService } from '../anamnese/anamnese.service';
@@ -39,7 +41,6 @@ import { DietaService } from './dieta.service';
 
 type TelaDieta = 'lista' | 'detalhe' | 'editor';
 type FiltrosBuscaAlimentos = { nome: string; categoria: string; pagina: number } | null;
-type PedidoListaCompras = { planoId: number; dias: number } | null;
 type MacroPercentual = 'percentualProteinas' | 'percentualCarboidratos' | 'percentualGorduras';
 
 interface ReferenciaEnergetica {
@@ -54,25 +55,27 @@ interface ReferenciaEnergetica {
 
 const NUTRIENTES_VAZIOS: Nutrientes = { kcal: 0, proteinas: 0, carboidratos: 0, gorduras: 0, fibras: 0 };
 const MAXIMO_SUBSTITUTOS = 10;
+const FORMATO_DATA_CLINICA = new Intl.DateTimeFormat('sv-SE', {
+  timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit'
+});
 
 @Component({
   selector: 'app-dieta',
-  imports: [DatePipe, FormsModule, RouterLink, PatientTabsComponent, FormAlertComponent, UiButtonComponent, UiSelectComponent, BuscaAlimentosComponent, PacienteDialogComponent],
+  imports: [DatePipe, NgTemplateOutlet, FormsModule, PatientTabsComponent, TituloPacienteComponent, FormAlertComponent,
+    EstadoVazioComponent, UiButtonComponent, UiInputComponent, UiSelectComponent, BuscaAlimentosComponent, DialogoConfirmacaoComponent],
   templateUrl: './dieta.component.html',
   styleUrl: './dieta.component.css'
 })
 export class DietaComponent implements OnInit {
+  private readonly toast = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
   private readonly pacientes = inject(PacientesService);
   private readonly dieta = inject(DietaService);
-  private readonly atendimentos = inject(AtendimentosService);
   private readonly clinico = inject(ClinicoService);
   private readonly anamneses = inject(AnamneseService);
   private readonly destroyRef = inject(DestroyRef);
   readonly patientId = Number(this.route.snapshot.paramMap.get('id'));
 
-  readonly atendimentoId = this.route.snapshot.queryParamMap.has('atendimentoId') ? Number(this.route.snapshot.queryParamMap.get('atendimentoId')) : null;
-  podeEditarAtendimento = false;
   paciente: Pick<Paciente, 'nome'> & { dataNascimento?: string; sexo?: string } | null = null;
   anamnese: Anamnese | null = null;
   avaliacaoAtual: Avaliacao | null = null;
@@ -89,6 +92,7 @@ export class DietaComponent implements OnInit {
   planoEmEdicaoId: number | null = null;
   tela: TelaDieta = 'lista';
   readonly dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+  readonly formatarData = formatarDataBr;
   dia = 1;
   get refeicoesEdicao(): RefeicaoEdicao[] {
     return this.form.refeicoes.filter(r => r.diaSemana == null || r.diaSemana === this.dia);
@@ -179,9 +183,9 @@ export class DietaComponent implements OnInit {
   salvando = false;
   publicando = false;
   planoParaPublicar: Plano | null = null;
+  origemEdicao: Plano | null = null;
   excluindo = false;
   erro = '';
-  mensagem = '';
   errors: Record<string, string> = {};
   readonly categorias: string[] = [];
   categoriaErro = '';
@@ -189,18 +193,11 @@ export class DietaComponent implements OnInit {
   modalAlimentos = false;
   alimentosCarregando = false;
   alimentosErro = '';
-  mensagemAlimento = '';
   paginaAlimentos: PaginaAlimentos | null = null;
   buscaAlimento = '';
   categoriaSelecionada = '';
   refeicaoSelecionada: number | null = null;
   modoBuscaSubstituto = false;
-  modalListaCompras = false;
-  diasListaCompras: number | null = 7;
-  listaCompras: ListaCompras | null = null;
-  itensListaComprasPorCategoria: { categoria: string; itens: ItemListaCompras[] }[] = [];
-  listaComprasCarregando = false;
-  listaComprasErro = '';
   private original = this.assinatura();
   private chaveAtual = 0;
   private refeicaoCopiada: {
@@ -213,10 +210,7 @@ export class DietaComponent implements OnInit {
     }[];
   } | null = null;
   private readonly buscasAlimentos$ = new Subject<FiltrosBuscaAlimentos>();
-  private readonly buscasListaCompras$ = new Subject<PedidoListaCompras>();
   private elementoAtivoAntesDaBusca: HTMLElement | null = null;
-  private elementoAtivoAntesDaListaCompras: HTMLElement | null = null;
-  private elementoAtivoAntesDaPublicacao: HTMLElement | null = null;
   private substitutoSelecionado: { refeicaoChave: number; itemChave: number } | null = null;
   private macroAutopreenchido: MacroPercentual | null = null;
   modalDescartarAlteracoes = false;
@@ -228,16 +222,8 @@ export class DietaComponent implements OnInit {
     return this.refeicaoCopiada !== null && this.form.refeicoes.length < 140;
   }
 
-  get periodoListaComprasValido(): boolean {
-    return this.diasListaCompras !== null
-      && Number.isInteger(this.diasListaCompras)
-      && this.diasListaCompras >= 1
-      && this.diasListaCompras <= 30;
-  }
-
   ngOnInit(): void {
     this.configurarBuscaAlimentos();
-    this.configurarPreviaListaCompras();
     this.carregar();
   }
 
@@ -249,18 +235,11 @@ export class DietaComponent implements OnInit {
     }
     this.carregando = true;
     this.erro = '';
-    const dadosPaciente = this.atendimentoId === null ? this.pacientes.buscarPorId(this.patientId)
-      : this.atendimentos.buscar(this.atendimentoId).pipe(switchMap(a => {
-        if (a.pacienteId !== this.patientId || !a.iniciadaEm) return throwError(() => new Error('Atendimento indisponível.'));
-        this.podeEditarAtendimento = a.status === 'CONFIRMADA';
-        return of({ nome: a.pacienteNome, dataNascimento: a.contextoClinico?.dataNascimento ?? undefined,
-          sexo: a.contextoClinico?.sexo ?? undefined });
-      }));
     forkJoin({
-      paciente: dadosPaciente,
-      planos: this.dieta.listarPlanos(this.patientId, this.atendimentoId),
-      anamnese: this.atendimentoId === null ? this.anamneses.get(this.patientId).pipe(catchError(() => of(null))) : of(null),
-      historico: this.atendimentoId === null ? this.clinico.historico(this.patientId).pipe(catchError(() => of(null))) : of(null)
+      paciente: this.pacientes.buscarPorId(this.patientId),
+      planos: this.dieta.listarPlanos(this.patientId),
+      anamnese: this.anamneses.get(this.patientId).pipe(catchError(() => of(null))),
+      historico: this.clinico.historico(this.patientId).pipe(catchError(() => of(null)))
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ paciente, planos, anamnese, historico }) => {
         this.paciente = paciente;
@@ -312,26 +291,35 @@ export class DietaComponent implements OnInit {
 
   atualizarPercentual(chave: MacroPercentual, valor: CampoNumericoEdicao): void {
     this.form.metas[chave] = valor;
-    if (this.macroAutopreenchido === chave) this.macroAutopreenchido = null;
     const chaves: MacroPercentual[] = ['percentualProteinas', 'percentualCarboidratos', 'percentualGorduras'];
-    let destino = this.macroAutopreenchido;
-    if (!destino) {
-      const vazios = chaves.filter(item => this.textoNumerico(this.form.metas[item]).trim() === '');
-      if (vazios.length === 1) destino = vazios[0];
+    if (this.textoNumerico(valor).trim() === '') {
+      if (this.macroAutopreenchido && this.macroAutopreenchido !== chave) {
+        this.form.metas[this.macroAutopreenchido] = '';
+      }
+      return;
     }
-    if (!destino || destino === chave) return;
-    const outros = chaves.filter(item => item !== destino).map(item => this.numero(this.form.metas[item]));
-    if (outros.some(item => item === null || item < 0 || item > 100)) return;
-    const restante = Number((100 - (outros[0]! + outros[1]!)).toFixed(2));
-    if (restante < 0 || restante > 100) return;
-    this.form.metas[destino] = restante;
+    let destino = this.macroAutopreenchido === chave ? null : this.macroAutopreenchido;
+    if (!destino) {
+      const outros = chaves.filter(item => item !== chave);
+      const vazios = outros.filter(item => this.textoNumerico(this.form.metas[item]).trim() === '');
+      if (vazios.length === 1) destino = vazios[0];
+      else if (vazios.length === 0) destino = outros.at(-1)!;
+    }
+    if (!destino) return;
     this.macroAutopreenchido = destino;
+    const campos = chaves.filter(item => item !== destino);
+    const outros = campos.map(item => this.numero(this.form.metas[item]));
+    const validos = outros.every((item, indice) => item !== null && Number.isFinite(item)
+      && item >= 0 && item <= 100 && this.temNoMaximoDuasCasas(this.form.metas[campos[indice]]));
+    const restante = validos ? Number((100 - (outros[0]! + outros[1]!)).toFixed(2)) : -1;
+    this.form.metas[destino] = restante >= 0 && restante <= 100 ? restante : '';
+    delete this.errors['metas'];
   }
 
   abrirNovoRascunho(): void {
-    if (this.atendimentoId !== null && !this.podeEditarAtendimento) return;
     this.executarComDescarte(() => {
       this.tela = 'editor';
+      this.origemEdicao = null;
       this.planoEmEdicaoId = null;
       this.planoSelecionado = null;
       this.form = this.novoFormulario();
@@ -343,40 +331,77 @@ export class DietaComponent implements OnInit {
   abrirDetalhe(plano: Plano): void {
     this.executarComDescarte(() => {
       this.erro = '';
-      this.mensagem = '';
-      this.dieta.buscarPlano(this.patientId, plano.id, this.atendimentoId)
+      this.dieta.buscarPlano(this.patientId, plano.id)
         .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
           next: detalhe => {
             this.planoSelecionado = detalhe;
             this.tela = 'detalhe';
           },
           error: (error: ApiErrorResponse) => {
-            this.erro = error.message || 'Não foi possível abrir este plano.';
+            this.toast.erro(error.message || 'Não foi possível abrir este plano.');
           }
         });
     });
   }
 
   abrirEdicao(): void {
-    if (this.atendimentoId !== null && !this.podeEditarAtendimento) return;
     const plano = this.planoSelecionado;
     if (!plano || plano.status !== 'RASCUNHO') return;
+    this.origemEdicao = null;
     this.planoEmEdicaoId = plano.id;
     this.form = this.formularioDoPlano(plano);
+    if (plano.planoAnteriorId && plano.inicioEdicao) this.form.vigenciaInicio = plano.inicioEdicao;
     this.original = this.assinatura();
     this.tela = 'editor';
     this.limparMensagens();
   }
 
+  editarDieta(): void {
+    const plano = this.planoSelecionado;
+    if (!plano?.inicioEdicao || this.salvando) return;
+    this.salvando = true;
+    this.dieta.buscarPlano(this.patientId, plano.id)
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: original => {
+          this.salvando = false;
+          this.planoSelecionado = original;
+          if (original.rascunhoEdicaoId) {
+            const rascunho = this.planos.find(item => item.id === original.rascunhoEdicaoId);
+            if (rascunho) this.abrirDetalhe(rascunho);
+            else this.recarregarListaDePlanos();
+            return;
+          }
+          if (!original.inicioEdicao) {
+            this.toast.aviso('A dieta vigente mudou. Confira a edição agendada no histórico.');
+            this.recarregarListaDePlanos();
+            return;
+          }
+          this.origemEdicao = original;
+          this.planoEmEdicaoId = null;
+          this.form = this.formularioDoPlano(original);
+          this.form.vigenciaInicio = original.inicioEdicao;
+          if (this.form.vigenciaFim < original.inicioEdicao) this.form.vigenciaFim = '';
+          this.original = this.assinatura();
+          this.tela = 'editor';
+          this.limparMensagens();
+        },
+        error: (error: ApiErrorResponse) => {
+          this.salvando = false;
+          this.toast.erro(error.message || 'Não foi possível abrir a edição da dieta.');
+        }
+      });
+  }
+
   duplicarPlano(): void {
-    if (this.atendimentoId !== null && !this.podeEditarAtendimento) return;
     const plano = this.planoSelecionado;
     if (!plano || plano.status === 'RASCUNHO') return;
     this.executarComDescarte(() => {
+      this.origemEdicao = null;
       this.planoEmEdicaoId = null;
       this.form = this.formularioDoPlano(plano);
+      this.planoSelecionado = null;
       this.form.titulo = `Cópia de ${plano.titulo}`.slice(0, 150);
-      this.form.vigenciaInicio = '';
+      this.form.vigenciaInicio = this.vigenciaInicioMinima;
       this.form.vigenciaFim = '';
       this.original = this.assinatura();
       this.tela = 'editor';
@@ -394,14 +419,15 @@ export class DietaComponent implements OnInit {
 
   cancelarEdicao(): void {
     this.executarComDescarte(() => {
-      this.tela = this.planoEmEdicaoId !== null && this.planoSelecionado ? 'detalhe' : 'lista';
+      this.tela = this.planoSelecionado && (this.planoEmEdicaoId !== null || this.origemEdicao) ? 'detalhe' : 'lista';
+      this.origemEdicao = null;
       this.limparMensagens();
     });
   }
 
   adicionarRefeicao(): void {
     if (this.form.refeicoes.length >= 140) {
-      this.erro = 'Um plano pode conter até 140 refeições.';
+      this.toast.aviso('Um plano pode conter até 140 refeições.');
       return;
     }
     this.form.refeicoes.push({ chave: this.proximaChave(), nome: '', horario: '', diaSemana: this.dia, itens: [] });
@@ -421,13 +447,13 @@ export class DietaComponent implements OnInit {
         }))
       }))
     };
-    this.mensagem = 'Refeição copiada.';
+    this.toast.sucesso('Refeição copiada.');
   }
 
   colarRefeicao(): void {
     if (!this.refeicaoCopiada) return;
     if (this.form.refeicoes.length >= 140) {
-      this.erro = 'Um plano pode conter até 140 refeições.';
+      this.toast.aviso('Um plano pode conter até 140 refeições.');
       return;
     }
 
@@ -448,7 +474,7 @@ export class DietaComponent implements OnInit {
       }))
     });
     this.erro = '';
-    this.mensagem = 'Refeição adicionada ao plano.';
+    this.toast.sucesso('Refeição adicionada ao plano.');
   }
 
   removerRefeicao(refeicao: RefeicaoEdicao): void {
@@ -480,7 +506,6 @@ export class DietaComponent implements OnInit {
     this.categoriaSelecionada = '';
     this.paginaAlimentos = null;
     this.alimentosErro = '';
-    this.mensagemAlimento = '';
     this.carregarCategorias();
     this.buscarAlimentos(0);
     setTimeout(() => document.getElementById('busca-alimento')?.focus());
@@ -516,57 +541,19 @@ export class DietaComponent implements OnInit {
       return;
     }
     if (refeicao.itens.some(item => item.alimento?.id === alimento.id)) {
-      this.mensagemAlimento = 'Este alimento já está nesta refeição. Ajuste a quantidade no editor.';
+      this.toast.aviso('Este alimento já está nesta refeição. Ajuste a quantidade no editor.');
       return;
     }
     if (refeicao.itens.length >= 100) {
-      this.mensagemAlimento = 'Uma refeição pode conter até 100 alimentos.';
+      this.toast.aviso('Uma refeição pode conter até 100 alimentos.');
       return;
     }
     refeicao.itens.push({ chave: this.proximaChave(), alimento, quantidadeGramas: '', substitutos: [] });
-    this.mensagemAlimento = `${alimento.nome} adicionado à refeição.`;
+    this.toast.sucesso(`${alimento.nome} adicionado à refeição.`);
   }
 
   removerSubstituto(item: ItemEdicao, substituto: SubstitutoEdicao): void {
     item.substitutos = item.substitutos.filter(itemAtual => itemAtual.chave !== substituto.chave);
-  }
-
-  abrirPreviaListaCompras(): void {
-    if (this.tela !== 'detalhe' || !this.planoSelecionado) return;
-    this.elementoAtivoAntesDaListaCompras = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    this.modalListaCompras = true;
-    this.listaCompras = null;
-    this.itensListaComprasPorCategoria = [];
-    this.listaComprasErro = '';
-    this.carregarListaCompras();
-    setTimeout(() => document.getElementById('dias-lista-compras')?.focus());
-  }
-
-  carregarListaCompras(): void {
-    const plano = this.planoSelecionado;
-    if (!this.modalListaCompras || !plano) return;
-    if (!this.periodoListaComprasValido) {
-      this.listaCompras = null;
-      this.itensListaComprasPorCategoria = [];
-      this.listaComprasCarregando = false;
-      this.listaComprasErro = 'Informe um número inteiro entre 1 e 30 dias.';
-      return;
-    }
-    this.listaCompras = null;
-    this.itensListaComprasPorCategoria = [];
-    this.listaComprasErro = '';
-    this.listaComprasCarregando = true;
-    this.buscasListaCompras$.next({ planoId: plano.id, dias: this.diasListaCompras! });
-  }
-
-  fecharPreviaListaCompras(): void {
-    this.modalListaCompras = false;
-    this.listaComprasCarregando = false;
-    this.buscasListaCompras$.next(null);
-    this.listaCompras = null;
-    this.itensListaComprasPorCategoria = [];
-    this.elementoAtivoAntesDaListaCompras?.focus();
-    this.elementoAtivoAntesDaListaCompras = null;
   }
 
   removerAlimento(refeicao: RefeicaoEdicao, item: ItemEdicao): void {
@@ -577,7 +564,6 @@ export class DietaComponent implements OnInit {
     if (this.salvando || this.carregando || !this.carregado) return;
     this.errors = this.validarFormulario();
     this.erro = '';
-    this.mensagem = '';
     if (Object.keys(this.errors).length > 0) {
       this.erro = 'Confira os campos destacados antes de salvar.';
       setTimeout(() => document.getElementById(Object.keys(this.errors)[0])?.focus());
@@ -586,8 +572,10 @@ export class DietaComponent implements OnInit {
     const request = this.payload();
     this.salvando = true;
     const operacao = this.planoEmEdicaoId === null
-      ? this.dieta.criarPlano(this.patientId, request, this.atendimentoId)
-      : this.dieta.atualizarPlano(this.patientId, this.planoEmEdicaoId, request, this.atendimentoId);
+      ? (this.origemEdicao
+          ? this.dieta.criarEdicao(this.patientId, this.origemEdicao, request)
+          : this.dieta.criarPlano(this.patientId, request))
+      : this.dieta.atualizarPlano(this.patientId, this.planoEmEdicaoId, request);
     operacao.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: plano => {
         this.planoSelecionado = plano;
@@ -595,12 +583,14 @@ export class DietaComponent implements OnInit {
         this.tela = 'detalhe';
         this.salvando = false;
         this.atualizarPlanoNaLista(plano);
-        this.mensagem = 'Rascunho salvo com sucesso.';
+        this.origemEdicao = null;
+        if (plano.planoAnteriorId) this.recarregarListaDePlanos();
+        this.toast.sucesso('Rascunho salvo com sucesso.');
         this.original = this.assinatura();
         this.errors = {};
       },
       error: (error: ApiErrorResponse) => {
-        this.erro = error.message || 'Não foi possível salvar o plano. Os campos foram mantidos.';
+        this.toast.erro(error.message || 'Não foi possível salvar o plano. Os campos foram mantidos.');
         this.salvando = false;
       }
     });
@@ -609,71 +599,101 @@ export class DietaComponent implements OnInit {
   publicar(): void {
     const plano = this.planoSelecionado;
     if (!plano || plano.status !== 'RASCUNHO' || this.publicando || this.planoParaPublicar) return;
+    if (plano.planoAnteriorId) {
+      this.publicando = true;
+      this.dieta.buscarPlano(this.patientId, plano.id)
+        .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+          next: atual => {
+            this.publicando = false;
+            this.planoSelecionado = atual;
+            if (atual.status !== 'RASCUNHO') {
+              this.toast.aviso('Esta edição já foi publicada. Confira o histórico de dietas.');
+              this.recarregarListaDePlanos();
+              return;
+            }
+            this.prepararPublicacao(atual);
+          },
+          error: (error: ApiErrorResponse) => {
+            this.publicando = false;
+            this.toast.erro(error.message || 'Não foi possível conferir a vigência.');
+          }
+        });
+      return;
+    }
+    this.prepararPublicacao(plano);
+  }
+
+  private prepararPublicacao(plano: Plano): void {
     const problema = this.validarPublicacao(plano);
     if (problema) {
       this.erro = problema;
-      this.mensagem = '';
       return;
     }
-    this.elementoAtivoAntesDaPublicacao = document.activeElement as HTMLElement | null;
     this.planoParaPublicar = plano;
-    setTimeout(() => document.querySelector<HTMLButtonElement>('#cancelar-publicacao button')?.focus());
   }
 
   cancelarPublicacao(): void {
-    this.planoParaPublicar = null;
-    this.elementoAtivoAntesDaPublicacao?.focus();
-    this.elementoAtivoAntesDaPublicacao = null;
+    if (!this.publicando) this.planoParaPublicar = null;
   }
 
   confirmarPublicacao(): void {
     const plano = this.planoParaPublicar;
     if (!plano || this.publicando) return;
-    this.cancelarPublicacao();
     this.publicando = true;
     this.erro = '';
-    this.mensagem = '';
-    this.dieta.publicarPlano(this.patientId, plano.id, plano.versao, this.atendimentoId)
+    const publicacao = plano.planoAnteriorId && plano.inicioEdicao
+      ? this.dieta.publicarPlano(this.patientId, plano.id, plano.versao, plano.inicioEdicao)
+      : this.dieta.publicarPlano(this.patientId, plano.id, plano.versao);
+    publicacao
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: publicado => {
           this.planoSelecionado = publicado;
           this.atualizarPlanoNaLista(publicado);
-          this.mensagem = `Plano publicado com sucesso na versão ${publicado.versao}.`;
+          if (publicado.planoAnteriorId) this.recarregarListaDePlanos();
+          this.toast.sucesso(publicado.planoAnteriorId ? 'Edição da dieta agendada.' : 'Plano publicado com sucesso.');
           this.publicando = false;
+          this.planoParaPublicar = null;
         },
         error: (error: ApiErrorResponse) => {
-          this.erro = error.message || 'Não foi possível publicar o plano.';
+          this.toast.erro(error.message || 'Não foi possível publicar o plano.');
           this.publicando = false;
+          this.planoParaPublicar = null;
         }
       });
   }
 
   excluir(): void {
     const plano = this.planoSelecionado;
-    if (!plano || plano.status !== 'RASCUNHO' || this.excluindo) return;
+    if (!plano || this.excluindo || this.publicando) return;
+    const rascunho = plano.status === 'RASCUNHO';
     this.pedirConfirmacaoDestrutiva(
-      'Excluir rascunho?',
-      `O rascunho “${plano.titulo}” será excluído permanentemente.`,
-      'Excluir rascunho',
-      () => this.excluirRascunho(plano));
+      'Excluir plano alimentar?',
+      rascunho
+        ? `O rascunho “${plano.titulo}” será excluído permanentemente.`
+        : `O plano “${plano.titulo}” será retirado da Dieta. Os registros de consumo serão preservados.`,
+      'Excluir plano',
+      () => this.excluirPlano(plano));
   }
 
-  private excluirRascunho(plano: Plano): void {
+  private excluirPlano(plano: Plano): void {
     if (this.excluindo) return;
     this.excluindo = true;
     this.erro = '';
-    this.dieta.excluirRascunho(this.patientId, plano.id, plano.versao, this.atendimentoId)
+    this.dieta.excluirPlano(this.patientId, plano.id, plano.versao)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
           this.planos = this.planos.filter(item => item.id !== plano.id);
+          if (plano.planoAnteriorId) this.recarregarListaDePlanos();
           this.planoSelecionado = null;
           this.tela = 'lista';
           this.excluindo = false;
-          this.mensagem = 'Rascunho excluído.';
+          this.confirmacaoDestrutiva = null;
+          this.toast.sucesso('Plano alimentar excluído.');
         },
         error: (error: ApiErrorResponse) => {
-          this.erro = error.message || 'Não foi possível excluir o rascunho.';
+          this.toast.erro(error.message || 'Não foi possível excluir o plano alimentar.');
           this.excluindo = false;
+          this.confirmacaoDestrutiva = null;
         }
       });
   }
@@ -683,7 +703,7 @@ export class DietaComponent implements OnInit {
   }
 
   podeSair(): boolean | Observable<boolean> {
-    if (this.salvando) return false;
+    if (this.salvando || this.publicando || this.excluindo) return false;
     if (!this.alterado) return true;
     if (!this.confirmacaoSaida) this.confirmacaoSaida = new Subject<boolean>();
     this.modalDescartarAlteracoes = true;
@@ -713,13 +733,13 @@ export class DietaComponent implements OnInit {
   }
 
   cancelarConfirmacaoDestrutiva(): void {
-    this.confirmacaoDestrutiva = null;
+    if (!this.excluindo) this.confirmacaoDestrutiva = null;
   }
 
   confirmarAcaoDestrutiva(): void {
-    const confirmacao = this.confirmacaoDestrutiva;
-    this.confirmacaoDestrutiva = null;
-    confirmacao?.acao();
+    if (this.excluindo) return;
+    this.confirmacaoDestrutiva?.acao();
+    this.cancelarConfirmacaoDestrutiva();
   }
 
   get totaisPrevistos(): Nutrientes {
@@ -780,8 +800,32 @@ export class DietaComponent implements OnInit {
     return valor === null || valor === undefined ? 'Não informado' : this.formatarNutriente(valor);
   }
 
-  statusLabel(status: Plano['status']): string {
-    return { RASCUNHO: 'Rascunho', PUBLICADO: 'Publicado', SUBSTITUIDO: 'Substituído' }[status];
+  statusLabel(plano: Plano): string {
+    if (plano.status === 'SUBSTITUIDO') return 'Substituída';
+    if (plano.status === 'RASCUNHO') return plano.planoAnteriorId ? 'Rascunho de edição' : 'Rascunho';
+    const hoje = this.dataAtualNaClinica();
+    if (plano.vigenciaInicio && plano.vigenciaInicio > hoje) return 'Início futuro';
+    if (plano.vigenciaFim && plano.vigenciaFim < hoje) return 'Vigência encerrada';
+    return 'Vigente';
+  }
+
+  get inicioEdicaoFixo(): boolean {
+    return this.origemEdicao !== null || !!this.planoSelecionado?.planoAnteriorId;
+  }
+
+  mensagemPublicacao(plano: Plano): string {
+    if (plano.planoAnteriorId && plano.inicioEdicao) {
+      return `As alterações entrarão em vigor em ${formatarDataBr(plano.inicioEdicao)}. A dieta atual continuará disponível até o fim de hoje.`;
+    }
+    return `O plano “${plano.titulo}” ficará disponível ao paciente no período de ${this.formatarPeriodo(plano)}.`;
+  }
+
+  private recarregarListaDePlanos(): void {
+    this.dieta.listarPlanos(this.patientId)
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: planos => { this.planos = planos; },
+        error: () => this.toast.aviso('Não foi possível atualizar o histórico de dietas.')
+      });
   }
 
   formatarHorario(horario: string): string {
@@ -794,8 +838,11 @@ export class DietaComponent implements OnInit {
   }
 
   formatarPeriodo(plano: Plano): string {
-    if (!plano.vigenciaInicio || !plano.vigenciaFim) return 'período sem vigência definida';
-    return `${this.dataLocal(plano.vigenciaInicio)} a ${this.dataLocal(plano.vigenciaFim)}`;
+    const inicio = formatarDataBr(plano.vigenciaInicio);
+    const fim = formatarDataBr(plano.vigenciaFim);
+    if (inicio && fim) return `${inicio} a ${fim}`;
+    if (fim) return `Até ${fim}`;
+    return inicio ? `A partir de ${inicio}` : 'Não definida';
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -808,8 +855,7 @@ export class DietaComponent implements OnInit {
 
   @HostListener('document:keydown.escape')
   fecharModalComEscape(): void {
-    if (this.modalListaCompras) this.fecharPreviaListaCompras();
-    else if (this.modalAlimentos) this.fecharBuscaAlimentos();
+    if (this.modalAlimentos) this.fecharBuscaAlimentos();
   }
 
   private carregarCategorias(): void {
@@ -847,56 +893,79 @@ export class DietaComponent implements OnInit {
     });
   }
 
-  private configurarPreviaListaCompras(): void {
-    this.buscasListaCompras$.pipe(
-      switchMap(pedido => {
-        if (pedido === null) return EMPTY;
-        return this.dieta.previsualizarListaCompras(this.patientId, pedido.planoId, pedido.dias, this.atendimentoId).pipe(
-          catchError((error: ApiErrorResponse) => {
-            this.listaComprasErro = error.message || 'Não foi possível carregar a prévia da lista de compras.';
-            this.listaComprasCarregando = false;
-            return EMPTY;
-          })
-        );
-      }),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(resultado => {
-      this.listaCompras = resultado;
-      this.itensListaComprasPorCategoria = this.agruparItensListaCompras(resultado.itens);
-      this.listaComprasCarregando = false;
-    });
-  }
-
-  private agruparItensListaCompras(itens: ItemListaCompras[]): { categoria: string; itens: ItemListaCompras[] }[] {
-    const grupos = new Map<string, ItemListaCompras[]>();
-    for (const item of itens) {
-      const categoria = item.categoria?.trim() || 'Sem categoria';
-      const itensDaCategoria = grupos.get(categoria) ?? [];
-      itensDaCategoria.push(item);
-      grupos.set(categoria, itensDaCategoria);
-    }
-    return [...grupos.entries()]
-      .sort(([a], [b]) => a.localeCompare(b, 'pt-BR'))
-      .map(([categoria, itensDaCategoria]) => ({ categoria, itens: itensDaCategoria }));
-  }
-
   private adicionarSubstituto(refeicao: RefeicaoEdicao, itemChave: number, alimento: Alimento): void {
     const item = refeicao.itens.find(itemAtual => itemAtual.chave === itemChave);
     if (!item?.alimento) return;
     if (item.substitutos.length >= MAXIMO_SUBSTITUTOS) {
-      this.mensagemAlimento = `Um alimento pode ter até ${MAXIMO_SUBSTITUTOS} substitutos.`;
+      this.toast.aviso(`Um alimento pode ter até ${MAXIMO_SUBSTITUTOS} substitutos.`);
       return;
     }
     if (item.alimento.id === alimento.id) {
-      this.mensagemAlimento = 'O substituto deve ser diferente do alimento principal.';
+      this.toast.aviso('O substituto deve ser diferente do alimento principal.');
       return;
     }
     if (item.substitutos.some(substituto => substituto.alimento?.id === alimento.id)) {
-      this.mensagemAlimento = 'Este substituto já foi adicionado para este alimento.';
+      this.toast.aviso('Este substituto já foi adicionado para este alimento.');
       return;
     }
     item.substitutos.push({ chave: this.proximaChave(), alimento, quantidadeGramas: '' });
-    this.mensagemAlimento = `${alimento.nome} adicionado como substituto informativo.`;
+    this.toast.sucesso(`${alimento.nome} adicionado como substituto informativo.`);
+  }
+
+  get vigenciaInicioMinima(): string {
+    const minima = this.dataMinimaVigencia(this.form.vigenciaInicio, this.planoSelecionado?.vigenciaInicio);
+    const aposVigente = !this.inicioEdicaoFixo ? this.inicioAposDietaVigente : null;
+    return aposVigente && aposVigente > minima ? aposVigente : minima;
+  }
+
+  get inicioAposDietaVigente(): string | null {
+    const hoje = this.dataAtualNaClinica();
+    const fim = [...this.planos, ...(this.planoSelecionado ? [this.planoSelecionado] : [])]
+      .filter(plano => plano.id !== this.planoEmEdicaoId
+        && (plano.status === 'PUBLICADO' || (plano.status === 'SUBSTITUIDO' && !!plano.substituidaEm))
+        && !!plano.vigenciaInicio && plano.vigenciaInicio <= hoje
+        && !!plano.vigenciaFim && plano.vigenciaFim >= hoje)
+      .map(plano => plano.vigenciaFim!).sort().at(-1);
+    if (!fim || !dataIsoValida(fim)) return null;
+    const data = new Date(`${fim}T12:00:00Z`);
+    data.setUTCDate(data.getUTCDate() + 1);
+    return data.toISOString().slice(0, 10);
+  }
+
+  get vigenciaFimMinima(): string {
+    const minima = this.dataMinimaVigencia(this.form.vigenciaFim, this.planoSelecionado?.vigenciaFim);
+    const inicio = this.form.vigenciaInicio;
+    const limiteInicio = dataIsoValida(inicio) ? inicio : this.vigenciaInicioMinima;
+    return limiteInicio > minima ? limiteInicio : minima;
+  }
+
+  private dataMinimaVigencia(data: string, original?: string | null): string {
+    const hoje = this.dataAtualNaClinica();
+    return this.planoEmEdicaoId !== null && data === original && data < hoje ? data : hoje;
+  }
+
+  private dataAtualNaClinica(): string {
+    return FORMATO_DATA_CLINICA.format(new Date());
+  }
+
+  private validarVigencia(errors: Record<string, string>): void {
+    const { vigenciaInicio, vigenciaFim } = this.form;
+    const inicioValido = dataIsoValida(vigenciaInicio);
+    const formatoInvalido = 'Informe uma data válida no formato DD/MM/AAAA.';
+    if (vigenciaInicio && !inicioValido) {
+      errors['vigenciaInicio'] = formatoInvalido;
+    } else if (vigenciaInicio && vigenciaInicio < this.vigenciaInicioMinima) {
+      errors['vigenciaInicio'] = this.inicioAposDietaVigente && !this.inicioEdicaoFixo
+        ? `O início deve ser em ${formatarDataBr(this.vigenciaInicioMinima)} ou depois, após o fim da dieta vigente.`
+        : 'Escolha hoje ou uma data futura.';
+    }
+    if (vigenciaFim && !dataIsoValida(vigenciaFim)) {
+      errors['vigenciaFim'] = formatoInvalido;
+    } else if (vigenciaFim && vigenciaFim < this.vigenciaFimMinima) {
+      errors['vigenciaFim'] = inicioValido && vigenciaFim < vigenciaInicio
+        ? 'O fim deve ser igual ou posterior ao início.'
+        : 'Escolha hoje ou uma data futura.';
+    }
   }
 
   private validarFormulario(): Record<string, string> {
@@ -905,9 +974,7 @@ export class DietaComponent implements OnInit {
     if (!titulo) errors['titulo'] = 'Informe o título do plano.';
     else if (titulo.length > 150) errors['titulo'] = 'Use até 150 caracteres.';
     if (this.form.orientacoes.length > 4000) errors['orientacoes'] = 'Use até 4.000 caracteres.';
-    if (this.form.vigenciaInicio && this.form.vigenciaFim && this.form.vigenciaFim < this.form.vigenciaInicio) {
-      errors['vigenciaFim'] = 'O fim deve ser igual ou posterior ao início.';
-    }
+    this.validarVigencia(errors);
     this.validarMetas(errors);
     if (this.form.refeicoes.length > 140) errors['refeicoes'] = 'Um plano pode conter até 140 refeições.';
     for (const [indice, refeicao] of this.form.refeicoes.entries()) {
@@ -1002,8 +1069,11 @@ export class DietaComponent implements OnInit {
   }
 
   private validarPublicacao(plano: Plano): string {
-    if (!plano.vigenciaInicio || !plano.vigenciaFim) return 'Informe as datas de início e fim da vigência antes de publicar.';
-    if (plano.vigenciaFim < plano.vigenciaInicio) return 'O fim da vigência deve ser igual ou posterior ao início.';
+    const inicio = plano.planoAnteriorId ? plano.inicioEdicao : plano.vigenciaInicio;
+    if (plano.planoAnteriorId && inicio && (!plano.vigenciaFim || plano.vigenciaFim < inicio)) return 'Edite o rascunho e informe uma data final válida para a nova vigência.';
+    if (!inicio || !plano.vigenciaFim) return 'Informe as datas de início e fim da vigência antes de publicar.';
+    if (plano.vigenciaFim < inicio) return 'O fim da vigência deve ser igual ou posterior ao início.';
+    if (inicio < this.dataAtualNaClinica()) return 'Defina o início da vigência para hoje ou uma data futura.';
     if (plano.refeicoes.length === 0 || plano.refeicoes.some(refeicao => refeicao.itens.length === 0)) {
       return 'A publicação exige ao menos uma refeição, e todas as refeições precisam ter alimentos.';
     }
@@ -1169,13 +1239,8 @@ export class DietaComponent implements OnInit {
 
   private limparMensagens(): void {
     this.erro = '';
-    this.mensagem = '';
     this.errors = {};
-  }
-
-  private dataLocal(iso: string): string {
-    const [ano, mes, dia] = iso.slice(0, 10).split('-');
-    return ano && mes && dia ? `${dia}/${mes}/${ano}` : iso;
+    this.macroAutopreenchido = null;
   }
 }
 

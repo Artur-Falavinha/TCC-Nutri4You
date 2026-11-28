@@ -1,12 +1,12 @@
 package com.nutri4you.backend.security;
 
+import com.nutri4you.backend.service.PrivacidadeService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -17,10 +17,13 @@ public class SecurityFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
     private final DatabaseUserDetailsService userDetailsService;
+    private final PrivacidadeService privacidade;
 
-    public SecurityFilter(TokenService tokenService, DatabaseUserDetailsService userDetailsService) {
+    public SecurityFilter(TokenService tokenService, DatabaseUserDetailsService userDetailsService,
+            PrivacidadeService privacidade) {
         this.tokenService = tokenService;
         this.userDetailsService = userDetailsService;
+        this.privacidade = privacidade;
     }
 
     @Override
@@ -31,12 +34,13 @@ public class SecurityFilter extends OncePerRequestFilter {
         String token = recuperarToken(request);
 
         if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            String email = tokenService.validarToken(token);
 
-            if (!email.isBlank()) {
+            var sessao = tokenService.validarToken(token);
+            if (sessao != null) {
                 try {
-                    UserDetails user = userDetailsService.loadUserByUsername(email);
-                    if (user.isEnabled()) {
+                    var user = userDetailsService.buscarTitular(sessao.tipo(), sessao.titularId());
+                    if (user.getVersaoCredencial() == sessao.versaoCredencial()
+                            && user.isEnabled() && privacidade.aceitou(user)) {
                         var authentication = new UsernamePasswordAuthenticationToken(
                                 user,
                                 null,

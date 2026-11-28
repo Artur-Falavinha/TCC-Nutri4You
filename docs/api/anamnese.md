@@ -19,9 +19,9 @@ A modelagem de perguntas e respostas do `database/init.sql` foi mantida:
 
 - `Pergunta_Anamnese.codigo`: identificador estável de cada campo do formulário.
 - `Resposta_Anamnese`: respostas finalizadas, com unicidade em `(id_paciente, id_pergunta)`. Cada `texto_resposta` de pergunta codificada contém um valor JSON: texto, número ou lista.
-- `Anamnese`: uma linha por paciente (chave primária `id_paciente`), versão, rascunho JSON em TEXT, horários UTC e nutricionista responsável pela última alteração.
+- `Anamnese`: uma linha por paciente (chave primária `id_paciente`), versão, rascunho JSON em TEXT, horários UTC e nutricionista responsável pela última alteração. `id_nutricionista` é auditoria da última edição, não propriedade exclusiva do prontuário.
 - Perguntas/respostas legadas sem código não são removidas nem reinterpretadas automaticamente.
-- Não são criadas anamneses por consulta nem versões históricas de respostas.
+- Não são criadas anamneses por consulta nem versões históricas de respostas. A anamnese acompanha o paciente ao longo do atendimento; `Pergunta_Anamnese` e `Resposta_Anamnese` armazenam o catálogo e a versão finalizada, portanto não duplicam o papel de `Anamnese`.
 
 Gravações são transacionais. O bloqueio pessimista da linha de Paciente serializa inclusive a primeira criação, e a versão otimista impede que uma edição antiga sobrescreva outra. As respostas condicionais que deixaram de se aplicar são removidas ao finalizar. Dados desativados também são removidos do rascunho recebido.
 

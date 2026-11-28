@@ -1,57 +1,149 @@
-<app-page-header titulo="Notificações" [mostrarSino]="false">
-  <app-ui-button
-    label="Atualizar"
-    icon="arrow-clockwise"
-    variant="secondary"
-    [fullWidth]="false"
-    [loading]="carregando"
-    [disabled]="decidindo !== null"
-    (click)="carregar()"
-  />
-</app-page-header>
+<app-page-header titulo="Notificações" [mostrarSino]="false" />
 
-<div class="notificacoes" [attr.aria-busy]="carregando">
-  <p class="descricao">Solicitações de consulta e de vínculo que aguardam sua decisão.</p>
-  <app-form-alert [message]="erro" type="error" />
-  <app-form-alert [message]="mensagem" type="success" />
-  @if (carregando) {
-    <p role="status">Carregando notificações...</p>
-  } @else if (!itens.length && !vinculos.length && !erro) {
-    <section class="vazio">
-      <i class="ph ph-bell-slash" aria-hidden="true"></i>
-      <h2>Tudo em dia</h2>
-      <p>Nenhuma solicitação pendente.</p>
-    </section>
-  } @else if (itens.length || vinculos.length) {
+<div class="notificacoes">
+  @if (erro) {
+    <p class="retorno retorno--erro" role="alert">
+      <i class="ph ph-warning-circle" aria-hidden="true"></i>
+      <span>{{ erro }}</span>
+    </p>
+  }
+
+  @let temPendencias = itens.length > 0 || vinculos.length > 0;
+  @if (carregando || (!temPendencias && !resultados.length && !erro)) {
+    <div class="estado" [attr.role]="carregando ? 'status' : null">
+      <span class="icone" aria-hidden="true">
+        <i class="ph" [class.ph-hourglass]="carregando" [class.ph-tray]="!carregando"></i>
+      </span>
+      @if (carregando) {
+        <p>Carregando notificações…</p>
+      } @else {
+        <h2>Nenhuma solicitação pendente</h2>
+        <p>Solicitações de consulta, de vínculo e resultados de exames aparecem aqui.</p>
+      }
+    </div>
+  } @else if (temPendencias) {
+    <p class="descricao">Solicitações de consulta e de vínculo que aguardam sua decisão.</p>
     <ul>
       @for (item of vinculos; track item.id) {
         <li>
-          <div class="icone"><i class="ph ph-link" aria-hidden="true"></i></div>
-          <div class="conteudo"><strong>{{ item.pacienteNome }} solicitou um vínculo</strong><span>Acompanhamento nutricional</span></div>
-          <div class="acoes">
-            <app-ui-button label="Recusar" variant="secondary" [fullWidth]="false"
-              [disabled]="decidindo !== null" (click)="decidirVinculo(item, false)" />
-            <app-ui-button label="Aceitar vínculo" [fullWidth]="false"
-              [disabled]="decidindo !== null" (click)="decidirVinculo(item, true)" />
-          </div>
+          <header class="card__cabecalho">
+            <div class="identificacao">
+              <div class="icone" aria-hidden="true"><i class="ph ph-link"></i></div>
+              <div class="conteudo">
+                <h2>{{ item.pacienteNome }} solicitou um vínculo</h2>
+                <span class="tipo-solicitacao">Acompanhamento nutricional</span>
+              </div>
+            </div>
+          </header>
+          <footer class="card__rodape">
+            <div class="acoes" role="group" [attr.aria-label]="'Decisão sobre o vínculo de ' + item.pacienteNome">
+              <app-ui-button label="Recusar" variant="secondary"
+                [disabled]="decidindo !== null" (click)="pedirDecisao({ tipo: 'vinculo', item, aceitar: false })" />
+              <app-ui-button label="Aceitar vínculo"
+                [disabled]="decidindo !== null" (click)="pedirDecisao({ tipo: 'vinculo', item, aceitar: true })" />
+            </div>
+          </footer>
         </li>
       }
       @for (item of itens; track item.id) {
         <li>
-          <div class="icone"><i class="ph ph-calendar-plus" aria-hidden="true"></i></div>
-          <div class="conteudo">
-            <strong>{{ item.pacienteNome }} solicitou uma consulta</strong>
-            <time [attr.datetime]="item.dataHora">{{ item.dataHora | date:'dd/MM/yyyy HH:mm' }}</time>
-            <span>{{ item.avulsa ? 'Consulta avulsa' : 'Paciente vinculado' }}</span>
-          </div>
-          <div class="acoes">
-            <app-ui-button label="Recusar" variant="secondary" [fullWidth]="false"
-              [disabled]="decidindo !== null" (click)="decidir(item, false)" />
-            <app-ui-button label="Confirmar" [fullWidth]="false"
-              [disabled]="decidindo !== null" (click)="decidir(item, true)" />
-          </div>
+          <header class="card__cabecalho">
+            <div class="identificacao">
+              <div class="icone" aria-hidden="true"><i class="ph ph-calendar-plus"></i></div>
+              <div class="conteudo">
+                <h2>{{ item.pacienteNome }} solicitou uma consulta</h2>
+                <span class="tipo-solicitacao">{{ rotulosConsulta[item.tipo] || rotulosConsulta.CONSULTA }}</span>
+              </div>
+            </div>
+            <div class="horario-consulta">
+              <time [attr.datetime]="item.dataHora">
+                <i class="ph ph-calendar-blank" aria-hidden="true"></i>
+                {{ item.dataHora | dataHoraClinica }}
+              </time>
+              @if (item.duracaoMinutos) {
+                <span><i class="ph ph-clock" aria-hidden="true"></i> {{ item.duracaoMinutos }} min</span>
+              }
+            </div>
+          </header>
+          <footer class="card__rodape">
+            @if (item.avulsa) {
+              <p class="aviso-vinculo" [id]="'aviso-vinculo-' + item.id">
+                <i class="ph ph-link" aria-hidden="true"></i>
+                <span>Confirmar a consulta também ativa o vínculo com o paciente.</span>
+              </p>
+            }
+            <div class="acoes" role="group" [attr.aria-label]="'Decisão sobre a consulta de ' + item.pacienteNome"
+              [attr.aria-describedby]="item.avulsa ? 'aviso-vinculo-' + item.id : null">
+              <app-ui-button label="Recusar" variant="secondary"
+                [disabled]="decidindo !== null" (click)="pedirDecisao({ tipo: 'consulta', item, aceitar: false })" />
+              <app-ui-button label="Confirmar"
+                [disabled]="decidindo !== null" (click)="pedirDecisao({ tipo: 'consulta', item, aceitar: true })" />
+            </div>
+          </footer>
         </li>
       }
     </ul>
   }
+
+  @if (!carregando && resultados.length) {
+    <section class="resultados" aria-labelledby="resultados-titulo">
+      <h2 id="resultados-titulo">Resultados de exames</h2>
+      <ul>
+        @for (item of resultados; track item.id) {
+          <li>
+            <div class="card__cabecalho">
+              <div class="identificacao">
+                <div class="icone" aria-hidden="true"><i class="ph ph-test-tube"></i></div>
+                <div class="conteudo">
+                  <h3>{{ item.pacienteNome }} enviou um resultado</h3>
+                  <span>{{ item.exameNome }}</span>
+                  <time [attr.datetime]="item.criadaEm">{{ item.criadaEm | date:'dd/MM/yyyy HH:mm' }}</time>
+                </div>
+              </div>
+              <a class="link-resultado" [routerLink]="['/pacientes', item.pacienteId, 'exames']"
+                [queryParams]="item.atendimentoId === null ? null : { atendimentoId: item.atendimentoId }"
+                [attr.aria-label]="'Ver exames de ' + item.pacienteNome + ' — ' + item.exameNome">
+                Ver exames <i class="ph ph-arrow-right" aria-hidden="true"></i>
+              </a>
+            </div>
+          </li>
+        }
+      </ul>
+    </section>
+  }
 </div>
+
+@if (decisao; as pedido) {
+  @if (pedido.tipo === 'consulta') {
+    @let horario = (pedido.item.dataHora | dataHoraClinica);
+    @let detalhes = pedido.item.pacienteNome + ' solicitou o horário de ' + horario + '. ';
+    @let consequencia = pedido.aceitar
+      ? (pedido.item.avulsa ? 'A confirmação também ativa o vínculo com o paciente.' : 'O horário será confirmado na agenda.')
+      : 'A solicitação será recusada.';
+    <app-dialogo-confirmacao
+      [titulo]="pedido.aceitar ? 'Confirmar horário?' : 'Recusar solicitação de consulta?'"
+      [descricao]="detalhes + consequencia"
+      [confirmar]="pedido.aceitar ? 'Confirmar horário' : 'Recusar solicitação'"
+      [icone]="pedido.aceitar ? 'calendar-check' : 'calendar-x'"
+      [destrutivo]="!pedido.aceitar"
+      [ocupado]="decidindo !== null"
+      [rotuloOcupado]="pedido.aceitar ? 'Confirmando…' : 'Recusando…'"
+      [erro]="erroDecisao"
+      (fechar)="decisao = null"
+      (confirmado)="confirmarDecisao()" />
+  } @else {
+    <app-dialogo-confirmacao
+      [titulo]="pedido.aceitar ? 'Aceitar vínculo?' : 'Recusar solicitação de vínculo?'"
+      [descricao]="pedido.aceitar
+        ? 'Você poderá acompanhar ' + pedido.item.pacienteNome + ' e acessar sua ficha clínica enquanto o vínculo estiver ativo.'
+        : 'O vínculo com ' + pedido.item.pacienteNome + ' não será ativado.'"
+      [confirmar]="pedido.aceitar ? 'Aceitar vínculo' : 'Recusar solicitação'"
+      [icone]="pedido.aceitar ? 'link' : 'link-break'"
+      [destrutivo]="!pedido.aceitar"
+      [ocupado]="decidindo !== null"
+      [rotuloOcupado]="pedido.aceitar ? 'Aceitando…' : 'Recusando…'"
+      [erro]="erroDecisao"
+      (fechar)="decisao = null"
+      (confirmado)="confirmarDecisao()" />
+  }
+}

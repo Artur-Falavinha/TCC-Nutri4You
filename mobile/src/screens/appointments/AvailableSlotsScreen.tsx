@@ -1,290 +1,304 @@
+import { toast } from '../../components/feedback/toast';
+import { Feather } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ComponentRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View
-} from 'react-native';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import ArrowLeftIcon from '../../assets/appointments/arrow-left.svg';
-import CheckCircleIcon from '../../assets/appointments/check-circle.svg';
-import InfoIcon from '../../assets/appointments/info.svg';
-import { useAppAlert } from '../../components/feedback/AppAlertProvider';
+import { AvatarFoto } from '../../components/layout/AvatarFoto';
+import { SectionCardHeader, sectionCardStyles } from '../../components/layout/SectionCardHeader';
 import { ApiError } from '../../core/api/api-response.types';
+import { dataIsoDaClinica, formatarDataCivil, formatDateFromDate, toIsoDate } from '../../core/utils/date-mask.util';
 import {
-  getAppointmentAvailability,
-  rescheduleAppointment,
-  scheduleAppointment
+  getAppointmentAvailability, listAgendaNutritionists, listAppointments, rescheduleAppointment, scheduleAppointment
 } from '../../features/appointments/appointments.service';
 import {
-  buildWeekDays,
-  fromDateKey,
-  groupSlotsByPeriod,
-  isAppointmentDateSelectable,
-  monthTitle,
-  timeRangeLabel,
-  toDateKey,
-  weekdayShort
+  buildWeekDays, dateKeyFromLocalDateTime, groupSlotsByPeriod, timeRangeLabel, toDateKey, weekdayShort
 } from '../../features/appointments/appointments-date.util';
-import { AppointmentAvailability } from '../../features/appointments/appointments.models';
+import { AgendaNutritionist, Appointment, AppointmentAvailability } from '../../features/appointments/appointments.models';
+import { AppointmentRequestReceipt } from '../../features/appointments/components/AppointmentRequestReceipt';
+import { AppointmentSteps } from '../../features/appointments/components/AppointmentSteps';
+import { useFotoNutricionistaNaAgenda } from '../../features/appointments/components/AvatarNutricionistaAgenda';
+import { CalendarCard } from '../../features/appointments/components/CalendarCard';
 import { RootStackParamList } from '../../navigation/types';
-import { colors, fontFamily, radius, shadows, spacing } from '../../theme/tokens';
+import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'HorariosDisponiveis'>;
 
-function errorMessage(error: unknown): string {
-  return error instanceof ApiError
-    ? error.message
-    : 'Não foi possível carregar os horários disponíveis.';
-}
-
 export function AvailableSlotsScreen({ navigation, route }: Props) {
-  const { showAlert } = useAppAlert();
-  const { nutricionistaId, consultaId, versao } = route.params;
-  const [selectedDate, setSelectedDate] = useState(route.params.data);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [availability, setAvailability] = useState<AppointmentAvailability | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const weekScrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
-
-  const revealSelectedDay = useCallback(() => {
-    const index = (fromDateKey(selectedDate).getDay() + 6) % 7;
-    weekScrollRef.current?.scrollTo({ x: index * (56 + spacing.xs), animated: false });
-  }, [selectedDate]);
-
-  useEffect(revealSelectedDay, [revealSelectedDay]);
+  const { nutricionistaId, data, consultaId, versao } = route.params ?? {};
+  const hoje = dataIsoDaClinica();
+  const reagendamento = consultaId !== undefined;
+  const rotaValida = Number.isSafeInteger(nutricionistaId) && nutricionistaId > 0
+    && (!reagendamento || (Number.isSafeInteger(consultaId) && consultaId > 0 && Number.isSafeInteger(versao)));
+  const [dataSelecionada, setDataSelecionada] = useState(() => {
+    const inicial = toIsoDate(data ?? '');
+    return inicial && inicial >= hoje ? inicial : '';
+  });
+  const [calendarioAberto, setCalendarioAberto] = useState(false);
+  const [horario, setHorario] = useState<string>();
+  const [profissional, setProfissional] = useState<AgendaNutritionist>();
+  const [datasComConsulta, setDatasComConsulta] = useState<Set<string>>();
+  const [disponibilidade, setDisponibilidade] = useState<AppointmentAvailability>();
+  const [carregando, setCarregando] = useState(!!dataSelecionada);
+  const [enviando, setEnviando] = useState(false);
+  const [erroHorarios, setErroHorarios] = useState('');
+  const [tentativa, setTentativa] = useState(0);
+  const [solicitacao, setSolicitacao] = useState<Appointment>();
+  const travaEnvio = useRef(false);
+  const rolagem = useRef<ComponentRef<typeof ScrollView>>(null);
 
   useEffect(() => {
-    let active = true;
-    void getAppointmentAvailability(nutricionistaId, selectedDate, consultaId)
-      .then((data) => {
-        if (active) {
-          setAvailability(data);
-        }
+    if (!rotaValida) return;
+    let ativa = true;
+    if (!reagendamento) {
+      void listAgendaNutritionists().then((opcoes) => {
+        if (ativa) setProfissional(opcoes.find((item) => item.id === nutricionistaId));
+      }).catch(() => undefined);
+    }
+    void listAppointments().then((consultas) => {
+      if (ativa) setDatasComConsulta(new Set(consultas
+        .filter((item) => !['CANCELADA', 'RECUSADA'].includes(item.status))
+        .map((item) => dateKeyFromLocalDateTime(item.dataHora))));
+    }).catch(() => undefined);
+    return () => { ativa = false; };
+  }, [nutricionistaId, reagendamento, rotaValida]);
+
+  useEffect(() => {
+    if (!rotaValida || !dataSelecionada) return;
+    let ativa = true;
+    void getAppointmentAvailability(nutricionistaId, dataSelecionada, consultaId)
+      .then((resposta) => {
+        if (ativa) setDisponibilidade(resposta);
       })
-      .catch((failure) => {
-        if (active) {
-          setAvailability(null);
-          setError(errorMessage(failure));
-        }
+      .catch((falha: unknown) => {
+        if (ativa) setErroHorarios(falha instanceof ApiError
+          ? falha.message : 'Não foi possível carregar os horários disponíveis.');
       })
       .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
+        if (ativa) setCarregando(false);
       });
-    return () => {
-      active = false;
-    };
-  }, [nutricionistaId, selectedDate, consultaId]);
+    return () => { ativa = false; };
+  }, [nutricionistaId, dataSelecionada, consultaId, rotaValida, tentativa]);
 
-  const weekDays = useMemo(() => buildWeekDays(selectedDate), [selectedDate]);
-  const groupedSlots = useMemo(
-    () => groupSlotsByPeriod(availability?.horarios ?? []),
-    [availability]
-  );
+  const mudarData = (novaData: string) => {
+    setCalendarioAberto(false);
+    if (novaData === dataSelecionada) return;
+    setHorario(undefined);
+    setDisponibilidade(undefined);
+    setErroHorarios('');
+    setCarregando(true);
+    setDataSelecionada(novaData);
+  };
 
-  const confirm = async () => {
-    if (!selectedSlot) {
-      return;
-    }
-    setSaving(true);
-    setError('');
+  const enviar = async () => {
+    if (!horario || !rotaValida || travaEnvio.current) return;
+    travaEnvio.current = true;
+    setEnviando(true);
     try {
-      if (consultaId !== undefined && versao !== undefined) {
-        await rescheduleAppointment(consultaId, { dataHora: selectedSlot, versao });
-        showAlert(
-          'Reagendamento solicitado',
-          'O novo horário aguarda confirmação. Se a consulta estava no Google Agenda, atualize o evento manualmente.'
-        );
-      } else {
-        await scheduleAppointment({ nutricionistaId, dataHora: selectedSlot });
-        showAlert('Horário solicitado', 'Sua consulta está aguardando confirmação.');
-      }
-      navigation.navigate('Agenda');
-    } catch (failure) {
-      setError(
-        failure instanceof ApiError ? failure.message : 'Não foi possível confirmar o horário.'
-      );
+      const consulta = consultaId !== undefined && versao !== undefined
+        ? await rescheduleAppointment(consultaId, { dataHora: horario, versao })
+        : await scheduleAppointment({ nutricionistaId, dataHora: horario });
+      setSolicitacao({ ...consulta, avulsa: consulta.avulsa ?? (!reagendamento && profissional?.vinculado === false) });
+      rolagem.current?.scrollTo({ y: 0, animated: false });
+      toast.sucesso(reagendamento ? 'Solicitação de reagendamento enviada.' : 'Solicitação de consulta enviada.');
+    } catch (falha) {
+      toast.erro(falha instanceof ApiError ? falha.message : 'Não foi possível enviar a solicitação.');
     } finally {
-      setSaving(false);
+      travaEnvio.current = false;
+      setEnviando(false);
     }
   };
 
+  const voltar = () => navigation.popTo('Agenda');
+  const nome = disponibilidade?.nutricionistaNome ?? profissional?.nome;
+  const foto = useFotoNutricionistaNaAgenda(rotaValida && nome ? nutricionistaId : null);
+  const duracao = disponibilidade?.duracaoMinutos ?? 45;
+  const escolherData = calendarioAberto || !dataSelecionada;
+  const periodos = groupSlotsByPeriod(disponibilidade?.horarios ?? []);
+  const temHorarios = !!(disponibilidade?.horarios.length);
+  const titulo = solicitacao ? 'Acompanhe o pedido' : reagendamento ? 'Reagendar consulta' : 'Agendar consulta';
+
+  const voltarAgenda = (
+    <Pressable style={({ pressed }) => [styles.botao, pressed && styles.botaoPressionado]} onPress={voltar} accessibilityRole="button">
+      <Text style={styles.botaoTexto}>{solicitacao ? 'Acompanhar na agenda' : 'Voltar à agenda'}</Text>
+    </Pressable>
+  );
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Voltar"
-        >
-          <ArrowLeftIcon />
-        </Pressable>
-        <Text style={styles.headerTitle}>Horários Disponíveis</Text>
+      <View style={styles.barra}>
+        <View style={styles.barraConteudo}>
+          <Pressable style={styles.voltar} onPress={voltar} disabled={enviando} accessibilityRole="button" accessibilityLabel="Voltar à agenda">
+            <Feather name="arrow-left" size={22} color={colors.brandDeep} aria-hidden />
+          </Pressable>
+          <Text style={styles.tituloPagina} accessibilityRole="header" aria-level={1}>{titulo}</Text>
+        </View>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <View style={styles.profileCard}>
-          <Text style={styles.professionalName}>
-            {availability?.nutricionistaNome ?? 'Nutricionista'}
-          </Text>
-          <Text style={styles.specialty}>
-            {availability?.especialidade ?? 'Nutricionista Clínico'}
-          </Text>
-        </View>
-
-        <View style={styles.weekSection}>
-          <View style={styles.weekTitleRow}>
-            <Text style={styles.weekTitle}>{monthTitle(fromDateKey(selectedDate))}</Text>
-            <Pressable
-              onPress={() => navigation.navigate('Agenda')}
-              accessibilityRole="button"
-            >
-              <Text style={styles.calendarLink}>VER CALENDÁRIO</Text>
-            </Pressable>
+      <ScrollView ref={rolagem} style={styles.scroll} contentContainerStyle={styles.conteudo}>
+        {!reagendamento && rotaValida && <AppointmentSteps atual={solicitacao ? 3 : 2} />}
+        {!rotaValida ? (
+          <View style={sectionCardStyles.superficie}>
+            <Text style={styles.erro} accessibilityRole="alert">Agendamento indisponível. Escolha um nutricionista na Agenda.</Text>
+            {voltarAgenda}
           </View>
-          <ScrollView
-            ref={weekScrollRef}
-            horizontal
-            onLayout={revealSelectedDay}
-            onContentSizeChange={revealSelectedDay}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.weekDays}
-          >
-            {weekDays.map((date) => {
-              const dateKey = toDateKey(date);
-              const active = dateKey === selectedDate;
-              const disabled = saving || !isAppointmentDateSelectable(dateKey);
-              return (
-                <Pressable
-                  key={dateKey}
-                  style={[styles.weekDay, active && styles.activeWeekDay, disabled && styles.disabledDay]}
-                  onPress={() => {
-                    if (active || disabled) return;
-                    setLoading(true);
-                    setSelectedSlot(null);
-                    setError('');
-                    setSelectedDate(dateKey);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Selecionar dia ${dateKey}`}
-                  disabled={disabled}
-                  accessibilityState={{ selected: active, disabled }}
-                >
-                  <Text style={[styles.weekdayName, active && styles.activeWeekdayText]}>
-                    {weekdayShort(date)}
-                  </Text>
-                  <Text style={[styles.weekdayNumber, active && styles.activeWeekdayText]}>
-                    {date.getDate()}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {error ? (
-          <Text style={styles.error} accessibilityRole="alert">
-            {error}
-          </Text>
-        ) : null}
-
-        {loading ? (
-          <View style={styles.loading}>
-            <ActivityIndicator color={colors.brand} />
-          </View>
+        ) : solicitacao ? (
+          <>
+            <AppointmentRequestReceipt consulta={solicitacao} reagendamento={reagendamento} duracao={duracao} foto={foto} />
+            {voltarAgenda}
+          </>
         ) : (
           <>
-            <SlotSection
-              title="Manhã"
-              slots={groupedSlots.morning}
-              selectedSlot={selectedSlot}
-              onSelect={setSelectedSlot}
-            />
-            <SlotSection
-              title="Tarde"
-              slots={groupedSlots.afternoon}
-              selectedSlot={selectedSlot}
-              onSelect={setSelectedSlot}
-            />
-            {availability?.horarios.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>Não há horários disponíveis para esta data.</Text>
+            {nome && (
+              <View style={[sectionCardStyles.superficie, styles.perfil]}>
+                <SectionCardHeader icone="user" titulo={nome} avatar={<AvatarFoto foto={foto} tamanho={40} />} />
+                {disponibilidade?.especialidade && <Text style={styles.descricao}>{disponibilidade.especialidade}</Text>}
               </View>
-            ) : null}
+            )}
+            {escolherData ? (
+              <>
+                <CalendarCard
+                  selectedDate={dataSelecionada || undefined}
+                  appointmentDates={datasComConsulta}
+                  onSelectDate={(novaData) => {
+                    mudarData(novaData);
+                    rolagem.current?.scrollTo({ y: 0, animated: false });
+                  }}
+                />
+                {!!dataSelecionada && (
+                  <Pressable onPress={() => setCalendarioAberto(false)} accessibilityRole="button" style={styles.acaoSecundaria}>
+                    <Text style={styles.acaoTexto}>Voltar aos horários</Text>
+                  </Pressable>
+                )}
+              </>
+            ) : (
+              <>
+                <View style={sectionCardStyles.superficie}>
+                  <SectionCardHeader titulo="Data da consulta" icone="calendar" />
+                  <View style={styles.dataLinha}>
+                    <Text style={[styles.dataTexto, styles.dadosData]}>{formatarDataCivil(dataSelecionada)}</Text>
+                    <Pressable onPress={() => setCalendarioAberto(true)} disabled={enviando} accessibilityRole="button" style={styles.acaoSecundaria}>
+                      <Text style={styles.acaoTexto}>Alterar data</Text>
+                    </Pressable>
+                  </View>
+                  <View style={styles.dias}>
+                    {buildWeekDays(dataSelecionada).map((dia) => {
+                      const chave = toDateKey(dia);
+                      const ativo = chave === dataSelecionada;
+                      const desabilitado = enviando || chave < hoje;
+                      return (
+                        <Pressable
+                          key={chave}
+                          style={[styles.dia, ativo && styles.selecionado, desabilitado && styles.desabilitado]}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Selecionar dia ${formatDateFromDate(dia)}`}
+                          accessibilityState={{ selected: ativo, disabled: desabilitado }}
+                          onPress={() => mudarData(chave)}
+                          disabled={desabilitado}
+                        >
+                          <Text style={[styles.diaRotulo, ativo && styles.selecionadoTexto]}>{weekdayShort(dia)}</Text>
+                          <Text style={[styles.diaNumero, ativo && styles.selecionadoTexto]}>{dia.getDate()}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                <View style={sectionCardStyles.superficie}>
+                  <SectionCardHeader titulo="Escolha o horário" icone="clock" />
+                  {carregando ? (
+                    <View style={styles.carregando} aria-busy>
+                      <ActivityIndicator color={colors.brand} />
+                      <Text style={styles.descricao}>Buscando horários…</Text>
+                    </View>
+                  ) : erroHorarios ? (
+                    <View style={styles.avisoErro}>
+                      <Text style={styles.erro} accessibilityRole="alert">{erroHorarios}</Text>
+                      <Pressable accessibilityRole="button" style={styles.acaoSecundaria} onPress={() => {
+                        setErroHorarios('');
+                        setCarregando(true);
+                        setTentativa((valor) => valor + 1);
+                      }}>
+                        <Text style={styles.acaoTexto}>Tentar novamente</Text>
+                      </Pressable>
+                    </View>
+                  ) : temHorarios ? (
+                    <>
+                      <Periodos titulo="Manhã" horarios={periodos.morning} selecionado={horario} duracao={duracao} desabilitado={enviando} selecionar={setHorario} />
+                      <Periodos titulo="Tarde" horarios={periodos.afternoon} selecionado={horario} duracao={duracao} desabilitado={enviando} selecionar={setHorario} />
+                      <Text style={styles.descricao}>Duração aproximada de {duracao} minutos. Chegue com 10 minutos de antecedência.</Text>
+                    </>
+                  ) : (
+                    <View style={styles.vazio}>
+                      <Text style={styles.dataTexto}>Não há horários disponíveis nesta data.</Text>
+                      <Text style={styles.descricao}>Escolha outro dia para continuar.</Text>
+                    </View>
+                  )}
+                </View>
+              </>
+            )}
           </>
         )}
-
-        <View style={styles.infoNote}>
-          <InfoIcon />
-          <Text style={styles.infoText}>
-            {'As consultas têm duração aproximada de 45 minutos.\nChegue com 10 minutos de antecedência.'}
-          </Text>
-        </View>
       </ScrollView>
 
-      <View style={styles.bottomBar}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.confirmButton,
-            (!selectedSlot || saving) && styles.disabledButton,
-            pressed && selectedSlot && styles.pressed
-          ]}
-          onPress={() => void confirm()}
-          disabled={!selectedSlot || saving}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !selectedSlot || saving }}
-        >
-          {saving ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <>
-              <Text style={styles.confirmText}>Confirmar Horário</Text>
-              <CheckCircleIcon />
-            </>
-          )}
-        </Pressable>
-      </View>
+      {!solicitacao && !escolherData && temHorarios && (
+        <View style={styles.rodape}>
+          <View style={styles.rodapeConteudo}>
+            {horario ? (
+              <View style={styles.dadosData} aria-live="polite">
+                <Text style={styles.dataTexto}>{formatarDataCivil(dataSelecionada)} · {timeRangeLabel(horario, duracao)}</Text>
+                <Text style={styles.descricao}>
+                  {profissional?.vinculado === false && !reagendamento
+                    ? 'O nutricionista precisa aceitar a consulta para confirmar o horário e criar o vínculo.'
+                    : 'O horário depende da confirmação do nutricionista.'}
+                </Text>
+              </View>
+            ) : <Text style={styles.descricao}>Selecione um horário para enviar a solicitação.</Text>}
+            <Pressable
+              style={({ pressed }) => [styles.botao, (!horario || enviando) && styles.botaoDesabilitado, pressed && styles.botaoPressionado]}
+              onPress={() => void enviar()}
+              disabled={!horario || enviando}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !horario || enviando, busy: enviando }}
+            >
+              <Text style={styles.botaoTexto}>{enviando ? 'Enviando…' : reagendamento ? 'Solicitar reagendamento' : 'Solicitar consulta'}</Text>
+              {enviando ? <ActivityIndicator color={colors.white} /> : <Feather name="arrow-right" size={18} color={colors.white} aria-hidden />}
+            </Pressable>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
-interface SlotSectionProps {
-  title: string;
-  slots: string[];
-  selectedSlot: string | null;
-  onSelect: (slot: string) => void;
+interface PeriodosProps {
+  titulo: string;
+  horarios: string[];
+  selecionado?: string;
+  duracao: number;
+  desabilitado: boolean;
+  selecionar: (valor: string) => void;
 }
 
-function SlotSection({ title, slots, selectedSlot, onSelect }: SlotSectionProps) {
-  if (slots.length === 0) {
-    return null;
-  }
+function Periodos({ titulo, horarios, selecionado, duracao, desabilitado, selecionar }: PeriodosProps) {
+  if (!horarios.length) return null;
   return (
-    <View style={styles.slotSection}>
-      <Text style={styles.slotTitle}>{title}</Text>
-      <View style={styles.slotGrid}>
-        {slots.map((slot) => {
-          const active = selectedSlot === slot;
+    <View style={styles.periodo}>
+      <Text style={styles.dataTexto} accessibilityRole="header">{titulo}</Text>
+      <View style={styles.horarios}>
+        {horarios.map((opcao) => {
+          const ativo = selecionado === opcao;
           return (
             <Pressable
-              key={slot}
-              style={[styles.slot, active && styles.activeSlot]}
-              onPress={() => onSelect(slot)}
+              key={opcao}
+              style={[styles.horario, ativo && styles.selecionado]}
               accessibilityRole="button"
-              accessibilityState={{ selected: active }}
+              accessibilityState={{ selected: ativo }}
+              disabled={desabilitado}
+              onPress={() => selecionar(opcao)}
             >
-              <Text style={[styles.slotText, active && styles.activeSlotText]}>
-                {timeRangeLabel(slot)}
-              </Text>
+              <Text style={[styles.horarioTexto, ativo && styles.selecionadoTexto]}>{timeRangeLabel(opcao, duracao)}</Text>
             </Pressable>
           );
         })}
@@ -294,232 +308,51 @@ function SlotSection({ title, slots, selectedSlot, onSelect }: SlotSectionProps)
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.pageAlt
+  safe: { flex: 1, backgroundColor: colors.page },
+  scroll: { flex: 1 },
+  barra: { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border },
+  barraConteudo: {
+    width: '100%', maxWidth: 560, alignSelf: 'center', flexDirection: 'row',
+    alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm
   },
-  header: {
-    height: 56,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: 'rgba(249,249,249,0.96)'
+  voltar: { width: 48, height: 52, alignItems: 'center', justifyContent: 'center' },
+  tituloPagina: { flex: 1, color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 21, lineHeight: 28 },
+  conteudo: { width: '100%', maxWidth: 560, alignSelf: 'center', padding: spacing.md, gap: spacing.md },
+  perfil: { gap: spacing.xs },
+  descricao: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 20 },
+  dataLinha: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
+  dadosData: { flexGrow: 1, gap: spacing.xxs },
+  dataTexto: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 15, lineHeight: 22 },
+  dias: { flexDirection: 'row', gap: spacing.xxs },
+  dia: { flex: 1, minHeight: 50, borderRadius: radius.sm, backgroundColor: colors.subtle, alignItems: 'center', justifyContent: 'center' },
+  diaRotulo: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 10, lineHeight: 15, textAlign: 'center' },
+  diaNumero: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 15, lineHeight: 21 },
+  desabilitado: { opacity: 0.48 },
+  acaoSecundaria: {
+    alignSelf: 'flex-start', justifyContent: 'center', minHeight: 44, paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs, borderRadius: radius.sm, backgroundColor: colors.confirmedBackground
   },
-  backButton: {
-    width: 28,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center'
+  acaoTexto: { color: colors.brandDark, fontFamily: fontFamily.bold, fontSize: 13, lineHeight: 19 },
+  carregando: { minHeight: 64, alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
+  vazio: { padding: spacing.sm, gap: spacing.xxs, backgroundColor: colors.subtle, borderRadius: radius.md },
+  avisoErro: { padding: spacing.sm, gap: spacing.xs, borderRadius: radius.sm, backgroundColor: colors.dangerButtonBackground },
+  erro: { color: colors.dangerText, fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 20 },
+  periodo: { gap: spacing.xs },
+  horarios: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.xs, rowGap: spacing.xs },
+  horario: {
+    flexBasis: '46%', flexGrow: 1, minHeight: 48, padding: spacing.xs, alignItems: 'center',
+    justifyContent: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: radius.md
   },
-  headerTitle: {
-    color: colors.brandDark,
-    fontFamily: fontFamily.bold,
-    fontSize: 18,
-    lineHeight: 28
+  horarioTexto: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 14, lineHeight: 20 },
+  selecionado: { backgroundColor: colors.brand, borderColor: colors.brand },
+  selecionadoTexto: { color: colors.white },
+  rodape: { backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border },
+  rodapeConteudo: { width: '100%', maxWidth: 560, alignSelf: 'center', padding: spacing.md, gap: spacing.xs },
+  botao: {
+    minHeight: 48, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.xs,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.xs, backgroundColor: colors.brand
   },
-  scroll: {
-    flex: 1
-  },
-  content: {
-    width: '100%',
-    maxWidth: 428,
-    alignSelf: 'center',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xl,
-    gap: spacing.lg
-  },
-  profileCard: {
-    minHeight: 80,
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    justifyContent: 'center'
-  },
-  professionalName: {
-    color: colors.text,
-    fontFamily: fontFamily.bold,
-    fontSize: 18,
-    lineHeight: 28
-  },
-  specialty: {
-    color: colors.text,
-    fontFamily: fontFamily.regular,
-    fontSize: 14,
-    lineHeight: 20
-  },
-  weekSection: {
-    gap: spacing.sm
-  },
-  weekTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-  weekTitle: {
-    color: colors.text,
-    fontFamily: fontFamily.bold,
-    fontSize: 16,
-    lineHeight: 24
-  },
-  calendarLink: {
-    color: colors.brand,
-    fontFamily: fontFamily.bold,
-    fontSize: 12,
-    lineHeight: 16,
-    letterSpacing: 0.6
-  },
-  weekDays: {
-    gap: spacing.xs,
-    paddingBottom: spacing.xs
-  },
-  weekDay: {
-    width: 56,
-    height: 80,
-    borderRadius: radius.md,
-    backgroundColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xxs
-  },
-  activeWeekDay: {
-    backgroundColor: colors.brand,
-    ...shadows.button
-  },
-  disabledDay: {
-    opacity: 0.45
-  },
-  weekdayName: {
-    color: colors.text,
-    fontFamily: fontFamily.bold,
-    fontSize: 10,
-    lineHeight: 15,
-    letterSpacing: -0.5
-  },
-  weekdayNumber: {
-    color: colors.text,
-    fontFamily: fontFamily.bold,
-    fontSize: 18,
-    lineHeight: 28
-  },
-  activeWeekdayText: {
-    color: colors.white
-  },
-  loading: {
-    minHeight: 160,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  slotSection: {
-    minHeight: 180,
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-    gap: spacing.md
-  },
-  slotTitle: {
-    color: colors.text,
-    fontFamily: fontFamily.bold,
-    fontSize: 16,
-    lineHeight: 24
-  },
-  slotGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: spacing.sm
-  },
-  slot: {
-    width: '48%',
-    height: 42,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  activeSlot: {
-    borderColor: colors.brand,
-    backgroundColor: colors.brand,
-    ...shadows.button
-  },
-  slotText: {
-    color: colors.text,
-    fontFamily: fontFamily.semibold,
-    fontSize: 14,
-    lineHeight: 20
-  },
-  activeSlotText: {
-    color: colors.white
-  },
-  infoNote: {
-    minHeight: 71,
-    backgroundColor: 'rgba(0,84,20,0.05)',
-    borderRadius: radius.md,
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm
-  },
-  infoText: {
-    flex: 1,
-    color: colors.text,
-    fontFamily: fontFamily.regular,
-    fontSize: 12,
-    lineHeight: 19.5
-  },
-  error: {
-    color: colors.dangerText,
-    backgroundColor: colors.dangerButtonBackground,
-    borderRadius: radius.sm,
-    padding: spacing.sm,
-    fontFamily: fontFamily.regular,
-    fontSize: 13
-  },
-  emptyState: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.lg
-  },
-  emptyText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.regular,
-    textAlign: 'center'
-  },
-  bottomBar: {
-    padding: spacing.xl,
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    shadowColor: '#1a1c1c',
-    shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.06,
-    shadowRadius: 30,
-    elevation: 12
-  },
-  confirmButton: {
-    height: 56,
-    maxWidth: 380,
-    width: '100%',
-    alignSelf: 'center',
-    borderRadius: radius.md,
-    backgroundColor: colors.brand,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs
-  },
-  disabledButton: {
-    opacity: 0.5
-  },
-  confirmText: {
-    color: colors.white,
-    fontFamily: fontFamily.bold,
-    fontSize: 16,
-    lineHeight: 24
-  },
-  pressed: {
-    opacity: 0.78
-  }
+  botaoDesabilitado: { backgroundColor: colors.textSecondary },
+  botaoPressionado: { backgroundColor: colors.brandDark },
+  botaoTexto: { flexShrink: 1, color: colors.white, fontFamily: fontFamily.bold, fontSize: 15, lineHeight: 22 }
 });

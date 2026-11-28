@@ -1,10 +1,10 @@
+import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import CalendarDateIcon from '../../../assets/appointments/calendar-date.svg';
-import ClockIcon from '../../../assets/appointments/clock.svg';
-import { colors, fontFamily, radius, shadows, spacing } from '../../../theme/tokens';
+import { colors, fontFamily, radius, spacing } from '../../../theme/tokens';
 import { appointmentDateLabel, timeRangeLabel } from '../appointments-date.util';
 import { Appointment } from '../appointments.models';
+import { AvatarNutricionistaAgenda } from './AvatarNutricionistaAgenda';
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -33,30 +33,41 @@ export function AppointmentCard({
 
   return (
     <View style={styles.card}>
-      <View
-        style={[
-          styles.status,
-          pending ? styles.pendingStatus : styles.confirmedStatus,
-          canceled && styles.canceledStatus
-        ]}
-      >
-        <Text style={[styles.statusText, pending ? styles.pendingText : styles.confirmedText, canceled && styles.canceledText]}>
+      <View style={styles.resumo}>
+        <View style={styles.identidade}>
+          <AvatarNutricionistaAgenda id={appointment.nutricionistaId} />
+          <Text style={styles.professionalName}>{appointment.nutricionistaNome}</Text>
+        </View>
+        <Text
+          style={[
+            styles.status,
+            pending ? styles.pendingStatus : styles.confirmedStatus,
+            canceled && styles.canceledStatus
+          ]}
+        >
           {appointment.iniciadaEm && appointment.status === 'CONFIRMADA' ? 'EM ATENDIMENTO' : statusLabels[appointment.status]}
         </Text>
       </View>
 
-      <Text style={styles.professionalName}>{appointment.nutricionistaNome}</Text>
-
       <View style={styles.details}>
         <View style={styles.detailItem}>
-          <CalendarDateIcon />
+          <Feather name="calendar" size={16} color={colors.brandDeep} aria-hidden />
           <Text style={styles.detailText}>{appointmentDateLabel(appointment.dataHora)}</Text>
         </View>
         <View style={styles.detailItem}>
-          <ClockIcon />
+          <Feather name="clock" size={16} color={colors.brandDeep} aria-hidden />
           <Text style={styles.detailText}>{timeRangeLabel(appointment.dataHora)}</Text>
         </View>
       </View>
+
+      {pending && appointment.avulsa && (
+        <View style={styles.aviso}>
+          <Feather name="clock" size={16} color={colors.pending} aria-hidden />
+          <Text style={styles.avisoTexto}>
+            Consulta e vínculo pendentes. O vínculo será criado quando o nutricionista aceitar a consulta.
+          </Text>
+        </View>
+      )}
 
       {confirmed ? (
         <>
@@ -67,6 +78,7 @@ export function AppointmentCard({
             accessibilityLabel="Adicionar consulta ao Google Agenda"
           >
             <Text style={styles.calendarButtonText}>Adicionar ao Google Agenda</Text>
+            <Feather name="external-link" size={16} color={colors.white} aria-hidden />
           </Pressable>
           <View style={styles.actions}>
             <Pressable
@@ -92,56 +104,61 @@ export function AppointmentCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadows.card
+    backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: radius.md,
+    padding: spacing.sm, gap: spacing.sm
+  },
+  aviso: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs, backgroundColor: colors.pendingBackground,
+    padding: spacing.sm, borderRadius: radius.sm },
+  avisoTexto: { flex: 1, color: colors.pending, fontFamily: fontFamily.semibold, fontSize: 13, lineHeight: 19 },
+  resumo: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.xs
   },
   status: {
-    alignSelf: 'flex-start',
     borderRadius: radius.pill,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xxs
+    paddingVertical: spacing.xxs,
+    fontFamily: fontFamily.bold,
+    fontSize: 11,
+    lineHeight: 16,
+    overflow: 'hidden'
   },
   confirmedStatus: {
-    backgroundColor: colors.confirmedBackground
-  },
-  pendingStatus: {
-    backgroundColor: colors.pendingBackground
-  },
-  canceledStatus: {
-    backgroundColor: colors.subtle
-  },
-  canceledText: {
-    color: colors.textSecondary
-  },
-  statusText: {
-    fontFamily: fontFamily.bold,
-    fontSize: 10,
-    lineHeight: 15,
-    letterSpacing: 0.5
-  },
-  confirmedText: {
+    backgroundColor: colors.confirmedBackground,
     color: colors.brandDark
   },
-  pendingText: {
+  pendingStatus: {
+    backgroundColor: colors.pendingBackground,
     color: colors.pending
   },
+  canceledStatus: {
+    backgroundColor: colors.subtle,
+    color: colors.text
+  },
+  identidade: {
+    flexDirection: 'row', alignItems: 'center', flexShrink: 1, minWidth: 0, gap: spacing.xs
+  },
   professionalName: {
-    color: colors.brandDark,
-    fontFamily: fontFamily.bold,
-    fontSize: 15
+    flexShrink: 1,
+    color: colors.brandDeep,
+    fontFamily: fontFamily.extrabold,
+    fontSize: 17,
+    lineHeight: 24
   },
   details: {
     minHeight: 44,
     backgroundColor: colors.subtle,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: spacing.xl
+    columnGap: spacing.md,
+    rowGap: spacing.xs
   },
   detailItem: {
     flexDirection: 'row',
@@ -152,7 +169,8 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontFamily: fontFamily.regular,
     fontSize: 14,
-    lineHeight: 20
+    lineHeight: 20,
+    fontVariant: ['tabular-nums']
   },
   actions: {
     paddingTop: spacing.xxs,
@@ -160,14 +178,18 @@ const styles = StyleSheet.create({
     gap: spacing.sm
   },
   calendarButton: {
-    height: 44,
+    minHeight: 48,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
     backgroundColor: colors.brand,
-    borderRadius: radius.md,
-    ...shadows.button
+    borderRadius: radius.md
   },
   calendarButtonText: {
+    flexShrink: 1,
     color: colors.white,
     fontFamily: fontFamily.bold,
     fontSize: 14,
@@ -175,10 +197,11 @@ const styles = StyleSheet.create({
   },
   rescheduleButton: {
     flex: 1,
-    height: 44,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,84,20,0.05)',
+    backgroundColor: colors.confirmedBackground,
+    padding: spacing.xs,
     borderRadius: radius.md
   },
   rescheduleText: {
@@ -189,15 +212,15 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    height: 44,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.danger,
-    borderRadius: radius.md,
-    ...shadows.button
+    backgroundColor: colors.dangerButtonBackground,
+    padding: spacing.xs,
+    borderRadius: radius.md
   },
   cancelText: {
-    color: colors.white,
+    color: colors.dangerText,
     fontFamily: fontFamily.bold,
     fontSize: 14,
     lineHeight: 20

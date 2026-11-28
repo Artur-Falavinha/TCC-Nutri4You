@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 
+import { ToastService } from '../../../../core/services/toast.service';
 import { ApiErrorResponse } from '../../../../core/models/api-response.model';
 import { AuthService } from '../../../../core/services/auth.service';
 import { AuthFormCardComponent } from '../../../../shared/components/auth-form-card/auth-form-card.component';
@@ -21,6 +22,7 @@ import { UiLinkComponent } from '../../../../shared/components/ui-link/ui-link.c
   styleUrl: '../register/register.component.css'
 })
 export class CadastroEmailComponent {
+  private readonly toast = inject(ToastService);
   private readonly authService = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
@@ -46,8 +48,11 @@ export class CadastroEmailComponent {
     this.authService.iniciarCadastro(this.formulario.controls.email.value.trim())
       .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.enviando.set(false)))
       .subscribe({
-        next: () => this.orientacao.set('Confira sua caixa de entrada e abra o link para continuar seu cadastro.'),
-        error: (erro: ApiErrorResponse) => this.erro.set(erro.message || 'Não foi possível enviar. Tente novamente.')
+        next: () => {
+          this.orientacao.set('Confira sua caixa de entrada e abra o link para continuar seu cadastro.');
+          this.toast.sucesso('Solicitação de cadastro recebida.');
+        },
+        error: (erro: ApiErrorResponse) => this.toast.erro(erro.message || 'Não foi possível enviar. Tente novamente.')
       });
   }
 }

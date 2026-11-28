@@ -27,14 +27,15 @@ import java.util.List;
 @Entity
 @Table(name = "Plano_Alimentar")
 public class PlanoAlimentar {
+    public static final String STATUS_EXCLUIDO = "EXCLUIDO";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_plano")
     private Integer id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_consulta", unique = true, updatable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_consulta", updatable = false)
     private Consulta consulta;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -47,6 +48,16 @@ public class PlanoAlimentar {
 
     @Column(name = "status", nullable = false, length = 20)
     private String status = "RASCUNHO";
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_plano_anterior", updatable = false)
+    private PlanoAlimentar planoAnterior;
+
+    @OneToOne(mappedBy = "planoAnterior", fetch = FetchType.LAZY)
+    private PlanoAlimentar sucessor;
+
+    @Column(name = "substituida_em")
+    private LocalDate substituidaEm;
 
     @Column(name = "vigencia_inicio")
     private LocalDate vigenciaInicio;
@@ -137,8 +148,31 @@ public class PlanoAlimentar {
         publicadoEm = Instant.now();
     }
 
+    public void vincularEdicao(PlanoAlimentar anterior) {
+        this.planoAnterior = anterior;
+    }
+
+    public void iniciarEm(LocalDate inicio) {
+        this.vigenciaInicio = inicio;
+    }
+
+    public void substituirEm(LocalDate data) {
+        terminarEm(data);
+        substituir();
+        this.substituidaEm = data;
+    }
+
+    public PlanoAlimentar getPlanoAnterior() { return planoAnterior; }
+    public PlanoAlimentar getSucessor() { return sucessor; }
+    public LocalDate getSubstituidaEm() { return substituidaEm; }
+
     public void terminarEm(LocalDate fim) { this.vigenciaFim = fim; tocar(); }
     public void substituir() { this.status = "SUBSTITUIDO"; tocar(); }
+    public void excluir() {
+        this.status = STATUS_EXCLUIDO;
+        tocar();
+    }
+
     public void tocar() {
         Instant agora = Instant.now();
         revisadoEm = agora.isAfter(revisadoEm.plusMillis(1)) ? agora : revisadoEm.plusMillis(1);

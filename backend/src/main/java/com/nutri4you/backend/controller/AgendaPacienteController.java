@@ -4,12 +4,14 @@ import com.nutri4you.backend.dto.ApiResponse;
 import com.nutri4you.backend.dto.CancelarConsultaRequest;
 import com.nutri4you.backend.dto.ConsultaPacienteResponse;
 import com.nutri4you.backend.dto.DisponibilidadeConsultaResponse;
+import com.nutri4you.backend.dto.NotificacaoConsultaPacienteDTO;
 import com.nutri4you.backend.dto.NutricionistaAgendaDTO;
 import com.nutri4you.backend.dto.ReagendarConsultaRequest;
 import com.nutri4you.backend.dto.SolicitarConsultaRequest;
 import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.service.AgendaPacienteService;
+import com.nutri4you.backend.service.NotificacaoConsultaPacienteService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -26,14 +28,23 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
 
+import static com.nutri4you.backend.config.FormatoDataConfig.DATA_BRASILEIRA;
+
 @RestController
 @RequestMapping("/api/v1/agenda")
 public class AgendaPacienteController {
 
     private final AgendaPacienteService service;
+    private final NotificacaoConsultaPacienteService notificacoes;
 
-    public AgendaPacienteController(AgendaPacienteService service) {
+    public AgendaPacienteController(AgendaPacienteService service, NotificacaoConsultaPacienteService notificacoes) {
         this.service = service;
+        this.notificacoes = notificacoes;
+    }
+
+    @GetMapping("/notificacoes")
+    public ApiResponse<List<NotificacaoConsultaPacienteDTO>> listarNotificacoes(Authentication authentication) {
+        return ApiResponse.ok(notificacoes.listar(paciente(authentication)), "Notificações carregadas.");
     }
 
     @GetMapping("/consultas")
@@ -50,7 +61,8 @@ public class AgendaPacienteController {
     public ApiResponse<DisponibilidadeConsultaResponse> disponibilidade(
             Authentication authentication,
             @RequestParam Integer nutricionistaId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE, fallbackPatterns = DATA_BRASILEIRA) LocalDate data,
             @RequestParam(required = false) Integer consultaId) {
         Paciente paciente = paciente(authentication);
         DisponibilidadeConsultaResponse disponibilidade = consultaId == null

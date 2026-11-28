@@ -8,6 +8,6 @@ Ao solicitar vínculo ou aceitar um convite, o paciente autoriza o vínculo oper
 
 Se o usuário escolher abrir um evento no Google Agenda, os dados exibidos no evento serão enviados ao Google. O uso desse recurso é opcional.
 
-Na área Privacidade é possível pedir confirmação e acesso, correção, informações sobre compartilhamento, portabilidade, anonimização ou bloqueio, eliminação e revogação de consentimento quando aplicável. O protocolo pode ser acompanhado na mesma área. A eliminação depende da finalidade, da base legal e de obrigações de conservação. O pedido não exclui automaticamente dados nem a conta.
+Para exercer direitos sobre seus dados pessoais, como confirmação e acesso, correção, informações sobre compartilhamento, portabilidade, anonimização ou bloqueio, eliminação e revogação de consentimento quando aplicável, utilize os canais externos indicados na área Privacidade. O Nutri4You não recebe nem acompanha protocolos desses pedidos. A eliminação depende da finalidade, da base legal e de obrigações de conservação. O pedido externo não exclui automaticamente dados nem a conta.
 
 Referências: Lei 13.709/2018 (LGPD), Lei 13.787/2018 e Resolução CFN 594/2017.

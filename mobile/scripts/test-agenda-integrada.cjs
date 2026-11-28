@@ -39,6 +39,7 @@ function dateKey(date) { return date.toLocaleDateString('en-CA', { timeZone: 'Am
   await api(`/gestao-pacientes/${paciente.id}/vincular`, 'POST', undefined, nutriToken);
   const sunday = new Date(); sunday.setDate(sunday.getDate() + (7 - sunday.getDay() || 7));
   const data = dateKey(sunday);
+  const dataExibida = data.split('-').reverse().join('/');
   await api('/agenda-nutricionista/horarios', 'PUT', [
     { diaSemana: 7, horario: '09:00' }, { diaSemana: 7, horario: '10:00' }, { diaSemana: 7, horario: '11:00' }
   ], nutriToken);
@@ -63,9 +64,9 @@ function dateKey(date) { return date.toLocaleDateString('en-CA', { timeZone: 'Am
     await texto('Nenhuma consulta agendada').waitFor();
     console.log('PASS login e acesso à agenda');
     if (sunday.getMonth() !== new Date().getMonth()) await page.getByRole('button', { name: 'Próximo mês', exact: true }).click();
-    await page.getByRole('button', { name: `Dia ${sunday.getDate()}`, exact: true }).click();
+    await page.getByRole('button', { name: `Dia ${dataExibida}`, exact: true }).click();
     await texto('09:00-09:45').waitFor();
-    const diaSelecionado = page.getByRole('button', { name: `Selecionar dia ${data}`, exact: true });
+    const diaSelecionado = page.getByRole('button', { name: `Selecionar dia ${dataExibida}`, exact: true });
     const bounds = await diaSelecionado.boundingBox();
     assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390, 'O domingo selecionado deve estar visível sem rolagem manual.');
     await diaSelecionado.click();

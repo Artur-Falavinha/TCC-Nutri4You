@@ -4,6 +4,7 @@ import com.nutri4you.backend.model.TipoCadastro;
 import com.nutri4you.backend.repository.NutricionistaRepository;
 import com.nutri4you.backend.repository.PacienteRepository;
 import com.nutri4you.backend.service.EmailNotificationService;
+import com.nutri4you.backend.service.PrivacidadeService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -117,6 +118,25 @@ class CadastroEmailControllerTest {
         verificarContaInexistente(email);
     }
 
+    @ParameterizedTest
+    @EnumSource(TipoCadastro.class)
+    void exigeAceiteDaVersaoAtualNosDoisCadastros(TipoCadastro perfil) throws Exception {
+        String email = "termos-" + perfil.name().toLowerCase(Locale.ROOT) + "@example.test";
+        UUID token = iniciar(email, perfil);
+        confirmar(token, perfil).andExpect(status().isOk());
+
+        String caminho = perfil == TipoCadastro.PACIENTE
+                ? "/api/v1/pacientes/autocadastro" : "/api/v1/nutricionistas/autocadastro";
+        enviar(caminho, """
+                {"nome":"Cadastro Teste","email":"%s","tokenCadastro":"%s","senha":"%s",
+                "crn":"CRN8-70290","crnDeclarado":true}
+                """.formatted(email, token, SENHA))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Leia e aceite a versão atual dos termos de uso."));
+        verificarContaInexistente(email);
+        concluir(perfil, email, token, true).andExpect(status().isCreated());
+    }
+
     private UUID iniciar(String email, TipoCadastro perfil) throws Exception {
         solicitarInicio(email, perfil)
                 .andExpect(status().isAccepted())
@@ -143,13 +163,13 @@ class CadastroEmailControllerTest {
         if (perfil == TipoCadastro.PACIENTE) {
             return enviar("/api/v1/pacientes/autocadastro", """
                     {"nome":"Paciente Teste","email":"%s","tokenCadastro":"%s",
-                     "versaoTermos":"2026-11-19","senha":"%s"}
-                    """.formatted(email, token, SENHA));
+                     "cpf":"012.345.678-90","versaoTermos":"%s","senha":"%s"}
+                    """.formatted(email, token, PrivacidadeService.VERSAO, SENHA));
         }
         return enviar("/api/v1/nutricionistas/autocadastro", """
                 {"nome":"Nutricionista Teste","email":"%s","tokenCadastro":"%s",
-                 "crn":"CRN8-70290","crnDeclarado":%s,"versaoTermos":"2026-11-19","senha":"%s"}
-                """.formatted(email, token, declarouCrn, SENHA));
+                 "crn":"CRN8-70290","crnDeclarado":%s,"versaoTermos":"%s","senha":"%s"}
+                """.formatted(email, token, declarouCrn, PrivacidadeService.VERSAO, SENHA));
     }
 
     private ResultActions enviar(String caminho, String corpo) throws Exception {

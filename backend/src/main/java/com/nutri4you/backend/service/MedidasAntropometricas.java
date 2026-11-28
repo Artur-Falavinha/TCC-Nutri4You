@@ -1,6 +1,7 @@
 package com.nutri4you.backend.service;
 
 import com.nutri4you.backend.dto.AvaliacaoRequest;
+import com.nutri4you.backend.dto.AvaliacaoRequest.ModoPercentualGordura;
 import com.nutri4you.backend.dto.AvaliacaoResponse;
 import com.nutri4you.backend.model.AvaliacaoAntropometrica;
 import com.nutri4you.backend.model.Paciente;
@@ -8,23 +9,37 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 final class MedidasAntropometricas {
+    private static final BigDecimal CEM = BigDecimal.valueOf(100);
+    private static final String METODO_MANUAL = "Informado manualmente";
+
     private MedidasAntropometricas() {}
 
     static void validarMedidas(AvaliacaoRequest request) {
-        if (request == null || request.peso() == null || request.altura() == null) {
+        validarMedidas(request, true);
+    }
+
+    static void validarMedidas(AvaliacaoRequest request, boolean obrigatorias) {
+        if (obrigatorias && (request == null || request.peso() == null || request.altura() == null)) {
             throw new IllegalArgumentException("Peso e altura são obrigatórios.");
         }
-        if (request.peso().compareTo(BigDecimal.ONE) < 0 || request.peso().compareTo(new BigDecimal("500")) > 0) {
+        if (request == null) return;
+        if (request.peso() != null && (request.peso().compareTo(BigDecimal.ONE) < 0 || request.peso().compareTo(new BigDecimal("500")) > 0)) {
             throw new IllegalArgumentException("Peso deve ficar entre 1 e 500 kg.");
         }
-        if (request.altura().compareTo(new BigDecimal("0.30")) < 0
-                || request.altura().compareTo(new BigDecimal("2.70")) > 0) {
+        if (request.altura() != null && (request.altura().compareTo(new BigDecimal("0.30")) < 0
+                || request.altura().compareTo(new BigDecimal("2.70")) > 0)) {
             throw new IllegalArgumentException("Altura deve ficar entre 0,30 e 2,70 m.");
         }
-        validarOpcional(request.percentualGordura(), BigDecimal.ZERO, new BigDecimal("100"),
-                "Percentual de gordura deve ficar entre 0 e 100%.");
-        validarOpcional(request.massaMuscularKg(), BigDecimal.ZERO, new BigDecimal("300"),
-                "Massa muscular deve ficar entre 0 e 300 kg.");
+        BigDecimal percentual = request.percentualGordura();
+        if (percentual != null && (!percentualValido(percentual) || !percentualValido(arredondar(percentual)))) {
+            throw new IllegalArgumentException("O percentual de gordura deve ser maior que 0 e menor que 100%.");
+        }
+        BigDecimal massaMuscular = request.massaMuscularKg();
+        if (massaMuscular != null && (arredondar(massaMuscular).signum() <= 0
+                || (request.peso() != null && (massaMuscular.compareTo(request.peso()) >= 0
+                || arredondar(massaMuscular).compareTo(arredondar(request.peso())) >= 0)))) {
+            throw new IllegalArgumentException("A massa muscular deve ser positiva e menor que o peso corporal.");
+        }
         validarOpcional(request.pregaBicipital(), new BigDecimal("0.1"), new BigDecimal("100"),
                 "Prega bicipital deve ficar entre 0,1 e 100 mm.");
         validarOpcional(request.pregaPeitoral(), new BigDecimal("0.1"), new BigDecimal("100"),
@@ -41,10 +56,6 @@ final class MedidasAntropometricas {
                 "Prega supra-ilíaca deve ficar entre 0,1 e 100 mm.");
         validarOpcional(request.pregaCoxa(), new BigDecimal("0.1"), new BigDecimal("100"),
                 "Prega da coxa deve ficar entre 0,1 e 100 mm.");
-        if (JacksonPollockSetePregas.temAlgumaPregaExclusivaDoMetodo(request)
-                && !JacksonPollockSetePregas.temSetePregas(request)) {
-            throw new IllegalArgumentException("Preencha as sete pregas de Jackson-Pollock ou deixe todas vazias.");
-        }
         validarOpcional(request.circunferenciaCintura(), new BigDecimal("0.1"), new BigDecimal("300"),
                 "Circunferência da cintura deve ficar entre 0,1 e 300 cm.");
         validarOpcional(request.circunferenciaQuadril(), new BigDecimal("0.1"), new BigDecimal("300"),
@@ -60,7 +71,8 @@ final class MedidasAntropometricas {
     }
 
     static void aplicar(AvaliacaoAntropometrica avaliacao, AvaliacaoRequest request, Paciente paciente) {
-        avaliacao.setPeso(request.peso());
+        BigDecimal peso = arredondar(request.peso());
+        avaliacao.setPeso(peso);
         avaliacao.setAltura(request.altura());
         avaliacao.setImc(IndicadoresCorporais.imc(request.peso(), request.altura()));
         avaliacao.setMassaMuscularKg(request.massaMuscularKg());
@@ -76,26 +88,32 @@ final class MedidasAntropometricas {
         avaliacao.setCircunferenciaQuadril(request.circunferenciaQuadril());
         avaliacao.setCircunferenciaBraco(request.circunferenciaBraco());
 
-        BigDecimal percentual = request.percentualGordura();
-        String metodo = percentual == null ? null : "Informado manualmente";
-        if (JacksonPollockSetePregas.temSetePregas(request)) {
-            var resultado = JacksonPollockSetePregas.calcular(
-                    paciente, avaliacao.getDataAvaliacao().toLocalDate(), request);
-            percentual = resultado.percentualGordura();
-            avaliacao.setMassaMagraKg(resultado.massaMagraKg());
-            avaliacao.setMassaGordaKg(resultado.massaGordaKg());
-            metodo = JacksonPollockSetePregas.METODO;
-        } else if (percentual != null) {
-            BigDecimal massaGorda = request.peso().multiply(percentual)
-                    .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-            avaliacao.setMassaGordaKg(massaGorda);
-            avaliacao.setMassaMagraKg(request.peso().subtract(massaGorda).setScale(2, RoundingMode.HALF_UP));
-        } else {
-            avaliacao.setMassaMagraKg(null);
-            avaliacao.setMassaGordaKg(null);
-        }
+        boolean automatico = modoPercentual(avaliacao, request) == ModoPercentualGordura.AUTOMATICO;
+        BigDecimal percentual = automatico
+                ? JacksonPollockSetePregas.calcularPercentual(paciente, avaliacao.getDataAvaliacao().toLocalDate(), request)
+                : request.percentualGordura();
+        if (percentual != null) percentual = arredondar(percentual);
+        BigDecimal massaGorda = percentual == null || peso == null ? null : arredondar(peso.multiply(percentual).movePointLeft(2));
+        avaliacao.setMassaGordaKg(massaGorda);
+        avaliacao.setMassaMagraKg(massaGorda == null ? null : peso.subtract(massaGorda));
         avaliacao.setPercentualGordura(percentual);
-        avaliacao.setMetodoPercentualGordura(metodo);
+        avaliacao.setMetodoPercentualGordura(automatico ? JacksonPollockSetePregas.METODO : METODO_MANUAL);
+    }
+
+    private static ModoPercentualGordura modoPercentual(AvaliacaoAntropometrica avaliacao, AvaliacaoRequest request) {
+        if (request.modoPercentualGordura() != null) return request.modoPercentualGordura();
+        String metodoSalvo = avaliacao.getMetodoPercentualGordura();
+        if (metodoSalvo != null && metodoSalvo.startsWith("Jackson-Pollock")) return ModoPercentualGordura.AUTOMATICO;
+        if (METODO_MANUAL.equals(metodoSalvo)) return ModoPercentualGordura.MANUAL;
+        return JacksonPollockSetePregas.temSetePregas(request) ? ModoPercentualGordura.AUTOMATICO : ModoPercentualGordura.MANUAL;
+    }
+
+    static boolean percentualValido(BigDecimal percentual) {
+        return percentual.signum() > 0 && percentual.compareTo(CEM) < 0;
+    }
+
+    private static BigDecimal arredondar(BigDecimal valor) {
+        return valor == null ? null : valor.setScale(2, RoundingMode.HALF_UP);
     }
 
     static AvaliacaoResponse paraResposta(AvaliacaoAntropometrica avaliacao) {

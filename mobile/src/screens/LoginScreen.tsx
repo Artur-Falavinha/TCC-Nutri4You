@@ -2,25 +2,22 @@ import React, { useState } from 'react';
 import { CommonActions, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator
-} from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
+import { AuthFormButton } from '../components/auth/AuthFormButton';
 import { AuthScreenLayout } from '../components/auth/AuthScreenLayout';
 import { authFormStyles } from '../components/auth/authFormStyles';
-import { useAppAlert } from '../components/feedback/AppAlertProvider';
+import { recuperacaoSenhaStyles as formulario } from '../components/auth/recuperacaoSenhaStyles';
+import { SectionCardHeader, sectionCardStyles } from '../components/layout/SectionCardHeader';
+import { toast } from '../components/feedback/toast';
 import { login } from '../core/auth/auth.service';
 import { ApiError } from '../core/api/api-response.types';
 import type { RootStackParamList } from '../navigation/types';
+import { colors } from '../theme/tokens';
+import { perfilStyles } from './home/perfil.styles';
 
 export default function LoginScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { showAlert } = useAppAlert();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +25,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      showAlert('Atenção', 'Preencha todos os campos.');
+      toast.aviso('Preencha todos os campos.');
       return;
     }
 
@@ -44,12 +41,7 @@ export default function LoginScreen() {
       );
     } catch (err: unknown) {
       const apiError = err instanceof ApiError ? err : null;
-      showAlert(
-        apiError?.status === 401
-          ? 'Erro de autenticação'
-          : apiError?.status === 403
-            ? 'Acesso negado'
-            : 'Erro',
+      toast.erro(
         apiError?.message ??
           'Ocorreu um erro ao tentar fazer login. Tente novamente mais tarde.'
       );
@@ -60,93 +52,61 @@ export default function LoginScreen() {
 
   return (
     <AuthScreenLayout>
-      <View style={authFormStyles.card}>
-        <View style={authFormStyles.inputGroup}>
-          <Text style={authFormStyles.label}>EMAIL</Text>
-          <View style={authFormStyles.inputContainer}>
-            <Feather name="mail" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+      <View style={sectionCardStyles.superficie}>
+        <SectionCardHeader icone="log-in" titulo="Acesse sua conta" />
+
+        <View style={formulario.campo}>
+          <Text style={formulario.rotulo}>E-mail</Text>
+          <View style={formulario.controle}>
+            <Feather name="mail" size={18} color={colors.textSecondary} aria-hidden />
             <TextInput
-              style={authFormStyles.input}
-              placeholder="seu@email.com"
-              placeholderTextColor="#94a3b8"
+              style={formulario.entrada}
+              placeholder="email@exemplo.com"
+              placeholderTextColor={colors.textSecondary}
+              accessibilityLabel="E-mail"
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
               value={email}
               onChangeText={setEmail}
             />
           </View>
         </View>
 
-        <View style={authFormStyles.inputGroup}>
-          <Text style={authFormStyles.label}>SENHA</Text>
-          <View style={authFormStyles.inputContainer}>
-            <Feather name="lock" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+        <View style={formulario.campo}>
+          <Text style={formulario.rotulo}>Senha</Text>
+          <View style={[formulario.controle, authFormStyles.controleComVisibilidade]}>
+            <Feather name="lock" size={18} color={colors.textSecondary} aria-hidden />
             <TextInput
-              style={authFormStyles.input}
+              style={formulario.entrada}
               placeholder="••••••••"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textSecondary}
+              accessibilityLabel="Senha"
+              autoComplete="current-password"
+              autoCapitalize="none"
+              autoCorrect={false}
               secureTextEntry={!showPassword}
               value={password}
               onChangeText={setPassword}
             />
-            <TouchableOpacity
-              style={styles.iconRight}
-              onPress={() => setShowPassword(!showPassword)}
+            <Pressable
+              style={({ pressed }) => [authFormStyles.visibilidade, pressed && perfilStyles.pressionado]}
+              onPress={() => setShowPassword((visible) => !visible)}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
             >
-              <Feather
-                name={showPassword ? 'eye-off' : 'eye'}
-                size={20}
-                color="#64748b"
-              />
-            </TouchableOpacity>
+              <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color={colors.brandDark} aria-hidden />
+            </Pressable>
           </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.forgotPasswordContainer}
-          onPress={() => navigation.navigate('TrocarSenha')}
-        >
-          <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={authFormStyles.button}
-          onPress={handleLogin}
-          disabled={isLoading}
-          activeOpacity={0.8}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <>
-              <Text style={authFormStyles.buttonText}>Entrar</Text>
-              <Feather name="arrow-right" size={16} color="#ffffff" />
-            </>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={authFormStyles.secondaryAction}
-          onPress={() => navigation.navigate('CriarConta')}
-        >
-          <Text style={authFormStyles.secondaryActionText}>Criar conta</Text>
-        </TouchableOpacity>
+        <View style={formulario.acoes}>
+          <AuthFormButton titulo="Entrar" icone="arrow-right" ocupado={isLoading} onPress={() => void handleLogin()} />
+          <AuthFormButton titulo="Esqueci minha senha" variante="texto" onPress={() => navigation.navigate('TrocarSenha')} />
+          <AuthFormButton titulo="Criar conta" icone="user-plus" variante="secundario" onPress={() => navigation.navigate('CriarConta')} />
+        </View>
       </View>
     </AuthScreenLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  iconRight: {
-    padding: 5
-  },
-  forgotPasswordContainer: {
-    alignItems: 'flex-end',
-    marginBottom: 20
-  },
-  forgotPasswordText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#005414'
-  }
-});

@@ -2,6 +2,8 @@ package com.nutri4you.backend.service;
 
 import com.nutri4you.backend.dto.HorarioAtendimentoDTO;
 import com.nutri4you.backend.dto.PreferenciaAgendaDTO;
+import com.nutri4you.backend.dto.PreferenciaEmailAgendaDTO;
+import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.HorarioAtendimento;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.repository.HorarioAtendimentoRepository;
@@ -15,7 +17,7 @@ import java.util.List;
 
 @Service
 public class HorarioAtendimentoService {
-    public static final int DURACAO_MINUTOS = 45;
+    public static final int DURACAO_MINUTOS = Consulta.DURACAO_MINUTOS;
     private final HorarioAtendimentoRepository horarios;
     private final NutricionistaRepository nutricionistas;
 
@@ -64,6 +66,16 @@ public class HorarioAtendimentoService {
         Nutricionista atualizado = nutricionistas.findByIdForUpdate(nutricionista.getId()).orElseThrow();
         atualizado.definirAceiteDeConsultasAvulsas(preferencia.aceitaConsultasAvulsas());
         return preferencia(atualizado);
+    }
+
+    @Transactional
+    public PreferenciaEmailAgendaDTO salvarPreferenciaEmail(Nutricionista nutricionista, PreferenciaEmailAgendaDTO preferencia) {
+        if (preferencia == null || preferencia.ativa() == null) {
+            throw new IllegalArgumentException("Informe se deseja receber notificações da agenda por e-mail.");
+        }
+        Nutricionista atualizado = nutricionistas.findByIdForUpdate(nutricionista.getId()).orElseThrow();
+        atualizado.definirNotificacoesEmailAgenda(preferencia.ativa());
+        return new PreferenciaEmailAgendaDTO(atualizado.notificaAgendaPorEmail());
     }
 
     @Transactional(readOnly = true)

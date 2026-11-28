@@ -4,6 +4,7 @@ import com.nutri4you.backend.dto.*;
 import com.nutri4you.backend.exception.*;
 import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.Nutricionista;
+import com.nutri4you.backend.model.NotificacaoConsultaPaciente.Tipo;
 import com.nutri4you.backend.model.StatusRelacaoClinica;
 import com.nutri4you.backend.support.*;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
     @Autowired HorarioAtendimentoService horarios;
     @Autowired ConsultaService atendimento;
     @Autowired GestaoPacienteService gestao;
+    @Autowired NotificacaoConsultaPacienteService notificacoesPaciente;
     private LocalDate prepararGrade() {
         var dia = hoje().plusDays(7);
         horarios.salvar(nutri, List.of(new HorarioAtendimentoDTO(dia.getDayOfWeek().getValue(), LocalTime.of(9, 0)),
@@ -36,6 +38,7 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
                     assertThat(item.id()).isEqualTo(reserva.id());
                     assertThat(item.pacienteId()).isEqualTo(paciente.getId());
                     assertThat(item.avulsa()).isFalse();
+                    assertThat(item.getTipo()).isEqualTo(NotificacaoConsultaDTO.Tipo.ACOMPANHAMENTO);
                 });
     }
     @Test void recusaFicaVisivelAoPacienteELiberaOHorario() {
@@ -65,7 +68,31 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
         var nova = service.reagendar(paciente, reserva.id(), new ReagendarConsultaRequest(dia.plusWeeks(1).atTime(9, 45), confirmada.versao()));
         assertThat(nova.status()).isEqualTo("AGUARDANDO_CONFIRMACAO");
         assertThat(nova.versao()).isGreaterThan(confirmada.versao());
+        assertThat(atendimento.listarNotificacoes(nutri))
+                .singleElement().extracting(NotificacaoConsultaDTO::getTipo)
+                .isEqualTo(NotificacaoConsultaDTO.Tipo.REAGENDAMENTO);
         assertThat(service.disponibilidade(paciente, nutri.getId(), dia).horarios()).contains(dia.atTime(9, 0));
+    }
+
+    @Test void registraDecisoesParaOPacienteMesmoDepoisDeRetirarAConsultaDaAgenda() {
+        var dia = prepararGrade();
+        var reserva = service.solicitar(paciente, new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 0)));
+        var confirmada = atendimento.confirmar(nutri, paciente.getId(), reserva.id(), reserva.versao());
+        var novaData = dia.plusWeeks(1).atTime(9, 45);
+        var pendente = service.reagendar(paciente, reserva.id(), new ReagendarConsultaRequest(novaData, confirmada.versao()));
+        assertThat(notificacoesPaciente.listar(paciente)).extracting(NotificacaoConsultaPacienteDTO::tipo)
+                .containsExactly(Tipo.CONFIRMADA);
+
+        var reagendada = atendimento.confirmar(nutri, paciente.getId(), reserva.id(), pendente.versao());
+        atendimento.cancelar(nutri, paciente.getId(), reserva.id(), reagendada.versao());
+        var nova = service.solicitar(paciente, new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 0)));
+        atendimento.decidirNotificacao(nutri, nova.id(), new DecisaoConsultaRequest(false, nova.versao()));
+
+        assertThat(notificacoesPaciente.listar(paciente)).extracting(NotificacaoConsultaPacienteDTO::tipo)
+                .containsExactly(Tipo.RECUSADA, Tipo.CANCELADA, Tipo.REAGENDADA, Tipo.CONFIRMADA);
+        assertThat(notificacoesPaciente.listar(paciente)).extracting(NotificacaoConsultaPacienteDTO::dataHora)
+                .containsExactly(dia.atTime(9, 0), novaData, novaData, dia.atTime(9, 0));
+        assertThat(notificacoesPaciente.listar(pacientes.save(TestDataFactory.outroPaciente(encoder)))).isEmpty();
     }
 
     @Test void disponibilidadeParaReagendarIgnoraSomenteAConsultaAutorizada() {
@@ -151,56 +178,72 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
         assertThatThrownBy(() -> service.cancelar(paciente, reserva.getId(), reserva.getVersao() + 1)).isInstanceOf(ConsultaConflitoException.class);
         assertThat(reserva.getStatus()).isEqualTo("CONFIRMADA");
     }
-    @Test void rejeitaReservaSemVinculoEHorarioForaDaGrade() {
+    @Test void permitePrimeiraConsultaNaGradeERejeitaHorarioForaDaGrade() {
         var dia = prepararGrade();
         var outro = pacientes.save(TestDataFactory.outroPaciente(encoder));
-        assertThatThrownBy(() -> service.solicitar(outro, new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 0))))
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(service.solicitar(outro, new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 0))).status())
+                .isEqualTo("AGUARDANDO_CONFIRMACAO");
         assertThatThrownBy(() -> service.solicitar(paciente, new SolicitarConsultaRequest(nutri.getId(), dia.atTime(12, 0))))
                 .isInstanceOf(IllegalArgumentException.class);
     }
-    @Test void catalogoIncluiVinculadosEQuemAbriuAgendaAvulsaComHorarios() {
+    @Test void catalogoIncluiVinculadosEProfissionaisComHorarios() {
         var semVinculo = pacientes.save(TestDataFactory.outroPaciente(encoder));
+        var outroNutri = nutricionistas.save(new Nutricionista(
+                "Outro nutricionista", "outro-agenda@example.test", encoder.encode("Senha-teste-01"), "CRN-8-58274"));
         assertThat(service.listarNutricionistas(paciente))
                 .containsExactly(new NutricionistaAgendaDTO(nutri.getId(), nutri.getNome(), true));
         assertThat(service.listarNutricionistas(semVinculo)).isEmpty();
 
-        horarios.salvarPreferencia(nutri, new PreferenciaAgendaDTO(true));
         assertThat(service.listarNutricionistas(semVinculo)).isEmpty();
-        prepararGrade();
+        var dia = prepararGrade();
+        horarios.salvar(outroNutri, List.of(
+                new HorarioAtendimentoDTO(dia.getDayOfWeek().getValue(), LocalTime.of(14, 0))));
         assertThat(service.listarNutricionistas(semVinculo))
-                .containsExactly(new NutricionistaAgendaDTO(nutri.getId(), nutri.getNome(), false));
+                .containsExactlyInAnyOrder(
+                        new NutricionistaAgendaDTO(nutri.getId(), nutri.getNome(), false),
+                        new NutricionistaAgendaDTO(outroNutri.getId(), outroNutri.getNome(), false));
+        assertThat(service.listarNutricionistas(paciente))
+                .containsExactly(new NutricionistaAgendaDTO(nutri.getId(), nutri.getNome(), true));
 
-        horarios.salvarPreferencia(nutri, new PreferenciaAgendaDTO(false));
-        assertThat(service.listarNutricionistas(semVinculo)).isEmpty();
+        horarios.salvar(nutri, List.of());
+        assertThat(service.listarNutricionistas(semVinculo))
+                .containsExactly(new NutricionistaAgendaDTO(outroNutri.getId(), outroNutri.getNome(), false));
         assertThat(service.listarNutricionistas(paciente)).hasSize(1);
     }
 
-    @Test void confirmaAvulsaSemCriarVinculoENaoLiberaFicha() {
+    @Test void confirmarAgendamentoInicialCriaVinculoELiberaFicha() {
         var dia = prepararGrade();
         var semVinculo = pacientes.save(TestDataFactory.outroPaciente(encoder));
         horarios.salvarPreferencia(nutri, new PreferenciaAgendaDTO(true));
 
         var reserva = service.solicitar(semVinculo, new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 0)));
         assertThat(reserva.status()).isEqualTo("AGUARDANDO_CONFIRMACAO");
-        assertThat(atendimento.listarAvulsasPendentes(nutri))
-                .containsExactly(new SolicitacaoAvulsaDTO(reserva.id(), semVinculo.getNome(), dia.atTime(9, 0), reserva.versao()));
+        assertThat(reserva.avulsa()).isTrue();
+        assertThat(atendimento.listarNotificacoes(nutri))
+                .singleElement().extracting(NotificacaoConsultaDTO::getTipo)
+                .isEqualTo(NotificacaoConsultaDTO.Tipo.PRIMEIRA_CONSULTA);
+        assertThat(service.listar(semVinculo)).singleElement().satisfies(pendente -> {
+            assertThat(pendente.status()).isEqualTo("AGUARDANDO_CONFIRMACAO");
+            assertThat(pendente.avulsa()).isTrue();
+        });
+        assertThat(atendimento.listarNotificacoes(nutri))
+                .containsExactly(new NotificacaoConsultaDTO(reserva.id(), semVinculo.getId(), semVinculo.getNome(), dia.atTime(9, 0), reserva.versao(), true, false));
         assertThat(gestao.listarParaNutricionista(nutri)).noneMatch(item -> item.id().equals(semVinculo.getId()));
         assertThatThrownBy(() -> gestao.exigirAcesso(nutri, semVinculo.getId()))
                 .isInstanceOf(AcessoNegadoException.class);
 
-        atendimento.decidirAvulsa(nutri, reserva.id(), new DecisaoConsultaRequest(true, reserva.versao()));
+        atendimento.decidirNotificacao(nutri, reserva.id(), new DecisaoConsultaRequest(true, reserva.versao()));
         var confirmada = service.listar(semVinculo).getFirst();
         assertThat(confirmada.status()).isEqualTo("CONFIRMADA");
-        assertThat(atendimento.listarAvulsasPendentes(nutri)).isEmpty();
-        assertThat(gestao.listarParaNutricionista(nutri)).noneMatch(item -> item.id().equals(semVinculo.getId()));
-        assertThatThrownBy(() -> gestao.exigirAcesso(nutri, semVinculo.getId()))
-                .isInstanceOf(AcessoNegadoException.class);
-        assertThat(relacoes.findByPaciente_IdAndNutricionista_Id(semVinculo.getId(), nutri.getId())).isEmpty();
-
-        assertThatThrownBy(() -> service.solicitar(semVinculo,
-                new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 45))))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("consulta inicial");
+        assertThat(confirmada.avulsa()).isFalse();
+        assertThat(consultas.findById(reserva.id()))
+                .hasValueSatisfying(consulta -> assertThat(consulta.isAvulsa()).isFalse());
+        assertThat(atendimento.listarNotificacoes(nutri)).isEmpty();
+        assertThat(gestao.listarParaNutricionista(nutri)).anyMatch(item -> item.id().equals(semVinculo.getId()));
+        assertThat(gestao.exigirAcesso(nutri, semVinculo.getId())).isEqualTo(semVinculo);
+        assertThat(relacoes.findByPaciente_IdAndNutricionista_Id(semVinculo.getId(), nutri.getId()))
+                .hasValueSatisfying(relacao -> assertThat(relacao.getStatus())
+                        .isEqualTo(StatusRelacaoClinica.ATIVA));
 
         horarios.salvarPreferencia(nutri, new PreferenciaAgendaDTO(false));
         assertThat(service.disponibilidadeParaReagendar(semVinculo, reserva.id(), nutri.getId(), dia).horarios())
@@ -211,27 +254,40 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
         var reagendada = service.reagendar(semVinculo, reserva.id(),
                 new ReagendarConsultaRequest(dia.atTime(9, 30), confirmada.versao()));
         assertThat(reagendada.status()).isEqualTo("AGUARDANDO_CONFIRMACAO");
-        assertThat(atendimento.listarAvulsasPendentes(nutri)).extracting(SolicitacaoAvulsaDTO::id)
-                .containsExactly(reserva.id());
+        assertThat(atendimento.listarNotificacoes(nutri)).noneMatch(NotificacaoConsultaDTO::avulsa);
+        var acompanhamento = service.solicitar(semVinculo,
+                new SolicitarConsultaRequest(nutri.getId(), proximaSemana.atTime(9, 45)));
+        assertThat(consultas.findById(acompanhamento.id()))
+                .hasValueSatisfying(consulta -> assertThat(consulta.isAvulsa()).isFalse());
     }
 
-    @Test void segundaConsultaAposAvulsaRealizadaExigeVinculo() {
+    @Test void novoAgendamentoAposAcompanhamentoEncerradoReativaVinculoAoSerAceito() {
         var dia = prepararGrade();
         var titular = pacientes.save(TestDataFactory.outroPaciente(encoder));
         horarios.salvarPreferencia(nutri, new PreferenciaAgendaDTO(true));
         var anterior = new Consulta(titular, nutri, agora().minusDays(2), true);
         anterior.atualizar(anterior.getDataHora(), "REALIZADA", null);
         consultas.saveAndFlush(anterior);
+        var relacaoAnterior = com.nutri4you.backend.model.RelacaoClinica.criar(titular, nutri);
+        relacaoAnterior.encerrar();
+        relacoes.saveAndFlush(relacaoAnterior);
         var pedido = new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 0));
 
-        assertThatThrownBy(() -> service.solicitar(titular, pedido))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("vínculo ativo");
-        relacoes.saveAndFlush(com.nutri4you.backend.model.RelacaoClinica.criar(titular, nutri));
-        assertThat(consultas.findById(service.solicitar(titular, pedido).id())).hasValueSatisfying(c ->
-                assertThat(c.isAvulsa()).isFalse());
+        var novaSolicitacao = service.solicitar(titular, pedido);
+        assertThat(consultas.findById(novaSolicitacao.id())).hasValueSatisfying(c ->
+                assertThat(c.isAvulsa()).isTrue());
+
+        atendimento.decidirNotificacao(nutri, novaSolicitacao.id(),
+                new DecisaoConsultaRequest(true, novaSolicitacao.versao()));
+
+        assertThat(relacoes.findByPaciente_IdAndNutricionista_Id(titular.getId(), nutri.getId()))
+                .hasValueSatisfying(relacao -> assertThat(relacao.getStatus())
+                        .isEqualTo(StatusRelacaoClinica.ATIVA));
+        assertThat(consultas.findById(novaSolicitacao.id()))
+                .hasValueSatisfying(consulta -> assertThat(consulta.isAvulsa()).isFalse());
     }
 
-    @Test void recusaAvulsaComVersaoAtualPeloNutricionistaDaConsulta() {
+    @Test void recusaPrimeiraConsultaComVersaoAtualPeloNutricionistaDaConsulta() {
         var dia = prepararGrade();
         var semVinculo = pacientes.save(TestDataFactory.outroPaciente(encoder));
         var outroNutri = nutricionistas.save(new Nutricionista(
@@ -239,15 +295,15 @@ class AgendaPacienteServiceTest extends ClinicalServiceTestSupport {
         horarios.salvarPreferencia(nutri, new PreferenciaAgendaDTO(true));
         var reserva = service.solicitar(semVinculo, new SolicitarConsultaRequest(nutri.getId(), dia.atTime(9, 0)));
 
-        assertThat(atendimento.listarAvulsasPendentes(outroNutri)).isEmpty();
-        assertThatThrownBy(() -> atendimento.decidirAvulsa(outroNutri, reserva.id(),
+        assertThat(atendimento.listarNotificacoes(outroNutri)).isEmpty();
+        assertThatThrownBy(() -> atendimento.decidirNotificacao(outroNutri, reserva.id(),
                 new DecisaoConsultaRequest(true, reserva.versao())))
                 .isInstanceOf(ConsultaNaoEncontradaException.class);
-        assertThatThrownBy(() -> atendimento.decidirAvulsa(nutri, reserva.id(),
+        assertThatThrownBy(() -> atendimento.decidirNotificacao(nutri, reserva.id(),
                 new DecisaoConsultaRequest(true, reserva.versao() + 1)))
                 .isInstanceOf(ConsultaConflitoException.class);
 
-        atendimento.decidirAvulsa(nutri, reserva.id(), new DecisaoConsultaRequest(false, reserva.versao()));
+        atendimento.decidirNotificacao(nutri, reserva.id(), new DecisaoConsultaRequest(false, reserva.versao()));
         assertThat(service.listar(semVinculo)).extracting(ConsultaPacienteResponse::status).containsExactly("RECUSADA");
         assertThat(service.disponibilidade(semVinculo, nutri.getId(), dia).horarios()).contains(dia.atTime(9, 0));
         assertThat(gestao.listarParaNutricionista(nutri)).noneMatch(item -> item.id().equals(semVinculo.getId()));

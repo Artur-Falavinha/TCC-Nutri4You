@@ -34,6 +34,12 @@ public class ApiExceptionHandler {
                 409, "CONFLITO", exception.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(CpfEmUsoException.class)
+    public ResponseEntity<ApiErrorResponse> handleCpfEmUso(CpfEmUsoException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(
+                409, "CPF_EM_USO", exception.getMessage(), request.getRequestURI()));
+    }
+
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<ApiErrorResponse> handleEdicaoConcorrente(
             ObjectOptimisticLockingFailureException exception, HttpServletRequest request) {
@@ -74,6 +80,17 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiErrorResponse.of(
                 HttpStatus.UNAUTHORIZED.value(),
                 "NAO_AUTORIZADO",
+                exception.getMessage(),
+                request.getRequestURI()));
+    }
+
+    @ExceptionHandler(VinculoEncerradoException.class)
+    public ResponseEntity<ApiErrorResponse> handleVinculoEncerrado(
+            VinculoEncerradoException exception,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiErrorResponse.of(
+                HttpStatus.FORBIDDEN.value(),
+                "VINCULO_ENCERRADO",
                 exception.getMessage(),
                 request.getRequestURI()));
     }

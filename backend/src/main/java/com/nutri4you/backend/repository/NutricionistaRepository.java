@@ -26,17 +26,25 @@ public interface NutricionistaRepository extends JpaRepository<Nutricionista, In
 
     List<Nutricionista> findByNomeContainingIgnoreCaseOrderByNomeAscIdAsc(String nome, Pageable pagina);
 
-    @Query("""
-            select new com.nutri4you.backend.dto.NutricionistaAgendaDTO(
-                n.id, n.nome, case when r.id is null then false else true end)
+    String ESCOPO_AGENDA = """
             from Nutricionista n
             left join RelacaoClinica r on r.nutricionista = n
                 and r.paciente.id = :pacienteId and r.status = :statusAtiva
-            where r.id is not null or (n.aceitaConsultasAvulsas = true and exists (
-                select 1 from HorarioAtendimento h where h.nutricionista = n))
-            order by n.nome, n.id
-            """)
+            where (r.id is not null or (
+                not exists (select 1 from RelacaoClinica ativa
+                    where ativa.paciente.id = :pacienteId and ativa.status = :statusAtiva)
+                and exists (select 1 from HorarioAtendimento h where h.nutricionista = n)))
+            """;
+
+    @Query("""
+            select new com.nutri4you.backend.dto.NutricionistaAgendaDTO(
+                n.id, n.nome, case when r.id is null then false else true end)
+            """ + ESCOPO_AGENDA + " order by n.nome, n.id")
     List<NutricionistaAgendaDTO> listarParaAgenda(Integer pacienteId, StatusRelacaoClinica statusAtiva);
+
+    @Query("select n.id " + ESCOPO_AGENDA + " and n.id = :nutricionistaId")
+    Optional<Integer> buscarIdNaAgenda(
+            Integer pacienteId, StatusRelacaoClinica statusAtiva, Integer nutricionistaId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select n from Nutricionista n where n.id = :id")

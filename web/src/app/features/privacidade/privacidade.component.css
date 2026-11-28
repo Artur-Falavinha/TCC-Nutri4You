@@ -1,0 +1,68 @@
+:host { display: contents; }
+
+.privacidade {
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--color-border-default);
+}
+
+.privacidade__documentos { display: grid; gap: var(--space-12); }
+.privacidade h3, .direitos h4 { margin: 0; font: 700 1rem / var(--leading-tight) var(--font-heading); }
+
+.termos, .direitos {
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+.acao-privacidade {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 2.75rem;
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.acao-privacidade:hover { background: var(--color-surface-page); }
+.acao-privacidade .ph-file-pdf { font-size: var(--icon-size-md); }
+
+.aceite, .estado, .erro {
+  padding: var(--space-12);
+  border-top: 1px solid var(--color-border-default);
+}
+
+.aceite {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-16);
+}
+
+.aceite__titulo { display: flex; align-items: center; gap: var(--space-6); color: var(--color-brand-primary-hover); font-weight: 700; }
+.aceite dl { display: flex; flex-wrap: wrap; gap: var(--space-6) var(--space-16); margin: 0; }
+.aceite dl div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-6); }
+.aceite dt, .estado, .direitos p { color: var(--color-text-secondary); line-height: 1.5; }
+.aceite dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.erro {
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  color: #a11919;
+  background: var(--color-error-surface);
+}
+
+.direitos__contato {
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-12);
+}
+.direitos__link {
+  grid-template-columns: minmax(0, 1fr) auto;
+  border-top: 1px solid var(--color-border-default);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+a { color: var(--color-brand-primary-hover); font-weight: 600; text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--color-brand-primary); outline-offset: 2px; }

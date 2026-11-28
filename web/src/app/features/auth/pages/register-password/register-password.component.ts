@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 
+import { ToastService } from '../../../../core/services/toast.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ApiErrorResponse } from '../../../../core/models/api-response.model';
 import { AuthFormCardComponent } from '../../../../shared/components/auth-form-card/auth-form-card.component';
@@ -34,6 +35,7 @@ import { VERSAO_TERMOS } from '../../../privacidade/privacidade.component';
   styleUrl: './register-password.component.css'
 })
 export class RegisterPasswordComponent implements OnInit {
+  private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly registerFlow = inject(RegisterFlowService);
@@ -108,7 +110,9 @@ export class RegisterPasswordComponent implements OnInit {
           void this.router.navigate(['/login'], { queryParams: { cadastro: 'ok' } });
         },
         error: (error: ApiErrorResponse) => {
-          this.errorMessage = error.message ?? 'Não foi possível concluir o cadastro.';
+          const mensagem = error.message ?? 'Não foi possível concluir o cadastro.';
+          if (error.status === 400 || error.status === 409) this.errorMessage = mensagem;
+          else this.toast.erro(mensagem);
         }
       });
   }

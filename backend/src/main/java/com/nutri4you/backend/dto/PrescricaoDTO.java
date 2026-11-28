@@ -116,7 +116,9 @@ public final class PrescricaoDTO {
         }
     }
 
-    public record PublicacaoRequest(Long versao) {}
+    public record PublicacaoRequest(Long versao, LocalDate inicioConfirmado) {}
+
+    public record EdicaoPublicadaRequest(Long versao, PlanoRequest plano) {}
 
     public record CompraRequest(Integer planoId, Integer dias, Boolean comprado) {}
 
@@ -150,7 +152,12 @@ public final class PrescricaoDTO {
             DistribuicaoMacros percentuais,
             Nutrientes totais,
             List<RefeicaoDTO> refeicoes,
-            Integer consultaId) {}
+            Integer consultaId,
+            Integer planoAnteriorId,
+            Integer planoSubstitutoId,
+            Integer rascunhoEdicaoId,
+            LocalDate substituidaEm,
+            LocalDate inicioEdicao) {}
 
     public record ItemCompraDTO(
             Integer alimentoId,

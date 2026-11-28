@@ -1,15 +1,29 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.model.TipoCadastro;
 import com.nutri4you.backend.repository.PacienteRepository;
+import com.nutri4you.backend.service.CadastroEmailService;
+import com.nutri4you.backend.service.EmailNotificationService;
+import com.nutri4you.backend.service.PrivacidadeService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -25,6 +39,52 @@ class PacienteControllerTest {
     @Autowired
     private PacienteRepository pacienteRepository;
 
+    @Autowired
+    private CadastroEmailService cadastroEmail;
+
+    @MockitoSpyBean
+    private EmailNotificationService notificacoes;
+
+    @Test
+    void autocadastroRecusaMesmoCpfComPontuacaoDiferente() throws Exception {
+        String emailOriginal = "cpf.original@example.test";
+        String emailDuplicado = "cpf.duplicado@example.test";
+
+        cadastrarComCpf(emailOriginal, "012.345.678-90").andExpect(status().isCreated());
+        cadastrarComCpf(emailDuplicado, "01234567890")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("CPF_EM_USO"));
+
+        assertThat(pacienteRepository.findByEmail(emailOriginal)).hasValueSatisfying(
+                paciente -> assertThat(paciente.getCpf()).isEqualTo("01234567890"));
+        assertThat(pacienteRepository.existsByEmail(emailDuplicado)).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0123456789", "012345678900", "01234567891", "01234567880", "11111111111", "abc01234567890"})
+    void autocadastroRecusaCpfInvalido(String cpf) throws Exception {
+        String email = "cpf.invalido@example.test";
+
+        cadastrarComCpf(email, cpf)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("CPF inválido."));
+
+        assertThat(pacienteRepository.existsByEmail(email)).isFalse();
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = "   ")
+    void autocadastroExigeCpf(String cpf) throws Exception {
+        String email = "cpf.ausente@example.test";
+
+        cadastrarComCpf(email, cpf)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("CPF é obrigatório."));
+
+        assertThat(pacienteRepository.existsByEmail(email)).isFalse();
+    }
+
     @Test
     void autocadastroDePacienteExigeConfirmacaoPrevia() throws Exception {
         mockMvc.perform(post("/api/v1/pacientes/autocadastro")
@@ -33,10 +93,11 @@ class PacienteControllerTest {
                                 {
                                   "nome": "Maria Nova",
                                   "email": "maria.nova@teste.com",
-                                  "senha": "senhaSegura8", "versaoTermos": "2026-11-19"
+                                  "senha": "senhaSegura8", "versaoTermos": "%s"
                                 }
-                                """))
-                .andExpect(status().isBadRequest());
+                                """.formatted(PrivacidadeService.VERSAO)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Código de cadastro inválido, expirado ou já utilizado."));
 
         assertThat(pacienteRepository.existsByEmail("maria.nova@teste.com")).isFalse();
     }
@@ -50,5 +111,21 @@ class PacienteControllerTest {
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("REQUISICAO_INVALIDA"));
+    }
+
+    private ResultActions cadastrarComCpf(String email, String cpf) throws Exception {
+        cadastroEmail.iniciar(email, TipoCadastro.PACIENTE);
+        var captura = ArgumentCaptor.forClass(UUID.class);
+        verify(notificacoes).agendarInicioCadastro(eq(email), eq(TipoCadastro.PACIENTE), captura.capture());
+        UUID token = captura.getValue();
+        cadastroEmail.confirmar(token, TipoCadastro.PACIENTE);
+        String campoCpf = cpf == null ? "" : "\"cpf\":\"" + cpf + "\",";
+
+        return mockMvc.perform(post("/api/v1/pacientes/autocadastro")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"nome":"Paciente Teste","email":"%s","senha":"SenhaTeste123",
+                         %s"versaoTermos":"%s","tokenCadastro":"%s"}
+                        """.formatted(email, campoCpf, PrivacidadeService.VERSAO, token)));
     }
 }

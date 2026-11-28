@@ -1,10 +1,11 @@
+import { DialogoConfirmacao } from '../../components/feedback/DialogoConfirmacao';
+import { toast } from '../../components/feedback/toast';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { DragEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -15,7 +16,7 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Path } from 'react-native-svg';
+import { Feather } from '@expo/vector-icons';
 
 import { AppHeader } from '../../components/layout/AppHeader';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
@@ -28,6 +29,7 @@ import {
 import {
   baixarResultadoExame,
   enviarResultadoExame,
+  ExameArquivoError,
   inferMimeTypeFromFileName,
   listarMeusExames,
   prepararArquivoWeb,
@@ -41,10 +43,10 @@ import { colors, fontFamily, radius, shadows, spacing } from '../../theme/tokens
 type Props = NativeStackScreenProps<RootStackParamList, 'Exames'>;
 
 function extractErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof ApiError) {
+  if (error instanceof ApiError && error.message.trim()) {
     return error.message;
   }
-  if (error instanceof Error && error.message.trim()) {
+  if (error instanceof ExameArquivoError && error.message.trim()) {
     return error.message;
   }
   return fallback;
@@ -65,80 +67,6 @@ function formatFileSize(bytes?: number): string {
   return `${mb.toFixed(2).replace('.', ',')} MB`;
 }
 
-function UploadTrayIcon() {
-  return (
-    <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
-      <Path
-        d="M2 10.5V12.5C2 13.3284 2.67157 14 3.5 14H12.5C13.3284 14 14 13.3284 14 12.5V10.5M8 10V2M8 2L4.5 5.5M8 2L11.5 5.5"
-        stroke={colors.white}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-function SentExamIcon({ index }: { index: number }) {
-  if (index % 2 === 1) {
-    return (
-      <Svg width={16} height={20} viewBox="0 0 16 20" fill="none">
-        <Path
-          d="M10 1H3C1.89543 1 1 1.89543 1 3V17C1 18.1046 1.89543 19 3 19H13C14.1046 19 15 18.1046 15 17V6L10 1Z"
-          stroke="#2d3335"
-          strokeWidth={1.7}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <Path
-          d="M10 1V6H15M5 10H11M5 14H11"
-          stroke="#2d3335"
-          strokeWidth={1.7}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </Svg>
-    );
-  }
-  return (
-    <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
-      <Circle cx={10} cy={10} r={8} stroke="#2d3335" strokeWidth={1.8} />
-      <Path
-        d="M6.8 10.2L9 12.4L13.4 7.8"
-        stroke="#2d3335"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-function TrashIcon({ color = '#ba1a1a' }: { color?: string }) {
-  return (
-    <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
-      <Path
-        d="M2 4H14M5.5 4V2.5C5.5 1.94772 5.94772 1.5 6.5 1.5H9.5C10.0523 1.5 10.5 1.94772 10.5 2.5V4M12.5 4V13C12.5 13.8284 11.8284 14.5 11 14.5H5C4.17157 14.5 3.5 13.8284 3.5 13V4H12.5Z"
-        stroke={color}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-function CloudUploadIcon() {
-  return (
-    <Svg width={24} height={20} viewBox="0 0 24 20" fill="none">
-      <Path
-        d="M19.35 8.04C18.67 4.59 15.64 2 12 2C9.11 2 6.6 3.64 5.35 6.04C2.34 6.36 0 8.91 0 12C0 15.31 2.69 18 6 18H19C21.76 18 24 15.76 24 13C24 10.36 21.95 8.22 19.35 8.04ZM14 11V15H10V11H7L12 6L17 11H14Z"
-        fill="#005414"
-      />
-    </Svg>
-  );
-}
-
 export function ExamesScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const wide = width >= 640;
@@ -148,13 +76,13 @@ export function ExamesScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [exames, setExames] = useState<ExamePedido[]>([]);
-  const [feedbackMessage, setFeedbackMessage] = useState('');
 
   const [selectedExame, setSelectedExame] = useState<ExamePedido | null>(null);
   const [selectedFile, setSelectedFile] = useState<ArquivoExameSelecionado | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [removingId, setRemovingId] = useState<number | null>(null);
+  const [exameParaRemover, setExameParaRemover] = useState<ExamePedido | null>(null);
+  const [erroRemocao, setErroRemocao] = useState('');
   const [uploadError, setUploadError] = useState('');
 
   const requestId = useRef(0);
@@ -323,16 +251,17 @@ export function ExamesScreen({ navigation }: Props) {
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (failure) {
-      setError(extractErrorMessage(failure, 'Não foi possível baixar o resultado.'));
+      toast.erro(extractErrorMessage(failure, 'Não foi possível baixar o resultado.'));
     }
   };
 
+  const fecharConfirmacaoRemocao = () => {
+    setExameParaRemover(null);
+    setErroRemocao('');
+  };
+
   const handleRemoverExameEnviado = async (exame: ExamePedido) => {
-    if (removingId !== null || uploading) {
-      return;
-    }
-    setRemovingId(exame.id);
-    setUploadError('');
+    setErroRemocao('');
     try {
       const atualizado = await removerResultadoExame(exame.id, exame.versao);
       setExames((prev) =>
@@ -350,25 +279,16 @@ export function ExamesScreen({ navigation }: Props) {
             : item
         )
       );
-      setFeedbackMessage(
+      toast.sucesso(
         `Envio de "${exame.nome}" removido. O exame voltou para PENDENTE.`
       );
       if (selectedExame?.id === exame.id) {
         setSelectedExame(null);
         setSelectedFile(null);
       }
+      fecharConfirmacaoRemocao();
     } catch (failure) {
-      const msg = extractErrorMessage(
-        failure,
-        'Não foi possível remover o arquivo do exame.'
-      );
-      if (selectedExame?.id === exame.id) {
-        setUploadError(msg);
-      } else {
-        setError(msg);
-      }
-    } finally {
-      setRemovingId(null);
+      setErroRemocao(extractErrorMessage(failure, 'Não foi possível remover o arquivo. Tente novamente.'));
     }
   };
 
@@ -412,7 +332,7 @@ export function ExamesScreen({ navigation }: Props) {
             : item
         )
       );
-      setFeedbackMessage(`Resultado de "${selectedExame.nome}" enviado com sucesso.`);
+      toast.sucesso(`Resultado de "${selectedExame.nome}" enviado com sucesso.`);
       setSelectedExame(null);
       setSelectedFile(null);
     } catch (failure) {
@@ -436,22 +356,32 @@ export function ExamesScreen({ navigation }: Props) {
     }
   };
 
+
   const envioDesabilitado = !selectedFile || uploading;
   const uploadArea = (
     <Pressable
-      style={[styles.uploadDropArea, isDraggingOver && styles.uploadDropAreaDragging]}
+      style={({ pressed }) => [
+        styles.uploadDropArea,
+        isDraggingOver && styles.uploadDropAreaDragging,
+        uploading && styles.buttonDisabled,
+        pressed && styles.pressed
+      ]}
       onPress={() => void selecionarArquivo()}
+      disabled={uploading}
       accessibilityRole="button"
       accessibilityLabel="Clique para selecionar arquivo PDF ou imagem do exame"
+      accessibilityState={{ disabled: uploading }}
       testID="exame-upload-select-area"
     >
-      <View style={styles.uploadIconCircle}>
-        <CloudUploadIcon />
+      <View style={styles.iconBadge} aria-hidden>
+        <Feather name="upload-cloud" size={22} color={colors.brand} />
       </View>
-      <Text style={styles.uploadPromptText}>Clique para selecionar</Text>
-      <Text style={styles.uploadFormatHint}>
-        Formatos aceitos: PDF, PNG ou JPEG (máx. 5 MiB)
-      </Text>
+      <View style={styles.uploadCopy}>
+        <Text style={styles.uploadPromptText}>Clique para selecionar</Text>
+        <Text style={styles.uploadFormatHint}>
+          Formatos aceitos: PDF, PNG ou JPEG (máx. 5 MiB)
+        </Text>
+      </View>
     </Pressable>
   );
 
@@ -468,146 +398,131 @@ export function ExamesScreen({ navigation }: Props) {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { maxWidth: wide ? 680 : 448 }]}
+        contentContainerStyle={[styles.content, width < 420 && styles.contentCompact, { maxWidth: wide ? 760 : 560 }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => void carregarExames(true)}
             tintColor={colors.brand}
+            colors={[colors.brand]}
           />
         }
       >
         <View style={styles.headerSection}>
-          <Text style={styles.title} accessibilityRole="header">
-            Pedidos de Exames
-          </Text>
-          <Text style={styles.subtitle}>
-            Envie seus resultados para análise nutricional personalizada.
-          </Text>
+          <Text style={styles.title} accessibilityRole="header" aria-level={1}>Pedidos de Exames</Text>
+          <Text style={styles.bodyText}>Envie seus resultados para análise nutricional personalizada.</Text>
         </View>
-
-        {feedbackMessage ? (
-          <View
-            style={styles.feedbackBox}
-            accessibilityRole="alert"
-            testID="exames-feedback-banner"
-          >
-            <Text style={styles.feedbackText}>{feedbackMessage}</Text>
-          </View>
-        ) : null}
 
         {error ? (
           <View style={styles.errorBox} accessibilityRole="alert" testID="exames-error-box">
             <Text style={styles.errorTitle}>Não foi possível carregar os exames</Text>
             <Text style={styles.errorText}>{error}</Text>
             <Pressable
-              style={styles.retryButton}
+              style={({ pressed }) => [styles.button, styles.primaryButton, pressed && styles.pressed]}
               onPress={() => void carregarExames()}
               accessibilityRole="button"
               accessibilityLabel="Tentar novamente"
               testID="exames-retry-button"
             >
-              <Text style={styles.retryButtonText}>Tentar novamente</Text>
+              <Text style={[styles.buttonText, styles.primaryText]}>Tentar novamente</Text>
             </Pressable>
           </View>
         ) : null}
 
         {loading && exames.length === 0 ? (
-          <View style={styles.stateCard} testID="exames-loading">
+          <View style={[styles.surface, styles.stateCard]} aria-live="polite" testID="exames-loading">
             <ActivityIndicator color={colors.brand} />
-            <Text style={styles.stateBodyText}>Carregando pedidos de exames...</Text>
+            <Text style={[styles.bodyText, styles.centered]}>Carregando pedidos de exames...</Text>
           </View>
         ) : error && exames.length === 0 ? null : exames.length === 0 ? (
-          <View style={styles.stateCard} testID="exames-empty">
-            <Text style={styles.stateTitle}>Nenhum pedido de exame</Text>
-            <Text style={styles.stateBodyText}>
+          <View style={[styles.surface, styles.stateCard]} testID="exames-empty">
+            <View style={styles.iconBadge} aria-hidden>
+              <Feather name="clipboard" size={22} color={colors.brand} />
+            </View>
+            <Text style={styles.stateTitle} accessibilityRole="header" aria-level={2}>Nenhum pedido de exame</Text>
+            <Text style={[styles.bodyText, styles.centered]}>
               Quando sua nutricionista solicitar exames laboratoriais, eles aparecerão aqui para envio.
             </Text>
           </View>
         ) : (
           <View style={styles.cardsList} testID="exames-cards-list">
-            {exames.map((exame, index) => {
-              const isPending = exame.status === 'PENDENTE';
-              const statusLabel = exame.status;
-              const isRemovingThis = removingId === exame.id;
+            {exames.map(exame => {
+              const pendente = exame.status === 'PENDENTE';
+              const enviado = exame.status === 'ENVIADO';
+              const podeBaixar = Platform.OS === 'web' && exame.possuiArquivo;
 
               return (
-                <View
-                  key={exame.id}
-                  style={styles.examCard}
-                  testID={`exame-card-${exame.id}`}
-                >
-                  <View style={styles.examCardInfo}>
-                    <Text style={styles.examName} accessibilityRole="header">
-                      {exame.nome}
-                    </Text>
-                    <View style={styles.statusRow}>
-                      <View
-                        style={[
-                          styles.statusDot,
-                          isPending ? styles.statusDotPending : styles.statusDotSent
-                        ]}
-                      />
+                <View key={exame.id} style={styles.surface} testID={`exame-card-${exame.id}`}>
+                  <View style={styles.examHeader}>
+                    <View style={styles.iconBadge} aria-hidden>
+                      <Feather name="file-text" size={20} color={colors.brand} />
+                    </View>
+                    <View style={styles.examIdentity}>
+                      <Text style={styles.examName} accessibilityRole="header" aria-level={2}>{exame.nome}</Text>
                       <Text
-                        style={[
-                          styles.statusLabel,
-                          isPending ? styles.statusLabelPending : styles.statusLabelSent
-                        ]}
+                        style={[styles.statusLabel, pendente && styles.statusPending, enviado && styles.statusSent]}
                         testID={`exame-status-${exame.id}`}
                       >
-                        {statusLabel}
+                        {exame.status}
                       </Text>
                     </View>
-                    {exame.parecer ? <Text style={styles.fileCaption}>Parecer: {exame.parecer}</Text> : null}
-                    {exame.arquivoNome ? (
-                      <Text style={styles.fileCaption} numberOfLines={1}>
-                        Arquivo: {exame.arquivoNome}
-                      </Text>
-                    ) : null}
                   </View>
 
-                  <View style={styles.cardActionsRow}>
-                    {Platform.OS === 'web' && exame.possuiArquivo ? (
-                      <Pressable onPress={() => void baixarExame(exame)} accessibilityRole="button"
-                        accessibilityLabel={`Baixar resultado de ${exame.nome}`}>
-                        <Text style={styles.fileCaption}>Baixar resultado</Text>
-                      </Pressable>
-                    ) : null}
-                    {exame.status === 'ENVIADO' ? (
-                      <Pressable
-                        style={styles.cardRemoveButton}
-                        onPress={() => void handleRemoverExameEnviado(exame)}
-                        disabled={isRemovingThis}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Remover envio de ${exame.nome}`}
-                        testID={`exame-remove-button-${exame.id}`}
-                      >
-                        {isRemovingThis ? (
-                          <ActivityIndicator size="small" color="#ba1a1a" />
-                        ) : (
-                          <TrashIcon color="#ba1a1a" />
-                        )}
-                      </Pressable>
-                    ) : null}
+                  {exame.arquivoNome ? (
+                    <View style={styles.fileRow}>
+                      <Feather name="paperclip" size={16} color={colors.brandDeep} aria-hidden />
+                      <Text style={styles.fileCaption}>Arquivo: {exame.arquivoNome}</Text>
+                    </View>
+                  ) : null}
+                  {exame.parecer ? (
+                    <View style={styles.report}>
+                      <Text style={styles.reportText}><Text style={styles.fieldLabel}>Parecer: </Text>{exame.parecer}</Text>
+                    </View>
+                  ) : null}
 
-                    <Pressable
-                      style={[
-                        styles.cardActionButton,
-                        isPending ? styles.cardActionButtonPending : styles.cardActionButtonSent
-                      ]}
-                      disabled={exame.status !== 'PENDENTE' && exame.status !== 'ENVIADO'}
-                      onPress={() => abrirModalEnvio(exame)}
-                      accessibilityRole="button"
-                      accessibilityLabel={
-                        exame.status === 'ANALISADO' ? `Resultado analisado de ${exame.nome}` : isPending
-                          ? `Enviar resultado de ${exame.nome}`
-                          : `Substituir ou gerenciar resultado de ${exame.nome}`
-                      }
-                      testID={`exame-action-button-${exame.id}`}
-                    >
-                      {isPending ? <UploadTrayIcon /> : <SentExamIcon index={index} />}
-                    </Pressable>
-                  </View>
+                  {(pendente || enviado || podeBaixar) && (
+                    <View style={styles.cardActionsRow}>
+                      {(pendente || enviado) && (
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.button, pendente ? styles.primaryButton : styles.secondaryButton, pressed && styles.pressed
+                          ]}
+                          onPress={() => abrirModalEnvio(exame)}
+                          accessibilityRole="button"
+                          accessibilityLabel={pendente ? `Enviar resultado de ${exame.nome}` : `Substituir ou gerenciar resultado de ${exame.nome}`}
+                          testID={`exame-action-button-${exame.id}`}
+                        >
+                          <Feather name={pendente ? 'upload' : 'repeat'} size={16} color={pendente ? colors.white : colors.brandDeep} aria-hidden />
+                          <Text style={[styles.buttonText, pendente && styles.primaryText]}>{pendente ? 'Enviar resultado' : 'Substituir arquivo'}</Text>
+                        </Pressable>
+                      )}
+                      {podeBaixar && (
+                        <Pressable
+                          style={({ pressed }) => [styles.button, styles.secondaryButton, pressed && styles.pressed]}
+                          onPress={() => void baixarExame(exame)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Baixar resultado de ${exame.nome}`}
+                        >
+                          <Feather name="download" size={16} color={colors.brandDeep} aria-hidden />
+                          <Text style={styles.buttonText}>Baixar resultado</Text>
+                        </Pressable>
+                      )}
+                      {enviado && (
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.button, styles.dangerButton, pressed && styles.pressed
+                          ]}
+                          onPress={() => setExameParaRemover(exame)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remover envio de ${exame.nome}`}
+                          testID={`exame-remove-button-${exame.id}`}
+                        >
+                          <Feather name="trash-2" size={16} color={colors.dangerText} aria-hidden />
+                          <Text style={[styles.buttonText, styles.dangerText]}>Remover</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  )}
                 </View>
               );
             })}
@@ -615,510 +530,184 @@ export function ExamesScreen({ navigation }: Props) {
         )}
       </ScrollView>
 
-      <Modal
-        visible={selectedExame !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={fecharModalEnvio}
-      >
-        <View style={styles.modalBackdrop} testID="exame-upload-modal">
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeadingBlock}>
-              <Text style={styles.modalTitle} accessibilityRole="header">
-                Enviar Resultado de Exame
-              </Text>
-              {selectedExame ? (
-                <Text style={styles.modalExamSubtitle}>{selectedExame.nome}</Text>
-              ) : null}
-            </View>
-
-            {selectedExame?.status === 'ENVIADO' && selectedExame.arquivoNome ? (
-              <View style={styles.currentSentBox} testID="exame-current-sent-box">
-                <View style={styles.currentSentInfo}>
-                  <Text style={styles.currentSentLabel}>Arquivo enviado atualmente:</Text>
-                  <Text style={styles.currentSentFileName} numberOfLines={1}>
-                    {selectedExame.arquivoNome}
-                  </Text>
-                </View>
-                <Pressable
-                  style={styles.removeSentInlineBtn}
-                  onPress={() => void handleRemoverExameEnviado(selectedExame)}
-                  disabled={removingId === selectedExame.id || uploading}
-                  accessibilityRole="button"
-                  accessibilityLabel="Remover exame enviado"
-                  testID="exame-modal-remove-sent-button"
-                >
-                  <TrashIcon color="#ba1a1a" />
-                  <Text style={styles.removeSentInlineText}>Remover</Text>
-                </Pressable>
-              </View>
-            ) : null}
-
-            {Platform.OS === 'web' ? (
-              <div
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  setIsDraggingOver(!uploading);
-                }}
-                onDragLeave={() => setIsDraggingOver(false)}
-                onDrop={soltarArquivo}
-              >
-                {uploadArea}
-              </div>
-            ) : uploadArea}
-
-            {selectedFile ? (
-              <View style={styles.selectedFileCard} testID="exame-selected-file-pill">
-                <View style={styles.selectedFileDetails}>
-                  <Text
-                    style={styles.selectedFileText}
-                    numberOfLines={1}
-                    testID="exame-selected-file-name"
+      {(selectedExame || exameParaRemover) && (
+        <DialogoConfirmacao
+          titulo={exameParaRemover ? 'Remover resultado enviado?' : 'Enviar Resultado de Exame'}
+          descricao={exameParaRemover
+            ? `O arquivo de ${exameParaRemover.nome} será removido e o pedido voltará a ficar pendente.`
+            : selectedExame?.nome}
+          icone={exameParaRemover ? 'trash-2' : 'upload'}
+          fechar={exameParaRemover ? fecharConfirmacaoRemocao : fecharModalEnvio}
+          testID={exameParaRemover ? 'exame-confirmar-remocao' : 'exame-upload-modal'}
+          acoes={exameParaRemover ? [
+            { rotulo: 'Manter resultado', variante: 'secundaria', executar: fecharConfirmacaoRemocao },
+            {
+              rotulo: 'Remover resultado',
+              variante: 'perigo',
+              executar: () => handleRemoverExameEnviado(exameParaRemover),
+              rotuloOcupado: 'Removendo…',
+              testID: 'exame-confirmar-remocao-botao'
+            }
+          ] : [
+            { rotulo: 'Cancelar', variante: 'secundaria', executar: fecharModalEnvio, testID: 'exame-upload-cancel-button' },
+            {
+              rotulo: selectedExame?.status === 'ENVIADO' ? 'Substituir resultado' : 'Enviar resultado',
+              executar: confirmarEnvio,
+              desabilitada: envioDesabilitado,
+              rotuloOcupado: 'Enviando…',
+              testID: 'exame-upload-confirm-button'
+            }
+          ]}
+        >
+          {selectedExame && !exameParaRemover && (
+            <>
+              {selectedExame.status === 'ENVIADO' && selectedExame.arquivoNome ? (
+                <View style={styles.attachmentBox} testID="exame-current-sent-box">
+                  <View style={styles.attachmentDetails}>
+                    <Text style={styles.fieldLabel}>Arquivo enviado atualmente:</Text>
+                    <Text style={styles.attachmentName}>{selectedExame.arquivoNome}</Text>
+                  </View>
+                  <Pressable
+                    style={({ pressed }) => [styles.button, styles.dangerButton, pressed && styles.pressed]}
+                    onPress={() => setExameParaRemover(selectedExame)}
+                    disabled={uploading}
+                    accessibilityRole="button"
+                    accessibilityLabel="Remover exame enviado"
+                    testID="exame-modal-remove-sent-button"
                   >
-                    {selectedFile.nome}
-                  </Text>
-                  {selectedFile.tamanhoBytes ? (
-                    <Text style={styles.selectedFileMeta}>
-                      {formatFileSize(selectedFile.tamanhoBytes)}
-                    </Text>
-                  ) : null}
+                    <Feather name="trash-2" size={16} color={colors.dangerText} aria-hidden />
+                    <Text style={[styles.buttonText, styles.dangerText]}>Remover</Text>
+                  </Pressable>
                 </View>
-                <Pressable
-                  style={styles.clearSelectedFileBtn}
-                  onPress={limparArquivoSelecionado}
-                  accessibilityRole="button"
-                  accessibilityLabel="Remover arquivo selecionado"
-                  testID="exame-clear-selected-file-button"
+              ) : null}
+
+              {Platform.OS === 'web' ? (
+                <div
+                  style={{ width: '100%' }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setIsDraggingOver(!uploading);
+                  }}
+                  onDragLeave={() => setIsDraggingOver(false)}
+                  onDrop={soltarArquivo}
                 >
-                  <Text style={styles.clearSelectedFileText}>✕ Remover</Text>
-                </Pressable>
-              </View>
-            ) : null}
+                  {uploadArea}
+                </div>
+              ) : uploadArea}
 
-            {uploadError ? (
-              <View
-                style={styles.modalErrorBox}
-                accessibilityRole="alert"
-                testID="exame-upload-error"
-              >
-                <Text style={styles.modalErrorText}>{uploadError}</Text>
-              </View>
-            ) : null}
+              {selectedFile ? (
+                <View style={[styles.attachmentBox, styles.selectedFileCard]} testID="exame-selected-file-pill">
+                  <View style={styles.attachmentDetails}>
+                    <Text style={styles.attachmentName} testID="exame-selected-file-name">
+                      {selectedFile.nome}
+                    </Text>
+                    {selectedFile.tamanhoBytes ? <Text style={styles.uploadFormatHint}>{formatFileSize(selectedFile.tamanhoBytes)}</Text> : null}
+                  </View>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.button, styles.secondaryButton, uploading && styles.buttonDisabled, pressed && styles.pressed
+                    ]}
+                    onPress={limparArquivoSelecionado}
+                    disabled={uploading}
+                    accessibilityRole="button"
+                    accessibilityLabel="Remover arquivo selecionado"
+                    testID="exame-clear-selected-file-button"
+                  >
+                    <Feather name="x" size={16} color={colors.brandDeep} aria-hidden />
+                    <Text style={styles.buttonText}>Remover</Text>
+                  </Pressable>
+                </View>
+              ) : null}
 
-            <View style={styles.modalActions}>
-              <Pressable
-                style={[
-                  styles.confirmButton,
-                  envioDesabilitado && styles.buttonDisabled
-                ]}
-                onPress={() => void confirmarEnvio()}
-                disabled={envioDesabilitado}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: envioDesabilitado, busy: uploading }}
-                accessibilityLabel="Confirmar Envio"
-                testID="exame-upload-confirm-button"
-              >
-                {uploading ? (
-                  <ActivityIndicator color={colors.white} />
-                ) : (
-                  <Text style={styles.confirmButtonText}>Confirmar Envio</Text>
-                )}
-              </Pressable>
-
-              <Pressable
-                style={styles.cancelButton}
-                onPress={fecharModalEnvio}
-                disabled={uploading}
-                accessibilityRole="button"
-                accessibilityLabel="Cancelar"
-                testID="exame-upload-cancel-button"
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </Pressable>
+              {uploadError ? (
+                <View style={styles.errorBox} accessibilityRole="alert" testID="exame-upload-error">
+                  <Text style={styles.errorText}>{uploadError}</Text>
+                </View>
+              ) : null}
+            </>
+          )}
+          {exameParaRemover && erroRemocao ? (
+            <View style={styles.errorBox} accessibilityRole="alert">
+              <Text style={styles.errorText}>{erroRemocao}</Text>
             </View>
-          </View>
-        </View>
-      </Modal>
+          ) : null}
+        </DialogoConfirmacao>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#f9f9f9'
-  },
-  scroll: {
-    flex: 1
-  },
+  safe: { flex: 1, backgroundColor: colors.page },
+  scroll: { flex: 1 },
   content: {
-    width: '100%',
-    alignSelf: 'center',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xxl,
-    gap: 32
+    width: '100%', alignSelf: 'center', padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md
   },
-  headerSection: {
-    gap: 8
-  },
-  title: {
-    color: '#2d3335',
-    fontFamily: fontFamily.bold,
-    fontSize: 30,
-    lineHeight: 36,
-    letterSpacing: -0.75
-  },
-  subtitle: {
-    color: '#2d3335',
-    fontFamily: fontFamily.regular,
-    fontSize: 14,
-    lineHeight: 20
-  },
-  feedbackBox: {
-    backgroundColor: colors.brandSoft,
-    borderRadius: radius.md,
-    padding: spacing.sm
-  },
-  feedbackText: {
-    color: colors.brandDeep,
-    fontFamily: fontFamily.semibold,
-    fontSize: 13,
-    lineHeight: 19
-  },
-  cardsList: {
-    gap: 20
-  },
-  examCard: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: 'rgba(191, 202, 185, 0.15)',
-    borderRadius: 12,
-    padding: 21,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    ...shadows.card
-  },
-  examCardInfo: {
-    flex: 1,
-    gap: 4
-  },
-  examName: {
-    color: '#2d3335',
-    fontFamily: fontFamily.bold,
-    fontSize: 18,
-    lineHeight: 22.5
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 9999
-  },
-  statusDotPending: {
-    backgroundColor: '#ba1a1a'
-  },
-  statusDotSent: {
-    backgroundColor: '#005414'
-  },
-  statusLabel: {
-    fontFamily: fontFamily.semibold,
-    fontSize: 14,
-    lineHeight: 20,
-    letterSpacing: 0.7,
-    textTransform: 'uppercase'
-  },
-  statusLabelPending: {
-    color: '#2d3335'
-  },
-  statusLabelSent: {
-    color: '#005414'
-  },
-  fileCaption: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.regular,
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 2
-  },
-  cardActionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  cardRemoveButton: {
-    width: 40,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#fff4f2',
-    borderWidth: 1,
-    borderColor: 'rgba(186, 26, 26, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  cardActionButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  cardActionButtonPending: {
-    backgroundColor: '#006f1e'
-  },
-  cardActionButtonSent: {
-    backgroundColor: '#e8e8e8'
-  },
-  stateCard: {
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    alignItems: 'center',
-    gap: spacing.sm,
-    ...shadows.card
-  },
-  stateTitle: {
-    color: '#2d3335',
-    fontFamily: fontFamily.bold,
-    fontSize: 17,
-    textAlign: 'center'
-  },
-  stateBodyText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.regular,
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center'
+  contentCompact: { paddingHorizontal: spacing.sm },
+  headerSection: { paddingTop: spacing.xs, gap: spacing.xxs },
+  title: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 30, lineHeight: 38 },
+  bodyText: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 15, lineHeight: 23 },
+  centered: { textAlign: 'center' },
+  surface: {
+    backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: radius.xl,
+    padding: spacing.md, gap: spacing.sm, ...shadows.card
   },
   errorBox: {
-    backgroundColor: '#fff4f2',
-    borderColor: colors.danger,
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.xs
+    backgroundColor: colors.dangerButtonBackground, borderColor: colors.dangerBackground, borderWidth: 1,
+    borderRadius: radius.md, padding: spacing.sm, gap: spacing.xs, alignItems: 'flex-start'
   },
-  errorTitle: {
-    color: colors.dangerText,
-    fontFamily: fontFamily.bold,
-    fontSize: 15
+  errorTitle: { color: colors.dangerText, fontFamily: fontFamily.extrabold, fontSize: 16, lineHeight: 23 },
+  errorText: { color: colors.dangerText, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 21 },
+  stateCard: { alignItems: 'center', padding: spacing.xl, gap: spacing.xs },
+  stateTitle: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 19, lineHeight: 26, textAlign: 'center' },
+  cardsList: { gap: spacing.sm },
+  examHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  iconBadge: {
+    width: 40, height: 40, flexShrink: 0, borderRadius: radius.md,
+    backgroundColor: colors.confirmedBackground, alignItems: 'center', justifyContent: 'center'
   },
-  errorText: {
-    color: colors.text,
-    fontFamily: fontFamily.regular,
-    fontSize: 13,
-    lineHeight: 19
+  examIdentity: { flex: 1, minWidth: 0, gap: spacing.xxs },
+  examName: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 18, lineHeight: 25 },
+  statusLabel: {
+    alignSelf: 'flex-start', color: colors.text, fontFamily: fontFamily.bold, fontSize: 12, lineHeight: 18,
+    paddingHorizontal: spacing.xs, paddingVertical: spacing.xxs, borderRadius: radius.sm, backgroundColor: colors.subtle
   },
-  retryButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-    marginTop: 4
+  statusPending: { color: colors.pending, backgroundColor: colors.pendingBackground },
+  statusSent: { color: colors.brandDeep, backgroundColor: colors.confirmedBackground },
+  fileRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs,
+    backgroundColor: colors.page, borderRadius: radius.md, padding: spacing.sm
   },
-  retryButtonText: {
-    color: colors.white,
-    fontFamily: fontFamily.bold,
-    fontSize: 14
+  fileCaption: { flex: 1, minWidth: 0, color: colors.text, fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 20 },
+  report: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.xs },
+  reportText: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 21 },
+  fieldLabel: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 14, lineHeight: 21 },
+  cardActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  button: {
+    minHeight: 48, maxWidth: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: spacing.xs, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.md
   },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(28, 25, 23, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 342,
-    backgroundColor: colors.white,
-    borderRadius: 24,
-    padding: 24,
-    gap: 18,
-    ...shadows.card
-  },
-  modalHeadingBlock: {
-    gap: 4
-  },
-  modalTitle: {
-    color: '#2d3335',
-    fontFamily: fontFamily.bold,
-    fontSize: 20,
-    lineHeight: 28,
-    letterSpacing: -0.5
-  },
-  modalExamSubtitle: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.semibold,
-    fontSize: 13,
-    lineHeight: 18
-  },
-  currentSentBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: 12
-  },
-  currentSentInfo: {
-    flex: 1,
-    gap: 2
-  },
-  currentSentLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.regular,
-    fontSize: 11
-  },
-  currentSentFileName: {
-    color: '#2d3335',
-    fontFamily: fontFamily.bold,
-    fontSize: 12
-  },
-  removeSentInlineBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#fff4f2',
-    borderWidth: 1,
-    borderColor: 'rgba(186, 26, 26, 0.25)',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6
-  },
-  removeSentInlineText: {
-    color: '#ba1a1a',
-    fontFamily: fontFamily.bold,
-    fontSize: 12
-  },
+  buttonText: { flexShrink: 1, color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 14, lineHeight: 21, textAlign: 'center' },
+  primaryButton: { backgroundColor: colors.brand },
+  primaryText: { color: colors.white },
+  secondaryButton: { backgroundColor: colors.confirmedBackground },
+  dangerButton: { backgroundColor: colors.dangerButtonBackground },
+  dangerText: { color: colors.dangerText },
+  buttonDisabled: { opacity: 0.5 },
+  pressed: { opacity: 0.8 },
   uploadDropArea: {
-    backgroundColor: '#f3f3f3',
-    borderWidth: 2,
-    borderColor: '#6f7a6c',
-    borderStyle: 'dashed',
-    borderRadius: 16,
-    paddingVertical: 28,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8
+    width: '100%', minHeight: 84, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm,
+    borderWidth: 1, borderStyle: 'dashed', borderColor: colors.textSecondary, borderRadius: radius.md, backgroundColor: colors.page
   },
-  uploadDropAreaDragging: {
-    backgroundColor: '#ecfdf5',
-    borderColor: '#005414'
+  uploadDropAreaDragging: { backgroundColor: colors.confirmedBackground, borderColor: colors.brand },
+  uploadCopy: { flex: 1, minWidth: 0, gap: spacing.xxs },
+  uploadPromptText: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 15, lineHeight: 22 },
+  uploadFormatHint: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 13, lineHeight: 19 },
+  attachmentBox: {
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs, padding: spacing.sm,
+    backgroundColor: colors.page, borderRadius: radius.md, borderColor: colors.border, borderWidth: 1
   },
-  uploadIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0, 84, 20, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  uploadPromptText: {
-    color: '#2d3335',
-    fontFamily: fontFamily.semibold,
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center'
-  },
-  uploadFormatHint: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.regular,
-    fontSize: 11,
-    lineHeight: 16,
-    textAlign: 'center'
-  },
-  selectedFileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    backgroundColor: '#ecfdf5',
-    borderWidth: 1,
-    borderColor: '#d1fae5',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10
-  },
-  selectedFileDetails: {
-    flex: 1,
-    gap: 2
-  },
-  selectedFileText: {
-    color: '#005414',
-    fontFamily: fontFamily.bold,
-    fontSize: 13
-  },
-  selectedFileMeta: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.regular,
-    fontSize: 11
-  },
-  clearSelectedFileBtn: {
-    backgroundColor: '#fff4f2',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4
-  },
-  clearSelectedFileText: {
-    color: '#ba1a1a',
-    fontFamily: fontFamily.bold,
-    fontSize: 11
-  },
-  modalErrorBox: {
-    backgroundColor: '#fff4f2',
-    borderColor: colors.danger,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    padding: spacing.sm
-  },
-  modalErrorText: {
-    color: colors.dangerText,
-    fontFamily: fontFamily.semibold,
-    fontSize: 12,
-    textAlign: 'center'
-  },
-  modalActions: {
-    gap: 12
-  },
-  confirmButton: {
-    backgroundColor: '#005414',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.card
-  },
-  buttonDisabled: {
-    opacity: 0.55
-  },
-  confirmButtonText: {
-    color: colors.white,
-    fontFamily: fontFamily.bold,
-    fontSize: 16,
-    lineHeight: 24
-  },
-  cancelButton: {
-    paddingVertical: 8,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  cancelButtonText: {
-    color: '#005414',
-    fontFamily: fontFamily.bold,
-    fontSize: 16,
-    lineHeight: 24
-  }
+  selectedFileCard: { borderColor: colors.brand },
+  attachmentDetails: { flexGrow: 1, flexShrink: 1, flexBasis: 140, minWidth: 0, gap: spacing.xxs },
+  attachmentName: { color: colors.text, fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 21 }
 });

@@ -18,7 +18,6 @@ export class BuscaAlimentosComponent {
   @Input() categoriasCarregando = false;
   @Input() alimentosCarregando = false;
   @Input() alimentosErro = '';
-  @Input() mensagemAlimento = '';
   @Input() paginaAlimentos: PaginaAlimentos | null = null;
   @Input() buscaAlimento = '';
   @Input() categoriaSelecionada = '';

@@ -1,6 +1,9 @@
-import { formatCpfDisplay, extractCpfDigits, normalizeCpf } from '../cpf-mask.util';
+import { formatCpfDisplay, extractCpfDigits, isCpfValid, normalizeCpf } from '../cpf-mask.util';
 import { formatPhoneDisplay, extractPhoneDigits, normalizePhone } from '../phone-mask.util';
 import {
+  dataNascimentoParaIso,
+  formatarDataCivil,
+  formatarDataHoraCivil,
   formatDateDisplay,
   formatDateFromDate,
   parseDisplayDate,
@@ -18,6 +21,23 @@ describe('formatCpfDisplay', () => {
   it('ignora nao digitos e limita a 11', () => {
     expect(extractCpfDigits('111.222.333-4455')).toBe('11122233344');
     expect(normalizeCpf('11122233344')).toBe('111.222.333-44');
+  });
+});
+
+describe('isCpfValid', () => {
+  it.each(['01234567890', '012.345.678-90', '52998224725', '00123456797'])(
+    'aceita um CPF válido (%s)',
+    (cpf) => expect(isCpfValid(cpf)).toBe(true)
+  );
+
+  it.each(['', '0123456789', '012345678900', '01234567891', '01234567880', '111.111.111-11', 'abc01234567890'])(
+    'rejeita um CPF inválido (%s)',
+    (cpf) => expect(isCpfValid(cpf)).toBe(false)
+  );
+
+  it('mantém um valor inválido colado para que possa ser corrigido', () => {
+    expect(formatCpfDisplay('012.345.678-900')).toBe('012.345.678-900');
+    expect(formatCpfDisplay('abc')).toBe('abc');
   });
 });
 
@@ -45,9 +65,31 @@ describe('formatDateDisplay / toIsoDate', () => {
     expect(toIsoDate('32/13/2000')).toBeUndefined();
   });
 
+  it.each(['31/02/2000', '29/02/1900', '2000-02-31', '1900-02-29'])(
+    'rejeita uma data inexistente (%s)',
+    (valor) => expect(toIsoDate(valor)).toBeUndefined()
+  );
+
+  it('aceita o dia bissexto nos dois formatos', () => {
+    expect(toIsoDate('29/02/2000')).toBe('2000-02-29');
+    expect(toIsoDate('2000-02-29')).toBe('2000-02-29');
+  });
+
   it('converte Date <-> display', () => {
     expect(formatDateFromDate(new Date(2000, 0, 1))).toBe('01/01/2000');
     expect(parseDisplayDate('01/01/2000')?.getFullYear()).toBe(2000);
     expect(parseDisplayDate('31/02/2000')).toBeNull();
+  });
+
+  it('preserva o dia civil exibido mesmo quando o horário está perto de meia-noite', () => {
+    expect(formatarDataCivil('2026-10-05')).toBe('05/10/2026');
+    expect(formatarDataCivil('05/10/2026')).toBe('05/10/2026');
+    expect(formatarDataHoraCivil('2026-10-05T00:05:00')).toBe('05/10/2026, às 00:05');
+    expect(formatarDataCivil('2026-02-30')).toBe('');
+  });
+
+  it('preserva o limite inferior do campo de nascimento', () => {
+    expect(dataNascimentoParaIso('31/12/1899')).toBeUndefined();
+    expect(dataNascimentoParaIso('01/01/1900')).toBe('1900-01-01');
   });
 });

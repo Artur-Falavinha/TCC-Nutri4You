@@ -1,3 +1,8 @@
+import { DialogoConfirmacao } from '../../components/feedback/DialogoConfirmacao';
+import { toast } from '../../components/feedback/toast';
+import { SectionCardHeader, sectionCardStyles } from '../../components/layout/SectionCardHeader';
+import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
+import { perfilStyles } from './perfil.styles';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -16,11 +21,8 @@ interface Props {
 export function SolicitacoesVinculo({ onAceito }: Props) {
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoVinculo[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [decidindo, setDecidindo] = useState(false);
+  const [decisao, setDecisao] = useState<{ solicitacao: SolicitacaoVinculo; aceitar: boolean } | null>(null);
   const [erro, setErro] = useState('');
-  const [aviso, setAviso] = useState('');
-
-  const [revisao, setRevisao] = useState(0);
 
   useEffect(() => {
     let vigente = true;
@@ -35,48 +37,32 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
         if (vigente) setCarregando(false);
       });
     return () => { vigente = false; };
-  }, [revisao]);
-
-  const atualizar = () => {
-    setCarregando(true);
-    setErro('');
-    setRevisao((atual) => atual + 1);
-  };
+  }, []);
 
   const decidir = async (solicitacao: SolicitacaoVinculo, aceitar: boolean) => {
-    setDecidindo(true);
     setErro('');
-    setAviso('');
     try {
       const vinculo = await decidirSolicitacaoVinculo(solicitacao, aceitar);
       setSolicitacoes((atuais) => atuais.filter((item) => item.id !== solicitacao.id));
       if (vinculo) onAceito(vinculo);
-      setAviso(aceitar ? 'Vínculo aceito.' : 'Solicitação recusada.');
+      toast.sucesso(aceitar ? 'Vínculo aceito.' : 'Solicitação recusada.');
     } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : 'Não foi possível responder à solicitação.');
+      toast.erro(falha instanceof ApiError ? falha.message : 'Não foi possível responder à solicitação.');
     } finally {
-      setDecidindo(false);
+      setDecisao(null);
     }
   };
 
-  const ocupado = carregando || decidindo;
+  const ocupado = carregando || decisao !== null;
   return (
-    <View style={styles.secao}>
-      <View style={styles.cabecalho}>
-        <Text style={styles.titulo} accessibilityRole="header">Solicitações de vínculo</Text>
-        <Pressable onPress={atualizar} accessibilityRole="button"
-          accessibilityLabel="Atualizar solicitações de vínculo" disabled={ocupado}
-          style={[styles.acao, ocupado && styles.desabilitada]}>
-          <Text style={styles.atualizar}>Atualizar</Text>
-        </Pressable>
-      </View>
-      {carregando && <ActivityIndicator accessibilityLabel="Carregando solicitações" />}
-      {erro ? <Text style={styles.erro} accessibilityRole="alert">{erro}</Text> : null}
-      {aviso ? <Text style={styles.atualizar} accessibilityLiveRegion="polite">{aviso}</Text> : null}
+    <View style={sectionCardStyles.superficie}>
+      <SectionCardHeader titulo="Solicitações de vínculo" icone="inbox" />
+      {carregando && <ActivityIndicator accessibilityLabel="Carregando solicitações" color={colors.brand} />}
+      {erro ? <Text style={perfilStyles.erro} accessibilityRole="alert">{erro}</Text> : null}
       {!carregando && !erro && solicitacoes.length === 0 &&
-        <Text style={styles.texto}>Nenhuma solicitação pendente.</Text>}
+        <Text style={perfilStyles.estadoVazio}>Nenhuma solicitação pendente.</Text>}
       {solicitacoes.length > 0 &&
-        <Text style={styles.texto}>
+        <Text style={perfilStyles.descricao}>
           Ao aceitar, o nutricionista poderá acessar sua ficha clínica para acompanhar você.
           Você pode encerrar o vínculo quando quiser.
           Você só pode manter um vínculo ativo por vez.
@@ -86,44 +72,55 @@ export function SolicitacoesVinculo({ onAceito }: Props) {
           <Text style={styles.nome}>{solicitacao.nutricionistaNome}</Text>
           <View style={styles.acoes}>
             <Pressable
-              onPress={() => void decidir(solicitacao, false)}
+              onPress={() => setDecisao({ solicitacao, aceitar: false })}
               accessibilityRole="button"
               accessibilityLabel={'Recusar vínculo com ' + solicitacao.nutricionistaNome}
               disabled={ocupado}
-              style={[styles.acao, styles.recusa, ocupado && styles.desabilitada]}
+              style={({ pressed }) => [
+                perfilStyles.botao, perfilStyles.perigoSuave, (pressed || ocupado) && perfilStyles.pressionado
+              ]}
             >
-              <Text style={styles.recusaTexto}>Recusar</Text>
+              <Text style={perfilStyles.rotuloPerigo}>Recusar</Text>
             </Pressable>
             <Pressable
-              onPress={() => void decidir(solicitacao, true)}
+              onPress={() => setDecisao({ solicitacao, aceitar: true })}
               accessibilityRole="button"
               accessibilityLabel={'Aceitar vínculo com ' + solicitacao.nutricionistaNome}
               disabled={ocupado}
-              style={[styles.acao, styles.aceite, ocupado && styles.desabilitada]}
+              style={({ pressed }) => [
+                perfilStyles.botao, perfilStyles.primario, (pressed || ocupado) && perfilStyles.pressionado
+              ]}
             >
-              <Text style={styles.aceiteTexto}>Aceitar</Text>
+              <Text style={perfilStyles.rotuloPrimario}>Aceitar</Text>
             </Pressable>
           </View>
         </View>
       ))}
+      {decisao && (
+        <DialogoConfirmacao
+          titulo={decisao.aceitar ? 'Aceitar vínculo?' : 'Recusar solicitação?'}
+          descricao={decisao.aceitar
+            ? `${decisao.solicitacao.nutricionistaNome} poderá acessar sua ficha clínica enquanto o vínculo estiver ativo.`
+            : `O vínculo com ${decisao.solicitacao.nutricionistaNome} não será ativado.`}
+          icone={decisao.aceitar ? 'user-check' : 'user-x'}
+          fechar={() => setDecisao(null)}
+          acoes={[
+            { rotulo: 'Voltar', variante: 'secundaria', executar: () => setDecisao(null) },
+            {
+              rotulo: decisao.aceitar ? 'Aceitar vínculo' : 'Recusar solicitação',
+              variante: decisao.aceitar ? undefined : 'perigo',
+              executar: () => decidir(decisao.solicitacao, decisao.aceitar),
+              rotuloOcupado: 'Enviando…'
+            }
+          ]}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  secao: { marginTop: 24, gap: 8 },
-  cabecalho: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-  titulo: { flex: 1, fontSize: 16, fontWeight: '700', color: '#0f172a' },
-  atualizar: { color: '#006f1e', fontWeight: '700' },
-  texto: { color: '#475569' },
-  erro: { color: '#b42318' },
-  solicitacao: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 12, gap: 12 },
-  nome: { fontWeight: '700', color: '#0f172a' },
-  acoes: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8 },
-  acao: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8 },
-  recusa: { borderWidth: 1, borderColor: '#cbd5e1' },
-  recusaTexto: { color: '#334155', fontWeight: '700' },
-  aceite: { backgroundColor: '#006f1e' },
-  aceiteTexto: { color: '#ffffff', fontWeight: '700' },
-  desabilitada: { opacity: 0.6 }
+  solicitacao: { backgroundColor: colors.page, borderRadius: radius.lg, padding: spacing.sm, gap: spacing.sm },
+  nome: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 15 },
+  acoes: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }
 });

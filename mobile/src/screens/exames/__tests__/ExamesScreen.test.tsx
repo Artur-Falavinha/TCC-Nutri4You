@@ -1,8 +1,9 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import * as RN from 'react-native';
-import { Pressable, ScrollView, Text } from 'react-native';
+import { Modal, Pressable, ScrollView, Text } from 'react-native';
 
+import { toast } from '../../../components/feedback/toast';
 import {
   enviarResultadoExame,
   listarMeusExames,
@@ -26,6 +27,10 @@ jest.mock('../../../features/exames/exames.service', () => {
 
 jest.mock('../../../core/auth/auth.service', () => ({
   logout: jest.fn()
+}));
+
+jest.mock('../../../components/feedback/toast', () => ({
+  toast: { sucesso: jest.fn(), erro: jest.fn() }
 }));
 
 const mockHeaderMenuPress = (onOpenMenu?: () => void) => (
@@ -261,7 +266,7 @@ describe('ExamesScreen', () => {
       versao: 0,
       arquivo: { nome: 'resultado-hemograma-completo.pdf', tipo: 'application/pdf', tamanhoBytes: 245760, uri: 'file:///resultado.pdf' }
     });
-    expect(renderedText(tree)).toContain(
+    expect(toast.sucesso).toHaveBeenCalledWith(
       'Resultado de "Hemograma Completo" enviado com sucesso.'
     );
 
@@ -271,14 +276,12 @@ describe('ExamesScreen', () => {
     act(() => tree.unmount());
   });
 
-  it('permite remover um resultado de exame já enviado voltando o status para PENDENTE', async () => {
+  it('só remove o resultado após confirmar e bloqueia ações até a resposta', async () => {
     (listarMeusExames as jest.Mock).mockResolvedValueOnce(sampleExames());
-    (removerResultadoExame as jest.Mock).mockResolvedValueOnce({
-      id: 2,
-      nome: 'Perfil Lipídico',
-      versao: 0, status: 'PENDENTE', possuiArquivo: false,
-      arquivoNome: null
-    });
+    let concluirRemocao!: (resultado: ExamePedido) => void;
+    (removerResultadoExame as jest.Mock).mockReturnValueOnce(new Promise<ExamePedido>((resolve) => {
+      concluirRemocao = resolve;
+    }));
     const navigation = { navigate: jest.fn(), dispatch: jest.fn() };
     let tree!: renderer.ReactTestRenderer;
 
@@ -297,8 +300,30 @@ describe('ExamesScreen', () => {
       await removeBtn.props.onPress();
     });
 
+    expect(removerResultadoExame).not.toHaveBeenCalled();
+    act(() => tree.root.findByType(Modal).props.onRequestClose());
+    expect(tree.root.findAllByType(Modal)).toHaveLength(0);
+    expect(removerResultadoExame).not.toHaveBeenCalled();
+
+    await act(async () => { removeBtn.props.onPress(); });
+    const confirmar = tree.root.findByProps({ testID: 'exame-confirmar-remocao-botao' });
+    act(() => {
+      void confirmar.props.onPress();
+      void confirmar.props.onPress();
+      tree.root.findByType(Modal).props.onRequestClose();
+    });
+
+    expect(removerResultadoExame).toHaveBeenCalledTimes(1);
     expect(removerResultadoExame).toHaveBeenCalledWith(2, 1);
-    expect(renderedText(tree)).toContain(
+    expect(confirmar.props.accessibilityState).toEqual({ busy: true, disabled: true });
+
+    await act(async () => {
+      concluirRemocao({
+        id: 2, nome: 'Perfil Lipídico', versao: 2, status: 'PENDENTE',
+        possuiArquivo: false, arquivoNome: null
+      });
+    });
+    expect(toast.sucesso).toHaveBeenCalledWith(
       'Envio de "Perfil Lipídico" removido. O exame voltou para PENDENTE.'
     );
 
@@ -357,7 +382,7 @@ describe('ExamesScreen', () => {
       await Promise.resolve();
     });
     const compactScroll = compactTree.root.findByType(ScrollView);
-    expect(JSON.stringify(compactScroll.props.contentContainerStyle)).toContain('"maxWidth":448');
+    expect(JSON.stringify(compactScroll.props.contentContainerStyle)).toContain('"maxWidth":560');
     act(() => compactTree.unmount());
 
     spy.mockReturnValue({ width: 768, height: 1024, scale: 2, fontScale: 1 });
@@ -373,9 +398,103 @@ describe('ExamesScreen', () => {
       await Promise.resolve();
     });
     const wideScroll = wideTree.root.findByType(ScrollView);
-    expect(JSON.stringify(wideScroll.props.contentContainerStyle)).toContain('"maxWidth":680');
+    expect(JSON.stringify(wideScroll.props.contentContainerStyle)).toContain('"maxWidth":760');
     act(() => wideTree.unmount());
 
     spy.mockRestore();
+  });
+
+  it('não expõe mensagens técnicas ao paciente, preserva erros da API e mantém o modal pronto para nova tentativa', async () => {
+    const { ApiError } = jest.requireActual('../../../core/api/api-response.types');
+    const { ExameArquivoError } = jest.requireActual('../../../features/exames/exames.service');
+
+    (listarMeusExames as jest.Mock).mockResolvedValueOnce(sampleExames());
+    (selecionarArquivoDispositivo as jest.Mock).mockResolvedValueOnce({
+      nome: 'laudo.pdf',
+      tipo: 'application/pdf',
+      tamanhoBytes: 1024,
+      uri: 'file:///laudo.pdf'
+    });
+
+    // 1ª tentativa: falha técnica inesperada (não deve exibir mensagem técnica ao paciente)
+    (enviarResultadoExame as jest.Mock)
+      .mockRejectedValueOnce(new Error('Unsupported FormDataPart implementation'))
+      // 2ª tentativa: falha local de leitura do arquivo (não deve parecer erro de conexão)
+      .mockRejectedValueOnce(
+        new ExameArquivoError('Não foi possível ler o arquivo selecionado. Selecione novamente e tente enviar.')
+      )
+      // 3ª tentativa: erro retornado pela API (deve ser preservado)
+      .mockRejectedValueOnce(
+        new ApiError({
+          status: 400,
+          error: 'BAD_REQUEST',
+          message: 'O tipo informado não corresponde ao conteúdo do arquivo.',
+          path: '/usuarios/me/exames/1/arquivo',
+          timestamp: new Date().toISOString()
+        })
+      )
+      // 4ª tentativa: sucesso na nova tentativa
+      .mockResolvedValueOnce({
+        id: 1,
+        nome: 'Hemograma Completo',
+        versao: 1,
+        status: 'ENVIADO',
+        possuiArquivo: true,
+        arquivoNome: 'laudo.pdf'
+      });
+
+    const navigation = { navigate: jest.fn(), dispatch: jest.fn() };
+    let tree!: renderer.ReactTestRenderer;
+
+    await act(async () => {
+      tree = renderer.create(
+        <ExamesScreen
+          navigation={navigation as never}
+          route={{ key: 'Exames', name: 'Exames', params: undefined } as never}
+        />
+      );
+      await Promise.resolve();
+    });
+
+    const actionButton = tree.root.findByProps({ testID: 'exame-action-button-1' });
+    await act(async () => {
+      actionButton.props.onPress();
+    });
+
+    const selectArea = tree.root.findByProps({ testID: 'exame-upload-select-area' });
+    await act(async () => {
+      await selectArea.props.onPress();
+    });
+
+    const confirmButton = tree.root.findByProps({ testID: 'exame-upload-confirm-button' });
+
+    // 1ª tentativa: erro técnico ocultado pelo fallback amigável
+    await act(async () => {
+      await confirmButton.props.onPress();
+    });
+    expect(renderedText(tree)).not.toContain('Unsupported FormDataPart implementation');
+    expect(renderedText(tree)).toContain('Não foi possível enviar o resultado do exame. Tente novamente.');
+    expect(confirmButton.props.disabled).toBe(false);
+
+    // 2ª tentativa: erro local de leitura apresentado corretamente (sem falar em conexão)
+    await act(async () => {
+      await confirmButton.props.onPress();
+    });
+    expect(renderedText(tree)).toContain('Não foi possível ler o arquivo selecionado. Selecione novamente e tente enviar.');
+    expect(renderedText(tree)).not.toContain('Verifique sua conexão');
+
+    // 3ª tentativa: mensagem da API preservada
+    await act(async () => {
+      await confirmButton.props.onPress();
+    });
+    expect(renderedText(tree)).toContain('O tipo informado não corresponde ao conteúdo do arquivo.');
+
+    // 4ª tentativa: reenvio conclui com sucesso
+    await act(async () => {
+      await confirmButton.props.onPress();
+    });
+    expect(toast.sucesso).toHaveBeenCalledWith('Resultado de "Hemograma Completo" enviado com sucesso.');
+
+    act(() => tree.unmount());
   });
 });

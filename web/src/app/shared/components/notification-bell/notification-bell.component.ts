@@ -1,17 +1,20 @@
-import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, forkJoin, of, switchMap, timer } from 'rxjs';
+import { EMPTY, catchError, map, switchMap, timer } from 'rxjs';
+import { AuthService } from '../../../core/services/auth.service';
 import { NotificacoesService } from '../../../features/notificacoes/notificacoes.service';
 
 @Component({
   selector: 'app-notification-bell',
   imports: [RouterLink],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <a class="bell" routerLink="/notificacoes"
-      [attr.aria-label]="quantidade ? quantidade + ' notificações pendentes' : 'Notificações'">
+    <a class="bell" routerLink="/notificacoes" [attr.aria-label]="rotulo()">
       <i class="ph ph-bell" aria-hidden="true"></i>
-      @if (quantidade) { <span class="badge" aria-hidden="true">{{ quantidade > 99 ? '99+' : quantidade }}</span> }
+      @if (quantidade(); as total) {
+        <span class="badge" aria-hidden="true">{{ total > 99 ? '99+' : total }}</span>
+      }
     </a>
   `,
   styles: [`
@@ -27,16 +30,25 @@ import { NotificacoesService } from '../../../features/notificacoes/notificacoes
 })
 export class NotificationBellComponent implements OnInit {
   private readonly service = inject(NotificacoesService);
+  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
-  quantidade = 0;
+  protected readonly quantidade = signal(0);
+  protected readonly rotulo = computed(() => {
+    const total = this.quantidade();
+    if (!total) return 'Notificações';
+    return total === 1 ? 'Notificações, 1 não lida' : `Notificações, ${total} não lidas`;
+  });
 
   ngOnInit(): void {
-    timer(0, 30_000).pipe(
-      switchMap(() => forkJoin({
-        consultas: this.service.listar().pipe(catchError(() => of([]))),
-        vinculos: this.service.listarVinculos().pipe(catchError(() => of([])))
-      })),
+    this.auth.fetchMe().pipe(
+      switchMap(usuario => timer(0, 30_000).pipe(
+        switchMap(() => this.service.listarPendentes().pipe(
+          map(pendentes => this.service.contarNaoVistas(usuario.id, pendentes)),
+          catchError(() => EMPTY)
+        ))
+      )),
+      catchError(() => EMPTY),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(({ consultas, vinculos }) => { this.quantidade = consultas.length + vinculos.length; });
+    ).subscribe(total => this.quantidade.set(total));
   }
 }

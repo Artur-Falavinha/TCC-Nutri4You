@@ -143,7 +143,7 @@ Referência completa em [endpoints.md](endpoints.md).
 | Nutricionista | `nutri@nutri4you.com` | Senha dev: `password` |
 | Paciente | `arthur@email.com`, `artur@email.com` | `email_confirmado=true` no seed |
 
-> Pacientes seed podem ter hash placeholder — prefira autocadastro ou usuários criados nos testes de integração.
+Para autenticar, use o autocadastro ou as contas com aceite registrado nos testes de integração. Os dados seed servem de exemplo no banco.
 
 ## Lacunas conhecidas
 

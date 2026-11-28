@@ -1,5 +1,6 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.service.PrivacidadeService;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -40,6 +41,7 @@ import java.time.ZoneId;
 @AutoConfigureMockMvc
 @Transactional
 class PrescricaoControllerTest {
+    @Autowired PrivacidadeService privacidade;
     @Autowired MockMvc mvc;
     @Autowired PacienteRepository pacientes;
     @Autowired NutricionistaRepository nutricionistas;
@@ -72,14 +74,15 @@ class PrescricaoControllerTest {
                                 "CRN8-88888"));
         paciente = pacientes.save(TestDataFactory.pacienteConfirmado(encoder));
         outro = pacientes.save(TestDataFactory.outroPaciente(encoder));
+        TestDataFactory.registrarAceite(privacidade, nutri, segundo, paciente, outro);
         consultas.save(TestDataFactory.consulta(paciente, nutri));
         consultas.save(TestDataFactory.consulta(paciente, segundo));
         relacoes.save(RelacaoClinica.criar(paciente, nutri));
         relacoes.save(RelacaoClinica.criar(paciente, segundo));
-        autorToken = tokens.gerarToken(nutri.getEmail());
-        pacienteToken = tokens.gerarToken(paciente.getEmail());
-        outroToken = tokens.gerarToken(outro.getEmail());
-        segundoToken = tokens.gerarToken(segundo.getEmail());
+        autorToken = tokens.gerarToken(nutri);
+        pacienteToken = tokens.gerarToken(paciente);
+        outroToken = tokens.gerarToken(outro);
+        segundoToken = tokens.gerarToken(segundo);
         url = "/api/v1/gestao-pacientes/" + paciente.getId() + "/planos-alimentares";
         inserirAlimento(1001, "Feijão", "feijao", "Leguminosas", true, true);
         inserirAlimento(1002, "Arroz", "arroz", "Cereais", true, true);
@@ -251,11 +254,6 @@ class PrescricaoControllerTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(corpo(hoje, hoje.plusDays(2), versao(publicado))))
                 .andExpect(status().isConflict());
-        mvc.perform(
-                        delete(url + "/" + id(primeiro))
-                                .param("versao", Long.toString(versao(publicado)))
-                                .header("Authorization", "Bearer " + autorToken))
-                .andExpect(status().isConflict());
         MvcResult sobreposto =
                 criar(segundoToken, corpo(hoje.plusDays(10), hoje.plusDays(15), null));
         mvc.perform(
@@ -272,6 +270,13 @@ class PrescricaoControllerTest {
                                 .header("Authorization", "Bearer " + pacienteToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(id(primeiro)));
+        mvc.perform(delete(url + "/" + id(primeiro))
+                        .param("versao", Long.toString(versao(publicado)))
+                        .header("Authorization", "Bearer " + autorToken))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/me/plano-alimentar").header("Authorization", "Bearer " + pacienteToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isEmpty());
     }
 
     @Test
@@ -429,8 +434,11 @@ class PrescricaoControllerTest {
     void futurosEExpiradosNaoAparecemComoAtivos() throws Exception {
         MvcResult futuro = criar(autorToken, corpo(hoje.plusDays(1), hoje.plusDays(10), null));
         publicar(id(futuro), versao(futuro), autorToken);
-        MvcResult antigo = criar(autorToken, corpo(hoje.minusDays(10), hoje.minusDays(1), null));
-        publicar(id(antigo), versao(antigo), autorToken);
+        PlanoAlimentar antigo = new PlanoAlimentar(paciente, nutri);
+        antigo.editar("Plano expirado", null, hoje.minusDays(10), hoje.minusDays(1), null);
+        antigo.publicar();
+        em.persist(antigo);
+        em.flush();
         mvc.perform(
                         get("/api/v1/me/plano-alimentar")
                                 .header("Authorization", "Bearer " + pacienteToken))
@@ -574,11 +582,7 @@ class PrescricaoControllerTest {
                 .andExpect(jsonPath("$.data.refeicoes[0].itens[0].substitutos", hasSize(1)))
                 .andExpect(jsonPath("$.data.refeicoes[0].itens[0].substitutos[0].nutrientes.fibras").value(4.5));
         mvc.perform(get(url + "/" + planoId + "/lista-compras").header("Authorization", "Bearer " + autorToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.dias").value(7))
-                .andExpect(jsonPath("$.data.itens", hasSize(1)))
-                .andExpect(jsonPath("$.data.itens[0].alimentoId").value(1001))
-                .andExpect(jsonPath("$.data.itens[0].quantidadeGramas").value(399.96));
+                .andExpect(status().isNotFound());
         publicar(planoId, versao(criado), autorToken);
         em.createNativeQuery("update alimento set fibra_100g = 100, kcal_100g = 999 where id_alimento in (1001,1002)").executeUpdate();
         em.clear();
@@ -589,40 +593,14 @@ class PrescricaoControllerTest {
                 .andExpect(jsonPath("$.data.refeicoes[0].itens[0].substitutos[0].nutrientes.kcal").value(64.23))
                 .andExpect(jsonPath("$.data.refeicoes[0].itens[0].substitutos[0].nutrientes.fibras").value(4.5));
         mvc.perform(get("/api/v1/me/lista-compras").header("Authorization", "Bearer " + pacienteToken))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.itens", hasSize(1)));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.itens", hasSize(1)))
+                .andExpect(jsonPath("$.data.itens[0].alimentoId").value(1001))
+                .andExpect(jsonPath("$.data.itens[0].quantidadeGramas").value(399.96));
         mvc.perform(put("/api/v1/me/lista-compras/itens/1002")
                 .header("Authorization", "Bearer " + pacienteToken).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"planoId\":" + planoId + ",\"dias\":7,\"comprado\":true}"))
                 .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void previaIsolaAutoriaIgnoraMarcacoesENaoAlteraPlanoOuChecklist() throws Exception {
-        MvcResult criado = criar(autorToken, corpo(hoje, hoje.plusDays(2), null));
-        int planoId = id(criado);
-        String previa = url + "/" + planoId + "/lista-compras";
-        mvc.perform(get(previa)).andExpect(status().isUnauthorized());
-        mvc.perform(get(previa).header("Authorization", "Bearer " + pacienteToken)).andExpect(status().isForbidden());
-        mvc.perform(get(previa).header("Authorization", "Bearer " + segundoToken)).andExpect(status().isNotFound());
-        for (String dias : new String[] {"0", "31", "abc"}) {
-            mvc.perform(get(previa).param("dias", dias).header("Authorization", "Bearer " + autorToken))
-                    .andExpect(status().isBadRequest());
-        }
-        mvc.perform(get(previa).header("Authorization", "Bearer " + autorToken))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.itensComprados").value(0));
-        assertThat(listas.count()).isZero();
-        ListaCompras lista = new ListaCompras(em.find(PlanoAlimentar.class, planoId), 7);
-        lista.marcar(em.find(Alimento.class, 1001), true);
-        listas.saveAndFlush(lista);
-        mvc.perform(get(previa).header("Authorization", "Bearer " + autorToken))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.itens[0].comprado").value(false));
-        assertThat(listas.count()).isEqualTo(1);
-        em.clear();
-        assertThat(em.find(PlanoAlimentar.class, planoId).getVersao()).isEqualTo(versao(criado));
-        assertThat(listas.findByPlano_IdAndDias(planoId, 7).orElseThrow().getItens().getFirst().isComprado()).isTrue();
-        publicar(planoId, versao(criado), autorToken);
-        mvc.perform(get(previa).param("dias", "30").header("Authorization", "Bearer " + autorToken))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.itens[0].quantidadeGramas").value(199.98));
     }
 
     @Test

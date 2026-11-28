@@ -4,10 +4,6 @@ import com.nutri4you.backend.config.EmailProperties;
 import com.nutri4you.backend.model.CadastroPendente;
 import com.nutri4you.backend.model.TipoCadastro;
 import com.nutri4you.backend.repository.CadastroPendenteRepository;
-import com.nutri4you.backend.repository.NutricionistaRepository;
-import com.nutri4you.backend.repository.PacienteRepository;
-import jakarta.mail.internet.AddressException;
-import jakarta.mail.internet.InternetAddress;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Service;
@@ -21,7 +17,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
-import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -32,8 +27,7 @@ public class CadastroEmailService {
     private static final Duration PRAZO_CONCLUSAO = Duration.ofMinutes(30);
 
     private final CadastroPendenteRepository cadastros;
-    private final NutricionistaRepository nutricionistas;
-    private final PacienteRepository pacientes;
+    private final ContasEmail contasEmail;
     private final EmailNotificationService notificacoes;
     private final EmailProperties emailProperties;
     private final Clock relogio;
@@ -41,12 +35,11 @@ public class CadastroEmailService {
     @PersistenceContext
     private EntityManager entidades;
 
-    public CadastroEmailService(CadastroPendenteRepository cadastros, NutricionistaRepository nutricionistas,
-            PacienteRepository pacientes, EmailNotificationService notificacoes, EmailProperties emailProperties,
+    CadastroEmailService(CadastroPendenteRepository cadastros, ContasEmail contasEmail,
+            EmailNotificationService notificacoes, EmailProperties emailProperties,
             Clock relogio) {
         this.cadastros = cadastros;
-        this.nutricionistas = nutricionistas;
-        this.pacientes = pacientes;
+        this.contasEmail = contasEmail;
         this.notificacoes = notificacoes;
         this.emailProperties = emailProperties;
         this.relogio = relogio;
@@ -57,11 +50,11 @@ public class CadastroEmailService {
         if (tipoUsuario == null) {
             throw new IllegalArgumentException("Informe o tipo de cadastro.");
         }
-        String email = normalizarEmail(endereco);
+        String email = ContasEmail.normalizar(endereco);
         Instant agora = relogio.instant();
         cadastros.removerExpirados(agora);
         var existente = cadastros.findByEmail(email);
-        if (emailEmUso(email)) {
+        if (contasEmail.emUso(email)) {
             return ResultadoInicio.EMAIL_EM_USO;
         }
         if (existente.filter(cadastro -> !cadastro.podeEnviar(agora, INTERVALO_REENVIO)).isPresent()) {
@@ -89,11 +82,12 @@ public class CadastroEmailService {
     @Transactional
     public String consumir(UUID token, TipoCadastro tipo, String endereco) {
         CadastroPendente cadastro = buscarValido(token, tipo);
-        if (!cadastro.isConfirmado() || !cadastro.getEmail().equals(normalizarEmail(endereco))) {
+        if (!cadastro.isConfirmado() || !cadastro.getEmail().equals(ContasEmail.normalizar(endereco))) {
             throw new IllegalArgumentException(LINK_INVALIDO);
         }
         String email = cadastro.getEmail();
-        if (emailEmUso(email)) {
+        contasEmail.bloquearEscritas();
+        if (contasEmail.emUso(email)) {
             throw new IllegalArgumentException("E-mail já está em uso no sistema.");
         }
         cadastros.delete(cadastro);
@@ -110,28 +104,7 @@ public class CadastroEmailService {
                 .orElseThrow(() -> new IllegalArgumentException(LINK_INVALIDO));
     }
 
-    private boolean emailEmUso(String email) {
-        return nutricionistas.findByEmailIgnoreCase(email).isPresent()
-                || pacientes.findByEmailIgnoreCase(email).isPresent();
-    }
-
-    private static String normalizarEmail(String endereco) {
-        if (endereco == null || endereco.isBlank()) {
-            throw new IllegalArgumentException("Informe um e-mail válido.");
-        }
-        String normalizado = endereco.trim().toLowerCase(Locale.ROOT);
-        try {
-            InternetAddress email = new InternetAddress(normalizado, true);
-            if (!email.isGroup() && normalizado.equals(email.getAddress()) && normalizado.length() <= 100) {
-                return normalizado;
-            }
-        } catch (AddressException exception) {
-            throw new IllegalArgumentException("Informe um e-mail válido.", exception);
-        }
-        throw new IllegalArgumentException("Informe um e-mail válido.");
-    }
-
-    private static String hash(UUID token) {
+    static String hash(UUID token) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                     .digest(token.toString().getBytes(StandardCharsets.US_ASCII)));

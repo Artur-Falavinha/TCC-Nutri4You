@@ -1,5 +1,6 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.service.PrivacidadeService;
 import com.jayway.jsonpath.JsonPath;
 import com.nutri4you.backend.model.*;
 import com.nutri4you.backend.repository.*;
@@ -17,10 +18,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -28,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Transactional
 class ConsultaControllerTest {
+    @Autowired PrivacidadeService privacidade;
     @Autowired MockMvc mvc;
     @Autowired NutricionistaRepository nutricionistas;
     @Autowired PacienteRepository pacientes;
@@ -44,6 +49,7 @@ class ConsultaControllerTest {
     void preparar() throws Exception {
         nutri = nutricionistas.save(TestDataFactory.nutricionista(encoder));
         paciente = pacientes.save(TestDataFactory.pacienteConfirmado(encoder));
+        TestDataFactory.registrarAceite(privacidade, nutri, paciente);
         consultas.save(TestDataFactory.consulta(paciente, nutri));
         relacoes.save(RelacaoClinica.criar(paciente, nutri));
         base = "/api/v1/gestao-pacientes/" + paciente.getId() + "/consultas";
@@ -65,6 +71,80 @@ class ConsultaControllerTest {
     }
 
     @Test
+    void consultaConcluidaContinuaVisivelMasNaoPodeSerAlteradaOuReaberta() throws Exception {
+        String corpo = completa(80, "Registro original", "null")
+                .replace("\"status\":\"CONFIRMADA\"", "\"status\":\"REALIZADA\"");
+        String json = criar(corpo).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        int id = JsonPath.read(json, "$.data.id");
+        int versao = JsonPath.read(json, "$.data.versao");
+        for (String estado : java.util.List.of("REALIZADA", "CONFIRMADA")) {
+            mvc.perform(put(base + "/" + id).header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                            .content(completa(81, "Alterada", String.valueOf(versao))
+                                    .replace("\"status\":\"CONFIRMADA\"", "\"status\":\"" + estado + "\"")))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Consulta concluída está disponível somente para leitura."));
+        }
+        mvc.perform(get(base + "/" + id).header("Authorization", token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("REALIZADA"))
+                .andExpect(jsonPath("$.data.observacao").value("Registro original"))
+                .andExpect(jsonPath("$.data.avaliacao.peso").value(80))
+                .andExpect(jsonPath("$.data.versao").value(versao));
+    }
+
+    @Test
+    void salvaSomenteUmaMedidaERecuperaSemObrigarPesoOuAltura() throws Exception {
+        Consulta consulta = consultaIniciada();
+        String corpo = """
+                {"dataHora":"2025-01-15T14:30","status":"CONFIRMADA","versao":%d,
+                 "avaliacao":{"pregaBicipital":12,"percentualGordura":20,"massaMuscularKg":30}}
+                """.formatted(consulta.getVersao());
+        mvc.perform(put(base + "/" + consulta.getId()).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(corpo))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("CONFIRMADA"))
+                .andExpect(jsonPath("$.data.avaliacao.pregaBicipital").value(12))
+                .andExpect(jsonPath("$.data.avaliacao.peso").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.altura").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.imc").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.massaGordaKg").value(nullValue()));
+        mvc.perform(get(base + "/" + consulta.getId()).header("Authorization", token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.avaliacao.pregaBicipital").value(12))
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(20))
+                .andExpect(jsonPath("$.data.avaliacao.massaMuscularKg").value(30));
+    }
+
+    @Test
+    void bloqueiaAberturaPendentePelaUrlELiberaAposAprovar() throws Exception {
+        Consulta pendente = consultas.saveAndFlush(new Consulta(paciente, nutri, LocalDateTime.now().plusDays(1)));
+        String url = base + "/" + pendente.getId();
+        mvc.perform(get(url).header("Authorization", token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Confirme a solicitação antes de abrir a consulta."));
+        mvc.perform(post(url + "/confirmacao").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"versao\":" + pendente.getVersao() + "}"))
+                .andExpect(status().isOk());
+        mvc.perform(get(url).header("Authorization", token)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CONFIRMADA"));
+    }
+
+    @Test
+    void pendentePodeSerRecusadaMasNaoCanceladaEConfirmadaNaoPodeSerRecusada() throws Exception {
+        Consulta pendente = consultas.saveAndFlush(new Consulta(paciente, nutri, LocalDateTime.now().plusDays(2)));
+        String url = base + "/" + pendente.getId();
+        String versao = "{\"versao\":" + pendente.getVersao() + "}";
+        mvc.perform(post(url + "/cancelamento").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(versao)).andExpect(status().isBadRequest());
+        mvc.perform(post(url + "/recusa").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(versao))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("RECUSADA"));
+        mvc.perform(get(url).header("Authorization", token)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("RECUSADA"));
+        Consulta confirmada = consultaIniciada();
+        mvc.perform(post(base + "/" + confirmada.getId() + "/recusa").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"versao\":" + confirmada.getVersao() + "}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void editaMedidasSemDuplicarERejeitaVersaoAntiga() throws Exception {
         String json = criar(completa(80, "", "null")).andReturn().getResponse().getContentAsString();
         int id = JsonPath.read(json, "$.data.id");
@@ -83,13 +163,104 @@ class ConsultaControllerTest {
     }
 
     @Test
+    void preservaGorduraManualComSetePregasEModoAposReabrir() throws Exception {
+        paciente.setDataNascimento(LocalDate.of(1995, 1, 15));
+        String json = criar(composicao("null", """
+                "modoPercentualGordura":"MANUAL","percentualGordura":2,
+                "massaGordaKg":80,"massaMagraKg":0,
+                """ + setePregas("20")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(2))
+                .andExpect(jsonPath("$.data.avaliacao.massaGordaKg").value(1.47))
+                .andExpect(jsonPath("$.data.avaliacao.massaMagraKg").value(71.78))
+                .andExpect(jsonPath("$.data.avaliacao.massaMuscularKg").value(nullValue()))
+                .andReturn().getResponse().getContentAsString();
+        int id = JsonPath.read(json, "$.data.id");
+        int versao = JsonPath.read(json, "$.data.versao");
+
+        mvc.perform(get(base + "/" + id).header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.metodoPercentualGordura").value("Informado manualmente"))
+                .andExpect(jsonPath("$.data.avaliacao.pregaCoxa").value(20));
+
+        editarComposicao(id, versao, "\"pregaCoxa\":22")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.metodoPercentualGordura").value("Informado manualmente"))
+                .andExpect(jsonPath("$.data.avaliacao.pregaCoxa").value(22))
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(nullValue()));
+    }
+
+    @Test
+    void recalculaAutomaticoELimpaResultadoInvalidoSemAlterarHistorico() throws Exception {
+        paciente.setDataNascimento(LocalDate.of(1995, 1, 15));
+        var anterior = new AvaliacaoAntropometrica(paciente, LocalDateTime.of(2024, 12, 10, 10, 0));
+        anterior.setPercentualGordura(new BigDecimal("17.50"));
+        anterior.setPregaPeitoral(new BigDecimal("15"));
+        anterior = avaliacoes.saveAndFlush(anterior);
+
+        String modo = "\"modoPercentualGordura\":\"AUTOMATICO\",";
+        String json = criar(composicao("null", modo + setePregas("20")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(19.98))
+                .andExpect(jsonPath("$.data.avaliacao.massaGordaKg").value(14.64))
+                .andExpect(jsonPath("$.data.avaliacao.massaMagraKg").value(58.61))
+                .andReturn().getResponse().getContentAsString();
+        int id = JsonPath.read(json, "$.data.id");
+        int versao = JsonPath.read(json, "$.data.versao");
+        String recalculada = editarComposicao(id, versao, modo + setePregas("22"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(21.69))
+                .andExpect(jsonPath("$.data.avaliacao.massaGordaKg").value(15.89))
+                .andExpect(jsonPath("$.data.avaliacao.massaMagraKg").value(57.36))
+                .andReturn().getResponse().getContentAsString();
+        versao = JsonPath.read(recalculada, "$.data.versao");
+
+        editarComposicao(id, versao, modo + "\"percentualGordura\":19.98," + setePregas("0.1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.massaGordaKg").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.massaMagraKg").value(nullValue()));
+
+        mvc.perform(get(base + "/" + id).header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.metodoPercentualGordura").value("Jackson-Pollock 7 pregas + Siri"))
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.pregaPeitoral").value(0.1));
+        var registroAnterior = avaliacoes.findById(anterior.getId()).orElseThrow();
+        assertThat(registroAnterior.getPercentualGordura()).isEqualByComparingTo("17.50");
+        assertThat(registroAnterior.getPregaPeitoral()).isEqualByComparingTo("15");
+        assertThat(registroAnterior.getMetodoPercentualGordura()).isNull();
+    }
+
+    @Test
+    void registraPregasParciaisComCalculoIndisponivel() throws Exception {
+        String modo = "\"modoPercentualGordura\":\"AUTOMATICO\",";
+        String json = criar(composicao("null", modo + "\"pregaCoxa\":22"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.pregaCoxa").value(22))
+                .andExpect(jsonPath("$.data.avaliacao.pregaPeitoral").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(nullValue()))
+                .andReturn().getResponse().getContentAsString();
+        int id = JsonPath.read(json, "$.data.id");
+        int versao = JsonPath.read(json, "$.data.versao");
+
+        editarComposicao(id, versao, modo + setePregas("20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avaliacao.somaSetePregas").value(140))
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.massaGordaKg").value(nullValue()));
+    }
+
+    @Test
     void bloqueiaCriacaoLivreECancelaSemExcluir() throws Exception {
         mvc.perform(post(base).header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"dataHora\":\"2030-06-01T10:00\",\"status\":\"CONFIRMADA\"}"))
                 .andExpect(status().isBadRequest());
-        Consulta c = consultas.saveAndFlush(new Consulta(paciente, nutri, LocalDateTime.of(2030, 6, 1, 10, 0)));
+        Consulta c = new Consulta(paciente, nutri, LocalDateTime.of(2030, 6, 1, 10, 0));
+        c.atualizar(c.getDataHora(), "CONFIRMADA", null);
+        consultas.saveAndFlush(c);
         mvc.perform(post(base + "/" + c.getId() + "/cancelamento").header("Authorization", token)
-                .contentType(MediaType.APPLICATION_JSON).content("{\"versao\":0}"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"versao\":" + c.getVersao() + "}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("CANCELADA"));
         assertThat(consultas.findById(c.getId())).isPresent();
     }
@@ -157,7 +328,12 @@ class ConsultaControllerTest {
         "{\"dataHora\":\"2025-01-01T10:00\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.755}}",
         "{\"dataHora\":\"2025-01-01T10:00\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":0,\"altura\":1.75}}",
         "{\"dataHora\":\"2025-01-01T10:00\",\"status\":\"CONFIRMADA\",\"avaliacao\":{\"peso\":70}}",
-        "{\"dataHora\":\"2025-01-01T10:00\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.75,\"percentualGordura\":101}}"
+        "{\"dataHora\":\"2025-01-01T10:00\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.75,\"percentualGordura\":101}}",
+        "{\"dataHora\":\"2025-01-15T14:30\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.75,\"percentualGordura\":0}}",
+        "{\"dataHora\":\"2025-01-15T14:30\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.75,\"percentualGordura\":100}}",
+        "{\"dataHora\":\"2025-01-15T14:30\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.75,\"massaMuscularKg\":0}}",
+        "{\"dataHora\":\"2025-01-15T14:30\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.75,\"massaMuscularKg\":70}}",
+        "{\"dataHora\":\"2025-01-15T14:30\",\"status\":\"REALIZADA\",\"avaliacao\":{\"peso\":70,\"altura\":1.75,\"massaMuscularKg\":70.01}}"
     })
     void rejeitaDadosInvalidosSemPersistenciaParcial(String body) throws Exception {
         Consulta c = consultaIniciada();
@@ -226,6 +402,25 @@ class ConsultaControllerTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.avaliacao.imc").value(5555.56));
     }
 
+    private ResultActions editarComposicao(int id, int versao, String medidas) throws Exception {
+        return mvc.perform(put(base + "/" + id).header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).content(composicao(Integer.toString(versao), medidas)));
+    }
+
+    private String composicao(String versao, String medidas) {
+        return """
+                {"dataHora":"2025-01-15T14:30","status":"CONFIRMADA","versao":%s,
+                 "avaliacao":{"peso":73.25,"altura":1.80,%s}}
+                """.formatted(versao, medidas);
+    }
+
+    private String setePregas(String valor) {
+        return """
+                "pregaPeitoral":%1$s,"pregaAxilarMedia":%1$s,"pregaTricipital":%1$s,"pregaSubescapular":%1$s,
+                "pregaAbdominal":%1$s,"pregaSuprailiaca":%1$s,"pregaCoxa":%1$s
+                """.formatted(valor);
+    }
+
     private ResultActions criar(String body) throws Exception {
         Consulta c = consultaIniciada();
         return mvc.perform(put(base + "/" + c.getId()).header("Authorization", token)
@@ -252,7 +447,7 @@ class ConsultaControllerTest {
     }
     private String completa(int peso, String observacao, String versao) {
         return """
-                {"dataHora":"2025-01-15T14:30","status":"REALIZADA","observacao":"%s","versao":%s,
+                {"dataHora":"2025-01-15T14:30","status":"CONFIRMADA","observacao":"%s","versao":%s,
                  "avaliacao":{"peso":%d,"altura":1.80,"percentualGordura":20,"massaMuscularKg":35,
                  "pregaBicipital":10,"pregaTricipital":11,"pregaSubescapular":12,"pregaSuprailiaca":12.5,
                  "circunferenciaCintura":80,"circunferenciaQuadril":100,"circunferenciaBraco":30}}

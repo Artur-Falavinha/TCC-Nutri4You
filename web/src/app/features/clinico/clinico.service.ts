@@ -29,6 +29,7 @@ export interface Avaliacao {
 
 export interface ConsultaResumo {
   id: number;
+  pacienteId?: number;
   pacienteNome: string;
   dataHora: string;
 }

@@ -4,6 +4,7 @@ import com.nutri4you.backend.dto.*;
 import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.service.ConsultaService;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +28,13 @@ public class ConsultaController {
     public ApiResponse<ConsultaResponse> buscar(Authentication auth, @PathVariable Integer pacienteId,
                                                @PathVariable Integer id) {
         return ApiResponse.ok(service.buscar(nutricionista(auth), pacienteId, id), "Consulta carregada.");
+    }
+
+    @GetMapping("/{id}/acesso")
+    public ResponseEntity<Void> verificarAcesso(Authentication auth, @PathVariable Integer pacienteId,
+                                                @PathVariable Integer id) {
+        service.verificarAcesso(nutricionista(auth), pacienteId, id);
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
     @PostMapping
@@ -57,6 +65,12 @@ public class ConsultaController {
     public ApiResponse<ConsultaResponse> cancelar(Authentication auth, @PathVariable Integer pacienteId,
             @PathVariable Integer id, @RequestBody CancelarConsultaRequest request) {
         return ApiResponse.ok(service.cancelar(nutricionista(auth), pacienteId, id, request.versao()), "Consulta cancelada.");
+    }
+
+    @PostMapping("/{id}/recusa")
+    public ApiResponse<ConsultaResponse> recusar(Authentication auth, @PathVariable Integer pacienteId,
+            @PathVariable Integer id, @RequestBody CancelarConsultaRequest request) {
+        return ApiResponse.ok(service.recusar(nutricionista(auth), pacienteId, id, request.versao()), "Consulta recusada.");
     }
 
     private Nutricionista nutricionista(Authentication auth) {

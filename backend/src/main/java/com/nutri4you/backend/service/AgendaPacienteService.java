@@ -8,6 +8,7 @@ import com.nutri4you.backend.dto.SolicitarConsultaRequest;
 import com.nutri4you.backend.exception.ConsultaConflitoException;
 import com.nutri4you.backend.exception.ConsultaNaoEncontradaException;
 import com.nutri4you.backend.model.Consulta;
+import com.nutri4you.backend.model.NotificacaoConsultaPaciente;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.StatusRelacaoClinica;
@@ -23,6 +24,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 
+import static com.nutri4you.backend.service.NotificacaoAgendaEmailService.Tipo.CANCELADA;
+import static com.nutri4you.backend.service.NotificacaoAgendaEmailService.Tipo.REAGENDAMENTO_SOLICITADO;
+import static com.nutri4you.backend.service.NotificacaoAgendaEmailService.Tipo.SOLICITADA;
+
 @Service
 public class AgendaPacienteService {
 
@@ -34,18 +39,21 @@ public class AgendaPacienteService {
     private final RelacaoClinicaRepository relacoes;
     private final HorarioAtendimentoService horarios;
     private final Clock clock;
-
+    private final NotificacaoAgendaEmailService notificacoesEmail;
+    private final NotificacaoConsultaPacienteService notificacoesPaciente;
 
     public AgendaPacienteService(
             ConsultaRepository consultas,
             NutricionistaRepository nutricionistas,
-            RelacaoClinicaRepository relacoes, HorarioAtendimentoService horarios, Clock clock) {
+            RelacaoClinicaRepository relacoes, HorarioAtendimentoService horarios, Clock clock,
+            NotificacaoAgendaEmailService notificacoesEmail, NotificacaoConsultaPacienteService notificacoesPaciente) {
         this.consultas = consultas;
         this.nutricionistas = nutricionistas;
         this.relacoes = relacoes;
         this.horarios = horarios;
         this.clock = clock;
-
+        this.notificacoesEmail = notificacoesEmail;
+        this.notificacoesPaciente = notificacoesPaciente;
     }
 
     @Transactional(readOnly = true)
@@ -121,6 +129,7 @@ public class AgendaPacienteService {
 
         Consulta consulta = consultas.save(new Consulta(paciente, nutricionista, request.dataHora(), !vinculado));
         consultas.flush();
+        notificacoesEmail.agendar(consulta, SOLICITADA);
         return resposta(consulta);
     }
 
@@ -140,6 +149,7 @@ public class AgendaPacienteService {
 
         consulta.reagendar(request.dataHora());
         consultas.flush();
+        notificacoesEmail.agendar(consulta, REAGENDAMENTO_SOLICITADO);
         return resposta(consulta);
     }
 
@@ -153,6 +163,8 @@ public class AgendaPacienteService {
         validarVersao(versao, consulta);
         consulta.cancelar();
         consultas.flush();
+        notificacoesEmail.agendar(consulta, CANCELADA);
+        notificacoesPaciente.registrar(consulta, NotificacaoConsultaPaciente.Tipo.CANCELADA);
         return resposta(consulta);
     }
 
@@ -163,14 +175,13 @@ public class AgendaPacienteService {
 
     private void validarNovaSolicitacao(Paciente paciente, Nutricionista nutricionista, boolean vinculado) {
         if (vinculado) return;
-        if (!nutricionista.aceitaConsultasAvulsas()) {
-            throw new IllegalArgumentException(INDISPONIVEL);
+        if (relacoes.existsByPaciente_IdAndStatus(paciente.getId(), StatusRelacaoClinica.ATIVA)) {
+            throw new IllegalArgumentException("Você já possui um nutricionista vinculado.");
         }
-        if (relacoes.existsByPaciente_IdAndNutricionista_IdAndEncerradaEmIsNotNull(paciente.getId(), nutricionista.getId())
-                || consultas.temConsultaInicial(paciente.getId(), nutricionista.getId(), LocalDateTime.now(clock))) {
-            throw new IllegalArgumentException("Já existe uma consulta inicial ou um acompanhamento anterior com este nutricionista. "
+        if (consultas.temConsultaInicialEmAberto(paciente.getId(), nutricionista.getId(), LocalDateTime.now(clock))) {
+            throw new IllegalArgumentException("Já existe uma consulta inicial em aberto com este nutricionista. "
                     + "Se a consulta não ocorreu, peça ao nutricionista para cancelá-la. "
-                    + "Para continuar o acompanhamento, solicite um vínculo ativo em Dados pessoais.");
+                    + "O vínculo será criado quando o nutricionista aceitar o agendamento.");
         }
     }
 
@@ -218,11 +229,9 @@ public class AgendaPacienteService {
             List<Consulta> consultasExistentes,
             LocalDateTime novoInicio,
             Integer ignorarConsultaId) {
-        LocalDateTime novoFim = novoInicio.plusMinutes(DURACAO_MINUTOS);
         return consultasExistentes.stream()
                 .filter(consulta -> ignorarConsultaId == null || !ignorarConsultaId.equals(consulta.getId()))
-                .anyMatch(consulta -> consulta.getDataHora().isBefore(novoFim)
-                        && consulta.getDataHora().plusMinutes(DURACAO_MINUTOS).isAfter(novoInicio));
+                .anyMatch(consulta -> consulta.sobrepoe(novoInicio));
     }
 
     private void exigirFutura(Consulta consulta) {
@@ -248,6 +257,6 @@ public class AgendaPacienteService {
                 consulta.getNutricionista().getNome(),
                 consulta.getDataHora(),
                 consulta.getStatus(),
-                consulta.getVersao(), consulta.getIniciadaEm());
+                consulta.getVersao(), consulta.getIniciadaEm(), consulta.isAvulsa());
     }
 }

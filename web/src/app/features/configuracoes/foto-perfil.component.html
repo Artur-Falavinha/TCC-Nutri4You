@@ -1,0 +1,53 @@
+<div class="identidade">
+  <div class="identidade__titular">
+    <app-avatar-perfil [nome]="nome()" [url]="foto.url()" />
+    <div class="identidade__dados">
+      <p #identidade class="identidade__nome" tabindex="-1">{{ nome() }}</p>
+      <p class="perfil">Nutricionista</p>
+    </div>
+  </div>
+  <div class="foto-acoes" role="group" aria-label="Foto de perfil" aria-describedby="foto-formatos"
+    [attr.aria-busy]="foto.carregando() || foto.salvando()">
+    <input #seletor type="file" accept="image/jpeg,image/png" hidden (change)="selecionar(seletor)" />
+    <div class="botoes">
+      <app-ui-button [label]="foto.url() ? 'Trocar foto' : 'Adicionar foto'" icon="image"
+        [fullWidth]="false" [disabled]="foto.carregando()" [loading]="foto.salvando()" (click)="seletor.click()" />
+      @if (foto.url()) {
+        <button type="button" class="botao-discreto perigo" [disabled]="foto.salvando() || foto.carregando()"
+          (click)="remocaoAberta.set(true)">
+          <i class="ph ph-trash" aria-hidden="true"></i> Remover foto
+        </button>
+      }
+    </div>
+    <p id="foto-formatos" class="formatos">JPEG ou PNG · Até 5 MB</p>
+  </div>
+</div>
+
+@if (foto.falhaCarga()) {
+  <div class="retorno retorno--erro" role="alert">
+    <i class="ph ph-warning-circle" aria-hidden="true"></i>
+    <div>
+      <p>Não foi possível carregar sua foto.</p>
+      <button type="button" class="botao-discreto" [disabled]="foto.salvando()"
+        (click)="foto.carregar()">Tentar carregar a foto</button>
+    </div>
+  </div>
+}
+@if (foto.erro()) {
+  <p class="retorno retorno--erro" role="alert">
+    <i class="ph ph-warning-circle" aria-hidden="true"></i> {{ foto.erro() }}
+  </p>
+}
+@if (remocaoAberta()) {
+  <app-dialogo-confirmacao
+    titulo="Remover foto de perfil?"
+    descricao="Seu perfil voltará a mostrar o avatar padrão."
+    confirmar="Remover foto"
+    voltar="Manter foto"
+    icone="trash"
+    [destrutivo]="true"
+    [ocupado]="foto.salvando()"
+    rotuloOcupado="Removendo…"
+    (fechar)="remocaoAberta.set(false)"
+    (confirmado)="confirmarRemocao(identidade)" />
+}

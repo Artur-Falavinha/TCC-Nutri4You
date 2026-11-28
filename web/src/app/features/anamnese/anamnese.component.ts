@@ -4,24 +4,30 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom, forkJoin } from 'rxjs';
+import { ToastService } from '../../core/services/toast.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
+import { EstadoVazioComponent } from '../../shared/components/estado-vazio/estado-vazio.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
 import { UiCheckboxComponent } from '../../shared/components/ui-checkbox/ui-checkbox.component';
 import { UiSelectComponent, UiSelectOption } from '../../shared/components/ui-select/ui-select.component';
 import { PatientTabsComponent } from '../../shared/components/patient-tabs/patient-tabs.component';
+import { TituloPacienteComponent } from '../../shared/components/avatar-paciente/titulo-paciente.component';
 import { AnamneseService } from './anamnese.service';
 import { Anamnese, AnamneseField, Answers, Answer, Patient } from './anamnese.models';
-import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog/paciente-dialog.component';
+import { rotuloOpcaoAnamnese } from './anamnese-rotulos';
+import { DialogoConfirmacaoComponent } from '../../shared/components/dialogo-confirmacao/dialogo-confirmacao.component';
 
 @Component({
   selector: 'app-anamnese',
   standalone: true,
-  imports: [FormsModule, DatePipe, UiButtonComponent, UiCheckboxComponent, UiSelectComponent, PatientTabsComponent, PacienteDialogComponent],
+  imports: [FormsModule, DatePipe, EstadoVazioComponent, UiButtonComponent, UiCheckboxComponent, UiSelectComponent,
+    PatientTabsComponent, TituloPacienteComponent, DialogoConfirmacaoComponent],
   templateUrl: './anamnese.component.html',
   styleUrl: './anamnese.component.css'
 })
 export class AnamneseComponent implements OnInit {
+  private readonly toast = inject(ToastService);
   readonly auth = inject(AuthService);
   private readonly api = inject(AnamneseService);
   private readonly route = inject(ActivatedRoute);
@@ -39,7 +45,6 @@ export class AnamneseComponent implements OnInit {
   saving = false;
   editing = false;
   error = '';
-  message = '';
   conflict = false;
   private original = '{}';
   confirmacao: { titulo: string; descricao: string; confirmar: string } | null = null;
@@ -87,7 +92,6 @@ export class AnamneseComponent implements OnInit {
   async loadPatient(id: number): Promise<void> {
     this.loading = true;
     this.error = '';
-    this.message = '';
     this.data = null;
     this.editing = false;
     this.patientId = id;
@@ -102,7 +106,6 @@ export class AnamneseComponent implements OnInit {
     this.original = JSON.stringify(this.answers);
     this.errors = {};
     this.error = '';
-    this.message = '';
     this.editing = true;
   }
 
@@ -112,7 +115,6 @@ export class AnamneseComponent implements OnInit {
     this.editing = false;
     this.errors = {};
     this.error = '';
-    this.message = '';
     this.conflict = false;
   }
 
@@ -144,7 +146,7 @@ export class AnamneseComponent implements OnInit {
   fieldsFor(section: string): AnamneseField[] { return this.fields.filter(f => f.section === section); }
 
   selectOptions(field: AnamneseField): UiSelectOption[] {
-    return (field.options ?? []).map(option => ({ label: option, value: option }));
+    return (field.options ?? []).map(valor => ({ label: rotuloOpcaoAnamnese(field.key, valor), value: valor }));
   }
 
   get patientOptions(): UiSelectOption[] {
@@ -178,21 +180,15 @@ export class AnamneseComponent implements OnInit {
   }
 
   toggle(field: AnamneseField, option: string, event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    const value = this.answers[field.key];
-    let options = Array.isArray(value) ? [...value] : [];
-    if (!checked) options = options.filter(v => v !== option);
-    else if (option === field.exclusive) options = [option];
-    else options = [...options.filter(v => v !== field.exclusive), option];
-    this.change(field, options);
+    this.toggleValue(field, option, (event.target as HTMLInputElement).checked);
   }
 
   toggleValue(field: AnamneseField, option: string, checked: boolean): void {
     const value = this.answers[field.key];
-    let options = Array.isArray(value) ? [...value] : [];
+    let options = Array.isArray(value) ? [...new Set(value)] : [];
     if (!checked) options = options.filter(item => item !== option);
     else if (option === field.exclusive) options = [option];
-    else options = [...options.filter(item => item !== field.exclusive), option];
+    else options = [...options.filter(item => item !== field.exclusive && item !== option), option];
     this.change(field, options);
   }
 
@@ -220,17 +216,16 @@ export class AnamneseComponent implements OnInit {
     this.change(field, value);
   }
 
-  display(value: Answer | undefined): string {
-    if (Array.isArray(value)) return value.join(', ');
-    if (typeof value === 'number') return new Intl.NumberFormat('pt-BR').format(value);
-    return value === null || value === undefined || value === '' ? 'Não informado' : String(value);
+  display(campo: string, valor: Answer | undefined): string {
+    if (Array.isArray(valor)) return valor.join(', ');
+    if (typeof valor === 'number') return new Intl.NumberFormat('pt-BR').format(valor);
+    return valor ? rotuloOpcaoAnamnese(campo, valor) : 'Não informado';
   }
 
   async save(draft: boolean, form: HTMLFormElement): Promise<void> {
     if (!this.data || this.saving || this.conflict) return;
     this.errors = {};
     this.error = '';
-    this.message = '';
     if (!draft) {
       for (const field of this.fields) {
         const value = this.answers[field.key];
@@ -246,8 +241,11 @@ export class AnamneseComponent implements OnInit {
       this.data = await firstValueFrom(this.api.save(this.data.paciente.id, this.data.versao, this.answers, draft));
       this.original = JSON.stringify(this.answers);
       this.editing = false;
-      this.message = draft ? 'Rascunho salvo.' : 'Anamnese finalizada e salva.';
-    } catch (error) { this.handleError(error); this.focusError(); }
+      this.toast.sucesso(draft ? 'Rascunho salvo.' : 'Anamnese finalizada e salva.');
+    } catch (error) {
+      this.handleError(error, true);
+      if (this.error) this.focusError();
+    }
     finally { this.saving = false; }
   }
 
@@ -258,8 +256,8 @@ export class AnamneseComponent implements OnInit {
     this.error = '';
     try {
       this.data = await firstValueFrom(this.api.discard(this.data.paciente.id, this.data.versao));
-      this.message = 'Rascunho descartado.';
-    } catch (error) { this.handleError(error); }
+      this.toast.sucesso('Rascunho descartado.');
+    } catch (error) { this.handleError(error, true); }
     finally { this.saving = false; }
   }
 
@@ -272,9 +270,9 @@ export class AnamneseComponent implements OnInit {
     setTimeout(() => document.getElementById(key)?.focus());
   }
 
-  private handleError(error: unknown): void {
+  private handleError(error: unknown, temporario = false): void {
     const apiError = error as ApiErrorResponse;
-    this.error = apiError.status === 0
+    const mensagem = apiError.status === 0
       ? 'Não foi possível conectar à API. Tente novamente.'
       : apiError.message || 'Não foi possível concluir a operação.';
     this.errors = apiError.fields ?? {};
@@ -282,6 +280,10 @@ export class AnamneseComponent implements OnInit {
     if (apiError.status === 401) {
       this.auth.logout();
       this.error = 'Sua sessão expirou. Entre novamente para continuar.';
+    } else if (temporario && !this.conflict && !Object.keys(this.errors).length) {
+      this.toast.erro(mensagem);
+    } else {
+      this.error = mensagem;
     }
   }
 }

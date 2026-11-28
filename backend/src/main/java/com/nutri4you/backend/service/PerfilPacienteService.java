@@ -3,6 +3,8 @@ package com.nutri4you.backend.service;
 import com.nutri4you.backend.dto.NutricionistaVinculoDTO;
 import com.nutri4you.backend.dto.PacientePerfilDTO;
 import com.nutri4you.backend.dto.PacienteUpdateDTO;
+import com.nutri4you.backend.dto.PreferenciaLembreteConsultaDTO;
+import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.StatusRelacaoClinica;
 import com.nutri4you.backend.repository.PacienteRepository;
@@ -28,6 +30,18 @@ public class PerfilPacienteService {
     @Transactional(readOnly = true)
     public PacientePerfilDTO perfil(Paciente paciente) {
         return paraPerfil(paciente);
+    }
+
+    @Transactional
+    public PreferenciaLembreteConsultaDTO salvarPreferenciaLembretes(
+            Paciente paciente, PreferenciaLembreteConsultaDTO preferencia) {
+        if (preferencia == null || preferencia.ativa() == null) {
+            throw new IllegalArgumentException("Informe se deseja receber lembretes de consulta.");
+        }
+        if (pacienteRepository.definirLembretesConsulta(paciente.getId(), preferencia.ativa()) == 0) {
+            throw new AcessoNegadoException("Conta indisponível.");
+        }
+        return preferencia;
     }
 
     @Transactional

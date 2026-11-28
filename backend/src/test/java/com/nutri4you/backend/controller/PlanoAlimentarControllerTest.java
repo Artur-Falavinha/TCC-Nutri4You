@@ -1,6 +1,9 @@
 package com.nutri4you.backend.controller;
 
 import com.nutri4you.backend.security.TokenService;
+import com.nutri4you.backend.service.PrivacidadeService;
+import com.nutri4you.backend.support.TestDataFactory;
+import org.junit.jupiter.api.BeforeEach;
 import com.nutri4you.backend.support.ClinicalServiceTestSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,10 +17,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PlanoAlimentarControllerTest extends ClinicalServiceTestSupport {
     @Autowired MockMvc mvc;
     @Autowired TokenService tokens;
+    @Autowired PrivacidadeService privacidade;
+
+    @BeforeEach
+    void registrarAceites() {
+        TestDataFactory.registrarAceite(privacidade, nutri, paciente);
+    }
+
     @Test void aliasesCompartilhamContratoEAutorizacao() throws Exception {
         var plano = rascunho(hoje(), hoje());
-        String nutriToken = "Bearer " + tokens.gerarToken(nutri.getEmail());
-        String pacienteToken = "Bearer " + tokens.gerarToken(paciente.getEmail());
+        String nutriToken = "Bearer " + tokens.gerarToken(nutri);
+        String pacienteToken = "Bearer " + tokens.gerarToken(paciente);
         for (String recurso : new String[]{"planos", "planos-alimentares"}) {
             mvc.perform(get("/api/v1/gestao-pacientes/{id}/" + recurso + "/{plano}", paciente.getId(), plano.getId()).header("Authorization", nutriToken))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.data.titulo").value("Plano alimentar"))
@@ -31,7 +41,7 @@ class PlanoAlimentarControllerTest extends ClinicalServiceTestSupport {
     }
     @Test void aliasNaoPublicaPlanoVazioNemVersaoAntiga() throws Exception {
         var plano = rascunho(hoje(), hoje());
-        String token = "Bearer " + tokens.gerarToken(nutri.getEmail());
+        String token = "Bearer " + tokens.gerarToken(nutri);
         String url = "/api/v1/gestao-pacientes/" + paciente.getId() + "/planos/" + plano.getId() + "/publicacao";
         mvc.perform(post(url).header("Authorization", token).contentType(MediaType.APPLICATION_JSON).content("{\"versao\":99}"))
                 .andExpect(status().isConflict());

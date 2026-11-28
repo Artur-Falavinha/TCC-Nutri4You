@@ -1,23 +1,25 @@
+import { Feather } from '@expo/vector-icons';
 import {
   createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState,
-  type ComponentType, type PropsWithChildren
+  type ComponentProps, type PropsWithChildren
 } from 'react';
 import {
-  Animated, BackHandler, Easing, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View
+  AccessibilityInfo, Animated, BackHandler, Easing, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View
 } from 'react-native';
+import { CommonActions, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import CalendarIcon from '../../assets/appointments/nav-calendar.svg';
-import DietIcon from '../../assets/appointments/nav-diet.svg';
-import ExamsIcon from '../../assets/appointments/nav-exams.svg';
-import HomeIcon from '../../assets/appointments/nav-home.svg';
-import LogoutIcon from '../../assets/appointments/nav-logout.svg';
-import ProfileIcon from '../../assets/appointments/nav-profile.svg';
-import ResultsIcon from '../../assets/appointments/nav-results.svg';
-import ShoppingIcon from '../../assets/appointments/nav-shopping.svg';
+import { AvatarFoto } from '../layout/AvatarFoto';
+import { logout } from '../../core/auth/auth.service';
+import { BadgeNotificacoes, rotuloNotificacoes } from '../../features/notificacoes/BadgeNotificacoes';
+import { useNotificacoes } from '../../features/notificacoes/NotificacoesProvider';
+import type { RootStackParamList } from '../../navigation/types';
+import { carregarFotoPerfil } from '../../core/perfil/foto-perfil.service';
 import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
 
 export type MenuDestination =
+  | 'notifications'
   | 'profile'
   | 'home'
   | 'diet'
@@ -33,11 +35,12 @@ interface SideMenuProps {
   activeItem: MenuDestination;
   userName: string;
   onClose: () => void;
-  onNavigate: (destination: MenuDestination) => void;
+  onNavigate?: (destination: MenuDestination) => void;
 }
 
-interface ConfiguracaoMenu extends Omit<SideMenuProps, 'visible'> {
+interface ConfiguracaoMenu extends Omit<SideMenuProps, 'visible' | 'onNavigate'> {
   id: string;
+  onNavigate: (destination: MenuDestination) => void;
 }
 
 interface EstadoMenu extends ConfiguracaoMenu {
@@ -54,24 +57,39 @@ const LARGURA_MAXIMA_MENU = 320;
 
 interface MenuItemProps {
   label: string;
-  icon: ComponentType<{ color?: string }>;
+  icon: ComponentProps<typeof Feather>['name'];
   active?: boolean;
+  quantidadeNaoLidas?: number;
+  sair?: boolean;
   onPress: () => void;
 }
 
 const menuItems: {
   destination: MenuDestination;
   label: string;
-  icon: ComponentType<{ color?: string }>;
+  icon: ComponentProps<typeof Feather>['name'];
 }[] = [
-  { destination: 'home', label: 'Home', icon: HomeIcon },
-  { destination: 'appointments', label: 'Agenda', icon: CalendarIcon },
-  { destination: 'diet', label: 'Dieta', icon: DietIcon },
-  { destination: 'shopping', label: 'Compras', icon: ShoppingIcon },
-  { destination: 'results', label: 'Resultados', icon: ResultsIcon },
-  { destination: 'exams', label: 'Exames', icon: ExamsIcon },
-  { destination: 'profile', label: 'Dados pessoais', icon: ProfileIcon }
+  { destination: 'home', label: 'Home', icon: 'home' },
+  { destination: 'appointments', label: 'Agenda', icon: 'calendar' },
+  { destination: 'diet', label: 'Dieta', icon: 'book-open' },
+  { destination: 'shopping', label: 'Compras', icon: 'shopping-cart' },
+  { destination: 'results', label: 'Resultados', icon: 'activity' },
+  { destination: 'exams', label: 'Exames', icon: 'clipboard' },
+  { destination: 'notifications', label: 'Notificações', icon: 'bell' },
+  { destination: 'profile', label: 'Dados pessoais', icon: 'user' }
 ];
+
+const rotasMenu = {
+  home: 'Dashboard',
+  appointments: 'Agenda',
+  diet: 'Dieta',
+  shopping: 'Compras',
+  results: 'Evolucao',
+  exams: 'Exames',
+  notifications: 'Notificacoes',
+  profile: 'DadosPessoais',
+  password: 'TrocarSenha'
+} as const satisfies Record<Exclude<MenuDestination, 'logout'>, keyof RootStackParamList>;
 
 export function SideMenuProvider({ children }: PropsWithChildren) {
   const [menu, setMenu] = useState<EstadoMenu | null>(null);
@@ -108,19 +126,36 @@ export function SideMenuProvider({ children }: PropsWithChildren) {
 
 export function SideMenu({ visible, activeItem, userName, onClose, onNavigate }: SideMenuProps) {
   const id = useId();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const controle = useContext(ContextoMenu);
   if (!controle) {
     throw new Error('SideMenu deve ser usado dentro de SideMenuProvider.');
   }
 
   const { abrir, fechar } = controle;
+  const navegar = useCallback(async (destino: MenuDestination) => {
+    if (onNavigate && destino !== 'notifications') {
+      onNavigate(destino);
+      return;
+    }
+
+    onClose();
+    if (destino === activeItem) return;
+    if (destino === 'logout') {
+      await logout();
+      navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] }));
+      return;
+    }
+
+    navigation.navigate(rotasMenu[destino]);
+  }, [activeItem, navigation, onClose, onNavigate]);
   useEffect(() => {
     if (visible) {
-      abrir({ id, activeItem, userName, onClose, onNavigate });
+      abrir({ id, activeItem, userName, onClose, onNavigate: navegar });
     } else {
       fechar(id);
     }
-  }, [visible, id, activeItem, userName, onClose, onNavigate, abrir, fechar]);
+  }, [visible, id, activeItem, userName, onClose, navegar, abrir, fechar]);
   useEffect(() => () => fechar(id), [id, fechar]);
 
   return null;
@@ -133,23 +168,47 @@ interface MenuSobrepostoProps {
 }
 
 function MenuSobreposto({ menu, fechar, remover }: MenuSobrepostoProps) {
+  const { quantidade } = useNotificacoes();
   const [progresso] = useState(() => new Animated.Value(0));
+  const [foto, setFoto] = useState<string | null>(null);
   const acaoSolicitada = useRef(false);
   const { aberto, id } = menu;
 
   useEffect(() => {
-    const animacao = Animated.timing(progresso, {
-      toValue: aberto ? 1 : 0,
-      duration: 230,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: Platform.OS !== 'web'
-    });
-    animacao.start(({ finished }) => {
-      if (finished && !aberto) {
-        remover(id);
+    let ativo = true;
+    void carregarFotoPerfil().then(imagem => { if (ativo) setFoto(imagem); }).catch(() => undefined);
+    return () => { ativo = false; };
+  }, []);
+
+  useEffect(() => {
+    let vigente = true;
+    let animacao: Animated.CompositeAnimation | undefined;
+
+    function mover(reduzirMovimento: boolean) {
+      if (!vigente) return;
+
+      if (reduzirMovimento) {
+        progresso.setValue(aberto ? 1 : 0);
+        if (!aberto) remover(id);
+        return;
       }
-    });
-    return () => animacao.stop();
+
+      animacao = Animated.timing(progresso, {
+        toValue: aberto ? 1 : 0,
+        duration: 230,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: Platform.OS !== 'web'
+      });
+      animacao.start(({ finished }) => {
+        if (finished && !aberto) remover(id);
+      });
+    }
+
+    void AccessibilityInfo.isReduceMotionEnabled().then(mover, () => mover(false));
+    return () => {
+      vigente = false;
+      animacao?.stop();
+    };
   }, [aberto, id, progresso, remover]);
 
   const acionar = useCallback((destino?: MenuDestination) => {
@@ -180,12 +239,12 @@ function MenuSobreposto({ menu, fechar, remover }: MenuSobrepostoProps) {
       accessibilityViewIsModal
       onAccessibilityEscape={() => acionar()}
     >
-      <Animated.View style={[styles.backdrop, { opacity: progresso }]}>
+      <Animated.View style={[styles.backdrop, { opacity: progresso }]} aria-hidden>
         <Pressable
           style={StyleSheet.absoluteFill}
           onPress={() => acionar()}
-          accessibilityRole="button"
-          accessibilityLabel="Fechar menu"
+          focusable={false}
+          accessible={false}
         />
       </Animated.View>
       <Animated.View
@@ -196,9 +255,20 @@ function MenuSobreposto({ menu, fechar, remover }: MenuSobrepostoProps) {
       >
         <SafeAreaView style={styles.drawer} edges={['top', 'bottom', 'left']}>
           <View style={styles.header}>
-            <Text style={styles.userName} numberOfLines={1}>
+            <View style={styles.avatar}>
+              <AvatarFoto foto={foto} tamanho={40} />
+            </View>
+            <Text style={styles.userName} numberOfLines={2}>
               {menu.userName || 'Paciente'}
             </Text>
+            <Pressable
+              style={({ pressed }) => [styles.fechar, pressed && styles.pressed]}
+              onPress={() => acionar()}
+              accessibilityRole="button"
+              accessibilityLabel="Fechar menu"
+            >
+              <Feather name="x" size={20} color={colors.brandDeep} aria-hidden />
+            </Pressable>
           </View>
 
           <ScrollView
@@ -212,13 +282,14 @@ function MenuSobreposto({ menu, fechar, remover }: MenuSobrepostoProps) {
                 label={item.label}
                 icon={item.icon}
                 active={menu.activeItem === item.destination}
+                quantidadeNaoLidas={item.destination === 'notifications' ? quantidade : undefined}
                 onPress={() => acionar(item.destination)}
               />
             ))}
           </ScrollView>
 
           <View style={styles.footer}>
-            <MenuItem label="Sair" icon={LogoutIcon} onPress={() => acionar('logout')} />
+            <MenuItem label="Sair" icon="log-out" sair onPress={() => acionar('logout')} />
           </View>
         </SafeAreaView>
       </Animated.View>
@@ -232,19 +303,25 @@ function MenuSobreposto({ menu, fechar, remover }: MenuSobrepostoProps) {
   ) : conteudo;
 }
 
-function MenuItem({ label, icon, active = false, onPress }: MenuItemProps) {
-  const Icon = icon;
+function MenuItem({ label, icon, active = false, quantidadeNaoLidas, sair = false, onPress }: MenuItemProps) {
+  let corIcone: string = colors.menuIcon;
+  if (active) corIcone = colors.brandDark;
+  if (sair) corIcone = colors.dangerText;
   return (
     <Pressable
-      style={({ pressed }) => [styles.item, active && styles.activeItem, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.item, active && styles.activeItem, sair && styles.sair, pressed && styles.pressed]}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
+      aria-current={active ? 'page' : undefined}
+      accessibilityLabel={quantidadeNaoLidas === undefined ? label : rotuloNotificacoes(quantidadeNaoLidas)}
     >
-      <View style={styles.icon}>
-        <Icon color={active ? colors.brandDeep : colors.menuIcon} />
+      {active && <View style={styles.indicadorAtivo} aria-hidden />}
+      <View style={[styles.icon, active && styles.iconeAtivo, sair && styles.iconeSair]} aria-hidden>
+        <Feather name={icon} size={18} color={corIcone} />
       </View>
-      <Text style={[styles.itemLabel, active && styles.activeLabel]}>{label}</Text>
+      <Text style={[styles.itemLabel, active && styles.activeLabel, sair && styles.rotuloSair]}>{label}</Text>
+      {quantidadeNaoLidas !== undefined && <BadgeNotificacoes quantidade={quantidadeNaoLidas} />}
     </Pressable>
   );
 }
@@ -262,71 +339,129 @@ const styles = StyleSheet.create({
     backgroundColor: colors.overlay
   },
   drawerFrame: {
-    width: '82%',
+    width: '86%',
     maxWidth: LARGURA_MAXIMA_MENU,
     flex: 1
   },
   drawer: {
     flex: 1,
-    backgroundColor: '#fafaf9',
+    backgroundColor: colors.card,
     borderTopRightRadius: radius.drawer,
     borderBottomRightRadius: radius.drawer,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.sm,
-    shadowColor: '#000000',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    shadowColor: colors.text,
     shadowOffset: { width: 8, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 25,
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
     elevation: 16
   },
   header: {
-    paddingBottom: spacing.xxxl
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    padding: spacing.xs,
+    marginBottom: spacing.md,
+    backgroundColor: colors.page,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg
+  },
+  avatar: {
+    padding: spacing.xxs,
+    borderRadius: radius.pill,
+    backgroundColor: colors.brandSoft,
+    flexShrink: 0
   },
   userName: {
-    color: '#065f46',
-    fontFamily: fontFamily.bold,
-    fontSize: 20,
-    lineHeight: 25
+    flex: 1,
+    minWidth: 0,
+    color: colors.brandDeep,
+    fontFamily: fontFamily.extrabold,
+    fontSize: 16,
+    lineHeight: 22
+  },
+  fechar: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md
   },
   navigation: {
     flex: 1,
     minHeight: 0
   },
   navigationContent: {
-    gap: spacing.xs
+    gap: spacing.xs,
+    padding: spacing.xxs
   },
   item: {
     minHeight: 52,
-    padding: spacing.md,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    borderRadius: radius.lg
+    gap: spacing.sm,
+    borderRadius: radius.md
   },
   activeItem: {
-    backgroundColor: colors.brandSoft
+    backgroundColor: colors.confirmedBackground
+  },
+  indicadorAtivo: {
+    position: 'absolute',
+    left: 0,
+    top: spacing.sm,
+    bottom: spacing.sm,
+    width: 3,
+    backgroundColor: colors.brand,
+    borderRadius: radius.pill
   },
   pressed: {
     opacity: 0.72
   },
   icon: {
-    width: 22,
+    width: 36,
+    height: 36,
+    flexShrink: 0,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    backgroundColor: colors.page,
+    borderRadius: radius.sm
+  },
+  iconeAtivo: {
+    backgroundColor: colors.brandSoft
   },
   itemLabel: {
-    color: '#57534e',
-    fontFamily: fontFamily.regular,
-    fontSize: 14,
-    lineHeight: 20
+    flex: 1,
+    minWidth: 0,
+    color: colors.text,
+    fontFamily: fontFamily.semibold,
+    fontSize: 15,
+    lineHeight: 21
   },
   activeLabel: {
-    color: colors.brandDeep
+    color: colors.brandDeep,
+    fontFamily: fontFamily.extrabold
   },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: '#eeeeec',
-    paddingTop: spacing.xs
+    borderTopColor: colors.border,
+    marginTop: spacing.xs,
+    paddingTop: spacing.xs,
+    paddingHorizontal: spacing.xxs
+  },
+  sair: {
+    backgroundColor: colors.page
+  },
+  iconeSair: {
+    backgroundColor: colors.dangerButtonBackground
+  },
+  rotuloSair: {
+    color: colors.dangerText,
+    fontFamily: fontFamily.bold
   }
 });

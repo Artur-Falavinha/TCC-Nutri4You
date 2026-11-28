@@ -1,0 +1,63 @@
+<section class="calendario" aria-labelledby="titulo-calendario" [attr.aria-busy]="carregando()">
+  <header class="calendario__topo">
+    <div>
+      <h2 id="titulo-calendario">Agenda geral</h2>
+      <p class="calendario__fuso">Horário de Brasília @if (duracao(); as minutos) { · {{ minutos }} min por consulta }</p>
+    </div>
+    <div class="calendario__semana">
+      <p class="calendario__periodo" aria-live="polite">{{ rotuloSemana() }}</p>
+      <div class="calendario__navegacao" role="group" aria-label="Navegação entre semanas">
+        <button type="button" aria-label="Semana anterior" [disabled]="carregando() || !rotuloSemana()" (click)="mudarSemana(-1)">
+          <i class="ph ph-caret-left" aria-hidden="true"></i>
+        </button>
+        <button type="button" [disabled]="carregando()" (click)="irParaHoje()">Hoje</button>
+        <button type="button" aria-label="Próxima semana" [disabled]="carregando() || !rotuloSemana()" (click)="mudarSemana(1)">
+          <i class="ph ph-caret-right" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  @if (carregando()) {
+    <p class="calendario__estado" role="status">Carregando a semana…</p>
+  } @else if (erro()) {
+    <div class="calendario__estado">
+      <p role="alert">Não foi possível carregar a agenda da semana.</p>
+      <app-ui-button label="Tentar novamente" variant="secondary" [fullWidth]="false" (click)="carregar()" />
+    </div>
+  } @else {
+    <div class="calendario__seletor" role="group" aria-label="Dias da semana">
+      @for (dia of dias(); track dia.data) {
+        <button type="button" [attr.aria-label]="dia.dataCompleta" [attr.aria-current]="dia.hoje ? 'date' : null"
+          [attr.aria-pressed]="diaSelecionado() === dia.data" (click)="diaSelecionado.set(dia.data)">
+          <span>{{ dia.diaSemana }}</span>
+          <strong>{{ dia.numero }}</strong>
+        </button>
+      }
+    </div>
+    <div class="calendario__dias">
+      @for (dia of dias(); track dia.data) {
+        <section class="dia-calendario" [class.dia-calendario--selecionado]="diaSelecionado() === dia.data"
+          [attr.aria-labelledby]="'calendario-' + dia.data">
+          <h3 class="dia-calendario__titulo" [id]="'calendario-' + dia.data">
+            <time [attr.datetime]="dia.data" [attr.aria-current]="dia.hoje ? 'date' : null">
+              <span>{{ dia.diaSemana }}</span>
+              <strong>{{ dia.numero }}</strong>
+            </time>
+          </h3>
+          <ul class="dia-calendario__horarios">
+            @for (item of dia.itens; track item.chave) {
+              <li class="compromisso" [attr.data-estado]="item.estado.estilo">
+                <time>{{ item.horario }}</time><span class="compromisso__fim">–{{ item.fim }}</span>
+                <span class="compromisso__estado">{{ item.estado.rotulo }}</span>
+                @if (item.paciente) { <strong class="compromisso__paciente">{{ item.paciente }}</strong> }
+              </li>
+            } @empty {
+              <li class="dia-calendario__vazio">{{ dia.vazio }}</li>
+            }
+          </ul>
+        </section>
+      }
+    </div>
+  }
+</section>

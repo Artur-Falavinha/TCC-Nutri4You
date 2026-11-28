@@ -1,9 +1,12 @@
+import { toast } from '../../components/feedback/toast';
+import { Feather } from '@expo/vector-icons';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -20,6 +23,8 @@ import { AppHeader } from '../../components/layout/AppHeader';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { ApiError } from '../../core/api/api-response.types';
 import { logout } from '../../core/auth/auth.service';
+import { useAtualizacaoDieta, useCargaVigente } from '../../features/dieta/dieta.atualizacao';
+import { dataIsoDaClinica, formatDateFromDate } from '../../core/utils/date-mask.util';
 import {
   formatDate,
   formatFoodSource,
@@ -138,56 +143,68 @@ function listarSubstitutos(meal: Meal): SubstitutoInformativo[] {
 }
 
 export function MealPlanScreen({ navigation }: Props) {
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
   const wide = width >= 640;
+  const larguraMinimaDia = Platform.OS === 'android' ? 48 : 44;
+  const recuoHorizontal = width < 420 ? spacing.sm : spacing.md;
+  const larguraMinimaSemana = 7 * larguraMinimaDia + 6 * spacing.xxs + 2 * (recuoHorizontal + spacing.xs + 1);
+  const diasEmDuasLinhas = width < larguraMinimaSemana || (fontScale >= 1.4 && width < 560);
   const [menuVisible, setMenuVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [plan, setPlan] = useState<MealPlan | null>(null);
-  const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
-  const week = semanaAtual(new Date());
+  const [diaExibido, setDiaExibido] = useState(dataIsoDaClinica);
+  const diaClinica = useRef(diaExibido);
+  const dataDaSemana = new Date(diaExibido + 'T12:00:00');
+  const [selectedDay, setSelectedDay] = useState(() => dataDaSemana.getDay());
+  const week = semanaAtual(dataDaSemana);
   const [swapModalMeal, setSwapModalMeal] = useState<Meal | null>(null);
   const [swapSearch, setSwapSearch] = useState('');
   const [hydration, setHydration] = useState<HydrationProgress | null>(null);
   const [hydrationError, setHydrationError] = useState('');
   const [savingWater, setSavingWater] = useState(false);
-  const requestId = useRef(0);
+  const { executar } = useCargaVigente();
+  const revisaoAgua = useRef(0);
 
-  const atualizarDieta = useCallback((
-    [plano, agua]: Awaited<ReturnType<typeof carregarDieta>>,
-    currentRequest: number
-  ) => {
-    if (currentRequest !== requestId.current) return;
-    if (plano.status === 'fulfilled') setPlan(plano.value);
-    setError(plano.status === 'rejected' ? errorMessage(plano.reason) : '');
-    if (agua.status === 'fulfilled') setHydration(agua.value);
-    setHydrationError(agua.status === 'rejected' ? 'Não foi possível consultar a hidratação.' : '');
-    setLoading(false);
-    setRefreshing(false);
-  }, []);
+  const recarregarPlano = useCallback((refresh = false) => {
+    const dia = dataIsoDaClinica();
+    if (dia !== diaClinica.current) {
+      diaClinica.current = dia;
+      setDiaExibido(dia);
+      setSelectedDay(new Date(dia + 'T12:00:00').getDay());
+      setSwapModalMeal(null);
+    }
+    return executar(dia, async atual => {
+      const versaoAgua = revisaoAgua.current;
+      if (refresh) setRefreshing(true);
+      else setLoading(true);
+      const [plano, agua] = await carregarDieta();
+      if (!atual()) return;
+      if (plano.status === 'fulfilled') setPlan(plano.value);
+      setError(plano.status === 'rejected' ? errorMessage(plano.reason) : '');
+      if (versaoAgua === revisaoAgua.current) {
+        if (agua.status === 'fulfilled') setHydration(agua.value);
+        setHydrationError(agua.status === 'rejected' ? 'Não foi possível consultar a hidratação.' : '');
+      }
+      setLoading(false);
+      setRefreshing(false);
+    });
+  }, [executar, setSwapModalMeal]);
 
-  useEffect(() => {
-    const currentRequest = ++requestId.current;
-    void carregarDieta().then(resultado => atualizarDieta(resultado, currentRequest));
-    return () => { requestId.current += 1; };
-  }, [atualizarDieta]);
-
-  const recarregarPlano = (refresh = false) => {
-    if (refresh) setRefreshing(true);
-    else setLoading(true);
-    const currentRequest = ++requestId.current;
-    void carregarDieta().then(resultado => atualizarDieta(resultado, currentRequest));
-  };
+  useAtualizacaoDieta(recarregarPlano);
 
   const registrarAgua = async () => {
     if (!hydration || savingWater) return;
     setSavingWater(true);
     setHydrationError('');
     try {
-      setHydration(await addWater());
+      const agua = await addWater();
+      revisaoAgua.current += 1;
+      if (diaClinica.current === agua.data) setHydration(agua);
+      toast.sucesso('Consumo de água registrado.');
     } catch (failure) {
-      setHydrationError(failure instanceof ApiError ? failure.message : 'Não foi possível registrar a água.');
+      toast.erro(failure instanceof ApiError ? failure.message : 'Não foi possível registrar a água.');
     } finally {
       setSavingWater(false);
     }
@@ -230,9 +247,8 @@ export function MealPlanScreen({ navigation }: Props) {
     }
   };
 
-  const openShoppingList = () => navigation.navigate('Compras');
-
   const selectedDate = week[selectedDay].data;
+  const mesSelecionado = selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   const dateKey = [
     selectedDate.getFullYear(),
     String(selectedDate.getMonth() + 1).padStart(2, '0'),
@@ -284,7 +300,7 @@ export function MealPlanScreen({ navigation }: Props) {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { maxWidth: wide ? 760 : 560 }]}
+        contentContainerStyle={[styles.content, { paddingHorizontal: recuoHorizontal, maxWidth: wide ? 760 : 560 }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -294,60 +310,43 @@ export function MealPlanScreen({ navigation }: Props) {
         }
       >
         <View style={styles.pageHeading}>
-          <View style={styles.headingText}>
-            <Text style={styles.title} accessibilityRole="header">
-              Dieta ativa
-            </Text>
-            <Text style={styles.subtitle}>Seu plano alimentar vigente e as refeições do dia.</Text>
-          </View>
-          <Pressable
-            style={styles.secondaryButton}
-            onPress={openShoppingList}
-            accessibilityRole="button"
-            accessibilityLabel="Abrir lista de compras"
-          >
-            <Text style={styles.secondaryButtonText}>Lista de compras</Text>
-          </Pressable>
+          <Text style={styles.title} accessibilityRole="header" aria-level={1}>Dieta ativa</Text>
+          <Text style={styles.subtitle}>Seu plano alimentar vigente e as refeições do dia.</Text>
         </View>
 
         <View style={styles.daySelectorSection} testID="meal-plan-day-selector">
           <View style={styles.daySelectorHeader}>
-            <Text style={styles.daySelectorMonthTitle}>{selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</Text>
-            <Svg width={18} height={20} viewBox="0 0 18 20" fill="none">
-              <Path
-                d="M15 2h-1V0h-2v2H6V0H4v2H3C1.89 2 1 2.9 1 4v14a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2zm0 16H3V7h12v11z"
-                fill={colors.brand}
-              />
-            </Svg>
+            <Feather name="calendar" size={18} color={colors.brand} aria-hidden />
+            <Text style={styles.daySelectorMonthTitle}>
+              {mesSelecionado.charAt(0).toLocaleUpperCase('pt-BR') + mesSelecionado.slice(1)}
+            </Text>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.dayPillsRow}
-          >
+          <View style={styles.dayPillsRow}>
             {week.map((day, index) => {
               const isSelected = index === selectedDay;
               return (
                 <Pressable
                   key={day.key}
-                  style={[styles.dayPill, isSelected && styles.dayPillActive]}
+                  style={({ pressed }) => [
+                    styles.dayPill,
+                    { minWidth: larguraMinimaDia },
+                    diasEmDuasLinhas && styles.dayPillWrapped,
+                    isSelected && styles.dayPillActive,
+                    pressed && styles.pressed
+                  ]}
                   onPress={() => setSelectedDay(index)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isSelected }}
-                  accessibilityLabel={`Dia ${day.label} ${day.data.getDate()}`}
+                  {...(Platform.OS === 'web' && { 'aria-pressed': isSelected })}
+                  accessibilityLabel={day.data.toLocaleDateString('pt-BR', { weekday: 'long' }) + ', ' + formatDateFromDate(day.data)}
                   testID={`day-selector-pill-${day.key}`}
                 >
-                  <Text style={[styles.dayPillLabel, isSelected && styles.dayPillLabelActive]}>
-                    {day.label}
-                  </Text>
-                  <Text style={[styles.dayPillNumber, isSelected && styles.dayPillNumberActive]}>
-                    {day.data.getDate()}
-                  </Text>
-                  {isSelected ? <View style={styles.dayPillDot} /> : null}
+                  <Text style={[styles.dayPillLabel, isSelected && styles.dayPillTextActive]}>{day.label}</Text>
+                  <Text style={[styles.dayPillNumber, isSelected && styles.dayPillTextActive]}>{day.data.getDate()}</Text>
                 </Pressable>
               );
             })}
-          </ScrollView>
+          </View>
         </View>
 
         {error ? (
@@ -355,7 +354,7 @@ export function MealPlanScreen({ navigation }: Props) {
             <Text style={styles.errorTitle}>Não foi possível atualizar a dieta</Text>
             <Text style={styles.errorText}>{error}</Text>
             <Pressable
-              style={styles.primaryButton}
+              style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
               onPress={() => recarregarPlano()}
               accessibilityRole="button"
               accessibilityLabel="Tentar carregar a dieta novamente"
@@ -366,23 +365,17 @@ export function MealPlanScreen({ navigation }: Props) {
         ) : null}
 
         {loading && !plan ? (
-          <View style={styles.stateCard} testID="meal-plan-loading">
+          <View style={styles.stateCard} testID="meal-plan-loading" aria-live="polite">
             <ActivityIndicator color={colors.brand} />
             <Text style={styles.bodyText}>Carregando sua dieta...</Text>
           </View>
         ) : error && !plan ? null : !plan ? (
           <View style={styles.stateCard} testID="meal-plan-empty">
-            <Text style={styles.stateTitle}>Nenhuma dieta ativa</Text>
-            <Text style={styles.bodyText}>
+            <View style={styles.sectionIcon}><Feather name="file-text" size={20} color={colors.brand} aria-hidden /></View>
+            <Text style={styles.stateTitle} accessibilityRole="header">Nenhuma dieta ativa</Text>
+            <Text style={[styles.bodyText, styles.centered]}>
               Um plano publicado e dentro da vigência aparecerá aqui.
             </Text>
-            <Pressable
-              style={styles.primaryButton}
-              onPress={openShoppingList}
-              accessibilityRole="button"
-            >
-              <Text style={styles.primaryButtonText}>Ver lista de compras</Text>
-            </Pressable>
           </View>
         ) : (
           <View style={styles.sections}>
@@ -394,9 +387,9 @@ export function MealPlanScreen({ navigation }: Props) {
             ) : null}
 
             <View style={styles.planCard}>
-              <View style={[styles.planHeader, wide && styles.planHeaderWide]}>
+              <View style={styles.planHeader}>
                 <View style={styles.planText}>
-                  <Text style={styles.planTitle} accessibilityRole="header">
+                  <Text style={styles.planTitle} accessibilityRole="header" aria-level={2}>
                     {plan.titulo}
                   </Text>
                   <Text style={styles.planNutritionist}>Prescrito por {plan.nutricionistaNome}</Text>
@@ -405,53 +398,28 @@ export function MealPlanScreen({ navigation }: Props) {
                   <Text style={styles.statusText}>Ativo</Text>
                 </View>
               </View>
-              <Text style={styles.validityText}>
-                Vigência: {formatDate(plan.vigenciaInicio)} a {formatDate(plan.vigenciaFim)}
-              </Text>
+              <View style={styles.validityRow}>
+                <Feather name="calendar" size={15} color={colors.brand} aria-hidden />
+                <Text style={styles.validityText}>
+                  Vigência: {formatDate(plan.vigenciaInicio)} a {formatDate(plan.vigenciaFim)}
+                </Text>
+              </View>
               {plan.orientacoes?.trim() ? (
                 <View style={styles.guidance}>
-                  <Text style={styles.sectionTitle}>Orientações</Text>
+                  <Text style={styles.guidanceTitle}>Orientações</Text>
                   <Text style={styles.bodyText}>{plan.orientacoes}</Text>
                 </View>
               ) : null}
             </View>
 
-            {dentroDaVigencia ? (
-              <View style={[styles.summaryGrid, wide && styles.summaryGridWide]}>
-                {plan.metas ? (
-                  <View style={wide && styles.summaryColumnWide}>
-                    <NutrientSummaryCard
-                      title="Metas diárias"
-                      subtitle="Metas nutricionais de referência diária"
-                      nutrients={plan.metas}
-                      distribution={plan.percentuais}
-                      mode="goals"
-                    />
-                  </View>
-                ) : (
-                  <View style={[styles.missingGoal, wide && styles.summaryColumnWide]}>
-                    <Text style={styles.sectionTitle}>Metas diárias</Text>
-                    <Text style={styles.bodyText}>A nutricionista não informou metas para este plano.</Text>
-                  </View>
-                )}
-                <View style={wide && styles.summaryColumnWide}>
-                  <NutrientSummaryCard
-                    title="Totais diários"
-                    subtitle="Progresso diário em relação às metas prescritas"
-                    nutrients={dailyTotals}
-                    goals={plan.metas}
-                  />
-                </View>
-              </View>
-            ) : null}
-
             <View style={styles.section}>
-              <Text style={styles.sectionTitle} accessibilityRole="header">
-                Refeições do dia
-              </Text>
+              <View style={styles.sectionHeading}>
+                <View style={styles.sectionIcon}><Feather name="list" size={20} color={colors.brand} aria-hidden /></View>
+                <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>Refeições do dia</Text>
+              </View>
               {visibleMeals.length === 0 ? (
                 <View style={styles.stateCard}>
-                  <Text style={styles.bodyText}>{dentroDaVigencia ? 'Nenhuma refeição prevista para este dia.' : 'Data fora da vigência do plano.'}</Text>
+                  <Text style={[styles.bodyText, styles.centered]}>{dentroDaVigencia ? 'Nenhuma refeição prevista para este dia.' : 'Data fora da vigência do plano.'}</Text>
                 </View>
               ) : (
                 <View style={styles.mealCardsList}>
@@ -472,7 +440,7 @@ export function MealPlanScreen({ navigation }: Props) {
 
                           <View style={styles.mealCardHeaderCenter}>
                             <View style={styles.mealCategoryRow}>
-                              <Text style={styles.mealTitle} accessibilityRole="header">
+                              <Text style={styles.mealTitle} accessibilityRole="header" aria-level={3}>
                                 {meal.nome}
                               </Text>
                               <Text style={styles.mealTime}>{formatTime(meal.horario)}</Text>
@@ -493,27 +461,20 @@ export function MealPlanScreen({ navigation }: Props) {
                               </View>
                             </View>
                           </View>
-
-                          {meal.itens.some(item => item.substitutos?.length) ? (
-                            <Pressable
-                              style={styles.mealActionBtn}
-                              onPress={() => openSwapModal(meal)}
-                              accessibilityRole="button"
-                              accessibilityLabel={`Ver substitutos de ${meal.nome}`}
-                              testID={`meal-swap-button-${meal.id}`}
-                            >
-                              <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
-                                <Path
-                                  d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-                                  stroke={colors.brandDeep}
-                                  strokeWidth={2.2}
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </Svg>
-                            </Pressable>
-                          ) : null}
                         </View>
+
+                        {meal.itens.some(item => item.substitutos?.length) ? (
+                          <Pressable
+                            style={({ pressed }) => [styles.mealActionBtn, pressed && styles.pressed]}
+                            onPress={() => openSwapModal(meal)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Ver substitutos de ${meal.nome}`}
+                            testID={`meal-swap-button-${meal.id}`}
+                          >
+                            <Feather name="repeat" size={16} color={colors.brandDeep} aria-hidden />
+                            <Text style={styles.mealActionText}>Ver substitutos</Text>
+                          </Pressable>
+                        ) : null}
 
                         <View style={styles.mealItemsDivider} />
 
@@ -589,18 +550,42 @@ export function MealPlanScreen({ navigation }: Props) {
               )}
             </View>
 
+            {dentroDaVigencia ? (
+              <View style={[styles.summaryGrid, wide && styles.summaryGridWide]}>
+                {plan.metas ? (
+                  <View style={wide && styles.summaryColumnWide}>
+                    <NutrientSummaryCard
+                      title="Metas diárias"
+                      subtitle="Metas nutricionais de referência diária"
+                      nutrients={plan.metas}
+                      distribution={plan.percentuais}
+                      mode="goals"
+                    />
+                  </View>
+                ) : (
+                  <View style={[styles.missingGoal, wide && styles.summaryColumnWide]}>
+                    <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>Metas diárias</Text>
+                    <Text style={styles.bodyText}>A nutricionista não informou metas para este plano.</Text>
+                  </View>
+                )}
+                <View style={wide && styles.summaryColumnWide}>
+                  <NutrientSummaryCard
+                    title="Totais diários"
+                    subtitle="Progresso diário em relação às metas prescritas"
+                    nutrients={dailyTotals}
+                    goals={plan.metas}
+                  />
+                </View>
+              </View>
+            ) : null}
+
             <View style={styles.hydrationCard} testID="hydration-tracker-card">
               <View style={styles.hydrationTopRow}>
                 <View style={styles.hydrationIconCircle}>
-                  <Svg width={16} height={20} viewBox="0 0 16 20" fill="none">
-                    <Path
-                      d="M8 0C8 0 0 8.5 0 13.5C0 17.09 3.58 20 8 20C12.42 20 16 17.09 16 13.5C16 8.5 8 0 8 0Z"
-                      fill="#5df975"
-                    />
-                  </Svg>
+                  <Feather name="droplet" size={20} color={colors.brand} aria-hidden />
                 </View>
                 <View style={styles.hydrationHeaderCopy}>
-                  <Text style={styles.hydrationTitle}>Hidratação</Text>
+                  <Text style={styles.hydrationTitle} accessibilityRole="header" aria-level={2}>Hidratação</Text>
                   <Text style={styles.hydrationSubtitle}>
                     {hydration
                       ? `${(hydration.consumidoMl / 1000).toFixed(1)}L de ${(hydration.metaMl / 1000).toFixed(1)}L atingidos`
@@ -609,9 +594,16 @@ export function MealPlanScreen({ navigation }: Props) {
                 </View>
               </View>
               {hydrationError ? (
-                <Text style={styles.hydrationSubtitle} accessibilityRole="alert">{hydrationError}</Text>
+                <Text style={styles.errorText} accessibilityRole="alert">{hydrationError}</Text>
               ) : null}
-              <View style={styles.hydrationProgressTrack}>
+              <View
+                style={styles.hydrationProgressTrack}
+                accessibilityRole="progressbar"
+                accessibilityLabel="Hidratação"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(waterProgressRatio * 100)}
+              >
                 <View
                   style={[
                     styles.hydrationProgressFill,
@@ -620,18 +612,21 @@ export function MealPlanScreen({ navigation }: Props) {
                 />
               </View>
               <Pressable
-                style={[styles.hydrationButton, savingWater && styles.hydrationButtonDisabled]}
+                style={({ pressed }) => [
+                  styles.primaryButton, styles.hydrationButton,
+                  (!hydration || savingWater) && styles.hydrationButtonDisabled, pressed && styles.pressed
+                ]}
                 onPress={() => void registrarAgua()}
                 disabled={!hydration || savingWater}
-                aria-disabled={!hydration || savingWater}
                 accessibilityRole="button"
+                accessibilityState={{ disabled: !hydration || savingWater, busy: savingWater }}
                 accessibilityLabel="Adicionar Água"
                 testID="hydration-add-button"
               >
                 {savingWater ? (
                   <ActivityIndicator color={colors.white} />
                 ) : (
-                  <Text style={styles.hydrationButtonText}>+ Adicionar Água</Text>
+                  <Text style={styles.primaryButtonText}>+ Adicionar Água</Text>
                 )}
               </Pressable>
             </View>
@@ -646,17 +641,17 @@ export function MealPlanScreen({ navigation }: Props) {
         onRequestClose={() => setSwapModalMeal(null)}
       >
         <View style={styles.modalBackdrop} testID="meal-swap-modal">
-          <View style={styles.modalCard}>
+          <View style={styles.modalCard} accessibilityViewIsModal>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Substitutos informativos</Text>
+              <Text style={styles.modalTitle} accessibilityRole="header">Substitutos informativos</Text>
               <Pressable
-                style={styles.modalCloseBtn}
+                style={({ pressed }) => [styles.modalCloseBtn, pressed && styles.pressed]}
                 onPress={() => setSwapModalMeal(null)}
                 accessibilityRole="button"
                 accessibilityLabel="Fechar substitutos informativos"
                 testID="meal-swap-close-button"
               >
-                <Text style={styles.modalCloseText}>✕</Text>
+                <Feather name="x" size={22} color={colors.brandDeep} aria-hidden />
               </Pressable>
             </View>
 
@@ -664,21 +659,22 @@ export function MealPlanScreen({ navigation }: Props) {
               <TextInput
                 style={styles.modalSearchInput}
                 placeholder="Buscar substituto..."
-                placeholderTextColor="rgba(111,122,108,0.6)"
+                placeholderTextColor={colors.textSecondary}
+                accessibilityLabel="Buscar substituto"
                 value={swapSearch}
                 onChangeText={setSwapSearch}
                 testID="meal-swap-search-input"
               />
             </View>
 
-            <View style={styles.modalOptionsList}>
+            <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalOptionsList} keyboardShouldPersistTaps="handled">
               {swapOptions.map((option) => (
                 <View key={option.id} style={styles.modalOptionCard}>
                   <Text style={styles.modalOptionTitle}>{option.title}</Text>
                   <Text style={styles.modalOptionSubtitle}>{option.subtitle}</Text>
                 </View>
               ))}
-            </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -689,321 +685,171 @@ export function MealPlanScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.page },
   scroll: { flex: 1 },
-  content: { width: '100%', alignSelf: 'center', padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.lg },
-  pageHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  headingText: { flex: 1, gap: spacing.xxs },
-  title: { color: colors.text, fontFamily: fontFamily.extrabold, fontSize: 25, lineHeight: 32 },
-  subtitle: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 20 },
-  secondaryButton: { borderWidth: 1, borderColor: colors.brand, borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm },
-  secondaryButtonText: { color: colors.brand, fontFamily: fontFamily.bold, fontSize: 13 },
-  daySelectorSection: { gap: spacing.sm },
-  daySelectorHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  daySelectorMonthTitle: { color: '#1a1c1c', fontFamily: fontFamily.bold, fontSize: 24, lineHeight: 32, letterSpacing: -0.6 },
-  dayPillsRow: { flexDirection: 'row', gap: 12, paddingVertical: 4 },
+  content: { width: '100%', alignSelf: 'center', padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  pageHeading: { paddingTop: spacing.xs, gap: spacing.xxs },
+  title: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 30, lineHeight: 38 },
+  subtitle: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 15, lineHeight: 23 },
+  daySelectorSection: {
+    backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
+    borderRadius: radius.lg, padding: spacing.xs, gap: spacing.xs
+  },
+  daySelectorHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.xxs, paddingTop: spacing.xxs
+  },
+  daySelectorMonthTitle: {
+    flex: 1, color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 16, lineHeight: 22
+  },
+  dayPillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xxs },
   dayPill: {
-    width: 56,
-    height: 75,
-    borderRadius: 16,
-    backgroundColor: colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-    ...shadows.card
+    flexBasis: 0, flexGrow: 1, minHeight: 56, paddingVertical: spacing.xxs, borderRadius: radius.md,
+    backgroundColor: colors.page, borderWidth: 1, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center'
   },
-  dayPillActive: {
-    width: 64,
-    backgroundColor: '#005414'
+  dayPillWrapped: { flexBasis: '22%', flexGrow: 0 },
+  dayPillActive: { borderColor: colors.brandDark, backgroundColor: colors.brandDark },
+  dayPillLabel: { color: colors.textSecondary, fontFamily: fontFamily.bold, fontSize: 12, lineHeight: 17 },
+  dayPillNumber: { color: colors.text, fontFamily: fontFamily.extrabold, fontSize: 18, lineHeight: 25, fontVariant: ['tabular-nums'] },
+  dayPillTextActive: { color: colors.white },
+  pressed: { opacity: 0.8 },
+  sections: { gap: spacing.lg },
+  planCard: {
+    backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1,
+    borderColor: colors.border, padding: spacing.md, gap: spacing.sm, ...shadows.card
   },
-  dayPillLabel: {
-    color: '#6f7a6c',
-    fontFamily: fontFamily.bold,
-    fontSize: 10,
-    lineHeight: 15,
-    textTransform: 'uppercase'
+  planHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.xs },
+  planText: { flexGrow: 1, flexShrink: 1, flexBasis: 160, gap: spacing.xxs },
+  planTitle: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 23, lineHeight: 30 },
+  planNutritionist: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 21 },
+  statusBadge: {
+    backgroundColor: colors.confirmedBackground, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.xxs
   },
-  dayPillLabelActive: {
-    color: 'rgba(255,255,255,0.75)'
+  statusText: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 13 },
+  validityRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.pageAlt,
+    borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs
   },
-  dayPillNumber: {
-    color: '#1a1c1c',
-    fontFamily: fontFamily.bold,
-    fontSize: 18,
-    lineHeight: 26
-  },
-  dayPillNumberActive: {
-    color: colors.white,
-    fontFamily: fontFamily.extrabold,
-    fontSize: 20,
-    lineHeight: 28
-  },
-  dayPillDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.white,
-    marginTop: 2
-  },
-  sections: { gap: spacing.md },
-  planCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm, ...shadows.card },
-  planHeader: { flexDirection: 'column', alignItems: 'flex-start', gap: spacing.sm },
-  planHeaderWide: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  planText: { flex: 1, gap: spacing.xxs },
-  planTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 20, lineHeight: 27 },
-  planNutritionist: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 13 },
-  statusBadge: { backgroundColor: colors.brandSoft, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.xxs },
-  statusText: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 12 },
-  validityText: { color: colors.textSecondary, fontFamily: fontFamily.semibold, fontSize: 13 },
-  guidance: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm, gap: spacing.xs },
+  validityText: { flex: 1, color: colors.text, fontFamily: fontFamily.semibold, fontSize: 13, lineHeight: 19, fontVariant: ['tabular-nums'] },
+  guidance: { gap: spacing.xxs },
+  guidanceTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 15, lineHeight: 22 },
   summaryGrid: { gap: spacing.md },
   summaryGridWide: { flexDirection: 'row' },
   summaryColumnWide: { flex: 1, minWidth: 0 },
-  missingGoal: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm },
+  missingGoal: {
+    backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
+    padding: spacing.md, gap: spacing.xs
+  },
   section: { gap: spacing.sm },
-  sectionTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 17 },
-  mealCardsList: { gap: 20 },
+  sectionHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  sectionIcon: {
+    width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.confirmedBackground,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0
+  },
+  sectionTitle: { flexShrink: 1, color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 20, lineHeight: 27 },
+  mealCardsList: { gap: spacing.sm },
   mealCard: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 16,
-    gap: spacing.sm,
-    ...shadows.card
+    backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border,
+    padding: spacing.md, gap: spacing.sm, ...shadows.card
   },
-  mealCardTopRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 16
-  },
+  mealCardTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   mealIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#f3f3f3',
-    alignItems: 'center',
-    justifyContent: 'center'
+    width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.confirmedBackground,
+    alignItems: 'center', justifyContent: 'center'
   },
-  mealCardHeaderCenter: {
-    flex: 1,
-    gap: 4
-  },
-  mealCategoryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.xs
-  },
-  mealTitle: {
-    color: '#006f1e',
-    fontFamily: fontFamily.bold,
-    fontSize: 12,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase'
-  },
+  mealCardHeaderCenter: { flex: 1, minWidth: 0, gap: spacing.xxs },
+  mealCategoryRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs },
+  mealTitle: { flexShrink: 1, color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 17, lineHeight: 23 },
   mealTime: {
-    color: '#6f7a6c',
-    fontFamily: fontFamily.regular,
-    fontSize: 12
+    color: colors.brandDeep, backgroundColor: colors.confirmedBackground, borderRadius: radius.sm,
+    paddingHorizontal: spacing.xs, paddingVertical: 2, fontFamily: fontFamily.bold, fontSize: 12, fontVariant: ['tabular-nums']
   },
-  mealHeadline: {
-    color: '#1a1c1c',
-    fontFamily: fontFamily.bold,
-    fontSize: 16,
-    lineHeight: 20
-  },
-  mealMacroBadgesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingTop: 4
-  },
-  mealMacroBadge: {
-    backgroundColor: '#f3f3f3',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 2
-  },
-  mealMacroBadgeText: {
-    color: '#6f7a6c',
-    fontFamily: fontFamily.bold,
-    fontSize: 10,
-    lineHeight: 15
-  },
+  mealHeadline: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 20 },
+  mealMacroBadgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xxs, paddingTop: spacing.xxs },
+  mealMacroBadge: { backgroundColor: colors.pageAlt, borderRadius: radius.sm, paddingHorizontal: spacing.xs, paddingVertical: 2 },
+  mealMacroBadgeText: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 11, lineHeight: 16, fontVariant: ['tabular-nums'] },
   mealActionBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#f3f3f3',
-    alignItems: 'center',
-    justifyContent: 'center'
+    minHeight: 48, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
+    backgroundColor: colors.confirmedBackground, paddingHorizontal: spacing.sm, paddingVertical: spacing.xxs, borderRadius: radius.md
   },
-  mealItemsDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 2
+  mealActionText: { flexShrink: 1, color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 14, lineHeight: 20 },
+  mealItemsDivider: { height: 1, backgroundColor: colors.border },
+  foodItem: { gap: spacing.xs, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: spacing.sm },
+  foodRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.xs },
+  foodDetails: { flexGrow: 1, flexShrink: 1, flexBasis: 140, gap: spacing.xxs },
+  foodName: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 15, lineHeight: 22 },
+  foodMeta: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 13, lineHeight: 19 },
+  foodSource: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 12, lineHeight: 18 },
+  foodQuantity: { flexShrink: 1, color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 14, fontVariant: ['tabular-nums'] },
+  substitutions: { gap: spacing.xs },
+  substituteCard: {
+    backgroundColor: colors.page, borderRadius: radius.md, padding: spacing.sm, gap: spacing.xxs,
+    borderLeftWidth: 2, borderLeftColor: colors.brand
   },
-  foodItem: { gap: spacing.xs, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: spacing.xs },
-  foodRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm },
-  foodDetails: { flex: 1, gap: 3 },
-  foodName: { color: colors.text, fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 20 },
-  foodMeta: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 13 },
-  foodSource: { color: colors.textSubtle, fontFamily: fontFamily.regular, fontSize: 11, lineHeight: 16 },
-  foodQuantity: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 13 },
-  substitutions: { gap: spacing.xs, marginLeft: spacing.sm },
-  substituteCard: { backgroundColor: colors.pageAlt, borderRadius: radius.md, padding: spacing.sm, gap: spacing.xs },
   substituteLabel: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 12 },
-  substituteFoodRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm },
-  substituteFoodName: { flex: 1, color: colors.text, fontFamily: fontFamily.semibold, fontSize: 13, lineHeight: 19 },
-  substituteNutrition: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 11, lineHeight: 16 },
-  mealTotals: { backgroundColor: colors.pageAlt, borderRadius: radius.md, padding: spacing.sm, gap: spacing.xxs },
-  mealTotalsTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 12 },
-  mealTotalsText: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 12, lineHeight: 18 },
+  substituteFoodRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.xs },
+  substituteFoodName: { flex: 1, minWidth: 0, color: colors.text, fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 20 },
+  substituteNutrition: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 12, lineHeight: 18 },
+  mealTotals: { backgroundColor: colors.confirmedBackground, borderRadius: radius.md, padding: spacing.sm, gap: spacing.xxs },
+  mealTotalsTitle: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 13 },
+  mealTotalsText: { color: colors.text, fontFamily: fontFamily.regular, fontSize: 13, lineHeight: 20 },
   hydrationCard: {
-    backgroundColor: '#064e3b',
-    borderRadius: 16,
-    padding: 20,
-    gap: 16,
-    ...shadows.card
+    backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border,
+    padding: spacing.md, gap: spacing.md, ...shadows.card
   },
-  hydrationTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12
-  },
+  hydrationTopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   hydrationIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center'
+    width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.confirmedBackground,
+    alignItems: 'center', justifyContent: 'center'
   },
-  hydrationHeaderCopy: {
-    flex: 1,
-    gap: 2
-  },
-  hydrationTitle: {
-    color: colors.white,
-    fontFamily: fontFamily.bold,
-    fontSize: 16,
-    lineHeight: 22
-  },
-  hydrationSubtitle: {
-    color: 'rgba(255,255,255,0.75)',
-    fontFamily: fontFamily.regular,
-    fontSize: 12,
-    lineHeight: 16
-  },
-  hydrationProgressTrack: {
-    height: 8,
-    width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: radius.pill,
-    overflow: 'hidden'
-  },
-  hydrationProgressFill: {
-    height: '100%',
-    backgroundColor: '#5df975',
-    borderRadius: radius.pill
-  },
-  hydrationButton: {
-    backgroundColor: '#006f1e',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  hydrationButtonDisabled: { opacity: 0.65 },
-  hydrationButtonText: {
-    color: colors.white,
-    fontFamily: fontFamily.bold,
-    fontSize: 14
-  },
+  hydrationHeaderCopy: { flex: 1, gap: spacing.xxs },
+  hydrationTitle: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 20, lineHeight: 27 },
+  hydrationSubtitle: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 21 },
+  hydrationProgressTrack: { height: 8, backgroundColor: colors.border, borderRadius: radius.pill, overflow: 'hidden' },
+  hydrationProgressFill: { height: '100%', backgroundColor: colors.brand, borderRadius: radius.pill },
+  hydrationButton: { alignSelf: 'stretch' },
+  hydrationButtonDisabled: { opacity: 0.56 },
   modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(28, 25, 23, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg
+    flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: spacing.md
   },
   modalCard: {
-    width: '100%',
-    maxWidth: 342,
-    backgroundColor: colors.white,
-    borderRadius: 24,
-    overflow: 'hidden',
-    ...shadows.card
+    width: '100%', maxWidth: 460, maxHeight: '100%', flexShrink: 1, backgroundColor: colors.card,
+    borderRadius: radius.xl, padding: spacing.md, gap: spacing.sm, ...shadows.card
   },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 16
-  },
-  modalTitle: {
-    color: '#064e3b',
-    fontFamily: fontFamily.bold,
-    fontSize: 20,
-    lineHeight: 28,
-    letterSpacing: -0.5
-  },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  modalTitle: { flex: 1, color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 20, lineHeight: 27 },
   modalCloseBtn: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center'
+    width: 48, height: 48, borderRadius: radius.md, backgroundColor: colors.pageAlt,
+    alignItems: 'center', justifyContent: 'center'
   },
-  modalCloseText: {
-    color: '#6f7a6c',
-    fontFamily: fontFamily.bold,
-    fontSize: 16
-  },
-  modalSearchWrap: {
-    paddingHorizontal: 24
-  },
+  modalSearchWrap: { width: '100%' },
   modalSearchInput: {
-    backgroundColor: '#e8e8e8',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#1a1c1c',
-    fontFamily: fontFamily.regular,
-    fontSize: 14
+    minHeight: 48, backgroundColor: colors.page, borderColor: colors.border, borderWidth: 1, borderRadius: radius.md,
+    paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, color: colors.text, fontFamily: fontFamily.regular, fontSize: 16
   },
-  modalOptionsList: {
-    padding: 24,
-    paddingTop: 16,
-    gap: 8
-  },
+  modalScroll: { flexGrow: 0, flexShrink: 1 },
+  modalOptionsList: { gap: spacing.xs },
   modalOptionCard: {
-    gap: 4,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#d1fae5',
-    backgroundColor: colors.white
+    gap: spacing.xxs, padding: spacing.sm, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border, backgroundColor: colors.page
   },
-  modalOptionTitle: {
-    color: '#1a1c1c',
-    fontFamily: fontFamily.bold,
-    fontSize: 14,
-    lineHeight: 20
+  modalOptionTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 15, lineHeight: 22 },
+  modalOptionSubtitle: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 13, lineHeight: 19 },
+  stateCard: {
+    backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
+    padding: spacing.lg, alignItems: 'center', gap: spacing.xs
   },
-  modalOptionSubtitle: {
-    color: '#6f7a6c',
-    fontFamily: fontFamily.regular,
-    fontSize: 12,
-    lineHeight: 16
+  stateTitle: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 18, lineHeight: 25, textAlign: 'center' },
+  bodyText: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 15, lineHeight: 23 },
+  centered: { textAlign: 'center' },
+  errorBox: {
+    backgroundColor: colors.dangerButtonBackground, borderColor: colors.dangerBackground,
+    borderWidth: 1, borderRadius: radius.lg, padding: spacing.md, gap: spacing.xs
   },
-  stateCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, alignItems: 'center', gap: spacing.sm },
-  stateTitle: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 17, textAlign: 'center' },
-  bodyText: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 21, textAlign: 'center' },
-  errorBox: { backgroundColor: '#fff4f2', borderColor: colors.danger, borderWidth: 1, borderRadius: radius.lg, padding: spacing.md, gap: spacing.xs },
-  noticeBox: { backgroundColor: colors.brandSoft, borderRadius: radius.md, padding: spacing.sm },
-  noticeText: { color: colors.brandDeep, fontFamily: fontFamily.semibold, fontSize: 13 },
-  errorTitle: { color: colors.dangerText, fontFamily: fontFamily.bold, fontSize: 15 },
-  errorText: { color: colors.text, fontFamily: fontFamily.regular, fontSize: 13, lineHeight: 19 },
-  primaryButton: { backgroundColor: colors.brand, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, alignItems: 'center' },
-  primaryButtonText: { color: colors.white, fontFamily: fontFamily.bold, fontSize: 14 },
+  errorTitle: { color: colors.dangerText, fontFamily: fontFamily.bold, fontSize: 16, lineHeight: 22 },
+  errorText: { color: colors.dangerText, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 21 },
+  primaryButton: {
+    minHeight: 48, backgroundColor: colors.brand, borderRadius: radius.md, paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs, alignItems: 'center', justifyContent: 'center'
+  },
+  primaryButtonText: { color: colors.white, fontFamily: fontFamily.bold, fontSize: 15, lineHeight: 22, textAlign: 'center' },
   refreshingHint: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs }
 });

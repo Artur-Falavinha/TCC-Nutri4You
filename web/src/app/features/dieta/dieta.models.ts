@@ -68,6 +68,11 @@ export interface Refeicao {
 export type PlanoStatus = 'RASCUNHO' | 'PUBLICADO' | 'SUBSTITUIDO';
 
 export interface Plano {
+  planoAnteriorId?: number | null;
+  planoSubstitutoId?: number | null;
+  rascunhoEdicaoId?: number | null;
+  substituidaEm?: string | null;
+  inicioEdicao?: string | null;
   id: number;
   pacienteId: number;
   nutricionistaId: number;
@@ -136,24 +141,6 @@ export interface MetasEdicao {
   percentualGorduras: CampoNumericoEdicao;
   proteinasGKg: CampoNumericoEdicao;
   carboidratosGKg: CampoNumericoEdicao;
-}
-
-export interface ItemListaCompras {
-  alimentoId: number;
-  nome: string;
-  categoria: string | null;
-  quantidadeGramas: number;
-  comprado: boolean;
-}
-
-export interface ListaCompras {
-  planoId: number;
-  planoTitulo: string;
-  dias: number;
-  totalItens: number;
-  itensComprados: number;
-  itensPendentes: number;
-  itens: ItemListaCompras[];
 }
 
 export interface PlanoEdicao {

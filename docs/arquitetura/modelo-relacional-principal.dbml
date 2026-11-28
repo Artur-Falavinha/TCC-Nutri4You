@@ -1,0 +1,332 @@
+Project Nutri4You {
+  database_type: 'PostgreSQL'
+  Note: 'Modelo relacional principal para o corpo do TCC. Representa as 19 tabelas de dominio e apoio funcional. As tabelas tecnicas Token_Email e Aceite_Termo aparecem apenas no modelo fisico completo.'
+}
+
+// ==========================================
+// ATORES, ACESSO CLINICO E AGENDA
+// ==========================================
+Table Nutricionista {
+  id_nutricionista int [pk, increment]
+  nome varchar(150) [not null]
+  email varchar(100) [not null, unique]
+  senha varchar(255) [not null]
+  crn varchar(20) [not null, unique]
+  aceita_consultas_avulsas boolean [not null, default: false]
+}
+
+Table Paciente {
+  id_paciente int [pk, increment]
+  nome varchar(150) [not null]
+  cpf varchar(14) [unique]
+  data_nascimento date
+  sexo varchar(20)
+  telefone varchar(20)
+  email varchar(100) [not null, unique]
+  senha varchar(255) [not null]
+  email_confirmado boolean [not null, default: false]
+}
+
+Table Relacao_Clinica {
+  id_relacao int [pk, increment]
+  id_paciente int [not null, ref: > Paciente.id_paciente]
+  id_nutricionista int [not null, ref: > Nutricionista.id_nutricionista]
+  status varchar(20) [not null, default: 'ATIVA']
+  iniciada_em timestamp [default: `CURRENT_TIMESTAMP`]
+  encerrada_em timestamp
+  versao bigint [not null, default: 0]
+  solicitada_pelo_paciente boolean [not null, default: false]
+
+  Indexes {
+    (id_paciente, id_nutricionista) [unique]
+  }
+}
+
+Table Horario_Atendimento {
+  id int [pk, increment]
+  id_nutricionista int [not null, ref: > Nutricionista.id_nutricionista]
+  dia_semana int [not null, note: 'Valor entre 1 e 7.']
+  horario time [not null, note: 'No maximo 23:15.']
+
+  Indexes {
+    (id_nutricionista, dia_semana, horario) [unique]
+  }
+}
+
+// ==========================================
+// ANAMNESE
+// ==========================================
+Table Anamnese {
+  id_paciente int [pk, ref: - Paciente.id_paciente]
+  versao bigint [not null, default: 0]
+  rascunho text
+  finalizada_em timestamptz
+  atualizada_em timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  id_nutricionista int [not null, ref: > Nutricionista.id_nutricionista, note: 'Ultimo nutricionista que editou; nao representa propriedade exclusiva.']
+}
+
+Table Pergunta_Anamnese {
+  id_pergunta int [pk, increment]
+  id_nutricionista int [ref: > Nutricionista.id_nutricionista, note: 'Nulo para perguntas globais.']
+  categoria varchar(100)
+  texto_pergunta varchar(255) [not null]
+  tipo_resposta varchar(50)
+  ativo boolean [default: true]
+  codigo varchar(80)
+}
+
+Table Resposta_Anamnese {
+  id_resposta int [pk, increment]
+  id_paciente int [not null, ref: > Paciente.id_paciente]
+  id_pergunta int [not null, ref: > Pergunta_Anamnese.id_pergunta]
+  texto_resposta text
+  data_ultima_atualizacao timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
+// ==========================================
+// ATENDIMENTO CLINICO
+// ==========================================
+Table Consulta {
+  id_consulta int [pk, increment]
+  id_paciente int [not null, ref: > Paciente.id_paciente]
+  id_nutricionista int [not null, ref: > Nutricionista.id_nutricionista]
+  data_hora timestamp [not null]
+  status varchar(30) [default: 'AGUARDANDO_CONFIRMACAO']
+  observacao text
+  id_evento_calendar varchar(255)
+  versao bigint [not null, default: 0]
+  atualizado_em timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  iniciada_em timestamp
+  avulsa boolean [not null, default: false]
+
+  Indexes {
+    (id_consulta, id_paciente) [unique]
+    (id_consulta, id_paciente, id_nutricionista) [unique]
+  }
+}
+
+Table Avaliacao_Antropometrica {
+  id_avaliacao int [pk, increment]
+  id_paciente int [not null, ref: > Paciente.id_paciente]
+  id_consulta int [unique]
+  data_avaliacao timestamp [not null]
+  peso decimal(5,2)
+  altura decimal(3,2)
+  imc decimal(7,2)
+  percentual_gordura decimal(5,2)
+  massa_muscular_kg decimal(5,2)
+  prega_bicipital decimal(5,2)
+  prega_tricipital decimal(5,2)
+  prega_subescapular decimal(5,2)
+  prega_suprailiaca decimal(5,2)
+  circunferencia_cintura decimal(5,2)
+  circunferencia_quadril decimal(5,2)
+  circunferencia_braco decimal(5,2)
+  prega_peitoral decimal(5,2)
+  prega_axilar_media decimal(5,2)
+  prega_abdominal decimal(5,2)
+  prega_coxa decimal(5,2)
+  massa_magra_kg decimal(5,2)
+  massa_gorda_kg decimal(5,2)
+  metodo_percentual_gordura varchar(60)
+}
+
+Table Exame {
+  id_exame int [pk, increment]
+  id_paciente int [not null, ref: > Paciente.id_paciente]
+  id_nutricionista int [not null, ref: > Nutricionista.id_nutricionista]
+  id_consulta int
+  nome_exame varchar(150) [not null]
+  descricao_exame text
+  data_solicitacao date
+  data_envio date
+  arquivo bytea
+  status varchar(30) [default: 'PENDENTE']
+  versao bigint [not null, default: 0]
+  arquivo_nome varchar(150)
+  arquivo_tipo varchar(100)
+  arquivo_tamanho bigint
+  parecer text
+  analisado_em timestamptz
+}
+
+// ==========================================
+// PRESCRICAO, REFEICOES E LISTA DE COMPRAS
+// ==========================================
+Table Plano_Alimentar {
+  id_plano int [pk, increment]
+  id_consulta int [unique]
+  id_paciente int [not null, ref: > Paciente.id_paciente]
+  id_nutricionista int [not null, ref: > Nutricionista.id_nutricionista]
+  vet_meta_kcal decimal(8,2)
+  meta_carboidratos decimal(8,2)
+  meta_gordura decimal(8,2)
+  meta_proteina decimal(8,2)
+  percentual_proteina decimal(5,2)
+  percentual_carboidratos decimal(5,2)
+  percentual_gordura decimal(5,2)
+  status varchar(20) [not null, default: 'RASCUNHO', note: 'RASCUNHO, PUBLICADO ou SUBSTITUIDO.']
+  vigencia_inicio date
+  vigencia_fim date
+  criado_em timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  publicado_em timestamptz
+  versao bigint [not null, default: 0]
+  titulo varchar(150) [not null, default: 'Plano alimentar']
+  orientacoes varchar(4000)
+  revisado_em timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  atualizado_em timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table Refeicao {
+  id_refeicao int [pk, increment]
+  id_plano int [not null, ref: > Plano_Alimentar.id_plano]
+  nome varchar(100) [not null]
+  horario time [not null]
+  dia_semana int [note: 'Nulo para repeticao diaria; quando preenchido, valor entre 1 e 7.']
+}
+
+Table Alimento {
+  id_alimento int [pk, increment]
+  categoria varchar(100)
+  nome varchar(150) [not null]
+  kcal_100g decimal(12,6)
+  proteina_100g decimal(12,6)
+  carboidratos_100g decimal(12,6)
+  gordura_100g decimal(12,6)
+  fibra_100g decimal(12,6)
+  codigo_taco int [unique]
+  nome_busca varchar(150) [not null]
+  fonte varchar(240)
+  versao_fonte varchar(40)
+  observacao_fonte varchar(500)
+  disponivel_prescricao boolean [not null, default: false]
+  catalogo_ativo boolean [not null, default: false]
+}
+
+Table Item_Refeicao {
+  id_refeicao int [not null, ref: > Refeicao.id_refeicao]
+  id_alimento int [not null, ref: > Alimento.id_alimento]
+  quantidade_gramas decimal(8,2) [not null]
+  kcal_100g decimal(12,6)
+  proteina_100g decimal(12,6)
+  carboidratos_100g decimal(12,6)
+  gordura_100g decimal(12,6)
+  fibra_100g decimal(12,6)
+
+  Indexes {
+    (id_refeicao, id_alimento) [pk]
+  }
+}
+
+Table Substituto_Item_Refeicao {
+  id_substituto int [pk, increment]
+  id_refeicao int [not null]
+  id_alimento_principal int [not null]
+  id_alimento_substituto int [not null, ref: > Alimento.id_alimento]
+  quantidade_gramas decimal(8,2) [not null]
+  kcal_100g decimal(12,6) [not null]
+  proteina_100g decimal(12,6) [not null]
+  carboidratos_100g decimal(12,6) [not null]
+  gordura_100g decimal(12,6) [not null]
+  fibra_100g decimal(12,6)
+
+  Indexes {
+    (id_refeicao, id_alimento_principal, id_alimento_substituto) [unique]
+  }
+}
+
+Table Lista_Compras {
+  id_lista int [pk, increment]
+  id_plano int [not null, ref: > Plano_Alimentar.id_plano]
+  data_geracao date [not null]
+  dias int [not null, default: 7, note: 'Valor entre 1 e 30.']
+
+  Indexes {
+    (id_plano, dias) [unique]
+  }
+}
+
+Table Item_Lista_Compras {
+  id_item_lista int [pk, increment]
+  id_lista int [not null, ref: > Lista_Compras.id_lista]
+  id_alimento int [ref: > Alimento.id_alimento]
+  nome_item varchar(150) [not null]
+  quantidade varchar(50)
+  comprado boolean [default: false]
+
+  Indexes {
+    (id_lista, id_alimento) [unique]
+  }
+}
+
+// ==========================================
+// ACOMPANHAMENTO DO PACIENTE
+// ==========================================
+Table Consumo_Diario {
+  id_consumo int [pk, increment]
+  id_paciente int [not null, ref: > Paciente.id_paciente]
+  data_registro date [not null]
+  kcal_consumidas decimal(8,2) [default: 0]
+  agua_ml_consumida int [default: 0]
+  proteinas_consumidas decimal(8,2) [default: 0]
+  carboidratos_consumidos decimal(8,2) [default: 0]
+  gorduras_consumidas decimal(8,2) [default: 0]
+
+  Indexes {
+    (id_paciente, data_registro) [unique]
+  }
+}
+
+Table Consumo_Refeicao {
+  id int [pk, increment]
+  id_paciente int [not null, ref: > Paciente.id_paciente]
+  id_refeicao int [not null, ref: > Refeicao.id_refeicao]
+  data_registro date [not null]
+  consumida boolean [not null]
+
+  Indexes {
+    (id_paciente, id_refeicao, data_registro) [unique]
+  }
+}
+
+// FKs compostas que garantem o mesmo paciente/nutricionista da consulta.
+Ref: Avaliacao_Antropometrica.(id_consulta, id_paciente) > Consulta.(id_consulta, id_paciente)
+Ref: Exame.(id_consulta, id_paciente, id_nutricionista) > Consulta.(id_consulta, id_paciente, id_nutricionista)
+Ref: Plano_Alimentar.(id_consulta, id_paciente, id_nutricionista) > Consulta.(id_consulta, id_paciente, id_nutricionista)
+
+// O substituto pertence a um item principal da refeicao.
+Ref: Substituto_Item_Refeicao.(id_refeicao, id_alimento_principal) > Item_Refeicao.(id_refeicao, id_alimento) [delete: cascade]
+
+TableGroup Atores_e_Agenda {
+  Nutricionista
+  Paciente
+  Relacao_Clinica
+  Horario_Atendimento
+}
+
+TableGroup Anamnese_Clinica {
+  Anamnese
+  Pergunta_Anamnese
+  Resposta_Anamnese
+}
+
+TableGroup Atendimento {
+  Consulta
+  Avaliacao_Antropometrica
+  Exame
+}
+
+TableGroup Prescricao {
+  Plano_Alimentar
+  Refeicao
+  Alimento
+  Item_Refeicao
+  Substituto_Item_Refeicao
+  Lista_Compras
+  Item_Lista_Compras
+}
+
+TableGroup Acompanhamento {
+  Consumo_Diario
+  Consumo_Refeicao
+}

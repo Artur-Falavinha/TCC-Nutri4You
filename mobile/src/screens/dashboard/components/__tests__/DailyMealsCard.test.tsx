@@ -1,11 +1,12 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { getConsumption, markMeal } from '../../../../features/dieta/consumo.service';
+import { dataIsoDaClinica } from '../../../../core/utils/date-mask.util';
 import { DailyMealsCard } from '../DailyMealsCard';
 
 jest.mock('@react-navigation/native', () => ({ useFocusEffect: (callback: () => void) => jest.requireActual('react').useEffect(callback, [callback]) }));
 jest.mock('../../../../features/dieta/consumo.service', () => ({ getConsumption: jest.fn(), markMeal: jest.fn() }));
-const daily = { data: '2026-11-04', editavel: true, refeicoes: [{ id: 1, nome: 'Almoço', horario: '12:00', consumida: false, totais: { kcal: 200 } }], totais: { kcal: 0 } };
+const daily = { data: dataIsoDaClinica(), editavel: true, refeicoes: [{ id: 1, nome: 'Almoço', horario: '12:00', consumida: false, totais: { kcal: 200 } }], totais: { kcal: 0 } };
 describe('Consumo na home', () => {
   beforeEach(() => jest.clearAllMocks());
   it('persiste a marcação e atualiza o progresso após confirmação do servidor', async () => {
@@ -15,7 +16,7 @@ describe('Consumo na home', () => {
     let tree!: renderer.ReactTestRenderer;
     await act(async () => { tree = renderer.create(<DailyMealsCard onChanged={onChanged} />); });
     await act(async () => { await tree.root.findByProps({ accessibilityRole: 'checkbox' }).props.onPress(); });
-    expect(markMeal).toHaveBeenCalledWith(1, '2026-11-04', true);
+    expect(markMeal).toHaveBeenCalledWith(1, daily.data, true);
     expect(onChanged).toHaveBeenCalledTimes(1);
     expect(tree.root.findByProps({ accessibilityRole: 'checkbox' }).props.accessibilityState.checked).toBe(true);
     act(() => tree.unmount());
@@ -27,9 +28,12 @@ describe('Consumo na home', () => {
     await act(async () => { tree = renderer.create(<DailyMealsCard onChanged={jest.fn()} />); });
     await act(async () => { await tree.root.findByProps({ accessibilityRole: 'checkbox' }).props.onPress(); });
     expect(tree.root.findByProps({ accessibilityRole: 'checkbox' }).props.accessibilityState.checked).toBe(false);
-    (getConsumption as jest.Mock).mockResolvedValue({ ...daily, data: '2026-11-03', editavel: false });
+    const ontem = new Date(daily.data + 'T12:00:00Z');
+    ontem.setUTCDate(ontem.getUTCDate() - 1);
+    const diaAnterior = ontem.toISOString().slice(0, 10);
+    (getConsumption as jest.Mock).mockResolvedValue({ ...daily, data: diaAnterior, editavel: false });
     await act(async () => { tree.root.findByProps({ accessibilityLabel: 'Consumo do dia anterior' }).props.onPress(); });
-    expect(getConsumption).toHaveBeenLastCalledWith('2026-11-03');
+    expect(getConsumption).toHaveBeenLastCalledWith(diaAnterior);
     expect(tree.root.findByProps({ accessibilityRole: 'checkbox' }).props.disabled).toBe(true);
     act(() => tree.unmount());
   });

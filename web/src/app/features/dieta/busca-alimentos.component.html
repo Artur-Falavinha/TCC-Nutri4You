@@ -16,7 +16,6 @@
     @if (categoriaErro) {
       <div class="inline-error" role="alert"><span>{{ categoriaErro }}</span><button type="button" class="text-action" (click)="recarregarCategorias.emit()">Tentar novamente</button></div>
     }
-    @if (mensagemAlimento) { <p class="inline-message" role="status">{{ mensagemAlimento }}</p> }
     <div class="food-results" [attr.aria-busy]="alimentosCarregando">
       @if (alimentosCarregando) {
         <p class="small-state" role="status">Pesquisando alimentos...</p>

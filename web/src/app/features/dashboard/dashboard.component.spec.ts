@@ -1,59 +1,152 @@
-import { discardPeriodicTasks, fakeAsync, TestBed, tick } from '@angular/core/testing';
+import { Type } from '@angular/core';
+import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
+import { ApiService } from '../../core/services/api.service';
+import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast.service';
 import { Agenda, ClinicoService } from '../clinico/clinico.service';
-import { NotificacaoConsulta, NotificacoesService } from '../notificacoes/notificacoes.service';
+import { NotificacoesComponent } from '../notificacoes/notificacoes.component';
+import { NotificacaoConsulta, NotificacaoResultadoExame, NotificacaoVinculo } from '../notificacoes/notificacoes.service';
 import { DashboardComponent } from './dashboard.component';
 
 const agendaVazia: Agenda = {
   hoje: [], semana: [], totalSemana: 0, sexo: [], faixaEtaria: [], ultimos12Meses: [], totalConsultas12Meses: 0
 };
+const consulta: NotificacaoConsulta = {
+  id: 1, pacienteId: 1, pacienteNome: 'Paciente de teste', dataHora: '2026-11-20T09:00:00', versao: 0,
+  avulsa: true, tipo: 'PRIMEIRA_CONSULTA', duracaoMinutos: 45
+};
+const vinculo: NotificacaoVinculo = { id: 1, pacienteNome: 'Outro paciente', versao: 0 };
 
-function solicitacao(id: number): NotificacaoConsulta {
-  return { id, pacienteId: id, pacienteNome: `Paciente ${id}`, dataHora: '2026-11-20T09:00:00', versao: 0, avulsa: false };
-}
+describe('Badge de notificações do nutricionista', () => {
+  let usuarioId: number;
+  let consultas: NotificacaoConsulta[];
+  let vinculos: NotificacaoVinculo[];
+  let resultados: NotificacaoResultadoExame[];
+  let indisponivel: boolean;
 
-describe('DashboardComponent — solicitações de consulta pendentes', () => {
-  function criar(itens: NotificacaoConsulta[]) {
+  beforeEach(() => {
+    usuarioId = 910761;
+    consultas = [consulta];
+    vinculos = [vinculo];
+    resultados = [];
+    indisponivel = false;
     TestBed.configureTestingModule({
-      imports: [DashboardComponent],
+      imports: [DashboardComponent, NotificacoesComponent],
       providers: [
         provideRouter([]),
+        { provide: ToastService, useValue: jasmine.createSpyObj('ToastService', ['sucesso', 'erro']) },
         { provide: ClinicoService, useValue: { agenda: () => of(agendaVazia) } },
-        { provide: NotificacoesService, useValue: { listar: () => of(itens), listarVinculos: () => of([]) } }
+        { provide: AuthService, useValue: { fetchMe: () => of({ id: usuarioId }) } },
+        { provide: ApiService, useValue: {
+          get: (rota: string) => {
+            if (indisponivel) return throwError(() => ({ message: 'Notificações indisponíveis' }));
+            if (rota.endsWith('/vinculos')) return of(vinculos);
+            return of(rota.endsWith('/exames') ? resultados : consultas);
+          }
+        } }
       ]
     });
-    const fixture = TestBed.createComponent(DashboardComponent);
-    fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    for (const id of [910761, 910762]) {
+      localStorage.removeItem(`nutri4you.notificacoes.vistas.${id}`);
+    }
+  });
+
+  function abrir<T>(componente: Type<T>) {
+    const tela = TestBed.createComponent(componente);
+    tela.detectChanges();
     tick(0);
-    fixture.detectChanges();
-    return fixture;
+    tela.detectChanges();
+    return tela;
   }
 
-  it('destaca na tela inicial o aviso com link para as notificações quando há solicitações pendentes', fakeAsync(() => {
-    const fixture = criar([solicitacao(1), solicitacao(2)]);
-
-    const aviso = fixture.nativeElement.querySelector('[data-testid="solicitacoes-pendentes"]') as HTMLAnchorElement;
-    expect(aviso).not.toBeNull();
-    expect(aviso.textContent).toContain('2 solicitações de consulta aguardando sua confirmação');
-    expect(aviso.getAttribute('href')).toBe('/notificacoes');
-    discardPeriodicTasks();
+  it('concentra o aviso no sino com a contagem de consultas e vínculos não vistos', fakeAsync(() => {
+    const tela = abrir(DashboardComponent);
+    const sino: HTMLAnchorElement = tela.nativeElement.querySelector('app-notification-bell a');
+    expect(tela.nativeElement.querySelector('[data-testid="solicitacoes-pendentes"]')).toBeNull();
+    expect(sino.getAttribute('href')).toBe('/notificacoes');
+    expect(sino.getAttribute('aria-label')).toBe('Notificações, 2 não lidas');
+    expect(sino.querySelector('.badge')?.textContent?.trim()).toBe('2');
+    tela.destroy();
   }));
 
-  it('usa o singular quando existe uma única solicitação', fakeAsync(() => {
-    const fixture = criar([solicitacao(1)]);
+  it('limpa o badge após carregar a lista e indica uma nova versão de consulta', fakeAsync(() => {
+    const notificacoes = abrir(NotificacoesComponent);
+    expect(notificacoes.nativeElement.textContent).toContain('Paciente de teste solicitou uma consulta');
+    expect(notificacoes.nativeElement.textContent).toContain('Outro paciente solicitou um vínculo');
+    notificacoes.destroy();
 
-    expect(fixture.nativeElement.querySelector('[data-testid="solicitacoes-pendentes"]').textContent)
-      .toContain('1 solicitação de consulta aguardando sua confirmação');
-    discardPeriodicTasks();
+    const tela = abrir(DashboardComponent);
+    const sino: HTMLAnchorElement = tela.nativeElement.querySelector('app-notification-bell a');
+    expect(sino.querySelector('.badge')).toBeNull();
+    consultas = [{ ...consulta, versao: 1 }];
+    tick(30_000);
+    tela.detectChanges();
+    expect(sino.querySelector('.badge')?.textContent?.trim()).toBe('1');
+    expect(sino.getAttribute('aria-label')).toBe('Notificações, 1 não lida');
+    tela.destroy();
+
+    usuarioId = 910762;
+    const outraConta = abrir(DashboardComponent);
+    expect(outraConta.nativeElement.querySelector('.badge')?.textContent?.trim()).toBe('2');
+    outraConta.destroy();
   }));
 
-  it('não exibe o aviso quando não há solicitações pendentes', fakeAsync(() => {
-    const fixture = criar([]);
+  it('preserva o aviso quando a página de notificações falha ao carregar', fakeAsync(() => {
+    indisponivel = true;
+    const notificacoes = abrir(NotificacoesComponent);
+    expect(notificacoes.nativeElement.textContent).toContain('Notificações indisponíveis');
+    notificacoes.destroy();
 
-    expect(fixture.nativeElement.querySelector('[data-testid="solicitacoes-pendentes"]')).toBeNull();
-    discardPeriodicTasks();
+    indisponivel = false;
+    const tela = abrir(DashboardComponent);
+    expect(tela.nativeElement.querySelector('.badge')?.textContent?.trim()).toBe('2');
+    tela.destroy();
+  }));
+
+  it('conta o resultado no sino e abre os exames do atendimento', fakeAsync(() => {
+    consultas = [];
+    vinculos = [];
+    resultados = [{ id: 1, pacienteId: 7, pacienteNome: 'Paciente de teste', atendimentoId: 12,
+      exameNome: 'Hemograma', criadaEm: '2026-11-20T12:00:00Z' }];
+    const inicio = abrir(DashboardComponent);
+    expect(inicio.nativeElement.querySelector('app-notification-bell a').getAttribute('aria-label'))
+      .toBe('Notificações, 1 não lida');
+    inicio.destroy();
+
+    const notificacoes = abrir(NotificacoesComponent);
+    const painel: HTMLElement = notificacoes.nativeElement;
+    expect(painel.textContent).toContain('Hemograma');
+    expect(painel.querySelector('.link-resultado')?.getAttribute('href')).toBe('/pacientes/7/exames?atendimentoId=12');
+    notificacoes.destroy();
+
+    const lido = abrir(DashboardComponent);
+    expect(lido.nativeElement.querySelector('app-notification-bell .badge')).toBeNull();
+    lido.destroy();
+  }));
+
+  it('distingue as consultas e avisa sobre o vínculo antes do aceite', fakeAsync(() => {
+    consultas = [
+      consulta,
+      { ...consulta, id: 2, avulsa: false, tipo: 'ACOMPANHAMENTO' },
+      { ...consulta, id: 3, avulsa: false, tipo: 'REAGENDAMENTO' },
+      { ...consulta, id: 4, avulsa: false, tipo: 'CONSULTA' }
+    ];
+    const tela = abrir(NotificacoesComponent);
+    const painel: HTMLElement = tela.nativeElement;
+    const rotulos = [...painel.querySelectorAll('.tipo-solicitacao')].map(item => item.textContent?.trim());
+    expect(rotulos).toEqual([
+      'Acompanhamento nutricional', 'Primeira consulta', 'Consulta de acompanhamento', 'Reagendamento', 'Solicitação de consulta'
+    ]);
+    expect(painel.querySelector('.horario-consulta')?.textContent).toContain('45 min');
+    expect(painel.querySelectorAll('.aviso-vinculo').length).toBe(1);
+    expect(painel.querySelector('.aviso-vinculo')?.textContent).toContain('ativa o vínculo com o paciente');
+    expect(painel.querySelector('.acoes[aria-describedby]')?.getAttribute('aria-describedby')).toBe('aviso-vinculo-1');
+    tela.destroy();
   }));
 });
-

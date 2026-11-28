@@ -7,6 +7,7 @@ import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.StatusRelacaoClinica;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 
 import org.springframework.data.jpa.repository.Query;
 
@@ -25,6 +26,10 @@ public interface PacienteRepository extends JpaRepository<Paciente, Integer> {
     @Query("select p from Paciente p where p.id = :id")
     Optional<Paciente> findByIdForUpdate(@Param("id") Integer id);
 
+    @Modifying
+    @Query("update Paciente p set p.lembretesConsultaAtivos = :ativa where p.id = :id")
+    int definirLembretesConsulta(@Param("id") Integer id, @Param("ativa") boolean ativa);
+
 
 
 
@@ -42,21 +47,7 @@ public interface PacienteRepository extends JpaRepository<Paciente, Integer> {
 
 
 
-    Optional<Paciente> findByCpf(String cpf);
-
-
-
-    @Query("""
-
-            SELECT p FROM Paciente p
-
-            WHERE p.cpf IS NOT NULL
-
-              AND REPLACE(REPLACE(REPLACE(p.cpf, '.', ''), '-', ''), ' ', '') = :cpfDigitos
-
-            """)
-
-    Optional<Paciente> findByCpfDigitos(@Param("cpfDigitos") String cpfDigitos);
+    Optional<Paciente> findByCpfAndCpfOriginalConflitanteIsNull(String cpf);
 
 
 

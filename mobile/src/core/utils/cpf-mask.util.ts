@@ -9,7 +9,11 @@ export function extractCpfDigits(value: string): string {
 
 /** Formato exibido no input, alinhado ao placeholder: 000.000.000-00 */
 export function formatCpfDisplay(value: string): string {
-  const digits = extractCpfDigits(value);
+  const candidate = value.trim();
+  const digits = candidate.replace(/\D/g, '');
+  if (/[^\d.-]/.test(candidate) || digits.length > CPF_DIGIT_COUNT || (candidate && !digits)) {
+    return value;
+  }
   if (digits.length === 0) {
     return '';
   }
@@ -25,18 +29,28 @@ export function formatCpfDisplay(value: string): string {
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 }
 
-/** Formato persistido no banco/seed: 111.222.333-44 */
+/** Formato usado no envio do CPF preenchido. */
 export function normalizeCpf(value: string): string | undefined {
   const digits = extractCpfDigits(value);
-  if (digits.length === 0) {
-    return undefined;
-  }
-  if (digits.length !== CPF_DIGIT_COUNT) {
-    return formatCpfDisplay(digits);
-  }
-  return formatCpfDisplay(digits);
+  return digits ? formatCpfDisplay(digits) : undefined;
 }
 
-export function isCpfComplete(value: string): boolean {
-  return extractCpfDigits(value).length === CPF_DIGIT_COUNT;
+function cpfCheckDigit(digits: string, length: number): number {
+  let sum = 0;
+  for (let index = 0; index < length; index += 1) {
+    sum += Number(digits[index]) * (length + 1 - index);
+  }
+  const digit = 11 - (sum % 11);
+  return digit >= 10 ? 0 : digit;
+}
+
+export function isCpfValid(value: string): boolean {
+  if (!/^(?:\d{11}|\d{3}\.\d{3}\.\d{3}-\d{2})$/.test(value.trim())) {
+    return false;
+  }
+
+  const digits = extractCpfDigits(value);
+  return !/^(\d)\1{10}$/.test(digits)
+    && cpfCheckDigit(digits, 9) === Number(digits[9])
+    && cpfCheckDigit(digits, 10) === Number(digits[10]);
 }

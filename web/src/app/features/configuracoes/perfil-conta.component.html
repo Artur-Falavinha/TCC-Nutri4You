@@ -1,0 +1,91 @@
+<section class="grupo" aria-labelledby="perfil-profissional-titulo">
+  <h3 id="perfil-profissional-titulo">Perfil profissional</h3>
+  @if (perfil()) {
+    <form class="formulario" [formGroup]="perfilForm" (ngSubmit)="salvarPerfil()" [attr.aria-busy]="salvandoPerfil()" novalidate>
+      <div class="campos-profissionais">
+        <app-ui-input inputId="perfil-nome" label="Nome completo" autocomplete="name" formControlName="nome"
+          [required]="true" [maxlength]="150" [readonly]="salvandoPerfil()"
+          [errorMessage]="perfilForm.controls.nome.touched && !perfilForm.controls.nome.value.trim() ? 'Informe seu nome.' : ''" />
+        <app-ui-input inputId="perfil-crn" label="CRN" placeholder="CRN-8 12345" mask="crn" autocomplete="off"
+          formControlName="crn" [required]="true" [readonly]="salvandoPerfil()"
+          [errorMessage]="perfilForm.controls.crn.touched && crnFoiAlterado && perfilForm.controls.crn.invalid ? 'Informe o CRN no formato CRN-8 12345.' : ''" />
+      </div>
+      @if (erroPerfil() && !reaceiteAberto()) { <p class="erro" role="alert">{{ erroPerfil() }}</p> }
+      <div class="acoes">
+        <app-ui-button label="Salvar dados" type="submit" icon="floppy-disk" [fullWidth]="false"
+          [loading]="salvandoPerfil()" />
+      </div>
+    </form>
+  } @else if (erroPerfil()) {
+    <p class="erro" role="alert">{{ erroPerfil() }}</p>
+    <app-ui-button label="Tentar carregar dados profissionais" variant="secondary" [fullWidth]="false" (click)="carregarPerfil()" />
+  } @else {
+    <p class="descricao" role="status">Carregando dados profissionais…</p>
+  }
+  @if (reaceiteAberto()) {
+    <app-dialogo-confirmacao
+      titulo="Confirmar alteração de CRN"
+      descricao="Para salvar o novo CRN, aceite novamente os termos de uso e declare a validade do registro."
+      confirmar="Aceitar e salvar" voltar="Voltar à edição" icone="identification-card"
+      [ocupado]="salvandoPerfil()" rotuloOcupado="Salvando…" [erro]="erroPerfil()"
+      (fechar)="fecharReaceite()" (confirmado)="salvarPerfil()">
+      <div class="termos">
+        <a class="link" [href]="urlTermos" target="_blank" rel="noopener">Ler termos de uso e aviso de privacidade (PDF)</a>
+        <app-ui-checkbox checkboxId="perfil-termos-crn"
+          label="Li e aceito os termos de uso e declaro que meus dados profissionais são verdadeiros e que meu CRN é válido."
+          [required]="true" [formControl]="perfilForm.controls.termos"
+          [errorMessage]="perfilForm.controls.termos.touched && !perfilForm.controls.termos.value ? 'Aceite os termos e declare a validade do CRN para confirmar a troca.' : ''" />
+      </div>
+    </app-dialogo-confirmacao>
+  }
+</section>
+
+<section class="grupo" aria-labelledby="acesso-conta-titulo">
+  <h3 id="acesso-conta-titulo">Acesso à conta</h3>
+  <div class="acesso">
+    <div class="acesso__linha">
+      <div class="acesso__texto">
+        <h4>E-mail de acesso</h4>
+        <p class="descricao">{{ emailAtual() }}</p>
+      </div>
+      <app-ui-button label="Alterar e-mail" icon="envelope-simple" variant="secondary" (click)="abrirAlteracaoEmail()" />
+    </div>
+    <div class="acesso__linha">
+      <div class="acesso__texto">
+        <h4>Senha da conta</h4>
+        <p class="descricao">Receba um link de redefinição no e-mail de acesso.</p>
+      </div>
+      <app-ui-button [label]="enviandoSenha() ? 'Enviando…' : 'Enviar link'" icon="key" variant="secondary"
+        [loading]="enviandoSenha()" (click)="solicitarRedefinicao()" />
+    </div>
+  </div>
+  @if (alterandoEmail()) {
+    <app-dialogo-confirmacao
+      titulo="Alterar e-mail"
+      [descricao]="destinoEmail() ? 'Cole o código enviado para ' + destinoEmail() + '. Ele expira em 30 minutos.' : 'Informe o novo endereço e confirme sua senha atual. Você usará o novo e-mail para entrar.'"
+      [confirmar]="destinoEmail() ? 'Confirmar novo e-mail' : 'Enviar código'"
+      voltar="Cancelar alteração" icone="envelope-simple"
+      [ocupado]="salvandoEmail()" [rotuloOcupado]="destinoEmail() ? 'Confirmando…' : 'Enviando…'"
+      [erro]="erroEmail()" (fechar)="fecharAlteracaoEmail()"
+      (confirmado)="destinoEmail() ? confirmarEmail() : enviarCodigo()">
+      <form class="formulario" [formGroup]="emailForm" (ngSubmit)="destinoEmail() ? confirmarEmail() : enviarCodigo()" novalidate>
+        @if (destinoEmail()) {
+          <app-ui-input inputId="perfil-email-codigo" label="Código de verificação" autocomplete="one-time-code" formControlName="codigo"
+            [required]="true" [readonly]="salvandoEmail()" />
+          <div class="acoes">
+            <app-ui-button label="Solicitar outro código" variant="secondary" [fullWidth]="false"
+              [disabled]="salvandoEmail()" (click)="reiniciarEmail()" />
+          </div>
+        } @else {
+          <app-ui-input inputId="perfil-email-novo" label="Novo e-mail" type="email" autocomplete="email" formControlName="novoEmail"
+            [required]="true" [maxlength]="100" [readonly]="salvandoEmail()"
+            [errorMessage]="emailForm.controls.novoEmail.touched && emailForm.controls.novoEmail.invalid ? 'Informe um novo e-mail válido.' : ''" />
+          <app-ui-input inputId="perfil-email-senha" label="Senha atual" type="password" autocomplete="current-password" formControlName="senhaAtual"
+            [required]="true" [readonly]="salvandoEmail()"
+            [errorMessage]="emailForm.controls.senhaAtual.touched && emailForm.controls.senhaAtual.invalid ? 'Informe sua senha atual.' : ''" />
+        }
+        <button type="submit" hidden></button>
+      </form>
+    </app-dialogo-confirmacao>
+  }
+</section>

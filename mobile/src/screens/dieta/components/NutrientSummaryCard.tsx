@@ -83,7 +83,7 @@ export function NutrientSummaryCard({
     return (
       <View style={styles.card} testID="nutrient-goals-card">
         <View style={styles.headerBlock}>
-          <Text style={styles.title} accessibilityRole="header">
+          <Text style={styles.title} accessibilityRole="header" aria-level={2}>
             {title}
           </Text>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -119,7 +119,7 @@ export function NutrientSummaryCard({
   return (
     <View style={styles.card}>
       <View style={styles.headerBlock}>
-        <Text style={styles.title} accessibilityRole="header">
+        <Text style={styles.title} accessibilityRole="header" aria-level={2}>
           {title}
         </Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -160,6 +160,11 @@ export function NutrientSummaryCard({
                     style={styles.progressTrack}
                     testID={`nutrient-progress-bar-${spec.key}`}
                     accessibilityRole="progressbar"
+                    accessibilityLabel={entry.label}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(clampedPercent)}
+                    aria-valuetext={`${percentage}% da meta`}
                   >
                     <View
                       style={[
@@ -191,6 +196,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
     padding: spacing.md,
     gap: spacing.md,
     ...shadows.card
@@ -199,15 +206,16 @@ const styles = StyleSheet.create({
     gap: 2
   },
   title: {
-    color: colors.text,
-    fontFamily: fontFamily.bold,
-    fontSize: 16
+    color: colors.brandDeep,
+    fontFamily: fontFamily.extrabold,
+    fontSize: 18,
+    lineHeight: 25
   },
   subtitle: {
     color: colors.textSecondary,
     fontFamily: fontFamily.regular,
-    fontSize: 12,
-    lineHeight: 17
+    fontSize: 13,
+    lineHeight: 19
   },
   grid: {
     flexDirection: 'row',
@@ -218,7 +226,7 @@ const styles = StyleSheet.create({
     flexBasis: '47%',
     flexGrow: 1,
     minWidth: 120,
-    backgroundColor: colors.pageAlt,
+    backgroundColor: colors.page,
     borderRadius: radius.md,
     padding: spacing.sm,
     gap: 6
@@ -228,14 +236,16 @@ const styles = StyleSheet.create({
   },
   cellHeader: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.xs
   },
   label: {
+    flexShrink: 1,
     color: colors.textSecondary,
     fontFamily: fontFamily.semibold,
-    fontSize: 12
+    fontSize: 13
   },
   percentBadge: {
     color: colors.brandDeep,
@@ -248,7 +258,8 @@ const styles = StyleSheet.create({
   value: {
     color: colors.text,
     fontFamily: fontFamily.bold,
-    fontSize: 15
+    fontSize: 16,
+    fontVariant: ['tabular-nums']
   },
   progressSection: {
     gap: 4,
@@ -257,7 +268,7 @@ const styles = StyleSheet.create({
   progressTrack: {
     height: 8,
     width: '100%',
-    backgroundColor: '#e2e8f0',
+    backgroundColor: colors.border,
     borderRadius: radius.pill,
     overflow: 'hidden'
   },
@@ -300,6 +311,7 @@ const styles = StyleSheet.create({
   goalPrimary: {
     color: colors.text,
     fontFamily: fontFamily.bold,
-    fontSize: 18
+    fontSize: 18,
+    fontVariant: ['tabular-nums']
   }
 });

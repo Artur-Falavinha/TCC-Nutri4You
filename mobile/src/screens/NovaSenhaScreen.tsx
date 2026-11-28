@@ -7,19 +7,22 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   ScrollView,
-  ActivityIndicator
+  ActivityIndicator,
+  useWindowDimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthScreenLayout } from '../components/auth/AuthScreenLayout';
-import { authFormStyles } from '../components/auth/authFormStyles';
+import { recuperacaoSenhaStyles as formulario } from '../components/auth/recuperacaoSenhaStyles';
+import { toast } from '../components/feedback/toast';
 import { useAppAlert } from '../components/feedback/AppAlertProvider';
 import { AppHeader } from '../components/layout/AppHeader';
+import { SectionCardHeader, sectionCardStyles } from '../components/layout/SectionCardHeader';
 import { MenuDestination, SideMenu } from '../components/navigation/SideMenu';
 import { logout, redefinirSenha } from '../core/auth/auth.service';
 import { getToken } from '../core/auth/token-storage';
@@ -27,14 +30,18 @@ import { ApiError } from '../core/api/api-response.types';
 import { carregarPerfil } from '../core/perfil/perfil.service';
 import { isValidUuid } from '../core/utils/uuid.util';
 import type { RootStackParamList } from '../navigation/types';
+import { colors, radius } from '../theme/tokens';
+import { perfilStyles } from './home/perfil.styles';
 
 export default function NovaSenhaScreen() {
+  const { width } = useWindowDimensions();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { showAlert } = useAppAlert();
   const route = useRoute<RouteProp<RootStackParamList, 'NovaSenha'>>();
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [senhaVisivel, setSenhaVisivel] = useState(false);
+  const [confirmacaoSenhaVisivel, setConfirmacaoSenhaVisivel] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userName, setUserName] = useState('Paciente');
@@ -69,9 +76,9 @@ export default function NovaSenhaScreen() {
 
   useEffect(() => {
     if (!token || !isValidUuid(token)) {
-      showAlert('Link inválido', 'Token de redefinição ausente ou inválido.', [
+      showAlert('Link inválido', 'Peça um novo código para redefinir sua senha.', [
         {
-          text: 'OK',
+          text: 'Pedir novo código',
           onPress: () => navigation.navigate('TrocarSenha')
         }
       ]);
@@ -80,22 +87,22 @@ export default function NovaSenhaScreen() {
 
   const handleSubmit = async () => {
     if (!token || !isValidUuid(token)) {
-      showAlert('Erro', 'Token de redefinição ausente ou inválido.');
+      toast.erro('Token de redefinição ausente ou inválido.');
       return;
     }
 
     if (!novaSenha || !confirmarSenha) {
-      showAlert('Atenção', 'Preencha todos os campos.');
+      toast.aviso('Preencha todos os campos.');
       return;
     }
 
     if (novaSenha.length < 8) {
-      showAlert('Atenção', 'A senha deve ter no mínimo 8 caracteres.');
+      toast.aviso('A senha deve ter no mínimo 8 caracteres.');
       return;
     }
 
     if (novaSenha !== confirmarSenha) {
-      showAlert('Erro', 'As senhas não coincidem. Verifique e tente novamente.');
+      toast.erro('As senhas não coincidem. Verifique e tente novamente.');
       return;
     }
 
@@ -103,25 +110,15 @@ export default function NovaSenhaScreen() {
 
     try {
       await redefinirSenha(token, novaSenha);
-      showAlert('Sucesso', 'Senha alterada com sucesso!', [
-        {
-          text: 'OK',
-          onPress: () =>
-            navigation.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [{ name: isAuthenticated ? 'Dashboard' : 'Login' }]
-              })
-            )
-        }
-      ]);
+      toast.sucesso('Senha alterada com sucesso!');
+      navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: isAuthenticated ? 'Dashboard' : 'Login' }] }));
     } catch (err: unknown) {
       const apiError = err instanceof ApiError ? err : null;
       const mensagem =
         apiError?.error === 'REQUISICAO_INVALIDA' || apiError?.status === 400
           ? 'Token inválido ou expirado. Solicite uma nova recuperação de senha.'
           : (apiError?.message ?? 'Não foi possível alterar a senha.');
-      showAlert('Erro', mensagem);
+      toast.erro(mensagem);
     } finally {
       setIsLoading(false);
     }
@@ -160,96 +157,106 @@ export default function NovaSenhaScreen() {
     }
   };
 
-  const backLabel = isAuthenticated ? 'Voltar ao início' : 'Voltar para o login';
-  const passwordCard = (
-    <View style={authFormStyles.card}>
-      <View style={authFormStyles.header}>
-        <Text style={authFormStyles.title} accessibilityRole="header">Redefinir senha</Text>
-        <Text style={authFormStyles.description}>
+  const rotuloVoltar = isAuthenticated ? 'Voltar ao início' : 'Voltar para o login';
+  const cartao = (
+    <View style={sectionCardStyles.superficie}>
+      <View style={formulario.cabecalho}>
+        <SectionCardHeader
+          icone="shield"
+          titulo={isAuthenticated ? 'Escolha sua nova senha' : 'Redefinir senha'}
+        />
+        <Text style={perfilStyles.descricao}>
           Escolha uma senha de pelo menos 8 caracteres e confirme abaixo.
         </Text>
       </View>
 
-      <View style={authFormStyles.inputGroup}>
-        <Text style={authFormStyles.label}>Nova senha</Text>
-        <View style={authFormStyles.inputContainer}>
-          <Feather name="lock" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+      <View style={formulario.campo}>
+        <Text style={formulario.rotulo}>Nova senha</Text>
+        <View style={[formulario.controle, estilos.controleComVisibilidade]}>
+          <Feather name="lock" size={18} color={colors.textSecondary} aria-hidden />
           <TextInput
-            style={authFormStyles.input}
+            style={formulario.entrada}
             placeholder="••••••••"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colors.textSecondary}
             accessibilityLabel="Nova senha"
             autoComplete="new-password"
-            secureTextEntry={!showPassword}
+            secureTextEntry={!senhaVisivel}
             value={novaSenha}
             onChangeText={setNovaSenha}
           />
-          <TouchableOpacity
-            style={styles.iconRight}
-            onPress={() => setShowPassword((visible) => !visible)}
+          <Pressable
+            style={({ pressed }) => [estilos.visibilidade, pressed && perfilStyles.pressionado]}
+            onPress={() => setSenhaVisivel((visivel) => !visivel)}
             accessibilityRole="button"
-            accessibilityLabel={showPassword ? 'Ocultar senhas' : 'Mostrar senhas'}
+            accessibilityLabel={senhaVisivel ? 'Ocultar nova senha' : 'Mostrar nova senha'}
           >
-            <Feather name={showPassword ? 'eye-off' : 'eye'} size={20} color="#64748b" />
-          </TouchableOpacity>
+            <Feather name={senhaVisivel ? 'eye-off' : 'eye'} size={18} color={colors.brandDark} aria-hidden />
+          </Pressable>
         </View>
       </View>
 
-      <View style={authFormStyles.inputGroup}>
-        <Text style={authFormStyles.label}>Confirmar nova senha</Text>
-        <View style={authFormStyles.inputContainer}>
-          <Feather name="lock" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+      <View style={formulario.campo}>
+        <Text style={formulario.rotulo}>Confirmar nova senha</Text>
+        <View style={[formulario.controle, estilos.controleComVisibilidade]}>
+          <Feather name="lock" size={18} color={colors.textSecondary} aria-hidden />
           <TextInput
-            style={authFormStyles.input}
+            style={formulario.entrada}
             placeholder="••••••••"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colors.textSecondary}
             accessibilityLabel="Confirmar nova senha"
             autoComplete="new-password"
-            secureTextEntry={!showPassword}
+            secureTextEntry={!confirmacaoSenhaVisivel}
             value={confirmarSenha}
             onChangeText={setConfirmarSenha}
           />
+          <Pressable
+            style={({ pressed }) => [estilos.visibilidade, pressed && perfilStyles.pressionado]}
+            onPress={() => setConfirmacaoSenhaVisivel((visivel) => !visivel)}
+            accessibilityRole="button"
+            accessibilityLabel={confirmacaoSenhaVisivel ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+          >
+            <Feather name={confirmacaoSenhaVisivel ? 'eye-off' : 'eye'} size={18} color={colors.brandDark} aria-hidden />
+          </Pressable>
         </View>
       </View>
 
-      <TouchableOpacity
-        style={authFormStyles.button}
-        onPress={handleSubmit}
-        disabled={isLoading}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-        accessibilityState={{ busy: isLoading, disabled: isLoading }}
-      >
-        {isLoading ? (
-          <ActivityIndicator color="#ffffff" />
-        ) : (
-          <>
-            <Text style={authFormStyles.buttonText}>Salvar nova senha</Text>
-            <Feather name="arrow-right" size={16} color="#ffffff" />
-          </>
-        )}
-      </TouchableOpacity>
+      <View style={formulario.acoes}>
+        <Pressable
+          style={({ pressed }) => [
+            perfilStyles.botao, perfilStyles.primario,
+            pressed && perfilStyles.pressionado, isLoading && formulario.enviando
+          ]}
+          onPress={handleSubmit}
+          disabled={isLoading}
+          accessibilityRole="button"
+          aria-busy={isLoading}
+        >
+          <Text style={perfilStyles.rotuloPrimario}>Salvar nova senha</Text>
+          {isLoading
+            ? <ActivityIndicator size="small" color={colors.white} />
+            : <Feather name="arrow-right" size={18} color={colors.white} aria-hidden />}
+        </Pressable>
 
-      <TouchableOpacity
-        style={authFormStyles.secondaryAction}
-        onPress={() => navigation.navigate(isAuthenticated ? 'Dashboard' : 'Login')}
-        activeOpacity={0.75}
-        accessibilityRole="button"
-        accessibilityLabel={backLabel}
-        testID="nova-senha-back-button"
-      >
-        <Feather name="arrow-left" size={16} color="#005414" />
-        <Text style={authFormStyles.secondaryActionText}>{backLabel}</Text>
-      </TouchableOpacity>
+        <Pressable
+          style={({ pressed }) => [perfilStyles.botao, pressed && perfilStyles.pressionado]}
+          onPress={() => navigation.navigate(isAuthenticated ? 'Dashboard' : 'Login')}
+          accessibilityRole="button"
+          accessibilityLabel={rotuloVoltar}
+          testID="nova-senha-back-button"
+        >
+          <Feather name="arrow-left" size={18} color={colors.brandDark} aria-hidden />
+          <Text style={perfilStyles.rotuloBotao}>{rotuloVoltar}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 
   if (!isAuthenticated) {
-    return <AuthScreenLayout>{passwordCard}</AuthScreenLayout>;
+    return <AuthScreenLayout>{cartao}</AuthScreenLayout>;
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView style={formulario.areaSegura} edges={['left', 'right', 'bottom']}>
       <AppHeader onOpenMenu={() => setMenuVisible(true)} />
       <SideMenu
         visible={menuVisible}
@@ -259,34 +266,28 @@ export default function NovaSenhaScreen() {
         onNavigate={(destination) => void handleMenuNavigate(destination)}
       />
 
-      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <View style={styles.content}>{passwordCard}</View>
+      <KeyboardAvoidingView style={formulario.preencher} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          style={formulario.preencher}
+          contentContainerStyle={[formulario.conteudo, width < 420 && formulario.conteudoCompacto]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={formulario.titulo} accessibilityRole="header" aria-level={1}>Redefinir senha</Text>
+          {cartao}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f9f9f9'
-  },
-  fill: {
-    flex: 1
-  },
-  scrollContent: {
-    flexGrow: 1,
+const estilos = StyleSheet.create({
+  controleComVisibilidade: { paddingRight: 0 },
+  visibilidade: {
+    minWidth: 48,
+    minHeight: 48,
+    alignSelf: 'stretch',
     alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 16
-  },
-  content: {
-    width: '100%',
-    maxWidth: 408
-  },
-  iconRight: {
-    padding: 5
+    justifyContent: 'center',
+    borderRadius: radius.md
   }
 });

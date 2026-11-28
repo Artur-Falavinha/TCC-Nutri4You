@@ -24,6 +24,8 @@ Resposta: `id`, `pacienteId`, `nutricionistaId`, `nome`, `descricao`, `dataSolic
 
 Paciente só acessa seus exames. Nutricionista precisa de acesso clínico e ser o autor, mesmo em pacientes compartilhados. Download aplica as mesmas verificações, com attachment, `Cache-Control: no-store, private` e `X-Content-Type-Options: nosniff`. Arquivos legados sem MIME validado são entregues como `application/octet-stream`.
 
+`id_paciente` e `id_nutricionista` são mantidos no exame como autoria e escopo explícitos, pois o exame pode existir sem consulta. Quando `id_consulta` é informado, uma FK composta garante que paciente e nutricionista coincidam com os da consulta.
+
 Erros: 400 validação/parâmetros; 401 sem autenticação; 403 perfil/acesso; 404 recurso alheio/inexistente; 409 versão; 413 limite multipart. O limite verificado dentro do serviço retorna 400; o limite barrado pelo servidor multipart retorna 413.
 
 V12 preserva exames existentes e adiciona metadados, versão e parecer. As telas pertencem à frente de Deretti e a revisão visual à de Artur. Alinhar estados e limite de upload antes da integração final.

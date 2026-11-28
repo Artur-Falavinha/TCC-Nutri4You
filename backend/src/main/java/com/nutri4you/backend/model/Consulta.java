@@ -18,6 +18,8 @@ import java.time.LocalDateTime;
 @Table(name = "Consulta")
 public class Consulta {
 
+    public static final int DURACAO_MINUTOS = 45;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_consulta")
@@ -39,6 +41,9 @@ public class Consulta {
 
     @Column(nullable = false)
     private boolean avulsa;
+
+    @Column(name = "reagendada")
+    private Boolean reagendada = false;
 
     @Column(name = "observacao", columnDefinition = "text")
     private String observacao;
@@ -84,12 +89,26 @@ public class Consulta {
         return dataHora;
     }
 
+    public boolean sobrepoe(LocalDateTime inicio) {
+        return dataHora.isBefore(inicio.plusMinutes(DURACAO_MINUTOS))
+                && dataHora.plusMinutes(DURACAO_MINUTOS).isAfter(inicio);
+    }
+
     public String getStatus() {
         return status;
     }
 
     public boolean isAvulsa() {
         return avulsa;
+    }
+
+    public boolean foiReagendada() {
+        return Boolean.TRUE.equals(reagendada);
+    }
+
+    public void integrarAoAcompanhamento() {
+        this.avulsa = false;
+        this.atualizadoEm = Instant.now();
     }
 
     public void cancelar() {
@@ -105,6 +124,7 @@ public class Consulta {
     public void reagendar(LocalDateTime dataHora) {
         this.dataHora = dataHora;
         this.status = "AGUARDANDO_CONFIRMACAO";
+        this.reagendada = true;
         this.atualizadoEm = Instant.now();
     }
 

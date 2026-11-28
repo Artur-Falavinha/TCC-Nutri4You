@@ -1,0 +1,46 @@
+<section class="privacidade" aria-labelledby="privacidade-titulo">
+  <div class="privacidade__documentos">
+    <h3 id="privacidade-titulo">Privacidade</h3>
+    <div class="termos">
+      <a class="acao-privacidade" [href]="urlTermos" target="_blank" rel="noopener"
+        aria-label="Ler termos e aviso de privacidade (PDF, abre nova aba)">
+        <i class="ph ph-file-pdf" aria-hidden="true"></i>
+        <span>Ler termos e aviso de privacidade (PDF)</span>
+        <i class="ph ph-arrow-square-out" aria-hidden="true"></i>
+      </a>
+
+      @if (aceite(); as termos) {
+        @if (termos.aceito) {
+          <div class="aceite">
+            <p class="aceite__titulo"><i class="ph ph-check-circle" aria-hidden="true"></i> Termos aceitos</p>
+            <dl>
+              <div><dt>Versão</dt><dd>{{ formatarVersao(termos.versao) }}</dd></div>
+              @if (termos.aceitoEm && formatarDataAceite(termos.aceitoEm); as data) {
+                <div><dt>Aceito em</dt><dd><time [attr.datetime]="termos.aceitoEm">{{ data }}</time></dd></div>
+              }
+            </dl>
+          </div>
+        } @else {
+          <p class="estado">Nenhum aceite registrado.</p>
+        }
+      } @else if (erro()) {
+        <p class="erro" role="alert">{{ erro() }}</p>
+      } @else {
+        <p class="estado" role="status">Consultando o aceite dos termos…</p>
+      }
+    </div>
+  </div>
+
+  <div class="direitos">
+    <div class="direitos__contato">
+      <h4>Direitos sobre seus dados</h4>
+      <p>Para solicitações sobre seus dados pessoais, entre em contato com a informática da UFPR pelo e-mail
+        <a href="mailto:suporte@ufpr.br">suporte&#64;ufpr.br</a>.
+      </p>
+    </div>
+    <a class="acao-privacidade direitos__link" href="https://ufpr.br/lgpd/direitos-do-titular/" target="_blank" rel="noopener">
+      <span>Como exercer seus direitos na UFPR</span>
+      <i class="ph ph-arrow-square-out" aria-hidden="true"></i>
+    </a>
+  </div>
+</section>

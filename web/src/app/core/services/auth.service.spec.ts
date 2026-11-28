@@ -69,7 +69,7 @@ describe('AuthService', () => {
         crn: 'CRN8-12345',
         tokenCadastro: '550e8400-e29b-41d4-a716-446655440000',
         crnDeclarado: true,
-        versaoTermos: '2026-11-19'
+        versaoTermos: '2026-11-22'
       })
       .subscribe();
 
@@ -80,7 +80,7 @@ describe('AuthService', () => {
       crn: 'CRN8-12345',
       tokenCadastro: '550e8400-e29b-41d4-a716-446655440000',
       crnDeclarado: true,
-      versaoTermos: '2026-11-19'
+      versaoTermos: '2026-11-22'
     });
   });
 

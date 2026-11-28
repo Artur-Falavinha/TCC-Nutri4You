@@ -34,6 +34,8 @@ Registro de viabilidade e riscos para integrações previstas nas sprints futura
 | **Riscos** | Tamanho máximo, tipos MIME, LGPD, backup |
 | **Mitigação** | Validar tipo/tamanho na API; limitar a perfis autorizados; não armazenar em repositório Git |
 
+Para o escopo acadêmico, o `BYTEA` simplifica consistência transacional, autorização e backup, com limite de 5 MiB por arquivo. Em uma implantação com maior volume, o banco cresceria junto com os binários e aumentaria o custo de backup/restauração; nesse cenário, a evolução recomendada é armazenamento de objetos privado, mantendo no PostgreSQL apenas metadados e a chave do objeto.
+
 ## Ambiente de implantação
 
 | Item | Decisão |

@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 
+import { ToastService } from '../../../../core/services/toast.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ApiErrorResponse } from '../../../../core/models/api-response.model';
 import { AuthFormCardComponent } from '../../../../shared/components/auth-form-card/auth-form-card.component';
@@ -32,6 +33,7 @@ import { INVALID_TOKEN_MESSAGE, isUuid } from '../../../../shared/utils/uuid.uti
   styleUrl: './reset-password.component.css'
 })
 export class ResetPasswordComponent implements OnInit {
+  private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
@@ -40,7 +42,6 @@ export class ResetPasswordComponent implements OnInit {
   loading = false;
   submitted = false;
   errorMessage = '';
-  successMessage = '';
   token = '';
 
   form = this.fb.nonNullable.group(
@@ -78,7 +79,6 @@ export class ResetPasswordComponent implements OnInit {
 
     this.loading = true;
     this.errorMessage = '';
-    this.successMessage = '';
 
     const { senha } = this.form.getRawValue();
 
@@ -89,11 +89,13 @@ export class ResetPasswordComponent implements OnInit {
         next: (mensagem) => {
           this.authService.logout();
           this.token = '';
-          this.successMessage = mensagem;
+          this.toast.sucesso(mensagem);
           setTimeout(() => void this.router.navigate(['/login']), 2000);
         },
         error: (error: ApiErrorResponse) => {
-          this.errorMessage = this.resolveSubmitError(error);
+          const mensagem = this.resolveSubmitError(error);
+          if (mensagem === INVALID_TOKEN_MESSAGE) this.errorMessage = mensagem;
+          else this.toast.erro(mensagem);
         }
       });
   }

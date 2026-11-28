@@ -32,9 +32,10 @@ docker compose up --build
 | 1 | Aguarde logs de `nutri4you-backend` com `Started BackendApplication` |
 | 2 | Aguarde `nutri4you-web` com `Compiled successfully` / `Application bundle generation complete` |
 | 3 | Abra **[http://localhost:4200/login](http://localhost:4200/login)** |
-| 4 | Login nutricionista seed: `nutri@nutri4you.com` / senha `password` |
-| 4b | Autocadastro nutri: **[http://localhost:4200/cadastro](http://localhost:4200/cadastro)** → confirmar e-mail → dados e senha → login |
+| 4 | Faça o **[autocadastro de nutricionista](http://localhost:4200/cadastro)**. Confirme o e-mail e aceite os termos disponíveis em PDF com a declaração de validade do CRN. Defina a senha e entre com a conta criada. |
 | 5 | Após login → redirect para **/dashboard** |
+
+O acesso exige um aceite registrado. As contas seed sem aceite servem para consultar os dados de exemplo no banco.
 
 Health check da API: **[http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/health)**
 

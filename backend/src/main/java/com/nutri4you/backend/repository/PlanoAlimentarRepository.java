@@ -9,14 +9,20 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PlanoAlimentarRepository extends JpaRepository<PlanoAlimentar, Integer> {
+    boolean existsByPaciente_IdAndNutricionista_IdAndPublicadoEmIsNotNull(Integer pacienteId, Integer nutricionistaId);
+
     List<PlanoAlimentar> findByPaciente_IdOrderByIdDesc(Integer pacienteId);
     List<PlanoAlimentar> findByPaciente_IdAndStatus(Integer pacienteId, String status);
-    Optional<PlanoAlimentar> findByIdAndPaciente_IdAndNutricionista_Id(Integer id, Integer pacienteId, Integer nutricionistaId);
-    boolean existsByConsulta_Id(Integer consultaId);
+    Optional<PlanoAlimentar> findByIdAndPaciente_IdAndNutricionista_IdAndStatusNot(
+            Integer id, Integer pacienteId, Integer nutricionistaId, String status);
+    boolean existsByConsulta_IdAndStatusNot(Integer consultaId, String status);
+
+    boolean existsByPlanoAnterior_Id(Integer id);
 
     @Query("""
             select p from PlanoAlimentar p left join p.consulta c
             where p.paciente.id = :pacienteId and p.nutricionista.id = :nutricionistaId
+              and p.status <> 'EXCLUIDO'
               and ((:atendimentoId is null and (c.id is null or c.avulsa = false)) or c.id = :atendimentoId)
             order by p.id desc
             """)
@@ -24,7 +30,8 @@ public interface PlanoAlimentarRepository extends JpaRepository<PlanoAlimentar, 
 
     @Query("""
             select p from PlanoAlimentar p
-            where p.paciente.id = :pacienteId and p.status = 'PUBLICADO'
+            where p.paciente.id = :pacienteId
+              and (p.status = 'PUBLICADO' or (p.status = 'SUBSTITUIDO' and p.substituidaEm is not null))
               and (p.vigenciaInicio is null or p.vigenciaInicio <= :fim)
               and (p.vigenciaFim is null or p.vigenciaFim >= :inicio)
             order by p.id desc

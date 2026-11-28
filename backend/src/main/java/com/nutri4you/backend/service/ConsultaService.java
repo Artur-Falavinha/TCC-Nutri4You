@@ -20,6 +20,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.nutri4you.backend.service.NotificacaoAgendaEmailService.Tipo.CANCELADA;
+import static com.nutri4you.backend.service.NotificacaoAgendaEmailService.Tipo.CONFIRMADA;
+import static com.nutri4you.backend.service.NotificacaoAgendaEmailService.Tipo.RECUSADA;
+
 @Service
 public class ConsultaService {
     private static final Set<String> STATUS = Set.of(
@@ -31,11 +35,15 @@ public class ConsultaService {
     private final AvaliacaoAntropometricaRepository avaliacoes;
     private final HorarioConsultaService horarios;
     private final AnamneseService anamneses;
+    private final NotificacaoAgendaEmailService notificacoesEmail;
+    private final NotificacaoConsultaPacienteService notificacoesPaciente;
 
     public ConsultaService(GestaoPacienteService pacientes, ConsultaRepository consultas,
                            AvaliacaoAntropometricaRepository avaliacoes, Clock clock,
                            com.nutri4you.backend.repository.NutricionistaRepository nutricionistas,
-                           HorarioConsultaService horarios, AnamneseService anamneses) {
+                           HorarioConsultaService horarios, AnamneseService anamneses,
+                           NotificacaoAgendaEmailService notificacoesEmail,
+                           NotificacaoConsultaPacienteService notificacoesPaciente) {
         this.pacientes = pacientes;
         this.consultas = consultas;
         this.avaliacoes = avaliacoes;
@@ -43,7 +51,8 @@ public class ConsultaService {
         this.nutricionistas = nutricionistas;
         this.horarios = horarios;
         this.anamneses = anamneses;
-
+        this.notificacoesEmail = notificacoesEmail;
+        this.notificacoesPaciente = notificacoesPaciente;
     }
 
     @Transactional(readOnly = true)
@@ -62,7 +71,17 @@ public class ConsultaService {
     @Transactional(readOnly = true)
     public ConsultaResponse buscar(Nutricionista nutricionista, Integer pacienteId, Integer id) {
         pacientes.exigirAcesso(nutricionista, pacienteId);
-        return respostaComMedidas(exigirConsulta(nutricionista, pacienteId, id));
+        Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
+        if ("AGUARDANDO_CONFIRMACAO".equals(consulta.getStatus())) {
+            throw new IllegalArgumentException("Confirme a solicitação antes de abrir a consulta.");
+        }
+        return respostaComMedidas(consulta);
+    }
+
+    @Transactional(readOnly = true)
+    public void verificarAcesso(Nutricionista nutricionista, Integer pacienteId, Integer id) {
+        pacientes.exigirAcesso(nutricionista, pacienteId);
+        exigirConsulta(nutricionista, pacienteId, id);
     }
 
     @Transactional
@@ -99,6 +118,15 @@ public class ConsultaService {
     }
 
     @Transactional
+    public ConsultaResponse recusar(Nutricionista nutricionista, Integer pacienteId, Integer id, Long versao) {
+        bloquearAgenda(nutricionista.getId());
+        pacientes.exigirAcesso(nutricionista, pacienteId);
+        Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
+        decidirSolicitacao(consulta, versao, false);
+        return resposta(consulta, null);
+    }
+
+    @Transactional
     public ConsultaResponse cancelar(Nutricionista nutricionista, Integer pacienteId, Integer id, Long versao) {
         bloquearAgenda(nutricionista.getId());
         pacientes.exigirAcesso(nutricionista, pacienteId);
@@ -109,17 +137,14 @@ public class ConsultaService {
 
     void cancelarConsulta(Consulta consulta, Long versao) {
         exigirVersao(consulta, versao);
-        if (!("AGUARDANDO_CONFIRMACAO".equals(consulta.getStatus()) || "CONFIRMADA".equals(consulta.getStatus()))
+        if (!"CONFIRMADA".equals(consulta.getStatus())
                 || consulta.getIniciadaEm() != null) {
-            throw new IllegalArgumentException("Somente consultas pendentes ou confirmadas ainda não iniciadas podem ser canceladas.");
+            throw new IllegalArgumentException("Somente consultas confirmadas ainda não iniciadas podem ser canceladas.");
         }
         consulta.cancelar();
         consultas.flush();
-    }
-
-    @Transactional(readOnly = true)
-    public List<SolicitacaoAvulsaDTO> listarAvulsasPendentes(Nutricionista nutricionista) {
-        return consultas.listarAvulsasPendentes(nutricionista.getId(), LocalDateTime.now(clock));
+        notificacoesEmail.agendar(consulta, CANCELADA);
+        notificacoesPaciente.registrar(consulta, NotificacaoConsultaPaciente.Tipo.CANCELADA);
     }
 
     @Transactional(readOnly = true)
@@ -138,19 +163,6 @@ public class ConsultaService {
         decidirSolicitacao(consulta, decisao.versao(), decisao.aceitar());
     }
 
-    @Transactional
-    public void decidirAvulsa(Nutricionista nutricionista, Integer id, DecisaoConsultaRequest decisao) {
-        if (decisao == null || decisao.aceitar() == null) {
-            throw new IllegalArgumentException("Informe se deseja confirmar ou recusar a consulta.");
-        }
-        if (decisao.aceitar()) {
-            bloquearAgenda(nutricionista.getId());
-        }
-        Consulta consulta = consultas.findByIdAndNutricionista_IdAndAvulsaTrue(id, nutricionista.getId())
-                .orElseThrow(ConsultaNaoEncontradaException::new);
-        decidirSolicitacao(consulta, decisao.versao(), decisao.aceitar());
-    }
-
     private void decidirSolicitacao(Consulta consulta, Long versao, boolean aceitar) {
         exigirVersao(consulta, versao);
         if (!"AGUARDANDO_CONFIRMACAO".equals(consulta.getStatus()) || !consulta.getDataHora().isAfter(LocalDateTime.now(clock))) {
@@ -158,11 +170,18 @@ public class ConsultaService {
         }
         if (aceitar) {
             exigirSemConflito(consulta);
+            pacientes.ativarVinculoAoAceitarAgendamento(consulta);
+            consulta.integrarAoAcompanhamento();
             consulta.atualizar(consulta.getDataHora(), "CONFIRMADA", consulta.getObservacao());
         } else {
             consulta.recusar();
         }
         consultas.flush();
+        notificacoesEmail.agendar(consulta, aceitar ? CONFIRMADA : RECUSADA);
+        var tipoPaciente = aceitar
+                ? (consulta.foiReagendada() ? NotificacaoConsultaPaciente.Tipo.REAGENDADA : NotificacaoConsultaPaciente.Tipo.CONFIRMADA)
+                : NotificacaoConsultaPaciente.Tipo.RECUSADA;
+        notificacoesPaciente.registrar(consulta, tipoPaciente);
     }
 
     private void exigirVersao(Consulta c, Long versao) {
@@ -192,6 +211,9 @@ public class ConsultaService {
     }
 
     ConsultaResponse atualizarConsulta(Consulta consulta, ConsultaRequest request) {
+        if ("REALIZADA".equals(consulta.getStatus())) {
+            throw new IllegalArgumentException("Consulta concluída está disponível somente para leitura.");
+        }
         validar(request, consulta);
         if (!request.dataHora().equals(consulta.getDataHora())) {
             throw new IllegalArgumentException("Use o fluxo de reagendamento para alterar o horário.");
@@ -250,7 +272,7 @@ public class ConsultaService {
         }
         AvaliacaoRequest a = request.avaliacao();
         if (a != null || "REALIZADA".equals(request.status())) {
-            MedidasAntropometricas.validarMedidas(a);
+            MedidasAntropometricas.validarMedidas(a, "REALIZADA".equals(request.status()));
             for (BigDecimal valor : Arrays.asList(a.peso(), a.altura(), a.percentualGordura(),
                     a.massaMuscularKg(), a.pregaBicipital(), a.pregaPeitoral(), a.pregaAxilarMedia(),
                     a.pregaTricipital(), a.pregaSubescapular(), a.pregaAbdominal(),

@@ -4,6 +4,8 @@
       class="patient-tabs__item"
       [routerLink]="['/pacientes', patientId, tab.path]"
       routerLinkActive="patient-tabs__item--active"
+      ariaCurrentWhenActive="page"
+      (click)="abrirSecao($event, tab.path)"
     >{{ tab.label }}</a>
   }
 </nav>

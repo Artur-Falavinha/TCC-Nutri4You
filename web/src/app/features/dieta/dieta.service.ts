@@ -3,7 +3,6 @@ import { map } from 'rxjs';
 
 import { ApiService } from '../../core/services/api.service';
 import {
-  ListaCompras,
   PaginaAlimentos,
   Plano,
   PlanoRequest
@@ -32,44 +31,40 @@ export class DietaService {
     return this.api.get<string[]>('/alimentos/categorias');
   }
 
-  listarPlanos(pacienteId: number, atendimentoId: number | null = null) {
-    return this.api.get<Plano[]>(this.escopo(this.caminhoPlanos(pacienteId), atendimentoId));
+  listarPlanos(pacienteId: number) {
+    return this.api.get<Plano[]>(this.caminhoPlanos(pacienteId));
   }
 
-  buscarPlano(pacienteId: number, planoId: number, atendimentoId: number | null = null) {
-    return this.api.get<Plano>(this.escopo(`${this.caminhoPlanos(pacienteId)}/${planoId}`, atendimentoId));
+  buscarPlano(pacienteId: number, planoId: number) {
+    return this.api.get<Plano>(`${this.caminhoPlanos(pacienteId)}/${planoId}`);
   }
 
-  criarPlano(pacienteId: number, request: PlanoRequest, atendimentoId: number | null = null) {
-    return this.api.post<Plano>(this.escopo(this.caminhoPlanos(pacienteId), atendimentoId), request);
+  criarPlano(pacienteId: number, request: PlanoRequest) {
+    return this.api.post<Plano>(this.caminhoPlanos(pacienteId), request);
   }
 
-  atualizarPlano(pacienteId: number, planoId: number, request: PlanoRequest, atendimentoId: number | null = null) {
-    return this.api.put<Plano>(this.escopo(`${this.caminhoPlanos(pacienteId)}/${planoId}`, atendimentoId), request);
+  criarEdicao(pacienteId: number, original: Plano, plano: PlanoRequest) {
+    return this.api.post<Plano>(
+      `${this.caminhoPlanos(pacienteId)}/${original.id}/edicao`,
+      { versao: original.versao, plano }
+    );
   }
 
-  excluirRascunho(pacienteId: number, planoId: number, versao: number, atendimentoId: number | null = null) {
+  atualizarPlano(pacienteId: number, planoId: number, request: PlanoRequest) {
+    return this.api.put<Plano>(`${this.caminhoPlanos(pacienteId)}/${planoId}`, request);
+  }
+
+  excluirPlano(pacienteId: number, planoId: number, versao: number) {
     return this.api
-      .delete<unknown>(this.escopo(`${this.caminhoPlanos(pacienteId)}/${planoId}?versao=${versao}`, atendimentoId))
+      .delete<unknown>(`${this.caminhoPlanos(pacienteId)}/${planoId}?versao=${versao}`)
       .pipe(map(() => undefined));
   }
 
-  publicarPlano(pacienteId: number, planoId: number, versao: number, atendimentoId: number | null = null) {
+  publicarPlano(pacienteId: number, planoId: number, versao: number, inicioConfirmado?: string) {
     return this.api.post<Plano>(
-      this.escopo(`${this.caminhoPlanos(pacienteId)}/${planoId}/publicacao`, atendimentoId),
-      { versao }
+      `${this.caminhoPlanos(pacienteId)}/${planoId}/publicacao`,
+      { versao, ...(inicioConfirmado ? { inicioConfirmado } : {}) }
     );
-  }
-
-  previsualizarListaCompras(pacienteId: number, planoId: number, dias: number, atendimentoId: number | null = null) {
-    return this.api.get<ListaCompras>(
-      this.escopo(`${this.caminhoPlanos(pacienteId)}/${planoId}/lista-compras`, atendimentoId),
-      { params: { dias } }
-    );
-  }
-
-  private escopo(path: string, atendimentoId: number | null): string {
-    return atendimentoId === null ? path : `${path}${path.includes('?') ? '&' : '?'}atendimentoId=${atendimentoId}`;
   }
 
   private caminhoPlanos(pacienteId: number): string {

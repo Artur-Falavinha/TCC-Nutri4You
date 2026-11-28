@@ -111,6 +111,8 @@ O `init.sql` inclui dados iniciais para desenvolvimento:
 | Alimentos de exemplo | 5 | Preservados para histórico; substituídos na busca pelos 597 alimentos oficiais carregados pela V13 |
 | Perguntas de anamnese | 3 | Categorias Geral, Hábitos, Saúde |
 
+Para acessar o sistema, crie uma conta pelo autocadastro e registre o aceite dos termos. Os registros seed servem como exemplos para desenvolvimento.
+
 ## Trigger
 
 A tabela `Resposta_Anamnese` possui trigger `trg_atualiza_timestamp_resposta` que atualiza `data_ultima_atualizacao` automaticamente em `UPDATE`.

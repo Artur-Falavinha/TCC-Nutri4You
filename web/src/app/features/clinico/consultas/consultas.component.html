@@ -1,38 +1,36 @@
 <header class="page-header">
-  <h1>{{ nome || 'Paciente' }}</h1>
-  @if (!atendimento) { <app-patient-tabs [patientId]="patientId" /> }
+  <app-titulo-paciente [nome]="nome || 'Paciente'" [pacienteId]="nome && !vinculoEncerrado ? patientId : null" />
+  @if (!vinculoEncerrado) { <app-patient-tabs [patientId]="patientId" /> }
 </header>
 <main class="canvas" [attr.aria-busy]="carregando || salvando">
   <app-form-alert [message]="erro" type="error" />
-  <app-form-alert [message]="mensagem" type="success" />
   @if (carregando) {
     <p class="state" role="status">Carregando consultas...</p>
+  } @else if (vinculoEncerrado) {
+    <a class="action secondary" routerLink="/pacientes">
+      <i class="ph ph-arrow-left" aria-hidden="true"></i>Voltar aos pacientes
+    </a>
   } @else if (!carregado) {
     <app-ui-button label="Tentar novamente" icon="arrow-clockwise" [fullWidth]="false" (click)="carregar()" />
-  } @else if (atendimento && !consultaAtual?.iniciadaEm) {
-    <h2>Atendimento confirmado</h2>
-    <p>{{ consultaAtual?.dataHora | date:'dd/MM/yyyy HH:mm' }}</p>
-    <a class="action secondary" routerLink="/agenda">Voltar à agenda</a>
+  } @else if (!editor && lista?.total === 0) {
+    <app-estado-vazio
+      [imagem]="{ url: '/consultas/sem-consultas.webp', largura: 840, altura: 631 }"
+      titulo="Nenhuma consulta registrada"
+      descricao="Os agendamentos e atendimentos deste paciente aparecerão aqui."
+    />
   } @else if (!editor) {
     <div class="toolbar">
       <div><h2>Consultas do paciente</h2><p class="subtitle">{{ lista?.total || 0 }} atendimento(s) registrado(s)</p></div>
-
     </div>
-    @if (!lista?.itens?.length) {
-      <div class="empty state">
-        <i class="ph ph-clipboard-text" aria-hidden="true"></i>
-        <h3>Nenhuma consulta registrada</h3>
-      </div>
-    }
     <div class="consultas-list">
       @for (consulta of lista?.itens; track consulta.id) {
         <article class="consulta-row">
           <div class="consulta-info">
             <i class="ph ph-clipboard-text" aria-hidden="true"></i>
             <div>
-              <h3>{{ consulta.dataHora | date:'dd/MM/yyyy' }} · {{ consulta.dataHora | date:'HH:mm' }}</h3>
+              <h3>{{ consulta.dataHora | dataHoraClinica }}</h3>
               <p class="status" [class.concluida]="consulta.status === 'REALIZADA'"
-                [class.cancelada]="consulta.status === 'CANCELADA'">{{ statusLabel(consulta.status) }}</p>
+                [class.cancelada]="consulta.status === 'CANCELADA'">{{ statusLabel(consulta.status, consulta.iniciadaEm) }}</p>
             </div>
           </div>
           <dl class="metrics">
@@ -42,19 +40,23 @@
           </dl>
           <div class="actions">
             @if (consulta.status === 'AGUARDANDO_CONFIRMACAO') {
-              <button type="button" class="action primary" [disabled]="salvando" (click)="acao(consulta, 'confirmacao')">Aprovar</button>
+              <button type="button" class="action primary" [disabled]="salvando" (click)="acao(consulta, 'confirmacao')">Confirmar</button>
+              <button type="button" class="action secondary" [disabled]="salvando" (click)="acao(consulta, 'recusa')">Recusar</button>
             }
             @if (consulta.status === 'CONFIRMADA' && !consulta.iniciadaEm) {
-              <a class="action secondary" [href]="googleAgendaUrl(consulta)" target="_blank" rel="noopener noreferrer">Adicionar ao Google Agenda</a>
               <button type="button" class="action primary" [disabled]="salvando || !podeIniciar(consulta)" (click)="acao(consulta, 'inicio')">Iniciar Consulta</button>
             }
-            @if (!consulta.iniciadaEm && (consulta.status === 'CONFIRMADA' || consulta.status === 'AGUARDANDO_CONFIRMACAO')) {
+            @if (!consulta.iniciadaEm && consulta.status === 'CONFIRMADA') {
               <button type="button" class="action secondary" [disabled]="salvando" (click)="acao(consulta, 'cancelamento')">Cancelar</button>
             }
           </div>
-          <a class="action secondary" [routerLink]="['/pacientes', patientId, 'consultas', consulta.id]"
-            [attr.aria-label]="'Abrir consulta de ' + (consulta.dataHora | date:'dd/MM/yyyy HH:mm')">Abrir consulta</a>
+          @if (consulta.status !== 'AGUARDANDO_CONFIRMACAO') {
+            <a class="action secondary" [routerLink]="['/pacientes', patientId, 'consultas', consulta.id]"
+              [attr.aria-label]="'Abrir consulta de ' + (consulta.dataHora | dataHoraClinica)">Abrir consulta</a>
+          }
         </article>
+      } @empty {
+        <p class="state">Nenhuma consulta nesta página.</p>
       }
     </div>
     @if (lista && lista.totalPaginas > 1) {
@@ -68,48 +70,33 @@
     }
   } @else {
     <form (ngSubmit)="salvar()" novalidate>
-      @if (atendimento && consultaAtual?.iniciadaEm) {
-        <nav class="actions" aria-label="Registros do atendimento">
-          <a class="action secondary" [routerLink]="['/pacientes', patientId, 'exames']" [queryParams]="{ atendimentoId: consultaId }">Exames</a>
-          <a class="action secondary" [routerLink]="['/pacientes', patientId, 'dieta']" [queryParams]="{ atendimentoId: consultaId }">Planos alimentares e orientações</a>
-        </nav>
-        @if (contextoClinico; as contexto) {
-          <section class="form-section"><h3>Dados informados pelo paciente</h3>
-            <p>Data de nascimento: {{ contexto.dataNascimento ? (contexto.dataNascimento | date:'dd/MM/yyyy') : 'Não informada' }}</p>
-            <p>Sexo: {{ contexto.sexo || 'Não informado' }}</p>
-            <h4>Anamnese finalizada</h4>
-            @if (erroCamposAnamnese) { <p role="alert">{{ erroCamposAnamnese }}</p> }
-            @for (secao of respostasAnamnese; track secao.secao) {
-              <h5>{{ secao.secao }}</h5>
-              <dl>@for (campo of secao.campos; track campo.label) { <div><dt>{{ campo.label }}</dt><dd>{{ campo.valor }}</dd></div> }</dl>
-            } @empty { @if (camposAnamnese.length && !erroCamposAnamnese) { <p>Nenhuma resposta disponível.</p> } }
-
-          </section>
-        }
-      }
       <div class="toolbar">
-        <h2>{{ consultaId ? 'Consulta' : 'Nova consulta' }}@if (consultaId && form.dataHora) { · {{ form.dataHora | date:'dd/MM/yyyy HH:mm' }} }</h2>
+        <div class="consulta-heading">
+          <h2>Consulta</h2>
+          <div class="consulta-meta">
+            <time [attr.datetime]="consultaAtual?.dataHora">{{ form.dataHora | dataHoraClinica }}</time>
+            @if (consultaAtual; as consulta) {
+              <span class="consulta-badge" [class.consulta-badge--andamento]="podeEditar"
+                [class.consulta-badge--concluida]="consulta.status === 'REALIZADA'">{{ statusLabel(consulta.status, consulta.iniciadaEm) }}</span>
+            }
+          </div>
+        </div>
         <div class="actions">
-          @if (podeEditar) { <app-ui-button label="Salvar consulta" icon="check-circle" type="submit" [loading]="salvando" /> }
+          @if (podeEditar) {
+            <app-ui-button label="Salvar andamento" icon="floppy-disk" variant="secondary" type="submit" [loading]="salvando" />
+            <app-ui-button label="Concluir consulta" icon="check-circle" [disabled]="salvando" (click)="salvar(true)" />
+          }
           @if (consultaAtual && consultaAtual.status === 'CONFIRMADA' && !consultaAtual.iniciadaEm) {
-            <a class="action secondary" [href]="googleAgendaUrl(consultaAtual)" target="_blank" rel="noopener noreferrer">Adicionar ao Google Agenda</a>
             <button type="button" class="action primary" [disabled]="salvando || !podeIniciar(consultaAtual)" (click)="acao(consultaAtual, 'inicio')">Iniciar Consulta</button>
           }
-          <a class="action secondary" [routerLink]="atendimento ? ['/agenda'] : ['/pacientes', patientId, 'consultas']"
+          <a class="action secondary" [routerLink]="['/pacientes', patientId, 'consultas']"
             [attr.aria-disabled]="salvando"><i class="ph ph-arrow-left" aria-hidden="true"></i>{{ alterado ? 'Cancelar' : 'Voltar' }}</a>
         </div>
       </div>
-      <fieldset [disabled]="salvando || avisoConclusaoRascunhoAberto || !podeEditar">
-        <section class="form-section" aria-labelledby="dados-title">
-          <h3 id="dados-title">Dados da consulta</h3>
-          <div class="fields">
-            <app-ui-input label="Data e hora" type="datetime-local" inputId="dataHora" name="dataHora"
-              [(ngModel)]="form.dataHora" [readonly]="true" [required]="true" min="1900-01-01T00:00" max="2100-12-31T23:59"
-              [errorMessage]="errors['dataHora'] || ''" />
-            <app-ui-select label="Status" selectId="status" name="status" [(ngModel)]="form.status"
-              [options]="statusOptions" [required]="true" [errorMessage]="errors['status'] || ''" />
-          </div>
-        </section>
+      @if (consultaAtual?.status === 'REALIZADA') {
+        <p class="consulta-readonly" role="status">Consulta concluída — somente leitura.</p>
+      }
+      <fieldset [disabled]="salvando || !podeEditar">
         @for (grupo of grupos; track grupo.titulo; let grupoIndex = $index) {
           <section class="form-section" [attr.aria-labelledby]="'grupo-' + grupoIndex">
             <h3 [id]="'grupo-' + grupoIndex">{{ grupo.titulo }}</h3>
@@ -117,19 +104,20 @@
               @for (campo of grupo.campos; track campo.key) {
                 @if (campo.key === 'percentualGordura') {
                   <app-ui-input label="IMC" inputId="imc" [ngModel]="form.imc" [ngModelOptions]="{ standalone: true }"
-                    [readonly]="true" placeholder="—" />
+                    [readonly]="true" [disabled]="true" placeholder="—" [helperText]="form.ajudaImc" />
+                  <app-ui-select label="Método da gordura corporal" selectId="modoPercentualGordura" name="modoPercentualGordura"
+                    [ngModel]="form.modoPercentualGordura" (ngModelChange)="atualizarModoPercentualGordura($event)"
+                    [options]="modosPercentualGordura" />
                 }
                 <app-ui-input [label]="campo.label" [inputId]="campo.key" [name]="campo.key"
                   [ngModel]="form.medidas[campo.key]" (ngModelChange)="atualizarMedida(campo.key, $event)"
-                  [readonly]="form.campoSomenteLeitura(campo.key)" [maxlength]="6" [inputmode]="campo.inteiro ? 'numeric' : 'decimal'"
+                  [readonly]="form.campoSomenteLeitura(campo.key)" [disabled]="form.campoSomenteLeitura(campo.key)"
+                  [maxlength]="6" [inputmode]="campo.inteiro ? 'numeric' : 'decimal'"
                   [class.full-row]="campo.key === 'circunferenciaBraco'"
-                  [required]="form.exigeMedidas && (campo.key === 'peso' || campo.key === 'altura')"
-                  [errorMessage]="errors[campo.key] || ''" />
+                  [required]="form.status === 'REALIZADA' && (campo.key === 'peso' || campo.key === 'altura')"
+                  [helperText]="form.ajudaMedida(campo.key)" [errorMessage]="errors[campo.key] || ''" />
               }
             </div>
-            @if (grupoIndex === 1) {
-              <p class="subtitle">Preencha as sete pregas para calcular automaticamente gordura corporal, massa magra e massa gorda. {{ form.metodoComposicao }}</p>
-            }
           </section>
         }
         <section class="form-section" aria-labelledby="observacoes-title">
@@ -146,36 +134,30 @@
   }
 </main>
 @if (modalSaida) {
-  <app-paciente-dialog title="Sair da consulta?" description="As alterações não salvas desta consulta serão descartadas." (fechar)="responderSaida(false)">
-    <app-ui-button dialogActions label="Continuar editando" variant="outline" (click)="responderSaida(false)" />
-    <app-ui-button dialogActions label="Descartar e sair" variant="danger" (click)="responderSaida(true)" />
-  </app-paciente-dialog>
+  <app-dialogo-confirmacao
+    titulo="Sair da consulta?"
+    descricao="As alterações não salvas desta consulta serão descartadas."
+    confirmar="Descartar e sair"
+    voltar="Continuar editando"
+    icone="arrow-square-out"
+    [destrutivo]="true"
+    (fechar)="responderSaida(false)" (confirmado)="responderSaida(true)" />
 }
-@if (consultaParaCancelar) {
-  <app-paciente-dialog title="Cancelar consulta?" description="A consulta será cancelada e o horário ficará disponível." (fechar)="consultaParaCancelar = null">
-    <app-ui-button dialogActions label="Manter consulta" variant="outline" (click)="consultaParaCancelar = null" />
-    <app-ui-button dialogActions label="Cancelar consulta" variant="danger" (click)="confirmarCancelamento()" />
-  </app-paciente-dialog>
-}
-
-@if (avisoConclusaoRascunhoAberto) {
-  <app-paciente-dialog
-    title="Dieta em rascunho"
-    description="Há uma dieta em rascunho vinculada a este atendimento. Ao concluir, o rascunho será preservado sem publicação e ficará somente para leitura."
-    (fechar)="fecharAvisoConclusaoRascunho()"
-  >
-    <app-ui-button
-      dialogActions
-      label="Voltar ao atendimento"
-      variant="outline"
-      [fullWidth]="false"
-      (click)="fecharAvisoConclusaoRascunho()"
-    />
-    <app-ui-button
-      dialogActions
-      label="Concluir e manter rascunho"
-      [fullWidth]="false"
-      (click)="confirmarConclusaoComRascunho()"
-    />
-  </app-paciente-dialog>
+@if (decisaoConsulta; as decisao) {
+  @let cancelar = decisao.tipo === 'cancelamento';
+  @let recusar = decisao.tipo === 'recusa';
+  @let horario = (decisao.consulta.dataHora | dataHoraClinica);
+  <app-dialogo-confirmacao
+    [titulo]="recusar ? 'Recusar consulta?' : cancelar ? 'Cancelar consulta?' : 'Confirmar consulta?'"
+    [descricao]="recusar ? 'A solicitação de ' + horario + ' será recusada e o horário ficará disponível.' : cancelar
+      ? 'A consulta de ' + horario + ' será cancelada e o horário ficará disponível.'
+      : 'O horário de ' + horario + ' será confirmado na agenda.'"
+    [confirmar]="recusar ? 'Recusar consulta' : cancelar ? 'Cancelar consulta' : 'Confirmar consulta'"
+    [voltar]="recusar ? 'Voltar' : cancelar ? 'Manter consulta' : 'Voltar'"
+    [icone]="cancelar || recusar ? 'calendar-x' : 'calendar-check'"
+    [destrutivo]="cancelar || recusar"
+    [ocupado]="salvando"
+    [rotuloOcupado]="recusar ? 'Recusando…' : cancelar ? 'Cancelando…' : 'Confirmando…'"
+    (fechar)="decisaoConsulta = null"
+    (confirmado)="confirmarDecisaoConsulta()" />
 }

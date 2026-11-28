@@ -4,6 +4,8 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.nutri4you.backend.model.ContaAutenticavel;
+import com.nutri4you.backend.model.TipoCadastro;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -54,11 +56,14 @@ public class TokenService {
                 .anyMatch(profile -> profile.equals("dev") || profile.equals("test"));
     }
 
-    public String gerarToken(String email) {
+    public String gerarToken(ContaAutenticavel conta) {
         try {
             return JWT.create()
                     .withIssuer(ISSUER)
-                    .withSubject(email)
+                    .withSubject(conta.getEmail())
+                    .withClaim("titular", conta.getId())
+                    .withClaim("perfil", conta.getTipoCadastro().name())
+                    .withClaim("credencial", conta.getVersaoCredencial())
                     .withExpiresAt(Instant.now().plus(expirationHours, ChronoUnit.HOURS))
                     .sign(algorithm());
         } catch (JWTCreationException exception) {
@@ -66,17 +71,25 @@ public class TokenService {
         }
     }
 
-    public String validarToken(String token) {
+    Sessao validarToken(String token) {
         try {
-            return JWT.require(algorithm())
+            var jwt = JWT.require(algorithm())
                     .withIssuer(ISSUER)
                     .build()
-                    .verify(token)
-                    .getSubject();
+                    .verify(token);
+            Integer id = jwt.getClaim("titular").asInt();
+            String perfil = jwt.getClaim("perfil").asString();
+            Integer versao = jwt.getClaim("credencial").asInt();
+            if (id == null || perfil == null || versao == null) {
+                return null;
+            }
+            return new Sessao(id, TipoCadastro.valueOf(perfil), versao);
         } catch (JWTVerificationException | IllegalArgumentException exception) {
-            return "";
+            return null;
         }
     }
+
+    record Sessao(Integer titularId, TipoCadastro tipo, int versaoCredencial) {}
 
     private Algorithm algorithm() {
         return Algorithm.HMAC256(secret);

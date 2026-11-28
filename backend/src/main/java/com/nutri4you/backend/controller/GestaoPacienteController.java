@@ -67,8 +67,6 @@ public class GestaoPacienteController {
                     "Paciente encontrado com sucesso."));
         } catch (PacienteNaoEncontradoException exception) {
             return ResponseEntity.notFound().build();
-        } catch (AcessoNegadoException exception) {
-            return ResponseEntity.status(403).build();
         }
     }
 

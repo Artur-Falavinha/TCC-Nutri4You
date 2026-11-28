@@ -12,10 +12,6 @@
   container-type: inline-size;
 }
 
-.pacientes-main__mensagem {
-  padding: var(--space-16);
-}
-
 /* ─── Área principal ────────────────────────────────── */
 .pacientes-main {
   display: flex;
@@ -182,6 +178,12 @@
   flex: 2;
   font-weight: 600;
   color: var(--color-text-primary);
+}
+
+.pacientes-table__row .pacientes-table__col-nome {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
 }
 
 .pacientes-table__col-email {

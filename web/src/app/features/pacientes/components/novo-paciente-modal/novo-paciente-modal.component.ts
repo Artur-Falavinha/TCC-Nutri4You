@@ -10,6 +10,7 @@ import { PacienteResumo } from '../../../../core/models/paciente.models';
 import { ApiErrorResponse } from '../../../../core/models/api-response.model';
 import { extractCpfDigits } from '../../../../shared/utils/cpf-mask.util';
 import { PacienteDialogComponent } from '../paciente-dialog/paciente-dialog.component';
+import { RelacaoPacienteModalComponent } from '../relacao-paciente-modal/relacao-paciente-modal.component';
 
 @Component({
   selector: 'app-novo-paciente-modal',
@@ -18,7 +19,8 @@ import { PacienteDialogComponent } from '../paciente-dialog/paciente-dialog.comp
     UiInputComponent,
     UiButtonComponent,
     FormAlertComponent,
-    PacienteDialogComponent
+    PacienteDialogComponent,
+    RelacaoPacienteModalComponent
   ],
   templateUrl: './novo-paciente-modal.component.html',
   styleUrl: './novo-paciente-modal.component.css'
@@ -31,9 +33,9 @@ export class NovoPacienteModalComponent {
   private readonly pacientesService = inject(PacientesService);
 
   loading = false;
-  vinculando = false;
   errorMessage = '';
   encontrado: PacienteResumo | null = null;
+  pacienteParaConfirmar: PacienteResumo | null = null;
 
   form = this.fb.nonNullable.group({
     email: [''],
@@ -62,25 +64,6 @@ export class NovoPacienteModalComponent {
             error.status === 404
               ? 'Nenhum paciente encontrado com esse critério.'
               : (error.message ?? 'Não foi possível buscar o paciente.');
-        }
-      });
-  }
-
-  onVincular(): void {
-    if (!this.encontrado) {
-      return;
-    }
-
-    this.vinculando = true;
-    this.errorMessage = '';
-
-    this.pacientesService
-      .vincularPaciente(this.encontrado.id)
-      .pipe(finalize(() => (this.vinculando = false)))
-      .subscribe({
-        next: () => this.vinculado.emit(),
-        error: (error: ApiErrorResponse) => {
-          this.errorMessage = error.message ?? 'Não foi possível enviar a solicitação de vínculo.';
         }
       });
   }

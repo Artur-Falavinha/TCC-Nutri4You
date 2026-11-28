@@ -10,9 +10,13 @@ import {
   carregarEvolucao
 } from '../../../core/evolucao/evolucao.service';
 import { carregarPerfil } from '../../../core/perfil/perfil.service';
+import { colors } from '../../../theme/tokens';
+
+const mockFeatherIcon = (props: Record<string, unknown>) =>
+  React.createElement('Feather', props);
 
 jest.mock('@expo/vector-icons', () => ({
-  Ionicons: () => null
+  Feather: (props: Record<string, unknown>) => mockFeatherIcon(props)
 }));
 
 jest.mock('../../../core/evolucao/evolucao.service', () => {
@@ -221,9 +225,136 @@ describe('Evolução Components', () => {
       expect(str).toContain('Peso');
       expect(str).toContain('Gordura Corporal (%)');
       expect(str).toContain('Cintura');
+      expect(str).toContain('01/10/2026');
       expect(str).not.toContain('Consumo do dia');
 
       act(() => tree?.unmount());
+    });
+
+    it('usa cor neutra (cinza do tema) para aumento, redução e estabilidade de peso, preservando sinais, setas e série do gráfico', async () => {
+      const cenarios: {
+        nome: string;
+        atualPeso: number;
+        anteriorPeso: number;
+        iconeEsperado: string;
+        rotuloAcessibilidade: string;
+        textoCardEsperado: string;
+      }[] = [
+        {
+          nome: 'redução',
+          atualPeso: 72.5,
+          anteriorPeso: 75.0,
+          iconeEsperado: 'arrow-down',
+          rotuloAcessibilidade: 'Queda, 3.3%',
+          textoCardEsperado: '-2.5 kg'
+        },
+        {
+          nome: 'aumento',
+          atualPeso: 77.5,
+          anteriorPeso: 75.0,
+          iconeEsperado: 'arrow-up',
+          rotuloAcessibilidade: 'Aumento, 3.3%',
+          textoCardEsperado: '+2.5 kg'
+        },
+        {
+          nome: 'estabilidade',
+          atualPeso: 75.0,
+          anteriorPeso: 75.0,
+          iconeEsperado: 'minus',
+          rotuloAcessibilidade: 'Estável, 0%',
+          textoCardEsperado: '0 kg'
+        }
+      ];
+
+      for (const cenario of cenarios) {
+        (carregarEvolucao as jest.Mock).mockResolvedValueOnce({
+          consultas: [],
+          avaliacoes: [
+            {
+              id: 2,
+              dataAvaliacao: '2026-10-01T10:00:00',
+              peso: cenario.atualPeso,
+              altura: 1.75,
+              imc: 24.0,
+              razaoCinturaQuadril: 0.82,
+              percentualGordura: 18.5,
+               massaMuscularKg: 32.0,
+              pregaBicipital: 6.0,
+              pregaTricipital: 10.0,
+              pregaSubescapular: 12.0,
+              pregaSuprailiaca: 14.0,
+              circunferenciaCintura: 84.0,
+              circunferenciaQuadril: 102.0,
+              circunferenciaBraco: 34.0
+            },
+            {
+              id: 1,
+              dataAvaliacao: '2026-09-01T10:00:00',
+              peso: cenario.anteriorPeso,
+              altura: 1.75,
+              imc: 24.49,
+              razaoCinturaQuadril: 0.84,
+              percentualGordura: 19.5,
+              massaMuscularKg: 31.5,
+              pregaBicipital: 7.0,
+              pregaTricipital: 11.0,
+              pregaSubescapular: 13.0,
+              pregaSuprailiaca: 15.5,
+              circunferenciaCintura: 86.0,
+              circunferenciaQuadril: 103.0,
+              circunferenciaBraco: 34.0
+            }
+          ]
+        });
+
+        const navigation = { navigate: jest.fn(), dispatch: jest.fn() };
+        let tree!: renderer.ReactTestRenderer;
+
+        await act(async () => {
+          tree = renderer.create(
+            <EvolucaoScreen
+              navigation={navigation as never}
+              route={{ key: 'Evolucao', name: 'Evolucao', params: undefined } as never}
+            />
+          );
+          await Promise.resolve();
+        });
+
+        const badgeGrafico = tree.root.findByProps({
+          accessibilityLabel: cenario.rotuloAcessibilidade
+        });
+        const estiloBadgeGrafico = JSON.stringify(badgeGrafico.props.style);
+        expect(estiloBadgeGrafico).toContain(colors.subtle);
+        expect(estiloBadgeGrafico).not.toContain(colors.confirmedBackground);
+        expect(estiloBadgeGrafico).not.toContain(colors.dangerButtonBackground);
+
+        const iconeSeta = badgeGrafico.findByType('Feather' as never);
+        expect(iconeSeta.props.name).toBe(cenario.iconeEsperado);
+        expect(iconeSeta.props.color).toBe(colors.textSecondary);
+
+        const textoPercentual = badgeGrafico.findByType(Text);
+        const estiloTextoPercentual = JSON.stringify(textoPercentual.props.style);
+        expect(estiloTextoPercentual).toContain(colors.textSecondary);
+        expect(estiloTextoPercentual).not.toContain(colors.dangerText);
+        expect(estiloTextoPercentual).not.toContain(colors.brandDeep);
+
+        const badgeCardPeso = tree.root.findAllByType(Text).find(
+          (node) => node.props.children === cenario.textoCardEsperado
+        );
+        expect(badgeCardPeso).toBeDefined();
+        const estiloBadgeCard = JSON.stringify(badgeCardPeso?.props.style);
+        expect(estiloBadgeCard).toContain(colors.textSecondary);
+        expect(estiloBadgeCard).toContain(colors.subtle);
+        expect(estiloBadgeCard).not.toContain(colors.dangerText);
+        expect(estiloBadgeCard).not.toContain(colors.confirmedBackground);
+        expect(estiloBadgeCard).not.toContain(colors.dangerButtonBackground);
+
+        // Série do gráfico mantém a cor da marca
+        const grafico = tree.root.findAllByType(EvolucaoLineChart)[0];
+        expect(grafico).toBeDefined();
+
+        act(() => tree.unmount());
+      }
     });
   });
 
@@ -257,6 +388,7 @@ describe('Evolução Components', () => {
       });
       const str = JSON.stringify(tree?.toJSON());
       expect(str).toContain('1800');
+      expect(str).toContain('11/10/2026');
       expect(str).toContain('2000');
       expect(str).toContain('kcal');
       expect(str).toContain('Proteínas');

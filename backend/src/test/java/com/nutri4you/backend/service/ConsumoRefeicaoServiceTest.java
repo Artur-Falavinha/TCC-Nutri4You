@@ -19,7 +19,7 @@ class ConsumoRefeicaoServiceTest extends ClinicalServiceTestSupport {
     @Autowired EntityManager em;
     private int publicar(Integer dia) {
         var a = alimentos.saveAndFlush(new Alimento("Arroz", BigDecimal.valueOf(100), BigDecimal.TEN, BigDecimal.valueOf(20), BigDecimal.ONE));
-        var p = planosService.criar(nutri, paciente.getId(), null, new PlanoRequest("Consumo", null, hoje().minusDays(1), hoje().plusDays(10),
+        var p = planosService.criar(nutri, paciente.getId(), null, new PlanoRequest("Consumo", null, hoje(), hoje().plusDays(10),
                 new Nutrientes(BigDecimal.valueOf(2000), BigDecimal.valueOf(100), BigDecimal.valueOf(200), BigDecimal.valueOf(50)), null,
                 List.of(new RefeicaoRequest("Almoço", LocalTime.NOON, dia, List.of(new ItemRequest(a.getId(), BigDecimal.valueOf(250)))))));
         return planosService.publicar(nutri, paciente.getId(), null, p.id(), p.versao()).refeicoes().getFirst().id();
@@ -36,6 +36,9 @@ class ConsumoRefeicaoServiceTest extends ClinicalServiceTestSupport {
     }
     @Test void historicoSomenteLeituraEFuturoBloqueado() {
         int id = publicar(null);
+        var plano = planos.sobrepostos(paciente.getId(), hoje(), hoje()).getFirst();
+        plano.editar(plano.getTitulo(), null, hoje().minusDays(1), plano.getVigenciaFim(), null);
+        planos.flush();
         assertThat(service.consultar(paciente, hoje().minusDays(1)).refeicoes()).hasSize(1);
         assertThat(service.consultar(paciente, hoje().minusDays(1)).editavel()).isFalse();
         for (var data : List.of(hoje().minusDays(1), hoje().plusDays(1)))

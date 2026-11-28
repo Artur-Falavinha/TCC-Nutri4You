@@ -8,6 +8,7 @@ import { finalize } from 'rxjs';
 
 
 
+import { ToastService } from '../../../../core/services/toast.service';
 import { AuthService } from '../../../../core/services/auth.service';
 
 import { ApiErrorResponse } from '../../../../core/models/api-response.model';
@@ -57,6 +58,7 @@ import { resolveFieldError } from '../../../../shared/utils/form-field-error.uti
 })
 
 export class LoginComponent implements OnInit {
+  private readonly toast = inject(ToastService);
 
   private readonly fb = inject(FormBuilder);
 
@@ -73,8 +75,6 @@ export class LoginComponent implements OnInit {
   submitted = false;
 
   errorMessage = '';
-
-  successMessage = '';
 
 
 
@@ -102,7 +102,7 @@ export class LoginComponent implements OnInit {
 
     if (this.route.snapshot.queryParamMap.get('cadastro') === 'ok') {
 
-      this.successMessage = 'Conta criada! Entre com o e-mail e a senha que você definiu.';
+      this.toast.sucesso('Conta criada! Entre com o e-mail e a senha que você definiu.');
 
     }
 
@@ -130,8 +130,6 @@ export class LoginComponent implements OnInit {
 
     this.errorMessage = '';
 
-    this.successMessage = '';
-
 
 
     const { email, senha } = this.form.getRawValue();
@@ -150,7 +148,7 @@ export class LoginComponent implements OnInit {
 
         error: (error: ApiErrorResponse) => {
 
-          this.errorMessage = error.message ?? 'Não foi possível entrar. Tente novamente.';
+          this.toast.erro(error.message ?? 'Não foi possível entrar. Tente novamente.');
 
         }
 

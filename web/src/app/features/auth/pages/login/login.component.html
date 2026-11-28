@@ -2,7 +2,6 @@
   <app-auth-form-card title="Login">
     <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()">
       <app-form-alert [message]="errorMessage" />
-      <app-form-alert [message]="successMessage" type="success" />
 
       <app-ui-input
         label="Email"

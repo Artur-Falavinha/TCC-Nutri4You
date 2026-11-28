@@ -117,9 +117,9 @@ describe('evolucao.service', () => {
       expect(calcularPercentualMeta(null, 2000)).toBe(0);
     });
 
-    it('formata data e hora da proxima consulta por extenso', () => {
+    it('formata data e hora da próxima consulta', () => {
       expect(formatarDataHoraConsulta('2026-10-25T14:30:00')).toBe(
-        '25 de Outubro, às 14:30'
+        '25/10/2026, às 14:30'
       );
       expect(formatarDataHoraConsulta('')).toBe('');
       expect(formatarDataHoraConsulta(null)).toBe('');

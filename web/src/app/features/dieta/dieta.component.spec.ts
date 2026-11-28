@@ -1,20 +1,23 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of, Subject, throwError } from 'rxjs';
+import { of, Subject } from 'rxjs';
 
+import { ToastService } from '../../core/services/toast.service';
 import { Paciente } from '../../core/models/paciente.models';
 import { PacientesService } from '../../core/services/pacientes.service';
-import { AtendimentosService } from '../clinico/consultas/consultas.service';
 import { ClinicoService } from '../clinico/clinico.service';
 import { AnamneseService } from '../anamnese/anamnese.service';
 import { DietaComponent } from './dieta.component';
 import { DietaService } from './dieta.service';
+import { PatientTabsComponent } from '../../shared/components/patient-tabs/patient-tabs.component';
 import { Alimento, ItemEdicao, Nutrientes, PaginaAlimentos, Plano } from './dieta.models';
 
 describe('DietaComponent', () => {
   let fixture: ComponentFixture<DietaComponent>;
   let component: DietaComponent;
   let dieta: jasmine.SpyObj<DietaService>;
+  let toast: jasmine.SpyObj<ToastService>;
   let pacientes: jasmine.SpyObj<PacientesService>;
 
   const paciente: Paciente = {
@@ -88,8 +91,10 @@ describe('DietaComponent', () => {
   }
 
   beforeEach(async () => {
-    pacientes = jasmine.createSpyObj('PacientesService', ['buscarPorId']);
+    toast = jasmine.createSpyObj<ToastService>('ToastService', ['sucesso', 'erro', 'aviso']);
+    pacientes = jasmine.createSpyObj('PacientesService', ['buscarPorId', 'carregarFoto']);
     pacientes.buscarPorId.and.returnValue(of(paciente));
+    pacientes.carregarFoto.and.returnValue(of(null));
 
     dieta = jasmine.createSpyObj('DietaService', [
       'listarAlimentos',
@@ -98,34 +103,25 @@ describe('DietaComponent', () => {
       'buscarPlano',
       'criarPlano',
       'atualizarPlano',
-      'excluirRascunho',
+      'excluirPlano',
       'publicarPlano',
-      'previsualizarListaCompras'
+      'criarEdicao'
     ]);
     dieta.listarAlimentos.and.returnValue(of(paginaAlimentos([])));
     dieta.listarCategorias.and.returnValue(of(['Cereais']));
     dieta.listarPlanos.and.returnValue(of([]));
     dieta.criarPlano.and.returnValue(of(planoSalvo));
-    dieta.previsualizarListaCompras.and.returnValue(of({
-      planoId: planoSalvo.id,
-      planoTitulo: planoSalvo.titulo,
-      dias: 7,
-      totalItens: 1,
-      itensComprados: 0,
-      itensPendentes: 1,
-      itens: [{ alimentoId: alimento.id, nome: alimento.nome, categoria: alimento.categoria, quantidadeGramas: 875, comprado: false }]
-    }));
 
     await TestBed.configureTestingModule({
       imports: [DietaComponent],
       providers: [
+        { provide: ToastService, useValue: toast },
         provideRouter([]),
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap({ id: String(paciente.id) }), queryParamMap: convertToParamMap({}) } }
         },
         { provide: PacientesService, useValue: pacientes },
-        { provide: AtendimentosService, useValue: jasmine.createSpyObj('AtendimentosService', ['buscar']) },
         { provide: ClinicoService, useValue: { historico: () => of({ consultas: [], avaliacoes: [] }) } },
         { provide: AnamneseService, useValue: { get: () => of({ paciente, versao: 1, status: 'FINALIZADA',
             respostas: { weight: 72.5, height: 1.75, physicalActivity: 'Sim', weeklyFrequency: '3 vezes por semana', intensity: 'Moderada' },
@@ -175,6 +171,8 @@ describe('DietaComponent', () => {
     component.salvar();
 
     expect(dieta.criarPlano).toHaveBeenCalledWith(paciente.id, jasmine.objectContaining({
+      vigenciaInicio: null,
+      vigenciaFim: null,
       metas: { kcal: 1800, proteinas: 225, carboidratos: 135, gorduras: 40 },
       percentuais: { proteinas: 50, carboidratos: 30, gorduras: 20 },
       refeicoes: [{
@@ -187,8 +185,8 @@ describe('DietaComponent', () => {
           substitutos: [{ alimentoId: alimentoAlternativo.id, quantidadeGramas: 90 }]
         }]
       }]
-    }), null);
-    expect(component.mensagem).toBe('Rascunho salvo com sucesso.');
+    }));
+    expect(toast.sucesso).toHaveBeenCalledWith('Rascunho salvo com sucesso.');
   });
 
   it('pastes an independent copy of a meal and enforces the weekly meal limit', () => {
@@ -254,7 +252,7 @@ describe('DietaComponent', () => {
     expect(component.podeColarRefeicao).toBeFalse();
     component.colarRefeicao();
     expect(component.form.refeicoes).toHaveSize(140);
-    expect(component.erro).toBe('Um plano pode conter até 140 refeições.');
+    expect(toast.aviso).toHaveBeenCalledWith('Um plano pode conter até 140 refeições.');
   });
 
   it('loads stored alternatives into an independent editor model', () => {
@@ -311,14 +309,14 @@ describe('DietaComponent', () => {
     component.abrirBuscaSubstitutos(refeicao, principal);
     component.adicionarAlimento(alimento);
     expect(principal.substitutos).toHaveSize(0);
-    expect(component.mensagemAlimento).toContain('diferente do alimento principal');
+    expect(toast.aviso).toHaveBeenCalledWith(jasmine.stringContaining('diferente do alimento principal'));
 
     component.adicionarAlimento(alimentoAlternativo);
     expect(principal.substitutos).toHaveSize(1);
     expect(principal.substitutos[0].alimento).toBe(alimentoAlternativo);
     component.adicionarAlimento(alimentoAlternativo);
     expect(principal.substitutos).toHaveSize(1);
-    expect(component.mensagemAlimento).toContain('já foi adicionado');
+    expect(toast.aviso).toHaveBeenCalledWith(jasmine.stringContaining('já foi adicionado'));
 
     principal.substitutos[0].quantidadeGramas = 50;
     expect(component.nutrientesPrevistos(principal).kcal).toBe(120);
@@ -358,33 +356,118 @@ describe('DietaComponent', () => {
     expect(component.formatarNutriente(null)).toBe('—');
   });
 
-  it('shows a read-only shopping preview for the saved plan and requests the selected period', () => {
+  it('mostra uma ação na lista vazia e posiciona o resumo antes dos dias da semana', () => {
+    const raiz = fixture.nativeElement as HTMLElement;
+    expect(raiz.textContent).toContain('Criar primeiro plano');
+    expect(raiz.textContent).not.toContain('Novo plano');
+    expect(raiz.textContent).not.toContain('Voltar às consultas');
+
+    component.planos = [planoSalvo];
+    fixture.detectChanges();
+    expect(raiz.textContent).toContain('Novo plano');
+
     component.planoSelecionado = planoSalvo;
     component.tela = 'detalhe';
-    component.abrirPreviaListaCompras();
+    fixture.detectChanges();
+    const resumo = raiz.querySelector('#plan-summary-title')!;
+    const dias = raiz.querySelector('.week-days')!;
+    expect(resumo.compareDocumentPosition(dias) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(raiz.textContent).not.toContain('Prévia de compras');
+    raiz.querySelector<HTMLButtonElement>('.page-back-action')!.click();
+    expect(component.tela).toBe('lista');
+  });
+
+  it('bloqueia vigência passada ao criar um plano', () => {
+    component.abrirNovoRascunho();
+    component.form.titulo = 'Plano';
+    component.form.vigenciaInicio = '2020-01-01';
+    component.form.vigenciaFim = '2020-01-02';
+    component.salvar();
+    expect(dieta.criarPlano).not.toHaveBeenCalled();
+    expect(component.errors['vigenciaInicio']).toBeDefined();
+    expect(component.errors['vigenciaFim']).toBeDefined();
+  });
+
+  it('exibe a vigência em dia/mês/ano e salva as datas em ISO', async () => {
+    component.abrirNovoRascunho();
+    component.form.titulo = 'Plano';
+    const ano = Number(component.vigenciaInicioMinima.slice(0, 4)) + 1;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const inicio = fixture.nativeElement.querySelector('#vigenciaInicio') as HTMLInputElement;
+    const fim = fixture.nativeElement.querySelector('#vigenciaFim') as HTMLInputElement;
+    expect(inicio.placeholder).toBe('DD/MM/AAAA');
+    inicio.value = `0304${ano}`;
+    inicio.dispatchEvent(new Event('input', { bubbles: true }));
+    fim.value = `05/04/${ano}`;
+    fim.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(inicio.value).toBe(`03/04/${ano}`);
+
+    component.salvar();
+    expect(dieta.criarPlano).toHaveBeenCalledOnceWith(paciente.id,
+      jasmine.objectContaining({ vigenciaInicio: `${ano}-04-03`, vigenciaFim: `${ano}-04-05` }));
+  });
+
+  it('não trata vigência incompleta ou impossível como campo vazio', async () => {
+    component.abrirNovoRascunho();
+    component.form.titulo = 'Plano';
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const inicio = fixture.nativeElement.querySelector('#vigenciaInicio') as HTMLInputElement;
+    const fim = fixture.nativeElement.querySelector('#vigenciaFim') as HTMLInputElement;
+    inicio.value = '31/04/2099';
+    inicio.dispatchEvent(new Event('input', { bubbles: true }));
+    fim.value = '12/05';
+    fim.dispatchEvent(new Event('input', { bubbles: true }));
+
+    component.salvar();
+    expect(dieta.criarPlano).not.toHaveBeenCalled();
+    expect(component.errors['vigenciaInicio']).toContain('DD/MM/AAAA');
+    expect(component.errors['vigenciaFim']).toContain('DD/MM/AAAA');
+  });
+
+  it('carrega e preserva a vigência anterior de um rascunho', async () => {
+    const plano = { ...planoSalvo, vigenciaInicio: '2020-02-29', vigenciaFim: '2020-03-01' };
+    dieta.atualizarPlano.and.returnValue(of(plano));
+    component.planoSelecionado = plano;
+    component.abrirEdicao();
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(dieta.previsualizarListaCompras).toHaveBeenCalledWith(paciente.id, planoSalvo.id, 7, null);
-    expect(fixture.nativeElement.querySelector('.shopping-preview').textContent).toContain('somente os alimentos principais');
-    expect(fixture.nativeElement.querySelector('.shopping-category').textContent).toContain('875,00 g');
-    expect(fixture.nativeElement.querySelector('.shopping-preview input[type="checkbox"]')).toBeNull();
+    const inicio = fixture.nativeElement.querySelector('#vigenciaInicio') as HTMLInputElement;
+    const fim = fixture.nativeElement.querySelector('#vigenciaFim') as HTMLInputElement;
+    expect(inicio.value).toBe('29/02/2020');
+    expect(fim.value).toBe('01/03/2020');
+    expect(component.vigenciaFimMinima).toBe('2020-03-01');
+    expect(component.alterado).toBeFalse();
+
+    component.salvar();
+    expect(dieta.atualizarPlano).toHaveBeenCalledOnceWith(paciente.id, plano.id,
+      jasmine.objectContaining({ vigenciaInicio: plano.vigenciaInicio, vigenciaFim: plano.vigenciaFim }));
   });
 
-  it('rejects an invalid shopping preview period and reports API errors', () => {
-    component.planoSelecionado = planoSalvo;
+  it('exclui o plano publicado somente após confirmar', () => {
+    const plano = { ...planoSalvo, status: 'PUBLICADO' as const };
+    dieta.excluirPlano.and.returnValue(of(undefined));
+    component.planos = [plano];
+    component.planoSelecionado = plano;
     component.tela = 'detalhe';
-    component.diasListaCompras = 31;
-    component.abrirPreviaListaCompras();
 
-    expect(dieta.previsualizarListaCompras).not.toHaveBeenCalled();
-    expect(component.listaComprasErro).toContain('entre 1 e 30 dias');
+    component.excluir();
+    expect(component.confirmacaoDestrutiva?.descricao).toContain(plano.titulo);
+    component.cancelarConfirmacaoDestrutiva();
+    expect(dieta.excluirPlano).not.toHaveBeenCalled();
 
-    component.diasListaCompras = 7;
-    dieta.previsualizarListaCompras.and.returnValue(throwError(() => ({ message: 'Falha de prévia' })));
-    component.carregarListaCompras();
-    expect(component.listaComprasErro).toBe('Falha de prévia');
-    expect(component.listaComprasCarregando).toBeFalse();
+    component.excluir();
+    component.confirmarAcaoDestrutiva();
+    expect(dieta.excluirPlano).toHaveBeenCalledOnceWith(paciente.id, plano.id, plano.versao);
+    expect(component.planos).toEqual([]);
+    expect(component.tela).toBe('lista');
   });
+
   it('filtra os totais por dia e cola refeições com substitutos no dia escolhido', () => {
     component.abrirNovoRascunho(); component.adicionarRefeicao();
     const segunda = component.form.refeicoes[0];
@@ -400,7 +483,7 @@ describe('DietaComponent', () => {
     expect(segunda.itens[0].quantidadeGramas).toBe(100);
   });
   it('publica somente após a confirmação no modal padrão', () => {
-    const rascunho = { ...planoSalvo, vigenciaInicio: '2026-11-05', vigenciaFim: '2026-11-12' };
+    const rascunho = { ...planoSalvo, vigenciaInicio: component.vigenciaInicioMinima, vigenciaFim: component.vigenciaInicioMinima };
     dieta.publicarPlano.and.returnValue(of({ ...rascunho, status: 'PUBLICADO', versao: 1 }));
     component.planoSelecionado = rascunho;
     component.tela = 'detalhe';
@@ -412,24 +495,69 @@ describe('DietaComponent', () => {
     publicar.click();
     fixture.detectChanges();
 
-    const modal = raiz.querySelector('app-paciente-dialog [role="dialog"]')!;
+    const modal = raiz.querySelector('app-dialogo-confirmacao dialog[open]')!;
     expect(modal.textContent).toContain(rascunho.titulo);
     expect(dieta.publicarPlano).not.toHaveBeenCalled();
 
-    modal.querySelector<HTMLButtonElement>('#cancelar-publicacao button')!.click();
+    modal.querySelector<HTMLButtonElement>('button')!.click();
     fixture.detectChanges();
-    expect(raiz.querySelector('app-paciente-dialog')).toBeNull();
+    expect(raiz.querySelector('app-dialogo-confirmacao')).toBeNull();
     expect(dieta.publicarPlano).not.toHaveBeenCalled();
 
     publicar.click();
     fixture.detectChanges();
-    const confirmar = Array.from(raiz.querySelectorAll<HTMLButtonElement>('app-paciente-dialog button'))
-      .find(botao => botao.textContent?.trim() === 'Confirmar publicação')!;
+    const confirmar = Array.from(raiz.querySelectorAll<HTMLButtonElement>('app-dialogo-confirmacao button'))
+      .find(botao => botao.textContent?.trim() === 'Publicar plano')!;
     confirmar.click();
     fixture.detectChanges();
 
-    expect(dieta.publicarPlano).toHaveBeenCalledOnceWith(paciente.id, rascunho.id, rascunho.versao, null);
-    expect(raiz.querySelector('app-paciente-dialog')).toBeNull();
+    expect(dieta.publicarPlano).toHaveBeenCalledOnceWith(paciente.id, rascunho.id, rascunho.versao);
+    expect(raiz.querySelector('app-dialogo-confirmacao')).toBeNull();
+  });
+
+  it('abre a dieta vigente no editor sem gravar e solicita outra data final quando necessário', () => {
+    const inicio = '2099-11-28';
+    const original: Plano = {
+      ...planoSalvo, status: 'PUBLICADO', inicioEdicao: inicio, vigenciaFim: '2099-11-27'
+    };
+    dieta.buscarPlano.and.returnValue(of(original));
+    component.tela = 'detalhe';
+    component.planoSelecionado = original;
+    fixture.detectChanges();
+    const botao = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'))
+      .find(item => item.textContent?.trim() === 'Editar dieta')!;
+    botao.click();
+    expect(component.tela).toBe('editor');
+    expect(component.form.titulo).toBe(original.titulo);
+    expect(component.form.vigenciaInicio).toBe(inicio);
+    expect(component.form.vigenciaFim).toBe('');
+    expect(dieta.criarEdicao).not.toHaveBeenCalled();
+    component.cancelarEdicao();
+    expect(component.planoSelecionado).toEqual(original);
+    expect(component.tela).toBe('detalhe');
+  });
+
+  it('confirma a data calculada pela API antes de publicar uma edição', () => {
+    const inicio = '2099-11-28';
+    const rascunho: Plano = {
+      ...planoSalvo,
+      planoAnteriorId: 1,
+      inicioEdicao: inicio,
+      vigenciaInicio: inicio,
+      vigenciaFim: '2099-12-10'
+    };
+    dieta.buscarPlano.and.returnValue(of(rascunho));
+    dieta.publicarPlano.and.returnValue(of({ ...rascunho, status: 'PUBLICADO' }));
+    component.planoSelecionado = rascunho;
+    component.tela = 'detalhe';
+    component.publicar();
+    fixture.detectChanges();
+    const raiz = fixture.nativeElement as HTMLElement;
+    expect(raiz.querySelector('app-dialogo-confirmacao')?.textContent)
+      .toContain('As alterações entrarão em vigor em 28/11/2099. A dieta atual continuará disponível até o fim de hoje.');
+    expect(dieta.publicarPlano).not.toHaveBeenCalled();
+    component.confirmarPublicacao();
+    expect(dieta.publicarPlano).toHaveBeenCalledOnceWith(paciente.id, rascunho.id, rascunho.versao, inicio);
   });
 
   it('exige confirmação para excluir refeições', () => {
@@ -451,6 +579,135 @@ describe('DietaComponent', () => {
 
     component.atualizarPercentual('percentualProteinas', 35);
     expect(component.form.metas.percentualGorduras).toBe(25);
+  });
+
+  it('oferece editar e copiar a dieta vigente em ações independentes', async () => {
+    const hoje = component.vigenciaInicioMinima;
+    const fim = new Date(`${hoje}T12:00:00Z`);
+    fim.setUTCDate(fim.getUTCDate() + 30);
+    const vigente: Plano = { ...planoSalvo, status: 'PUBLICADO', vigenciaInicio: hoje,
+      vigenciaFim: fim.toISOString().slice(0, 10), inicioEdicao: hoje };
+    component.planos = [vigente];
+    component.planoSelecionado = vigente;
+    component.tela = 'detalhe';
+    fixture.detectChanges();
+    const botoes = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
+    expect(botoes.some(botao => botao.textContent!.includes('Editar dieta'))).toBeTrue();
+    const copiar = botoes.find(botao => botao.textContent!.includes('Copiar como nova dieta'))!;
+    expect(copiar).toBeDefined();
+    copiar.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fim.setUTCDate(fim.getUTCDate() + 1);
+    const inicio = fim.toISOString().slice(0, 10);
+    expect(component.form.vigenciaInicio).toBe(inicio);
+    expect(component.vigenciaInicioMinima).toBe(inicio);
+    expect(component.inicioEdicaoFixo).toBeFalse();
+    expect(component.origemEdicao).toBeNull();
+    expect(component.planoEmEdicaoId).toBeNull();
+    component.form.refeicoes[0].nome = 'Refeição da cópia';
+    expect(vigente.refeicoes[0].nome).toBe('Café da manhã');
+
+    component.form.vigenciaInicio = vigente.vigenciaFim!;
+    component.salvar();
+    expect(component.errors['vigenciaInicio']).toContain('após o fim');
+    expect(dieta.criarPlano).not.toHaveBeenCalled();
+    component.form.vigenciaInicio = inicio;
+    component.salvar();
+    expect(dieta.criarPlano).toHaveBeenCalledWith(paciente.id,
+      jasmine.objectContaining({ vigenciaInicio: inicio }));
+    expect(dieta.criarEdicao).not.toHaveBeenCalled();
+  });
+
+  it('volta à lista pela aba Dieta e protege alterações não salvas', () => {
+    component.planoSelecionado = planoSalvo;
+    component.tela = 'detalhe';
+    fixture.detectChanges();
+    const tabs = fixture.debugElement.query(By.directive(PatientTabsComponent)).componentInstance as PatientTabsComponent;
+    tabs.reabrir.emit();
+    expect(component.tela).toBe('lista');
+    component.abrirNovoRascunho();
+    component.form.titulo = 'Alteração não salva';
+    tabs.reabrir.emit();
+    expect(component.modalDescartarAlteracoes).toBeTrue();
+    expect(component.tela).toBe('editor');
+    component.confirmarDescarte();
+    expect(component.tela).toBe('lista');
+  });
+
+  it('completa os percentuais ao digitar nos inputs e recalcula as gramas', async () => {
+    component.abrirNovoRascunho();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await preencherNumero('#meta-kcal', 2000);
+    await preencherNumero('#meta-percentual-proteinas', 3);
+    await preencherNumero('#meta-percentual-proteinas', 30);
+    await preencherNumero('#meta-percentual-carboidratos', 5);
+    await preencherNumero('#meta-percentual-carboidratos', 50);
+
+    expect(fixture.nativeElement.querySelector('#meta-percentual-gorduras').value).toBe('20');
+    expect(component.metasCalculadas).toEqual({ kcal: 2000, proteinas: 150, carboidratos: 250, gorduras: 400 / 9 });
+
+    await preencherNumero('#meta-percentual-gorduras', 25);
+    expect(fixture.nativeElement.querySelector('#meta-percentual-carboidratos').value).toBe('45');
+    expect(component.percentuaisCalculados).toEqual({ proteinas: 30, carboidratos: 45, gorduras: 25 });
+  });
+
+  it('fecha 100% ao editar um plano com os três percentuais já preenchidos', async () => {
+    component.planoSelecionado = { ...planoSalvo,
+      metas: { kcal: 2000, proteinas: 150, carboidratos: 250, gorduras: 44.44 },
+      percentuais: { proteinas: 30, carboidratos: 50, gorduras: 20 } };
+    component.abrirEdicao();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await preencherNumero('#meta-percentual-proteinas', 40);
+
+    expect(fixture.nativeElement.querySelector('#meta-percentual-gorduras').value).toBe('10');
+    expect(component.percentuaisCalculados).toEqual({ proteinas: 40, carboidratos: 50, gorduras: 10 });
+  });
+
+  it('limpa o resultado automático quando a soma dos outros dois excede 100%', async () => {
+    component.abrirNovoRascunho();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await preencherNumero('#meta-kcal', 2000);
+    await preencherNumero('#meta-percentual-proteinas', 30);
+    await preencherNumero('#meta-percentual-carboidratos', 50);
+    await preencherNumero('#meta-percentual-proteinas', 60);
+
+    expect(fixture.nativeElement.querySelector('#meta-percentual-gorduras').value).toBe('');
+    expect(component.metasCalculadas).toBeNull();
+    expect(component.form.metas.percentualProteinas).toBe(60);
+    expect(component.form.metas.percentualCarboidratos).toBe(50);
+  });
+
+  it('permite apagar o campo automático sem apagar os percentuais informados', async () => {
+    component.abrirNovoRascunho();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await preencherNumero('#meta-percentual-proteinas', 30);
+    await preencherNumero('#meta-percentual-carboidratos', 50);
+    const gordura = fixture.nativeElement.querySelector('#meta-percentual-gorduras') as HTMLInputElement;
+    gordura.value = '';
+    gordura.dispatchEvent(new Event('input', { bubbles: true }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(component.form.metas.percentualProteinas).toBe(30);
+    expect(component.form.metas.percentualCarboidratos).toBe(50);
+    expect(gordura.value).toBe('');
+    await preencherNumero('#meta-percentual-proteinas', 35);
+    expect(gordura.value).toBe('15');
+  });
+
+  it('completa proteínas quando carboidratos e gorduras são informados primeiro', async () => {
+    component.abrirNovoRascunho();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await preencherNumero('#meta-kcal', 2000);
+    await preencherNumero('#meta-percentual-carboidratos', 33.33);
+    await preencherNumero('#meta-percentual-gorduras', 33.33);
+    expect(fixture.nativeElement.querySelector('#meta-percentual-proteinas').value).toBe('33.34');
+    expect(component.percentuaisCalculados).toEqual({ proteinas: 33.34, carboidratos: 33.33, gorduras: 33.33 });
   });
 
   it('calcula metas em g por kg e usa a gordura para completar as calorias', () => {
@@ -497,7 +754,7 @@ describe('DietaComponent', () => {
     (component.podeSair() as import('rxjs').Observable<boolean>).subscribe(valor => resposta = valor);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('app-paciente-dialog [role="dialog"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-dialogo-confirmacao dialog[open]')).not.toBeNull();
     component.confirmarDescarte();
     expect(resposta).toBeTrue();
   });

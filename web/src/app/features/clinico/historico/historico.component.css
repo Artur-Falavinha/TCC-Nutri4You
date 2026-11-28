@@ -1,3 +1,5 @@
+@import '../../../shared/styles/tooltip.css';
+
 :host {
   display: flex;
   flex-direction: column;
@@ -21,14 +23,6 @@
   border-bottom: var(--border-width-hairline) solid var(--color-border-default);
 }
 
-.page-header h1 {
-  margin: 0 0 var(--space-8);
-  font-family: var(--font-heading);
-  font-size: 2.25rem;
-  font-weight: 700;
-  line-height: 1.3;
-}
-
 .canvas {
   display: flex;
   flex-direction: column;
@@ -39,8 +33,7 @@
 }
 
 .intro h2,
-.grafico h2,
-.vazio h2 {
+.grafico h2 {
   margin: 0;
   font-family: var(--font-heading);
   font-weight: 700;
@@ -60,8 +53,7 @@
   text-transform: uppercase;
 }
 
-.intro p:last-child,
-.vazio p {
+.intro p:last-child {
   margin: 0;
   color: var(--color-text-secondary);
   font-size: var(--text-sm);
@@ -275,52 +267,6 @@
   font-size: 0.75rem;
 }
 
-.dica {
-  position: relative;
-  z-index: 1;
-  width: fit-content;
-  cursor: help;
-  outline: none;
-}
-
-.dica:hover,
-.dica:focus-visible {
-  z-index: 6;
-}
-
-.dica__badge {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  z-index: 6;
-  width: max-content;
-  max-width: 220px;
-  padding: 8px 10px;
-  border: 1px solid var(--color-border-default);
-  border-radius: 8px;
-  background: var(--color-surface-card);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
-  color: var(--color-text-secondary);
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0;
-  line-height: 1.35;
-  text-align: left;
-  text-transform: none;
-  white-space: normal;
-  opacity: 0;
-  transform: translateY(6px);
-  pointer-events: none;
-  transition: opacity 160ms ease, transform 160ms ease;
-}
-
-.dica:hover .dica__badge,
-.dica:focus-visible .dica__badge {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 .dica--fim .dica__badge,
 .legenda .dica__badge {
   left: auto;
@@ -344,32 +290,6 @@
 .legenda__braco { background: #94a3b8; border-radius: 2px; }
 .legenda__supra { background: #94a3b8; }
 
-.vazio {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-height: 28rem;
-  padding: 48px 24px;
-  text-align: center;
-}
-
-.vazio__arte {
-  width: min(420px, 85%);
-  height: auto;
-  margin-bottom: 8px;
-}
-
-.vazio h2 {
-  font-size: 1.375rem;
-}
-
-.vazio p {
-  max-width: 34rem;
-}
-
 .alert {
   color: var(--color-error);
 }
@@ -383,7 +303,6 @@
 @media (max-width: 720px) {
   .page-header,
   .canvas { padding-inline: var(--space-16); }
-  .page-header h1 { font-size: 1.75rem; }
   .kpis,
   .par { grid-template-columns: 1fr; }
   .kpi strong { font-size: 1.5rem; }

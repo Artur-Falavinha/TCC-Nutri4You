@@ -1,95 +1,227 @@
-import { Component, DestroyRef, HostListener, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, ElementRef, HostListener, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { CanDeactivateFn } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ApiService } from '../../core/services/api.service';
+import { Observable, Subject, take } from 'rxjs';
+
+import { ToastService } from '../../core/services/toast.service';
 import { ApiErrorResponse } from '../../core/models/api-response.model';
+import { ApiService } from '../../core/services/api.service';
 import { FormAlertComponent } from '../../shared/components/form-alert/form-alert.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
-import { ConsultasAvulsasComponent } from './consultas-avulsas.component';
-import { UiSelectComponent } from '../../shared/components/ui-select/ui-select.component';
 import { UiButtonComponent } from '../../shared/components/ui-button/ui-button.component';
-import { PacienteDialogComponent } from '../pacientes/components/paciente-dialog/paciente-dialog.component';
-import { Observable, Subject, take } from 'rxjs';
+import { DialogoConfirmacaoComponent } from '../../shared/components/dialogo-confirmacao/dialogo-confirmacao.component';
+import { CalendarioAgendaComponent } from './calendario-agenda.component';
 
 interface Horario { diaSemana: number; horario: string }
 
+const CAMINHO_HORARIOS = '/agenda-nutricionista/horarios';
+const LIMITE_SEMANAL = 224;
+const ULTIMO_INICIO = '23:15';
+const DURACAO_CONSULTA = 45;
+
+const DIAS = [
+  { numero: 1, nome: 'Segunda-feira', curto: 'Seg' },
+  { numero: 2, nome: 'Terça-feira', curto: 'Ter' },
+  { numero: 3, nome: 'Quarta-feira', curto: 'Qua' },
+  { numero: 4, nome: 'Quinta-feira', curto: 'Qui' },
+  { numero: 5, nome: 'Sexta-feira', curto: 'Sex' },
+  { numero: 6, nome: 'Sábado', curto: 'Sáb' },
+  { numero: 7, nome: 'Domingo', curto: 'Dom' }
+];
+
+function ordenar(horarios: Horario[]): Horario[] {
+  return [...horarios].sort((a, b) => a.diaSemana - b.diaSemana || a.horario.localeCompare(b.horario));
+}
+
+function horarioSeguinte(horario: string): string {
+  const [hora, minuto] = horario.split(':').map(Number);
+  const minutos = hora * 60 + minuto + DURACAO_CONSULTA;
+  const fim = String(Math.floor(minutos / 60)).padStart(2, '0') + ':' + String(minutos % 60).padStart(2, '0');
+  return fim <= ULTIMO_INICIO ? fim : '';
+}
+
 @Component({
   selector: 'app-agenda',
-  imports: [
-    FormsModule, FormAlertComponent, PageHeaderComponent, ConsultasAvulsasComponent,
-    UiSelectComponent, UiButtonComponent, PacienteDialogComponent
-  ],
+  imports: [FormsModule, FormAlertComponent, PageHeaderComponent, UiButtonComponent, DialogoConfirmacaoComponent,
+    CalendarioAgendaComponent],
   templateUrl: './agenda.component.html',
   styleUrl: './agenda.component.css'
 })
 export class AgendaComponent implements OnInit {
+  private readonly toast = inject(ToastService);
   private readonly api = inject(ApiService);
   private readonly destroyRef = inject(DestroyRef);
-  readonly dias = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
-  readonly opcoesDias = this.dias.map((label, indice) => ({ label, value: String(indice + 1) }));
-  horarios: Horario[] = [];
-  dia = '1';
+  private readonly horarios = signal<Horario[]>([]);
+  private readonly horariosSalvos = signal<Horario[]>([]);
+  private readonly numeroDia = signal(1);
+  private readonly botaoCopia = viewChild<ElementRef<HTMLButtonElement>>('botaoCopia');
+  private respostaSaida: Subject<boolean> | null = null;
+
+  readonly semana = computed(() => DIAS.map(dia => ({
+    ...dia,
+    horarios: this.horarios().filter(item => item.diaSemana === dia.numero)
+  })));
+  readonly diaSelecionado = computed(() => this.semana()[this.numeroDia() - 1]);
+  readonly diasAbertos = computed(() => this.semana().filter(dia => dia.horarios.length > 0).length);
+  readonly totalHorarios = computed(() => this.horarios().length);
+  readonly alterado = computed(() => JSON.stringify(this.horarios()) !== JSON.stringify(this.horariosSalvos()));
+  protected readonly verCalendario = signal(true);
+
   hora = '08:00';
   carregando = true;
   carregado = false;
   salvando = false;
   erro = '';
-  mensagem = '';
-  private original = '[]';
+  erroHorario = '';
   modalSaida = false;
-  private respostaSaida: Subject<boolean> | null = null;
+  copiando = false;
+  destinos = new Set<number>();
 
-  ngOnInit() { this.carregar(); }
-  carregar() {
+  ngOnInit(): void { this.carregar(); }
+
+  carregar(): void {
     this.carregando = true;
     this.erro = '';
-    this.api.get<Horario[]>('/agenda-nutricionista/horarios').pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: h => { this.receber(h); this.carregando = false; this.carregado = true; },
-      error: (e: ApiErrorResponse) => { this.erro = e.message; this.carregando = false; }
+    this.api.get<Horario[]>(CAMINHO_HORARIOS).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: horarios => {
+        this.receber(horarios);
+        this.ajustarSugestao();
+        this.carregando = false;
+        this.carregado = true;
+      },
+      error: (erro: ApiErrorResponse) => {
+        this.erro = erro.message || 'Não foi possível carregar a disponibilidade.';
+        this.carregando = false;
+      }
     });
   }
-  private receber(h: Horario[]) {
-    this.horarios = h.map(item => ({ ...item, horario: item.horario.slice(0, 5) }));
-    this.original = JSON.stringify(this.horarios);
+
+  selecionarDia(numero: number): void {
+    if (numero === this.numeroDia()) return;
+    this.numeroDia.set(numero);
+    this.erroHorario = '';
+    this.fecharCopia();
+    this.ajustarSugestao();
   }
-  adicionar() {
-    this.erro = ''; this.mensagem = '';
-    if (!/^\d{2}:\d{2}$/.test(this.hora) || this.hora > '23:15') {
-      this.erro = 'Escolha um horário até 23:15.'; return;
+
+  adicionar(): void {
+    this.erroHorario = '';
+    if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(this.hora) || this.hora > ULTIMO_INICIO) {
+      this.erroHorario = 'Informe um horário válido até 23:15.';
+      return;
     }
-    if (this.horarios.some(h => h.diaSemana === +this.dia && h.horario === this.hora)) {
-      this.erro = 'Este horário já foi adicionado.'; return;
+    if (this.diaSelecionado().horarios.some(item => item.horario === this.hora)) {
+      this.erroHorario = 'Esse horário já está cadastrado neste dia.';
+      return;
     }
-    this.horarios = [...this.horarios, { diaSemana: +this.dia, horario: this.hora }]
-      .sort((a, b) => a.diaSemana - b.diaSemana || a.horario.localeCompare(b.horario));
+    if (this.totalHorarios() >= LIMITE_SEMANAL) {
+      this.erroHorario = 'A semana já atingiu o limite de 224 horários.';
+      return;
+    }
+    this.atualizarRascunho([...this.horarios(), { diaSemana: this.numeroDia(), horario: this.hora }]);
+    this.hora = horarioSeguinte(this.hora);
   }
-  remover(h: Horario) { this.horarios = this.horarios.filter(item => item !== h); this.mensagem = ''; }
-  doDia(dia: number) { return this.horarios.filter(h => h.diaSemana === dia); }
-  salvar() {
-    if (this.salvando || !this.carregado) return;
-    this.salvando = true; this.erro = ''; this.mensagem = '';
-    this.api.put<Horario[]>('/agenda-nutricionista/horarios', this.horarios)
-      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-        next: h => { this.receber(h); this.salvando = false; this.mensagem = 'Disponibilidade semanal salva.'; },
-        error: (e: ApiErrorResponse) => { this.erro = e.message; this.salvando = false; }
-      });
+
+  remover(horario: Horario): void {
+    this.atualizarRascunho(this.horarios().filter(item => item !== horario));
+    this.erroHorario = '';
+    if (!this.diaSelecionado().horarios.length) this.fecharCopia();
   }
-  get alterado() { return JSON.stringify(this.horarios) !== this.original; }
+
+  alternarCopia(): void {
+    if (this.copiando) {
+      this.fecharCopia();
+    } else {
+      this.copiando = true;
+    }
+  }
+
+  selecionarDestino(numero: number, selecionado: boolean): void {
+    if (selecionado) this.destinos.add(numero);
+    else this.destinos.delete(numero);
+  }
+
+  copiarHorarios(): void {
+    const origem = this.diaSelecionado().horarios;
+    const novos = this.semana().filter(dia => this.destinos.has(dia.numero)).flatMap(dia => {
+      const existentes = new Set(dia.horarios.map(item => item.horario));
+      return origem.filter(item => !existentes.has(item.horario))
+        .map(item => ({ diaSemana: dia.numero, horario: item.horario }));
+    });
+    if (!novos.length) {
+      this.toast.informacao('Os dias selecionados já têm esses horários.');
+      return;
+    }
+    if (this.totalHorarios() + novos.length > LIMITE_SEMANAL) {
+      this.toast.aviso('A cópia ultrapassa o limite de 224 horários. Selecione menos dias.');
+      return;
+    }
+    const dias = new Set(novos.map(item => item.diaSemana)).size;
+    this.atualizarRascunho([...this.horarios(), ...novos]);
+    this.fecharCopia();
+    this.toast.sucesso(dias === 1 ? 'Horários copiados para 1 dia.' : 'Horários copiados para ' + dias + ' dias.');
+    this.botaoCopia()?.nativeElement.focus();
+  }
+
+  salvar(): void {
+    if (this.salvando || !this.carregado || !this.alterado()) return;
+    this.salvando = true;
+    this.erro = '';
+    this.api.put<Horario[]>(CAMINHO_HORARIOS, this.horarios()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: horarios => {
+        this.receber(horarios);
+        this.salvando = false;
+        this.toast.sucesso('Disponibilidade semanal salva.');
+      },
+      error: (erro: ApiErrorResponse) => {
+        this.toast.erro(erro.message || 'Não foi possível salvar. Tente novamente.');
+        this.salvando = false;
+      }
+    });
+  }
+
   podeSair(): boolean | Observable<boolean> {
     if (this.salvando) return false;
-    if (!this.alterado) return true;
+    if (!this.alterado()) return true;
     this.respostaSaida ??= new Subject<boolean>();
     this.modalSaida = true;
     return this.respostaSaida.asObservable().pipe(take(1));
   }
-  responderSaida(confirmar: boolean) {
+
+  responderSaida(confirmar: boolean): void {
     this.modalSaida = false;
-    this.respostaSaida?.next(confirmar);
-    this.respostaSaida?.complete();
+    const resposta = this.respostaSaida;
     this.respostaSaida = null;
+    resposta?.next(confirmar);
+    resposta?.complete();
   }
+
   @HostListener('window:beforeunload', ['$event'])
-  antesDeFechar(event: BeforeUnloadEvent) { if (this.alterado || this.salvando) event.preventDefault(); }
+  antesDeFechar(evento: BeforeUnloadEvent): void {
+    if (this.alterado() || this.salvando) evento.preventDefault();
+  }
+
+  private receber(horarios: Horario[]): void {
+    const normalizados = ordenar(horarios.map(item => ({ diaSemana: item.diaSemana, horario: item.horario.slice(0, 5) })));
+    this.horarios.set(normalizados);
+    this.horariosSalvos.set(normalizados);
+  }
+
+  private ajustarSugestao(): void {
+    const ultimo = this.diaSelecionado().horarios.at(-1);
+    this.hora = ultimo ? horarioSeguinte(ultimo.horario) : '08:00';
+  }
+
+  private atualizarRascunho(horarios: Horario[]): void {
+    this.horarios.set(ordenar(horarios));
+    this.erro = '';
+  }
+
+  private fecharCopia(): void {
+    this.copiando = false;
+    this.destinos.clear();
+  }
 }
-export const agendaPendenteGuard: CanDeactivateFn<AgendaComponent> = c => c.podeSair();
+
+export const agendaPendenteGuard: CanDeactivateFn<AgendaComponent> = componente => componente.podeSair();

@@ -1,0 +1,64 @@
+<app-page-header titulo="Configurações" />
+
+<div class="settings">
+  <section class="card" aria-labelledby="conta-titulo" [attr.aria-busy]="carregandoConta()">
+    <header class="card__cabecalho">
+      <span class="icone" aria-hidden="true"><i class="ph ph-user-circle"></i></span>
+      <h2 id="conta-titulo">Dados da conta</h2>
+    </header>
+
+    @if (conta(); as usuario) {
+      <app-foto-perfil [nome]="usuario.nome" />
+      <app-perfil-conta [emailAtual]="usuario.email" (contaAtualizada)="atualizarConta($event)" />
+    } @else if (carregandoConta()) {
+      <p class="estado" role="status">Carregando seus dados…</p>
+    } @else if (erroConta()) {
+      <p class="feedback feedback--erro" role="alert">{{ erroConta() }}</p>
+      <app-ui-button label="Tentar novamente" variant="secondary" [fullWidth]="false" (click)="carregarConta()" />
+    }
+  </section>
+
+  <section class="card card--preferencias" aria-labelledby="preferencias-titulo">
+    <header class="card__cabecalho">
+      <span class="icone" aria-hidden="true"><i class="ph ph-sliders-horizontal"></i></span>
+      <h2 id="preferencias-titulo">Preferências</h2>
+    </header>
+
+    <section class="card__secao" id="notificacoes" aria-labelledby="notificacoes-titulo"
+      [attr.aria-busy]="carregandoPreferencia() || salvandoPreferencia()">
+      <h3 id="notificacoes-titulo">Notificações por e-mail</h3>
+
+      @if (carregandoPreferencia()) {
+        <p class="estado" role="status">Carregando sua preferência…</p>
+      } @else if (notificacoesAtivas() !== null) {
+        <label class="preferencia" [class.preferencia--salvando]="salvandoPreferencia()">
+          <strong id="notificacoes-rotulo">Atualizações da agenda</strong>
+          <span class="secundario" id="notificacoes-descricao">
+            Receba no e-mail da sua conta avisos sobre solicitações, confirmações, reagendamentos, recusas e cancelamentos.
+          </span>
+          <span class="interruptor">
+            <input
+              #controleAgenda
+              type="checkbox"
+              role="switch"
+              aria-labelledby="notificacoes-rotulo"
+              aria-describedby="notificacoes-descricao"
+              [checked]="notificacoesAtivas()"
+              [disabled]="salvandoPreferencia()"
+              (change)="salvarPreferencia(controleAgenda)"
+            />
+            <span class="interruptor__trilho" aria-hidden="true"></span>
+            <span class="interruptor__estado" aria-hidden="true">
+              {{ salvandoPreferencia() ? 'Salvando…' : notificacoesAtivas() ? 'Ativado' : 'Desativado' }}
+            </span>
+          </span>
+        </label>
+      } @else {
+        <p class="feedback feedback--erro" role="alert">Não foi possível carregar sua preferência de e-mail.</p>
+        <app-ui-button label="Tentar novamente" variant="secondary" [fullWidth]="false" (click)="carregarPreferencia()" />
+      }
+    </section>
+
+    <app-privacidade />
+  </section>
+</div>

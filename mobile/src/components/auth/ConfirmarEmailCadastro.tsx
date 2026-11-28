@@ -1,14 +1,19 @@
 import { useState } from 'react';
-import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
-import { useAppAlert } from '../feedback/AppAlertProvider';
+import { toast } from '../feedback/toast';
 import { ApiError } from '../../core/api/api-response.types';
 import { confirmarCadastroPaciente, iniciarCadastroPaciente } from '../../core/auth/auth.service';
 import { ComprovanteCadastro } from '../../core/auth/auth.models';
 import { isValidUuid } from '../../core/utils/uuid.util';
+import { AuthFormButton } from './AuthFormButton';
 import { AuthScreenLayout } from './AuthScreenLayout';
 import { authFormStyles } from './authFormStyles';
+import { recuperacaoSenhaStyles as formulario } from './recuperacaoSenhaStyles';
+import { SectionCardHeader, sectionCardStyles } from '../layout/SectionCardHeader';
+import { perfilStyles } from '../../screens/home/perfil.styles';
+import { colors } from '../../theme/tokens';
 
 interface ConfirmarEmailCadastroProps {
   aoConfirmar: (confirmacao: ComprovanteCadastro) => void;
@@ -16,7 +21,6 @@ interface ConfirmarEmailCadastroProps {
 }
 
 export function ConfirmarEmailCadastro({ aoConfirmar, aoVoltar }: ConfirmarEmailCadastroProps) {
-  const { showAlert } = useAppAlert();
   const [email, setEmail] = useState('');
   const [codigo, setCodigo] = useState('');
   const [enviado, setEnviado] = useState(false);
@@ -34,13 +38,14 @@ export function ConfirmarEmailCadastro({ aoConfirmar, aoVoltar }: ConfirmarEmail
     try {
       await iniciarCadastroPaciente(email);
       setEnviado(true);
+      toast.sucesso('Solicitação recebida. Confira sua caixa de entrada e o spam.');
     } catch (falha) {
       if (falha instanceof ApiError && falha.error === 'EMAIL_EM_USO') {
         voltarParaEmail();
-        showAlert(falha.message);
+        toast.erro(falha.message);
         return;
       }
-      setErro(falha instanceof ApiError ? falha.message : 'Não foi possível enviar. Tente novamente.');
+      toast.erro(falha instanceof ApiError ? falha.message : 'Não foi possível enviar. Tente novamente.');
     } finally {
       setOcupado(false);
     }
@@ -63,8 +68,10 @@ export function ConfirmarEmailCadastro({ aoConfirmar, aoVoltar }: ConfirmarEmail
     try {
       const confirmacao = await confirmarCadastroPaciente(codigo.trim());
       aoConfirmar({ ...confirmacao, token: codigo.trim() });
+      toast.sucesso('E-mail confirmado.');
     } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : 'Não foi possível confirmar. Tente novamente.');
+      if (falha instanceof ApiError && falha.status === 400) setErro(falha.message);
+      else toast.erro(falha instanceof ApiError ? falha.message : 'Não foi possível confirmar. Tente novamente.');
     } finally {
       setOcupado(false);
     }
@@ -72,41 +79,29 @@ export function ConfirmarEmailCadastro({ aoConfirmar, aoVoltar }: ConfirmarEmail
 
   return (
     <AuthScreenLayout>
-      <View style={authFormStyles.card}>
-        <View style={authFormStyles.header}>
-          <Text style={authFormStyles.title} accessibilityRole="header">
-            {enviado ? 'Confirme seu e-mail' : 'Crie sua conta'}
-          </Text>
-          <Text style={authFormStyles.description}>
+      <View style={sectionCardStyles.superficie}>
+        <View style={formulario.cabecalho}>
+          <SectionCardHeader icone={enviado ? 'key' : 'mail'} titulo={enviado ? 'Confirme seu e-mail' : 'Crie sua conta'} />
+          <Text style={authFormStyles.etapa}>Cadastro · {enviado ? 2 : 1} de 3</Text>
+          <Text style={perfilStyles.descricao}>
             {enviado
-              ? 'Cole abaixo o código recebido por e-mail para continuar.'
+              ? 'Cole o código recebido por e-mail para continuar.'
               : 'Informe seu e-mail para iniciar o cadastro de paciente.'}
           </Text>
         </View>
 
-        <View style={authFormStyles.inputGroup}>
-          <Text style={authFormStyles.label}>{enviado ? 'CÓDIGO DO E-MAIL' : 'E-MAIL'}</Text>
-          <View style={authFormStyles.inputContainer}>
-            <Feather name={enviado ? 'key' : 'mail'} size={20} color="#64748b" style={authFormStyles.inputIcon} />
+        <View style={formulario.campo}>
+          <Text style={formulario.rotulo}>E-mail</Text>
+          <View style={[formulario.controle, enviado && authFormStyles.somenteLeitura]}>
+            <Feather name="mail" size={18} color={colors.textSecondary} aria-hidden />
             {enviado ? (
-              <TextInput
-                key="codigo"
-                accessibilityLabel="Código recebido por e-mail"
-                style={authFormStyles.input}
-                placeholder="Cole o código"
-                placeholderTextColor="#94a3b8"
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={codigo}
-                onChangeText={setCodigo}
-              />
+              <Text style={authFormStyles.valorSomenteLeitura}>{email.trim()}</Text>
             ) : (
               <TextInput
-                key="email"
+                style={formulario.entrada}
                 accessibilityLabel="E-mail"
-                style={authFormStyles.input}
-                placeholder="seuemail@exemplo.com"
-                placeholderTextColor="#94a3b8"
+                placeholder="email@exemplo.com"
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="email-address"
                 autoComplete="email"
                 autoCapitalize="none"
@@ -116,53 +111,45 @@ export function ConfirmarEmailCadastro({ aoConfirmar, aoVoltar }: ConfirmarEmail
               />
             )}
           </View>
+          {!enviado && !!erro && <Text accessibilityRole="alert" style={authFormStyles.erroCampo}>{erro}</Text>}
         </View>
 
-        {!!erro && <Text accessibilityRole="alert" style={authFormStyles.description}>{erro}</Text>}
-        <TouchableOpacity
-          accessibilityRole="button"
-          style={authFormStyles.button}
-          disabled={ocupado}
-          onPress={() => void (enviado ? confirmar() : enviar())}
-        >
-          {ocupado ? <ActivityIndicator color="#fff" /> : (
-            <Text style={authFormStyles.buttonText}>{enviado ? 'Confirmar e-mail' : 'Enviar link de confirmação'}</Text>
-          )}
-        </TouchableOpacity>
-
         {enviado && (
-          <>
-            <TouchableOpacity
-              style={authFormStyles.secondaryAction}
-              onPress={() => void enviar()}
-              disabled={ocupado}
-              activeOpacity={0.75}
-              accessibilityRole="button"
-            >
-              <Text style={authFormStyles.secondaryActionText}>Reenviar e-mail</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={authFormStyles.secondaryAction}
-              onPress={voltarParaEmail}
-              disabled={ocupado}
-              activeOpacity={0.75}
-              accessibilityRole="button"
-            >
-              <Text style={authFormStyles.secondaryActionText}>Trocar endereço de e-mail</Text>
-            </TouchableOpacity>
-          </>
+          <View style={formulario.campo}>
+            <Text style={formulario.rotulo}>Código de verificação</Text>
+            <View style={formulario.controle}>
+              <Feather name="key" size={18} color={colors.textSecondary} aria-hidden />
+              <TextInput
+                style={formulario.entrada}
+                accessibilityLabel="Código recebido por e-mail"
+                placeholder="Cole o código recebido"
+                placeholderTextColor={colors.textSecondary}
+                autoComplete="one-time-code"
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={codigo}
+                onChangeText={setCodigo}
+              />
+            </View>
+            {!!erro && <Text accessibilityRole="alert" style={authFormStyles.erroCampo}>{erro}</Text>}
+          </View>
         )}
-        <TouchableOpacity
-          style={authFormStyles.secondaryAction}
-          onPress={aoVoltar}
-          disabled={ocupado}
-          activeOpacity={0.75}
-          accessibilityRole="button"
-          accessibilityLabel="Voltar para o login"
-        >
-          <Feather name="arrow-left" size={16} color="#005414" />
-          <Text style={authFormStyles.secondaryActionText}>Voltar para o login</Text>
-        </TouchableOpacity>
+
+        <View style={formulario.acoes}>
+          <AuthFormButton
+            titulo={enviado ? 'Confirmar e-mail' : 'Enviar código por e-mail'}
+            icone="arrow-right"
+            ocupado={ocupado}
+            onPress={() => void (enviado ? confirmar() : enviar())}
+          />
+          {enviado && (
+            <>
+              <AuthFormButton titulo="Reenviar e-mail" icone="refresh-cw" variante="secundario" desativado={ocupado} onPress={() => void enviar()} />
+              <AuthFormButton titulo="Trocar endereço de e-mail" icone="edit-2" variante="secundario" desativado={ocupado} onPress={voltarParaEmail} />
+            </>
+          )}
+          <AuthFormButton titulo="Voltar para o login" icone="arrow-left" variante="texto" desativado={ocupado} onPress={aoVoltar} />
+        </View>
       </View>
     </AuthScreenLayout>
   );

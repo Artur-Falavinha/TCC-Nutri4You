@@ -1,22 +1,27 @@
+import { DialogoConfirmacao } from '../../components/feedback/DialogoConfirmacao';
+import { toast } from '../../components/feedback/toast';
+import { Feather } from '@expo/vector-icons';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiError } from '../../core/api/api-response.types';
 import { logout } from '../../core/auth/auth.service';
+import { CampoSexo } from '../../components/forms/CampoSexo';
+import { AlterarEmailPerfil } from './AlterarEmailPerfil';
 import {
   atualizarPerfil,
   carregarPerfil,
@@ -24,39 +29,31 @@ import {
   listarNutricionistas,
   NutricionistaVinculo
 } from '../../core/perfil/perfil.service';
-import { formatDateDisplay, toIsoDate } from '../../core/utils/date-mask.util';
+import { dataNascimentoParaIso, formatarDataCivil, formatDateDisplay } from '../../core/utils/date-mask.util';
 import { formatPhoneDisplay, normalizePhone } from '../../core/utils/phone-mask.util';
 import { RootStackParamList } from '../../navigation/types';
 import { AppHeader } from '../../components/layout/AppHeader';
+import { SectionCardHeader, sectionCardStyles } from '../../components/layout/SectionCardHeader';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { SolicitacoesVinculo } from './SolicitacoesVinculo';
-import { BuscarVinculo } from './BuscarVinculo';
 import { Privacidade } from './Privacidade';
+import { FotoPerfil } from './FotoPerfil';
+import { AvatarNutricionista } from './AvatarNutricionista';
+import { LembretesConsulta } from './LembretesConsulta';
+import { colors, fontFamily, radius, spacing } from '../../theme/tokens';
+import { perfilStyles } from './perfil.styles';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DadosPessoais'>;
-
-const SEXO_OPTIONS = ['Masculino', 'Feminino', 'Prefiro não informar'] as const;
-
-function isoParaExibicao(valor: string | null): string {
-  if (!valor) {
-    return '';
-  }
-  const partes = /^(\d{4})-(\d{2})-(\d{2})/.exec(valor);
-  if (!partes) {
-    return formatDateDisplay(valor);
-  }
-  return `${partes[3]}/${partes[2]}/${partes[1]}`;
-}
 
 function mensagemErro(erro: unknown, fallback: string): string {
   return erro instanceof ApiError ? erro.message : fallback;
 }
 
 export function HomeScreen({ navigation }: Props) {
+  const { width } = useWindowDimensions();
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
-  const [aviso, setAviso] = useState('');
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -73,7 +70,7 @@ export function HomeScreen({ navigation }: Props) {
         setEmail(perfil.email ?? '');
         setTelefone(formatPhoneDisplay(perfil.telefone ?? ''));
         setSexo(perfil.sexo ?? '');
-        setDataNascimento(isoParaExibicao(perfil.dataNascimento));
+        setDataNascimento(formatarDataCivil(perfil.dataNascimento));
         setVinculos(nutricionistas ?? []);
       })
       .catch((falha: unknown) => {
@@ -87,19 +84,16 @@ export function HomeScreen({ navigation }: Props) {
   const salvar = async () => {
     const nomeLimpo = nome.trim();
     if (!nomeLimpo) {
-      setAviso('');
       setErro('Informe o nome.');
       return;
     }
-    const nascimento = dataNascimento.trim() ? toIsoDate(dataNascimento) : undefined;
+    const nascimento = dataNascimentoParaIso(dataNascimento);
     if (dataNascimento.trim() && !nascimento) {
-      setAviso('');
       setErro('Data de nascimento inválida. Use DD/MM/AAAA.');
       return;
     }
     setSalvando(true);
     setErro('');
-    setAviso('');
     try {
       const perfil = await atualizarPerfil({
         nome: nomeLimpo,
@@ -108,9 +102,9 @@ export function HomeScreen({ navigation }: Props) {
         dataNascimento: nascimento
       });
       setNome(perfil.nome ?? nomeLimpo);
-      setAviso('Dados pessoais atualizados.');
+      toast.sucesso('Dados pessoais atualizados.');
     } catch (falha) {
-      setErro(mensagemErro(falha, 'Não foi possível salvar os dados.'));
+      toast.erro(mensagemErro(falha, 'Não foi possível salvar os dados.'));
     } finally {
       setSalvando(false);
     }
@@ -118,14 +112,14 @@ export function HomeScreen({ navigation }: Props) {
 
   const executarDesvinculo = async (vinculo: NutricionistaVinculo) => {
     setErro('');
-    setAviso('');
     try {
       await desvincularNutricionista(vinculo.id);
       setVinculos((atual) => atual.filter((item) => item.id !== vinculo.id));
       setPendente(null);
-      setAviso(`Relação com ${vinculo.nome} encerrada.`);
+      toast.sucesso(`Relação com ${vinculo.nome} encerrada.`);
     } catch (falha) {
-      setErro(mensagemErro(falha, 'Não foi possível desvincular.'));
+      setPendente(null);
+      toast.erro(mensagemErro(falha, 'Não foi possível desvincular.'));
     }
   };
 
@@ -174,102 +168,111 @@ export function HomeScreen({ navigation }: Props) {
       return;
     }
     if (destino !== 'profile') {
-      setAviso('Este módulo ainda não está disponível nesta etapa.');
+      toast.informacao('Este módulo ainda não está disponível nesta etapa.');
     }
   };
+
+  const formularioOcupado = carregando || salvando;
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
       <AppHeader onOpenMenu={() => setMenuVisible(true)} />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.titulo}>Dados pessoais</Text>
-          <Text style={styles.subtitulo}>Altere nome, telefone, sexo e data de nascimento.</Text>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={[
+            styles.content,
+            width < 420 && styles.contentCompacto,
+            { maxWidth: width >= 640 ? 760 : 560 }
+          ]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.titulo} accessibilityRole="header" aria-level={1}>Dados pessoais</Text>
+          <FotoPerfil />
 
-          {carregando ? <ActivityIndicator color="#006f1e" /> : null}
-          {erro ? (
-            <Text style={styles.erro} accessibilityRole="alert">
-              {erro}
-            </Text>
-          ) : null}
-          {aviso ? (
-            <Text style={styles.aviso} accessibilityRole="text">
-              {aviso}
-            </Text>
-          ) : null}
+          <View style={sectionCardStyles.superficie}>
+            <View style={styles.introducao}>
+              <SectionCardHeader titulo="Informações pessoais" icone="user" />
+              <Text style={perfilStyles.descricao}>Altere nome, telefone, sexo e data de nascimento.</Text>
+            </View>
 
-          <Text style={styles.rotulo}>Nome</Text>
-          <TextInput
-            style={styles.campo}
-            value={nome}
-            onChangeText={setNome}
-            editable={!carregando && !salvando}
-            accessibilityLabel="Nome"
-          />
+            {carregando ? <ActivityIndicator color={colors.brand} accessibilityLabel="Carregando dados pessoais" /> : null}
+            {erro ? <Text style={perfilStyles.erro} accessibilityRole="alert">{erro}</Text> : null}
 
-          <Text style={styles.rotulo}>E-mail</Text>
-          <TextInput
-            style={[styles.campo, styles.campoBloqueado]}
-            value={email}
-            editable={false}
-            accessibilityLabel="E-mail"
-          />
+            <View style={styles.grupoCampo}>
+              <Text style={styles.rotulo}>Nome</Text>
+              <TextInput
+                style={styles.campo}
+                value={nome}
+                onChangeText={setNome}
+                editable={!formularioOcupado}
+                accessibilityLabel="Nome"
+              />
+            </View>
 
-          <Text style={styles.rotulo}>Telefone</Text>
-          <TextInput
-            style={styles.campo}
-            value={telefone}
-            onChangeText={(valor) => setTelefone(formatPhoneDisplay(valor))}
-            keyboardType="phone-pad"
-            editable={!carregando && !salvando}
-            accessibilityLabel="Telefone"
-          />
+            <View style={styles.grupoCampo}>
+              <Text style={styles.rotulo}>E-mail</Text>
+              <TextInput
+                style={styles.campo}
+                value={email}
+                editable={false}
+                accessibilityLabel="E-mail"
+              />
+              {email ? <AlterarEmailPerfil emailAtual={email} aoAtualizar={setEmail} /> : null}
+            </View>
 
-          <Text style={styles.rotulo}>Sexo</Text>
-          <View style={styles.opcoes}>
-            {SEXO_OPTIONS.map((opcao) => {
-              const ativo = sexo === opcao;
-              return (
-                <Pressable
-                  key={opcao}
-                  style={[styles.opcao, ativo && styles.opcaoAtiva]}
-                  onPress={() => setSexo(opcao)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: ativo }}
-                >
-                  <Text style={[styles.opcaoTexto, ativo && styles.opcaoTextoAtivo]}>{opcao}</Text>
-                </Pressable>
-              );
-            })}
+            <View style={styles.camposContato}>
+              <View style={styles.campoContato}>
+                <Text style={styles.rotulo}>Telefone</Text>
+                <TextInput
+                  style={styles.campo}
+                  value={telefone}
+                  onChangeText={(valor) => setTelefone(formatPhoneDisplay(valor))}
+                  keyboardType="phone-pad"
+                  editable={!formularioOcupado}
+                  accessibilityLabel="Telefone"
+                />
+              </View>
+
+              <View style={styles.campoContato}>
+                <Text style={styles.rotulo}>Data de nascimento</Text>
+                <TextInput
+                  style={styles.campo}
+                  value={dataNascimento}
+                  onChangeText={(valor) => setDataNascimento(formatDateDisplay(valor))}
+                  placeholder="DD/MM/AAAA"
+                  placeholderTextColor={colors.textSecondary}
+                  keyboardType="number-pad"
+                  maxLength={10}
+                  editable={!formularioOcupado}
+                  accessibilityLabel="Data de nascimento"
+                />
+              </View>
+            </View>
+
+            <CampoSexo
+              valor={sexo === 'Prefiro não informar' ? '' : sexo || null}
+              aoSelecionar={valor => setSexo(valor || 'Prefiro não informar')}
+              desabilitado={formularioOcupado}
+            />
+
+            <Pressable
+              style={({ pressed }) => [
+                perfilStyles.botao, perfilStyles.primario,
+                (pressed || formularioOcupado) && perfilStyles.pressionado
+              ]}
+              onPress={() => void salvar()}
+              disabled={formularioOcupado}
+              accessibilityRole="button"
+              accessibilityState={{ busy: salvando, disabled: formularioOcupado }}
+            >
+              {salvando
+                ? <ActivityIndicator size="small" color={colors.white} />
+                : <Feather name="save" size={18} color={colors.white} aria-hidden />}
+              <Text style={perfilStyles.rotuloPrimario}>{salvando ? 'Salvando...' : 'Salvar dados'}</Text>
+            </Pressable>
           </View>
 
-          <Text style={styles.rotulo}>Data de nascimento</Text>
-          <TextInput
-            style={styles.campo}
-            value={dataNascimento}
-            onChangeText={(valor) => setDataNascimento(formatDateDisplay(valor))}
-            placeholder="DD/MM/AAAA"
-            placeholderTextColor="#94a3b8"
-            keyboardType="number-pad"
-            editable={!carregando && !salvando}
-            accessibilityLabel="Data de nascimento"
-          />
-
-          <Pressable
-            style={[styles.botao, (carregando || salvando) && styles.botaoDesabilitado]}
-            onPress={() => {
-              void salvar();
-            }}
-            disabled={carregando || salvando}
-            accessibilityRole="button"
-          >
-            <Text style={styles.botaoTexto}>{salvando ? 'Salvando...' : 'Salvar dados'}</Text>
-          </Pressable>
-
-          <View style={styles.separador} />
           {!carregando && (
             <SolicitacoesVinculo
               onAceito={(novoVinculo) => setVinculos((atuais) => [
@@ -279,66 +282,77 @@ export function HomeScreen({ navigation }: Props) {
             />
           )}
 
-          {!carregando && <BuscarVinculo temVinculo={vinculos.length > 0} />}
-          <Text style={styles.secao}>Nutricionistas vinculados</Text>
-          {vinculos.length === 0 ? (
-            <Text style={styles.vazio}>Nenhum nutricionista vinculado.</Text>
-          ) : (
-            vinculos.map((vinculo) => (
-              <View key={vinculo.id} style={styles.vinculo}>
-                <View style={styles.vinculoTexto}>
-                  <Text style={styles.vinculoNome}>{vinculo.nome}</Text>
-                  <Text style={styles.vinculoEmail}>{vinculo.email}</Text>
+          <View style={sectionCardStyles.superficie}>
+            <SectionCardHeader titulo="Nutricionistas vinculados" icone="users" />
+            {vinculos.length === 0 ? (
+              <Text style={perfilStyles.estadoVazio}>Nenhum nutricionista vinculado.</Text>
+            ) : (
+              vinculos.map((vinculo) => (
+                <View key={vinculo.id} style={styles.vinculo}>
+                  <View style={styles.identidadeVinculo}>
+                    <AvatarNutricionista id={vinculo.id} />
+                    <View style={styles.vinculoTexto}>
+                      <Text style={styles.vinculoNome}>{vinculo.nome}</Text>
+                      <Text style={perfilStyles.descricao}>{vinculo.email}</Text>
+                    </View>
+                  </View>
+                  <Pressable
+                    style={({ pressed }) => [
+                      perfilStyles.botao, perfilStyles.perigoSuave, pressed && perfilStyles.pressionado
+                    ]}
+                    onPress={() => setPendente(vinculo)}
+                    accessibilityRole="button"
+                    accessibilityLabel={'Desvincular ' + vinculo.nome}
+                  >
+                    <Text style={perfilStyles.rotuloPerigo}>Desvincular</Text>
+                  </Pressable>
                 </View>
-                <Pressable
-                  onPress={() => setPendente(vinculo)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Desvincular ${vinculo.nome}`}
-                >
-                  <Text style={styles.desvincular}>Desvincular</Text>
-                </Pressable>
-              </View>
-            ))
-          )}
+              ))
+            )}
+          </View>
 
-          <View style={styles.separador} />
-          <View style={styles.secaoSenha}>
-            <Text style={styles.tituloSecao} accessibilityRole="header">Segurança</Text>
-            <Pressable style={styles.botaoSenha} accessibilityRole="button" onPress={() => navigation.navigate('TrocarSenha')}>
-              <Text style={styles.botaoSenhaTexto}>Trocar senha</Text>
+          <View style={sectionCardStyles.superficie}>
+            <SectionCardHeader titulo="Segurança" icone="shield" />
+            <Pressable
+              style={({ pressed }) => [perfilStyles.botao, perfilStyles.secundario, pressed && perfilStyles.pressionado]}
+              accessibilityRole="button"
+              onPress={() => navigation.navigate('TrocarSenha')}
+            >
+              <Feather name="key" size={18} color={colors.brandDark} aria-hidden />
+              <Text style={perfilStyles.rotuloBotao}>Trocar senha</Text>
             </Pressable>
           </View>
-          <View style={styles.separador} />
+
+          <LembretesConsulta />
           <Privacidade />
-          <View style={styles.separador} />
-          <Pressable onPress={() => void sair()} accessibilityRole="button">
-            <Text style={styles.sair}>Sair</Text>
+
+          <Pressable
+            style={({ pressed }) => [perfilStyles.botao, styles.sair, pressed && perfilStyles.pressionado]}
+            onPress={() => void sair()}
+            accessibilityRole="button"
+          >
+            <Feather name="log-out" size={18} color={colors.dangerText} aria-hidden />
+            <Text style={perfilStyles.rotuloPerigo}>Sair</Text>
           </Pressable>
         </ScrollView>
-        <Modal visible={pendente !== null} transparent animationType="fade" onRequestClose={() => setPendente(null)}>
-          {pendente ? <View style={styles.confirmaOverlay}>
-          <View style={styles.confirma} accessibilityRole="alert" accessibilityViewIsModal>
-            <Text style={styles.confirmaTitulo}>Encerrar vínculo?</Text>
-            <Text style={styles.confirmaTexto}>
-              Encerrar a relação com {pendente.nome}? A conta permanece ativa.
-            </Text>
-            <View style={styles.confirmaAcoes}>
-              <Pressable style={styles.confirmaBotao} onPress={() => setPendente(null)} accessibilityRole="button">
-                <Text style={styles.cancelar}>Cancelar</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.confirmaBotao, styles.confirmaPerigo]}
-                onPress={() => {
-                  void executarDesvinculo(pendente);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Confirmar desvínculo"
-              >
-                <Text style={styles.confirmaPerigoTexto}>Encerrar vínculo</Text>
-              </Pressable>
-            </View>
-          </View></View> : null}
-        </Modal>
+
+        {pendente && (
+          <DialogoConfirmacao
+            titulo="Encerrar vínculo?"
+            descricao={`${pendente.nome} deixará de acessar sua ficha clínica. Consultas em aberto com esse profissional serão canceladas e sua conta continuará ativa.`}
+            icone="user-x"
+            fechar={() => setPendente(null)}
+            acoes={[
+              { rotulo: 'Manter vínculo', variante: 'secundaria', executar: () => setPendente(null) },
+              {
+                rotulo: 'Encerrar vínculo',
+                variante: 'perigo',
+                executar: () => executarDesvinculo(pendente),
+                rotuloOcupado: 'Encerrando…'
+              }
+            ]}
+          />
+        )}
       </KeyboardAvoidingView>
       <SideMenu
         visible={menuVisible}
@@ -352,80 +366,32 @@ export function HomeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  separador: { height: 1, backgroundColor: '#dbe5de', marginTop: 24 },
-  secaoSenha: { marginTop: 12, gap: 10 },
-  tituloSecao: { fontSize: 16, fontWeight: '700', color: '#0f172a' },
-  botaoSenha: { minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center', paddingHorizontal: 16, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, backgroundColor: '#fff' },
-  botaoSenhaTexto: { color: '#006f1e', fontWeight: '700' },
-  safe: { flex: 1, backgroundColor: '#f8faf8' },
+  safe: { flex: 1, backgroundColor: colors.pageAlt },
   flex: { flex: 1 },
-  content: { padding: 24, gap: 8 },
-  titulo: { fontSize: 24, fontWeight: '700', color: '#0f172a' },
-  subtitulo: { fontSize: 14, color: '#64748b', marginBottom: 8 },
-  rotulo: { marginTop: 8, fontSize: 12, fontWeight: '700', color: '#334155', textTransform: 'uppercase' },
+  content: {
+    width: '100%', alignSelf: 'center', paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.md
+  },
+  contentCompacto: { paddingHorizontal: spacing.sm },
+  titulo: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 30, lineHeight: 38 },
+  introducao: { gap: spacing.xs },
+  grupoCampo: { gap: spacing.xxs },
+  rotulo: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 14 },
   campo: {
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#ffffff',
-    color: '#0f172a'
+    minHeight: 48,
+    borderWidth: 1, borderColor: colors.border, borderRadius: radius.md,
+    paddingHorizontal: spacing.sm, paddingVertical: spacing.xs,
+    backgroundColor: colors.white, color: colors.text, fontFamily: fontFamily.regular, fontSize: 16
   },
-  campoBloqueado: { backgroundColor: '#f1f5f9', color: '#64748b' },
-  opcoes: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  opcao: {
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#ffffff'
-  },
-  opcaoAtiva: { borderColor: '#006f1e', backgroundColor: '#e8f5e9' },
-  opcaoTexto: { color: '#334155', fontSize: 13 },
-  opcaoTextoAtivo: { color: '#006f1e', fontWeight: '700' },
-  botao: {
-    marginTop: 16,
-    backgroundColor: '#006f1e',
-    borderRadius: 8,
-    alignItems: 'center',
-    paddingVertical: 12
-  },
-  botaoDesabilitado: { opacity: 0.6 },
-  botaoTexto: { color: '#ffffff', fontWeight: '700' },
-  secao: { marginTop: 24, fontSize: 16, fontWeight: '700', color: '#0f172a' },
-  vazio: { color: '#64748b' },
+  camposContato: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  campoContato: { flexGrow: 1, flexBasis: 160, gap: spacing.xxs },
   vinculo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0'
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between',
+    gap: spacing.sm, padding: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.page
   },
-  vinculoTexto: { flex: 1 },
-  vinculoNome: { fontWeight: '700', color: '#0f172a' },
-  vinculoEmail: { color: '#64748b', fontSize: 13 },
-  desvincular: { color: '#b42318', fontWeight: '700' },
-  sair: { marginTop: 12, color: '#64748b', textAlign: 'center' },
-  erro: { color: '#b42318', backgroundColor: '#fef3f2', padding: 8, borderRadius: 8 },
-  aviso: { color: '#006f1e', backgroundColor: '#e8f5e9', padding: 8, borderRadius: 8 },
-  confirma: {
-    padding: 24,
-    borderRadius: 16,
-    backgroundColor: '#ffffff',
-    width: '100%',
-    maxWidth: 440,
-    gap: 16
-  },
-  confirmaOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: 'rgba(0,0,0,0.5)' },
-  confirmaTitulo: { color: '#0f172a', fontSize: 18, fontWeight: '700' },
-  confirmaBotao: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: '#cbd5e1' },
-  confirmaPerigo: { backgroundColor: '#b42318', borderColor: '#b42318' },
-  confirmaPerigoTexto: { color: '#fff', fontWeight: '700' },
-  confirmaTexto: { color: '#0f172a' },
-  confirmaAcoes: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16 },
-  cancelar: { color: '#64748b', fontWeight: '700' }
+  identidadeVinculo: { flex: 1, minWidth: 156, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  vinculoTexto: { flex: 1, minWidth: 0, gap: spacing.xxs },
+  vinculoNome: { color: colors.text, fontFamily: fontFamily.bold, fontSize: 15 },
+  sair: { backgroundColor: colors.card, borderColor: colors.border },
+
 });

@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { ConsumoProgresso } from '../../../core/evolucao/evolucao.service';
+import { formatarDataCivil } from '../../../core/utils/date-mask.util';
 
 interface Props {
   consumo: ConsumoProgresso | null;
@@ -34,7 +35,7 @@ export function ConsumoProgressoCard({ consumo }: Props) {
     <View style={styles.card} testID="consumo-progresso-card">
       <View style={styles.header}>
         <Text style={styles.titulo}>Consumo do dia</Text>
-        <Text style={styles.dataBadge}>{consumo.data}</Text>
+        <Text style={styles.dataBadge}>{formatarDataCivil(consumo.data)}</Text>
       </View>
 
       {/* Calorias com barra de progresso */}

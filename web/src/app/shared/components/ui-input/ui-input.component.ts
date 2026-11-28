@@ -3,6 +3,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 import { formatCpfDisplay } from '../../utils/cpf-mask.util';
 import { formatCrnDisplay } from '../../utils/crn-mask.util';
+import { aplicarMascaraDataBr, converterDataBrParaIso, formatarDataBr } from '../../utils/data-br.util';
 
 @Component({
   selector: 'app-ui-input',
@@ -20,10 +21,11 @@ import { formatCrnDisplay } from '../../utils/crn-mask.util';
 export class UiInputComponent implements ControlValueAccessor {
   @Input({ required: true }) label = '';
   @Input() placeholder = '';
-  @Input() type: 'text' | 'email' | 'password' | 'date' | 'tel' | 'datetime-local' = 'text';
+  @Input() type: 'text' | 'email' | 'password' | 'date' | 'tel' = 'text';
   @Input() inputId = '';
   @Input() autocomplete = '';
   @Input() errorMessage = '';
+  @Input() helperText = '';
   @Input() required = false;
   @Input() readonly = false;
   @Input() inputmode: 'text' | 'decimal' | 'numeric' = 'text';
@@ -37,6 +39,8 @@ export class UiInputComponent implements ControlValueAccessor {
   value = '';
   disabled = false;
   passwordVisible = false;
+  readonly seletorNativoDisponivel = typeof HTMLInputElement !== 'undefined'
+    && typeof HTMLInputElement.prototype.showPicker === 'function';
 
   private onChange: (value: string) => void = () => undefined;
   private onTouched: () => void = () => undefined;
@@ -49,12 +53,20 @@ export class UiInputComponent implements ControlValueAccessor {
     return this.type === 'password';
   }
 
+  get campoData(): boolean {
+    return this.type === 'date';
+  }
+
+  get dataIso(): string {
+    return converterDataBrParaIso(this.value) ?? '';
+  }
+
   get showLeadingIcon(): boolean {
     return this.leadingIcon.length > 0 && this.value.length === 0;
   }
 
   get resolvedInputType(): UiInputComponent['type'] {
-    if (this.isPasswordField && this.passwordVisible) {
+    if (this.campoData || (this.isPasswordField && this.passwordVisible)) {
       return 'text';
     }
 
@@ -62,7 +74,9 @@ export class UiInputComponent implements ControlValueAccessor {
   }
 
   writeValue(value: string | null): void {
-    this.value = this.formatValue(value ?? '');
+    this.value = this.campoData
+      ? (formatarDataBr(value) || value || '')
+      : this.formatValue(value ?? '');
   }
 
   registerOnChange(fn: (value: string) => void): void {
@@ -79,9 +93,38 @@ export class UiInputComponent implements ControlValueAccessor {
 
   onInput(event: Event): void {
     const target = event.target as HTMLInputElement;
+    if (this.campoData) {
+      this.atualizarDataDigitada(target);
+      return;
+    }
     this.value = this.formatValue(target.value);
     target.value = this.value;
     this.onChange(this.value);
+  }
+
+  abrirCalendario(campo: HTMLInputElement): void {
+    campo.showPicker();
+  }
+
+  selecionarData(iso: string): void {
+    this.writeValue(iso);
+    this.onChange(iso);
+    this.onTouched();
+  }
+
+  private atualizarDataDigitada(campo: HTMLInputElement): void {
+    const texto = campo.value;
+    const dataIsoColada = formatarDataBr(texto);
+    this.value = dataIsoColada || aplicarMascaraDataBr(texto);
+    if (texto !== this.value) {
+      const digitosAntesDoCursor = texto.slice(0, campo.selectionStart ?? texto.length).replace(/\D/g, '').length;
+      campo.value = this.value;
+      const posicao = dataIsoColada
+        ? this.value.length
+        : aplicarMascaraDataBr(this.value.replace(/\D/g, '').slice(0, digitosAntesDoCursor)).length;
+      campo.setSelectionRange(posicao, posicao);
+    }
+    this.onChange(this.dataIso || this.value);
   }
 
   private formatValue(value: string): string {
@@ -103,11 +146,7 @@ export class UiInputComponent implements ControlValueAccessor {
     }
 
     if (this.mask === 'data') {
-      const d = value.replace(/\D/g, '').slice(0, 8);
-      if (d.length === 0) return '';
-      if (d.length <= 2) return d;
-      if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
-      return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+      return aplicarMascaraDataBr(value);
     }
 
     return value;

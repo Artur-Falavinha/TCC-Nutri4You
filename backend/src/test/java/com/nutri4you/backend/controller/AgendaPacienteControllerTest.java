@@ -1,5 +1,6 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.service.PrivacidadeService;
 import com.jayway.jsonpath.JsonPath;
 import com.nutri4you.backend.model.Consulta;
 import com.nutri4you.backend.model.Nutricionista;
@@ -12,6 +13,8 @@ import com.nutri4you.backend.repository.RelacaoClinicaRepository;
 import com.nutri4you.backend.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -26,6 +29,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
@@ -40,6 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Transactional
 class AgendaPacienteControllerTest {
+    @Autowired PrivacidadeService privacidade;
 
     private static final ZoneId FUSO_HORARIO = ZoneId.of("America/Sao_Paulo");
     private static final DateTimeFormatter JSON_DATE_TIME =
@@ -62,6 +67,7 @@ class AgendaPacienteControllerTest {
     void preparar() throws Exception {
         nutricionista = nutricionistas.save(TestDataFactory.nutricionista(encoder));
         paciente = pacientes.save(TestDataFactory.pacienteConfirmado(encoder));
+        TestDataFactory.registrarAceite(privacidade, nutricionista, paciente);
         relacoes.save(RelacaoClinica.criar(paciente, nutricionista));
         var configuracao = new java.util.ArrayList<com.nutri4you.backend.dto.HorarioAtendimentoDTO>();
         for (int dia = 1; dia <= 6; dia++) {
@@ -72,6 +78,40 @@ class AgendaPacienteControllerTest {
         horarios.salvar(nutricionista, configuracao);
         tokenPaciente = login("paciente@teste.com");
         tokenNutricionista = login("nutri@teste.com");
+    }
+
+    @Test
+    void calendarioProfissionalRespeitaReservasSobrepostasEVisibilidadeEntreContas() throws Exception {
+        LocalDate inicio = LocalDate.now(FUSO_HORARIO).plusWeeks(2)
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate dia = inicio.plusDays(1);
+        Consulta pendente = consultas.save(new Consulta(paciente, nutricionista, dia.atTime(9, 0)));
+        Consulta cancelada = new Consulta(paciente, nutricionista, dia.atTime(10, 15));
+        cancelada.cancelar();
+        consultas.save(cancelada);
+        Paciente semVinculo = pacientes.save(TestDataFactory.outroPaciente(encoder));
+        consultas.save(new Consulta(semVinculo, nutricionista, dia.atTime(11, 0)));
+        Nutricionista outroNutri = nutricionistas.save(TestDataFactory.nutricionistaConfirmado(
+                "Outro nutricionista", "outro-nutri@teste.com", encoder.encode("senha123"), "CRN8-98765"));
+        consultas.saveAndFlush(new Consulta(paciente, outroNutri, dia.atTime(14, 0)));
+
+        String url = "/api/v1/agenda-nutricionista/calendario";
+        mvc.perform(get(url).param("inicio", dia.toString()).header("Authorization", tokenPaciente))
+                .andExpect(status().isForbidden());
+        mvc.perform(get(url).param("inicio", dia.toString()).header("Authorization", tokenNutricionista))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.inicio").value(inicio.toString()))
+                .andExpect(jsonPath("$.data.duracaoMinutos").value(45))
+                .andExpect(jsonPath("$.data.dias.length()").value(7))
+                .andExpect(jsonPath("$.data.dias[1].horariosLivres.length()").value(5))
+                .andExpect(jsonPath("$.data.dias[1].horariosLivres").value(hasItem("10:15:00")))
+                .andExpect(jsonPath("$.data.dias[1].horariosLivres").value(hasItem("14:00:00")))
+                .andExpect(jsonPath("$.data.dias[1].consultas.length()").value(3))
+                .andExpect(jsonPath("$.data.dias[1].consultas[0].id").value(pendente.getId()))
+                .andExpect(jsonPath("$.data.dias[1].consultas[0].pacienteNome").value(paciente.getNome()))
+                .andExpect(jsonPath("$.data.dias[1].consultas[1].status").value("CANCELADA"))
+                .andExpect(jsonPath("$.data.dias[1].consultas[2].pacienteNome").doesNotExist())
+                .andExpect(jsonPath("$.data.dias[6].temDisponibilidade").value(false));
     }
 
     @Test
@@ -105,6 +145,16 @@ class AgendaPacienteControllerTest {
                 .andExpect(jsonPath("$.data.status").value("AGUARDANDO_CONFIRMACAO"))
                 .andExpect(jsonPath("$.data.dataHora").value(jsonDateTime(horario)));
 
+        mvc.perform(get("/api/v1/agenda-nutricionista/notificacoes")
+                        .header("Authorization", tokenNutricionista))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].pacienteNome").value(paciente.getNome()))
+                .andExpect(jsonPath("$.data[0].tipo").value("ACOMPANHAMENTO"))
+                .andExpect(jsonPath("$.data[0].duracaoMinutos").value(45))
+                .andExpect(jsonPath("$.data[0].cpf").doesNotExist())
+                .andExpect(jsonPath("$.data[0].email").doesNotExist())
+                .andExpect(jsonPath("$.data[0].reagendada").doesNotExist());
+
         mvc.perform(post("/api/v1/agenda/consultas")
                         .header("Authorization", tokenPaciente)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -117,6 +167,49 @@ class AgendaPacienteControllerTest {
                         .content(solicitacao(horario)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("CONFLITO"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"dd/MM/uuuu HH:mm", "dd/MM/uuuu HH:mm:ss"})
+    void solicitaConsultaComDataHoraBrasileira(String formato) throws Exception {
+        LocalDateTime horario = proximoDiaAtendimento(5).atTime(10, 15);
+        String dataHora = horario.format(DateTimeFormatter.ofPattern(formato));
+
+        mvc.perform(post("/api/v1/agenda/consultas")
+                        .header("Authorization", tokenPaciente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nutricionistaId":%d,"dataHora":"%s"}
+                                """.formatted(nutricionista.getId(), dataHora)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.dataHora").value(jsonDateTime(horario)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"29/02/2027 10:15", "29/02/2028 24:00"})
+    void rejeitaDataHoraInvalidaDoCorpo(String dataHora) throws Exception {
+        mvc.perform(post("/api/v1/agenda/consultas")
+                        .header("Authorization", tokenPaciente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nutricionistaId":%d,"dataHora":"%s"}
+                                """.formatted(nutricionista.getId(), dataHora)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("REQUISICAO_INVALIDA"))
+                .andExpect(jsonPath("$.message").value("Confira os formatos de datas e valores informados."));
+    }
+
+    @Test
+    void consultaDisponibilidadeComDataBrasileira() throws Exception {
+        LocalDate dia = proximoDiaAtendimento(6);
+
+        mvc.perform(get("/api/v1/agenda/disponibilidade")
+                        .header("Authorization", tokenPaciente)
+                        .param("nutricionistaId", nutricionista.getId().toString())
+                        .param("data", dia.format(DateTimeFormatter.ofPattern("dd/MM/uuuu"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.data").value(dia.toString()))
+                .andExpect(jsonPath("$.data.horarios", hasItem(jsonDateTime(dia.atTime(10, 15)))));
     }
 
     @Test
@@ -249,6 +342,11 @@ class AgendaPacienteControllerTest {
     @Test
     void errosDeConversaoEmParametrosRetornamEnvelopeDeRequisicaoInvalida() throws Exception {
         String path = "/api/v1/agenda/disponibilidade";
+
+        assertRequisicaoInvalida(get(path)
+                .header("Authorization", tokenPaciente)
+                .param("nutricionistaId", nutricionista.getId().toString())
+                .param("data", "29/02/2027"), path);
         String nutricionistaId = nutricionista.getId().toString();
 
         assertRequisicaoInvalida(get(path)

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CommonActions, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
@@ -12,47 +12,39 @@ import {
   TouchableOpacity,
   Platform,
   StyleSheet,
-  ActivityIndicator,
   Modal,
   Pressable,
   Linking
 } from 'react-native';
 
+import { AuthFormButton } from '../components/auth/AuthFormButton';
 import { AuthScreenLayout } from '../components/auth/AuthScreenLayout';
 import { ConfirmarEmailCadastro } from '../components/auth/ConfirmarEmailCadastro';
 import { authFormStyles } from '../components/auth/authFormStyles';
-import { useAppAlert } from '../components/feedback/AppAlertProvider';
+import { recuperacaoSenhaStyles as formulario } from '../components/auth/recuperacaoSenhaStyles';
+import { SectionCardHeader, sectionCardStyles } from '../components/layout/SectionCardHeader';
+import { CampoSexo, type ValorSexo } from '../components/forms/CampoSexo';
+import { toast } from '../components/feedback/toast';
 import { autocadastrarPaciente } from '../core/auth/auth.service';
 import type { ComprovanteCadastro } from '../core/auth/auth.models';
 import { URL_TERMOS, VERSAO_TERMOS } from '../core/perfil/privacidade';
 import { ApiError } from '../core/api/api-response.types';
-import { formatCpfDisplay, isCpfComplete, normalizeCpf } from '../core/utils/cpf-mask.util';
+import { formatCpfDisplay, isCpfValid, normalizeCpf } from '../core/utils/cpf-mask.util';
 import {
+  DATA_MINIMA_NASCIMENTO,
+  dataNascimentoParaIso,
   toIsoDate,
+  formatarDataCivil,
   formatDateDisplay,
   formatDateFromDate,
   parseDisplayDate
 } from '../core/utils/date-mask.util';
 import { formatPhoneDisplay, normalizePhone } from '../core/utils/phone-mask.util';
 import type { RootStackParamList } from '../navigation/types';
+import { colors, fontFamily, spacing } from '../theme/tokens';
+import { perfilStyles } from './home/perfil.styles';
 
-const SEXO_OPTIONS = [
-  { label: 'Masculino', value: 'Masculino' },
-  { label: 'Feminino', value: 'Feminino' },
-  { label: 'Prefiro não informar', value: '' }
-] as const;
-
-type SexoOption = (typeof SEXO_OPTIONS)[number];
-
-const MIN_BIRTH_DATE = new Date(1900, 0, 1);
-const TODAY = new Date();
-
-function toHtmlDateValue(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
+const MIN_BIRTH_DATE = new Date(`${DATA_MINIMA_NASCIMENTO}T00:00:00`);
 
 export default function CriarContaScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -72,8 +64,6 @@ interface DadosCadastroPacienteProps {
 
 function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPacienteProps) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { showAlert } = useAppAlert();
-  const webDateInputRef = useRef<HTMLInputElement | null>(null);
   const [nome, setNome] = useState('');
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const email = confirmacao.email;
@@ -81,53 +71,19 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [cpf, setCpf] = useState('');
   const [telefone, setTelefone] = useState('');
-  const [sexo, setSexo] = useState<SexoOption['value'] | null>(null);
+  const [sexo, setSexo] = useState<ValorSexo | null>(null);
   const [dataNascimento, setDataNascimento] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [sexoMenuOpen, setSexoMenuOpen] = useState(false);
+  const [senhaVisivel, setSenhaVisivel] = useState(false);
+  const [confirmacaoSenhaVisivel, setConfirmacaoSenhaVisivel] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  const sexoLabel = useMemo(() => {
-    if (sexo === null) {
-      return 'Selecione';
-    }
-    return SEXO_OPTIONS.find((option) => option.value === sexo)?.label ?? 'Selecione';
-  }, [sexo]);
+  const hoje = new Date();
+  const hojeIso = toIsoDate(formatDateFromDate(hoje)) ?? '';
+  const isoDate = dataNascimentoParaIso(dataNascimento);
 
   const pickerDate = useMemo(() => {
-    return parseDisplayDate(dataNascimento) ?? new Date(2000, 0, 1);
-  }, [dataNascimento]);
-
-  const openDatePicker = () => {
-    // DateTimePicker nao tem UI no web (retorna null + warning).
-    if (Platform.OS === 'web') {
-      const input = webDateInputRef.current;
-      if (!input) {
-        return;
-      }
-      if (typeof input.showPicker === 'function') {
-        try {
-          input.showPicker();
-          return;
-        } catch {
-          // browsers sem showPicker caem no click()
-        }
-      }
-      input.click();
-      return;
-    }
-    setShowDatePicker(true);
-  };
-
-  const onWebDateInputChange = (event: { target: { value: string } }) => {
-    const value = event.target.value;
-    if (!value) {
-      return;
-    }
-    const [year, month, day] = value.split('-').map(Number);
-    setDataNascimento(formatDateFromDate(new Date(year, month - 1, day)));
-  };
+    return (isoDate && isoDate <= hojeIso ? parseDisplayDate(isoDate) : null) ?? new Date(2000, 0, 1);
+  }, [hojeIso, isoDate]);
 
   const onDateChange = (event: DateTimePickerEvent, selected?: Date) => {
     if (Platform.OS === 'android') {
@@ -144,37 +100,38 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
 
   const handleRegister = async () => {
     if (Date.parse(confirmacao.expiraEm) <= Date.now()) {
-      showAlert('Confirmação expirada', 'Solicite outro e-mail para continuar.');
+      toast.aviso('Confirmação expirada. Solicite outro e-mail para continuar.');
       aoExpirar();
       return;
     }
     if (!aceitouTermos) {
-      showAlert('Atenção', 'Leia e aceite os termos de uso para criar a conta.');
+      toast.aviso('Leia e aceite os termos de uso para criar a conta.');
       return;
     }
     if (!nome.trim() || !senha || !confirmarSenha) {
-      showAlert('Atenção', 'Preencha nome e senha.');
+      toast.aviso('Preencha nome e senha.');
       return;
     }
 
     if (senha.length < 8) {
-      showAlert('Atenção', 'A senha deve ter no mínimo 8 caracteres.');
+      toast.aviso('A senha deve ter no mínimo 8 caracteres.');
       return;
     }
 
     if (senha !== confirmarSenha) {
-      showAlert('Erro', 'As senhas não coincidem.');
+      toast.erro('As senhas não coincidem.');
       return;
     }
 
-    if (cpf.trim() && !isCpfComplete(cpf)) {
-      showAlert('Atenção', 'CPF incompleto. Use o formato 000.000.000-00.');
+    const cpfInformado = cpf.trim();
+    const cpfParaEnvio = isCpfValid(cpfInformado) ? normalizeCpf(cpfInformado) : undefined;
+    if (!cpfParaEnvio) {
+      toast.aviso(cpfInformado ? 'Informe um CPF válido com 11 dígitos.' : 'Informe seu CPF.');
       return;
     }
 
-    const isoDate = dataNascimento.trim() ? toIsoDate(dataNascimento) : undefined;
     if (dataNascimento.trim() && !isoDate) {
-      showAlert('Atenção', 'Data de nascimento inválida. Use DD/MM/AAAA.');
+      toast.aviso('Data de nascimento inválida. Use DD/MM/AAAA.');
       return;
     }
 
@@ -186,30 +143,18 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
         email,
         tokenCadastro: confirmacao.token,
         senha,
-        cpf: normalizeCpf(cpf),
+        cpf: cpfParaEnvio,
         telefone: normalizePhone(telefone),
         sexo: sexo || undefined,
         dataNascimento: isoDate,
         versaoTermos: VERSAO_TERMOS
       });
 
-      showAlert('Sucesso', cadastro?.mensagem ?? 'Conta criada com sucesso!', [
-        {
-          text: 'OK',
-          onPress: () =>
-            navigation.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [{ name: 'Login' }]
-              })
-            )
-        }
-      ]);
+      toast.sucesso(cadastro?.mensagem ?? 'Conta criada com sucesso!');
+      navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] }));
     } catch (err: unknown) {
       const apiError = err instanceof ApiError ? err : null;
-      showAlert(
-        'Erro',
-        apiError?.message ??
+      toast.erro(apiError?.message ??
           'Ocorreu um erro ao tentar criar a conta. Tente novamente mais tarde.'
       );
     } finally {
@@ -220,90 +165,127 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
   return (
     <>
       <AuthScreenLayout>
-        <View style={authFormStyles.card}>
-          <View style={authFormStyles.header}>
-            <Text style={authFormStyles.title} accessibilityRole="header">Crie sua conta</Text>
-            <Text style={authFormStyles.description}>E-mail confirmado: {email}</Text>
+        <View style={sectionCardStyles.superficie}>
+          <View style={formulario.cabecalho}>
+            <SectionCardHeader icone="user-plus" titulo="Complete seu cadastro" />
+            <Text style={authFormStyles.etapa}>Cadastro · 3 de 3</Text>
           </View>
 
-          <View style={authFormStyles.inputGroup}>
-            <Text style={authFormStyles.label}>NOME COMPLETO *</Text>
-            <View style={authFormStyles.inputContainer}>
-              <Feather name="user" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+          <View style={formulario.campo}>
+            <Text style={formulario.rotulo}>E-mail confirmado</Text>
+            <View style={[formulario.controle, authFormStyles.somenteLeitura]}>
+              <Feather name="check-circle" size={18} color={colors.brandDark} aria-hidden />
+              <Text style={authFormStyles.valorSomenteLeitura}>{email}</Text>
+            </View>
+          </View>
+
+          <View style={formulario.campo}>
+            <Text style={formulario.rotulo}>Nome completo *</Text>
+            <View style={formulario.controle}>
+              <Feather name="user" size={18} color={colors.textSecondary} aria-hidden />
               <TextInput
-                style={authFormStyles.input}
-                placeholder="Seu Nome"
-                placeholderTextColor="#94a3b8"
+                style={formulario.entrada}
+                placeholder="Seu nome"
+                accessibilityLabel="Nome completo"
+                autoComplete="name"
+                placeholderTextColor={colors.textSecondary}
                 value={nome}
                 onChangeText={setNome}
               />
             </View>
           </View>
 
-          <View style={authFormStyles.inputGroup}>
-            <Text style={authFormStyles.label}>SENHA *</Text>
-            <View style={authFormStyles.inputContainer}>
-              <Feather name="lock" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+          <View style={formulario.campo}>
+            <Text style={formulario.rotulo}>Senha *</Text>
+            <View style={[formulario.controle, authFormStyles.controleComVisibilidade]}>
+              <Feather name="lock" size={18} color={colors.textSecondary} aria-hidden />
               <TextInput
-                style={authFormStyles.input}
+                style={formulario.entrada}
                 placeholder="Mínimo 8 caracteres"
-                placeholderTextColor="#94a3b8"
-                secureTextEntry={!showPassword}
+                accessibilityLabel="Senha"
+                autoComplete="new-password"
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholderTextColor={colors.textSecondary}
+                secureTextEntry={!senhaVisivel}
                 value={senha}
                 onChangeText={setSenha}
               />
-              <TouchableOpacity
-                style={styles.iconRight}
-                onPress={() => setShowPassword(!showPassword)}
+              <Pressable
+                style={({ pressed }) => [authFormStyles.visibilidade, pressed && perfilStyles.pressionado]}
+                onPress={() => setSenhaVisivel((visivel) => !visivel)}
+                accessibilityRole="button"
+                accessibilityLabel={senhaVisivel ? 'Ocultar senha' : 'Mostrar senha'}
               >
                 <Feather
-                  name={showPassword ? 'eye-off' : 'eye'}
-                  size={20}
-                  color="#64748b"
+                  name={senhaVisivel ? 'eye-off' : 'eye'}
+                  size={18}
+                  color={colors.brandDark}
+                  aria-hidden
                 />
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
 
-          <View style={authFormStyles.inputGroup}>
-            <Text style={authFormStyles.label}>CONFIRMAR SENHA *</Text>
-            <View style={authFormStyles.inputContainer}>
-              <Feather name="lock" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+          <View style={formulario.campo}>
+            <Text style={formulario.rotulo}>Confirmar senha *</Text>
+            <View style={[formulario.controle, authFormStyles.controleComVisibilidade]}>
+              <Feather name="lock" size={18} color={colors.textSecondary} aria-hidden />
               <TextInput
-                style={authFormStyles.input}
+                style={formulario.entrada}
                 placeholder="Repita a senha"
-                placeholderTextColor="#94a3b8"
-                secureTextEntry={!showPassword}
+                accessibilityLabel="Confirmar senha"
+                autoComplete="new-password"
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholderTextColor={colors.textSecondary}
+                secureTextEntry={!confirmacaoSenhaVisivel}
                 value={confirmarSenha}
                 onChangeText={setConfirmarSenha}
               />
+              <Pressable
+                style={({ pressed }) => [authFormStyles.visibilidade, pressed && perfilStyles.pressionado]}
+                onPress={() => setConfirmacaoSenhaVisivel((visivel) => !visivel)}
+                accessibilityRole="button"
+                accessibilityLabel={confirmacaoSenhaVisivel ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+              >
+                <Feather
+                  name={confirmacaoSenhaVisivel ? 'eye-off' : 'eye'}
+                  size={18}
+                  color={colors.brandDark}
+                  aria-hidden
+                />
+              </Pressable>
             </View>
           </View>
 
-          <View style={authFormStyles.inputGroup}>
-            <Text style={authFormStyles.label}>CPF</Text>
-            <View style={authFormStyles.inputContainer}>
-              <Feather name="credit-card" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+          <View style={formulario.campo}>
+            <Text style={formulario.rotulo}>CPF *</Text>
+            <View style={formulario.controle}>
+              <Feather name="credit-card" size={18} color={colors.textSecondary} aria-hidden />
               <TextInput
-                style={authFormStyles.input}
+                style={formulario.entrada}
                 placeholder="000.000.000-00"
-                placeholderTextColor="#94a3b8"
+                accessibilityLabel="CPF"
+                aria-required
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
-                maxLength={14}
                 value={cpf}
                 onChangeText={(text) => setCpf(formatCpfDisplay(text))}
               />
             </View>
           </View>
 
-          <View style={authFormStyles.inputGroup}>
-            <Text style={authFormStyles.label}>TELEFONE</Text>
-            <View style={authFormStyles.inputContainer}>
-              <Feather name="phone" size={20} color="#64748b" style={authFormStyles.inputIcon} />
+          <View style={formulario.campo}>
+            <Text style={formulario.rotulo}>Telefone</Text>
+            <View style={formulario.controle}>
+              <Feather name="phone" size={18} color={colors.textSecondary} aria-hidden />
               <TextInput
-                style={authFormStyles.input}
+                style={formulario.entrada}
                 placeholder="(00) 00000-0000"
-                placeholderTextColor="#94a3b8"
+                accessibilityLabel="Telefone"
+                autoComplete="tel"
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="phone-pad"
                 maxLength={15}
                 value={telefone}
@@ -312,47 +294,29 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
             </View>
           </View>
 
-          <View style={authFormStyles.inputGroup}>
-            <Text style={authFormStyles.label}>SEXO</Text>
-            <TouchableOpacity
-              style={authFormStyles.inputContainer}
-              onPress={() => setSexoMenuOpen(true)}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  authFormStyles.input,
-                  styles.selectValue,
-                  sexo === null && styles.selectPlaceholder
-                ]}
-                numberOfLines={1}
-              >
-                {sexoLabel}
-              </Text>
-              <Feather name="chevron-down" size={20} color="#64748b" />
-            </TouchableOpacity>
-          </View>
+          <CampoSexo valor={sexo} aoSelecionar={setSexo} desabilitado={isLoading} />
 
-          <View style={authFormStyles.inputGroup}>
-            <Text style={authFormStyles.label}>DATA NASCIMENTO</Text>
-            <View style={authFormStyles.inputContainer}>
+          <View style={formulario.campo}>
+            <Text style={formulario.rotulo}>Data de nascimento</Text>
+            <View style={[formulario.controle, styles.controleData]}>
               {Platform.OS === 'web' ? (
-                <>
-                  <Feather name="calendar" size={20} color="#005414" style={authFormStyles.inputIcon} />
+                <View style={styles.acaoData}>
+                  <Feather name="calendar" size={18} color={colors.brandDark} aria-hidden />
                   {React.createElement('input', {
-                    ref: webDateInputRef,
                     type: 'date',
-                    value: dataNascimento ? toHtmlDateValue(pickerDate) : '',
-                    min: toHtmlDateValue(MIN_BIRTH_DATE),
-                    max: toHtmlDateValue(TODAY),
-                    onChange: onWebDateInputChange,
+                    lang: 'pt-BR',
+                    value: isoDate ?? '',
+                    min: DATA_MINIMA_NASCIMENTO,
+                    max: hojeIso,
+                    onChange: (evento: React.ChangeEvent<HTMLInputElement>) =>
+                      setDataNascimento(formatarDataCivil(evento.currentTarget.value)),
                     // Cobre o icone: clique nativo do browser abre o date picker.
                     style: {
                       position: 'absolute',
                       left: 0,
                       top: 0,
-                      width: 52,
-                      height: 56,
+                      width: '100%',
+                      height: '100%',
                       opacity: 0,
                       cursor: 'pointer',
                       border: 'none',
@@ -360,100 +324,47 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
                     },
                     'aria-label': 'Abrir seletor de data'
                   })}
-                </>
+                </View>
               ) : (
                 <TouchableOpacity
-                  onPress={openDatePicker}
-                  hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                  onPress={() => setShowDatePicker(true)}
+                  style={styles.acaoData}
                   accessibilityRole="button"
                   accessibilityLabel="Abrir seletor de data"
                 >
-                  <Feather name="calendar" size={20} color="#005414" style={authFormStyles.inputIcon} />
+                  <Feather name="calendar" size={18} color={colors.brandDark} aria-hidden />
                 </TouchableOpacity>
               )}
               <TextInput
-                style={authFormStyles.input}
+                style={formulario.entrada}
                 placeholder="DD/MM/AAAA"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
                 maxLength={10}
+                accessibilityLabel="Data de nascimento"
                 value={dataNascimento}
                 onChangeText={(text) => setDataNascimento(formatDateDisplay(text))}
               />
             </View>
           </View>
 
-          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(URL_TERMOS).catch(() =>
-            showAlert('Atenção', 'Não foi possível abrir os termos.'))}>
-            <Text style={styles.termosLink}>Ler termos de uso e aviso de privacidade</Text>
+          <Pressable style={styles.termosLinkArea} accessibilityRole="link" onPress={() => void Linking.openURL(`${URL_TERMOS}/${VERSAO_TERMOS}`)
+            .catch(() => toast.aviso('Não foi possível abrir os termos.'))}>
+            <Text style={styles.termosLink}>Ler termos de uso e aviso de privacidade (PDF)</Text>
           </Pressable>
           <Pressable style={styles.termosAceite} accessibilityRole="checkbox" accessibilityState={{ checked: aceitouTermos }}
             onPress={() => setAceitouTermos(valor => !valor)}>
             <View style={[styles.termosCheck, aceitouTermos && styles.termosCheckAtivo]}>
-              {aceitouTermos && <Feather name="check" size={15} color="#fff" />}
+              {aceitouTermos && <Feather name="check" size={15} color={colors.white} aria-hidden />}
             </View>
             <Text style={styles.termosTexto}>Li e aceito os termos de uso.</Text>
           </Pressable>
-          <TouchableOpacity
-            style={authFormStyles.button}
-            onPress={handleRegister}
-            disabled={isLoading}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityState={{ busy: isLoading, disabled: isLoading }}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <>
-                <Text style={authFormStyles.buttonText}>Criar conta</Text>
-                <Feather name="arrow-right" size={16} color="#ffffff" />
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={authFormStyles.secondaryAction}
-            onPress={() => navigation.navigate('Login')}
-            accessibilityRole="button"
-          >
-            <Text style={authFormStyles.secondaryActionText}>Já tenho conta</Text>
-          </TouchableOpacity>
+          <View style={formulario.acoes}>
+            <AuthFormButton titulo="Criar conta" icone="arrow-right" ocupado={isLoading} onPress={() => void handleRegister()} />
+            <AuthFormButton titulo="Já tenho conta" icone="arrow-left" variante="texto" onPress={() => navigation.navigate('Login')} />
+          </View>
         </View>
       </AuthScreenLayout>
-
-      <Modal
-        visible={sexoMenuOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSexoMenuOpen(false)}
-      >
-        <Pressable style={styles.modalBackdrop} onPress={() => setSexoMenuOpen(false)}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Sexo</Text>
-            {SEXO_OPTIONS.map((option) => {
-              const selected = sexo !== null && sexo === option.value;
-              return (
-                <TouchableOpacity
-                  key={option.label}
-                  style={[styles.modalOption, selected && styles.modalOptionSelected]}
-                  onPress={() => {
-                    setSexo(option.value);
-                    setSexoMenuOpen(false);
-                  }}
-                >
-                  <Text
-                    style={[styles.modalOptionText, selected && styles.modalOptionTextSelected]}
-                  >
-                    {option.label}
-                  </Text>
-                  {selected ? <Feather name="check" size={18} color="#006f1e" /> : null}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </Pressable>
-      </Modal>
 
       {showDatePicker && Platform.OS === 'ios' ? (
         <Modal transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
@@ -468,7 +379,8 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
                 value={pickerDate}
                 mode="date"
                 display="spinner"
-                maximumDate={TODAY}
+                locale="pt-BR"
+                maximumDate={hoje}
                 minimumDate={MIN_BIRTH_DATE}
                 onChange={onDateChange}
               />
@@ -482,7 +394,7 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
           value={pickerDate}
           mode="date"
           display="default"
-          maximumDate={TODAY}
+          maximumDate={hoje}
           minimumDate={MIN_BIRTH_DATE}
           onChange={onDateChange}
         />
@@ -492,64 +404,22 @@ function DadosCadastroPaciente({ confirmacao, aoExpirar }: DadosCadastroPaciente
 }
 
 const styles = StyleSheet.create({
-  termosLink: { color: '#006f1e', fontWeight: '700', paddingVertical: 8 },
-  termosAceite: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, marginBottom: 12 },
-  termosCheck: { width: 22, height: 22, borderWidth: 1, borderColor: '#94a3b8', borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
-  termosCheckAtivo: { backgroundColor: '#006f1e', borderColor: '#006f1e' },
-  termosTexto: { flex: 1, color: '#334155', fontSize: 14 },
-  iconRight: {
-    padding: 5
-  },
-  selectValue: {
-    textAlignVertical: 'center',
-    paddingVertical: 18
-  },
-  selectPlaceholder: {
-    color: '#94a3b8'
-  },
+  termosLinkArea: { minHeight: 44, justifyContent: 'center' },
+  termosLink: { color: colors.brandDark, fontFamily: fontFamily.bold },
+  termosAceite: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 44 },
+  termosCheck: { width: 22, height: 22, borderWidth: 1, borderColor: colors.textSecondary, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  termosCheckAtivo: { backgroundColor: colors.brand, borderColor: colors.brand },
+  termosTexto: { flex: 1, color: colors.text, fontFamily: fontFamily.regular, fontSize: 14 },
+  controleData: { paddingLeft: 0, gap: spacing.xxs },
+  acaoData: { width: 44, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.45)',
     justifyContent: 'center',
     padding: 24
   },
-  modalCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    maxWidth: 440,
-    width: '100%',
-    alignSelf: 'center'
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#006f1e',
-    paddingHorizontal: 12,
-    paddingVertical: 10
-  },
-  modalOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    borderRadius: 10
-  },
-  modalOptionSelected: {
-    backgroundColor: 'rgba(0, 111, 30, 0.08)'
-  },
-  modalOptionText: {
-    fontSize: 15,
-    color: '#2d3335'
-  },
-  modalOptionTextSelected: {
-    fontWeight: '700',
-    color: '#006f1e'
-  },
   iosPickerCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     marginTop: 'auto'
@@ -559,11 +429,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e2e8f0'
+    borderBottomColor: colors.border
   },
   iosPickerDone: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#006f1e'
+    color: colors.brand
   }
 });

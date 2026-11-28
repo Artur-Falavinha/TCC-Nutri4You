@@ -1,13 +1,35 @@
-<header class="page-header"><h1>{{ nomePaciente || 'Paciente' }}</h1>@if (atendimentoId === null) { <app-patient-tabs [patientId]="patientId" /> } @else { <a [routerLink]="['/agenda/atendimentos', atendimentoId]">Voltar ao atendimento</a> }</header>
-<main class="canvas" [attr.aria-busy]="carregando || salvando">
-  <h2>Exames do paciente</h2>
+<header class="page-header"><app-titulo-paciente [nome]="nomePaciente || 'Paciente'" [pacienteId]="nomePaciente ? patientId : null" /><app-patient-tabs [patientId]="patientId" (reabrir)="voltarParaLista()" /></header>
+@let semExames = dados?.total === 0;
+@let exibirEstadoVazio = semExames && !carregando && !erro && !formularioAberto;
+<main class="canvas" [class.canvas--vazio]="exibirEstadoVazio" [attr.aria-busy]="carregando || salvando">
+  @if (!exibirEstadoVazio) { <h2>Exames do paciente</h2> }
   @if (erro) { <p role="alert" class="error">{{ erro }}</p><button type="button" (click)="carregar()" [disabled]="salvando">Recarregar exames</button> }
-  @if (mensagem) { <p role="status">{{ mensagem }}</p> }
-  @if (atendimentoId === null || podeSolicitar) { <form (ngSubmit)="solicitar()"><fieldset [disabled]="salvando || carregando"><legend>Solicitar exame</legend>
-    <label>Nome do exame<input name="nome" [(ngModel)]="nome" required maxlength="150" /></label>
-    <label>Descrição e orientações<textarea name="descricao" [(ngModel)]="descricao" maxlength="5000"></textarea></label>
-    <button type="submit" [disabled]="!nome.trim()">Solicitar exame</button>
-  </fieldset></form> }
+  @if (exibirEstadoVazio) {
+    <app-estado-vazio
+      #estadoVazio
+      tabindex="-1"
+      [imagem]="{ url: '/exames/sem-exames.webp', largura: 840, altura: 752 }"
+      titulo="Nenhum exame solicitado"
+      descricao="Solicite um exame para que o paciente possa enviar o resultado."
+    >
+      <app-ui-button label="Solicitar exame" icon="plus-circle" [fullWidth]="false" (click)="abrirFormulario()" />
+    </app-estado-vazio>
+  }
+  @if (dados && (!semExames || formularioAberto)) {
+    <form (ngSubmit)="solicitar()">
+      <fieldset [disabled]="salvando || carregando">
+        <legend>Solicitar exame</legend>
+        <label>Nome do exame<input #campoNome name="nome" [(ngModel)]="nome" required maxlength="150" /></label>
+        <label>Descrição e orientações<textarea name="descricao" [(ngModel)]="descricao" maxlength="5000"></textarea></label>
+        <div class="acoes-formulario">
+          <app-ui-button label="Solicitar exame" type="submit" [disabled]="!nome.trim()" [fullWidth]="false" />
+          @if (formularioAberto && semExames) {
+            <app-ui-button label="Voltar aos exames" variant="secondary" [fullWidth]="false" (click)="fecharFormulario()" />
+          }
+        </div>
+      </fieldset>
+    </form>
+  }
   @if (carregando) { <p role="status">Carregando exames...</p> }
   @for (exame of dados?.itens; track exame.id) {
     <article><div class="heading"><h3>{{ exame.nome }}</h3><strong>{{ exame.status }}</strong></div>
@@ -26,7 +48,9 @@
         </form>
       }
     </article>
-  } @empty { @if (dados && !carregando) { <p>Nenhum exame solicitado.</p> } }
+  } @empty {
+    @if (dados && !semExames && !carregando && !erro) { <p>Nenhum exame nesta página.</p> }
+  }
   @if (dados && dados.totalPaginas > 1) {
     <nav aria-label="Páginas de exames"><button type="button" (click)="carregar(pagina - 1)" [disabled]="pagina === 0 || carregando">Anterior</button>
       <span>Página {{ pagina + 1 }} de {{ dados.totalPaginas }}</span><button type="button" (click)="carregar(pagina + 1)" [disabled]="pagina + 1 >= dados.totalPaginas || carregando">Próxima</button></nav>

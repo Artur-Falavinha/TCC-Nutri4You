@@ -1,8 +1,9 @@
 package com.nutri4you.backend.security;
 
+import com.nutri4you.backend.model.ContaAutenticavel;
+import com.nutri4you.backend.model.TipoCadastro;
 import com.nutri4you.backend.repository.NutricionistaRepository;
 import com.nutri4you.backend.repository.PacienteRepository;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -21,11 +22,19 @@ public class DatabaseUserDetailsService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+    public ContaAutenticavel loadUserByUsername(String email) throws UsernameNotFoundException {
         return nutricionistaRepository.findByEmailIgnoreCase(email)
-                .map(user -> (UserDetails) user)
+                .map(user -> (ContaAutenticavel) user)
                 .orElseGet(() -> pacienteRepository.findByEmailIgnoreCase(email)
-                        .map(user -> (UserDetails) user)
                         .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado")));
+    }
+
+    ContaAutenticavel buscarTitular(TipoCadastro tipo, Integer id) {
+        if (tipo == TipoCadastro.PACIENTE) {
+            return pacienteRepository.findById(id)
+                    .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado"));
+        }
+        return nutricionistaRepository.findById(id)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado"));
     }
 }

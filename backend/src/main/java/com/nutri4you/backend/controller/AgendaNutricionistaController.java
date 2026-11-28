@@ -3,14 +3,16 @@ package com.nutri4you.backend.controller;
 import com.nutri4you.backend.dto.ApiResponse;
 import com.nutri4you.backend.dto.DecisaoConsultaRequest;
 import com.nutri4you.backend.dto.HorarioAtendimentoDTO;
-import com.nutri4you.backend.dto.PreferenciaAgendaDTO;
-import com.nutri4you.backend.dto.SolicitacaoAvulsaDTO;
+import com.nutri4you.backend.dto.PreferenciaEmailAgendaDTO;
 import com.nutri4you.backend.dto.NotificacaoConsultaDTO;
+import com.nutri4you.backend.dto.SemanaAgendaDTO;
 import com.nutri4you.backend.exception.AcessoNegadoException;
 import com.nutri4you.backend.model.Nutricionista;
+import com.nutri4you.backend.service.CalendarioAgendaService;
 import com.nutri4you.backend.service.ConsultaService;
 import com.nutri4you.backend.service.HorarioAtendimentoService;
 import com.nutri4you.backend.service.SolicitacaoVinculoService;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,8 +20,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -40,12 +44,20 @@ public class AgendaNutricionistaController {
     }
     private final HorarioAtendimentoService horarios;
     private final ConsultaService consultas;
+    private final CalendarioAgendaService calendario;
 
     public AgendaNutricionistaController(HorarioAtendimentoService horarios, ConsultaService consultas,
-                                          SolicitacaoVinculoService solicitacoesVinculo) {
+                                          SolicitacaoVinculoService solicitacoesVinculo, CalendarioAgendaService calendario) {
         this.horarios = horarios;
         this.consultas = consultas;
         this.solicitacoesVinculo = solicitacoesVinculo;
+        this.calendario = calendario;
+    }
+
+    @GetMapping("/calendario")
+    public ApiResponse<SemanaAgendaDTO> carregarCalendario(Authentication auth,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio) {
+        return ApiResponse.ok(calendario.carregar(nutricionista(auth), inicio), "Semana da agenda carregada.");
     }
 
     @GetMapping("/horarios")
@@ -59,20 +71,17 @@ public class AgendaNutricionistaController {
         return ApiResponse.ok(horarios.salvar(nutricionista(auth), entrada), "Horários salvos.");
     }
 
-    @GetMapping("/preferencias")
-    public ApiResponse<PreferenciaAgendaDTO> preferencia(Authentication auth) {
-        return ApiResponse.ok(horarios.preferencia(nutricionista(auth)), "Preferência carregada.");
+    @GetMapping("/preferencias/notificacoes-email")
+    public ApiResponse<PreferenciaEmailAgendaDTO> preferenciaEmail(Authentication auth) {
+        return ApiResponse.ok(new PreferenciaEmailAgendaDTO(nutricionista(auth).notificaAgendaPorEmail()),
+                "Preferência de e-mail carregada.");
     }
 
-    @PutMapping("/preferencias")
-    public ApiResponse<PreferenciaAgendaDTO> salvarPreferencia(
-            Authentication auth, @RequestBody PreferenciaAgendaDTO preferencia) {
-        return ApiResponse.ok(horarios.salvarPreferencia(nutricionista(auth), preferencia), "Preferência salva.");
-    }
-
-    @GetMapping("/solicitacoes-avulsas")
-    public ApiResponse<List<SolicitacaoAvulsaDTO>> listarAvulsas(Authentication auth) {
-        return ApiResponse.ok(consultas.listarAvulsasPendentes(nutricionista(auth)), "Solicitações carregadas.");
+    @PutMapping("/preferencias/notificacoes-email")
+    public ApiResponse<PreferenciaEmailAgendaDTO> salvarPreferenciaEmail(
+            Authentication auth, @RequestBody PreferenciaEmailAgendaDTO preferencia) {
+        return ApiResponse.ok(horarios.salvarPreferenciaEmail(nutricionista(auth), preferencia),
+                "Preferência de e-mail salva.");
     }
 
     @GetMapping("/notificacoes")
@@ -84,13 +93,6 @@ public class AgendaNutricionistaController {
     public ApiResponse<Void> decidirNotificacao(
             Authentication auth, @PathVariable Integer id, @RequestBody DecisaoConsultaRequest decisao) {
         consultas.decidirNotificacao(nutricionista(auth), id, decisao);
-        return ApiResponse.ok(null, Boolean.TRUE.equals(decisao.aceitar()) ? "Consulta confirmada." : "Consulta recusada.");
-    }
-
-    @PostMapping("/solicitacoes-avulsas/{id}/decisao")
-    public ApiResponse<Void> decidirAvulsa(
-            Authentication auth, @PathVariable Integer id, @RequestBody DecisaoConsultaRequest decisao) {
-        consultas.decidirAvulsa(nutricionista(auth), id, decisao);
         return ApiResponse.ok(null, Boolean.TRUE.equals(decisao.aceitar()) ? "Consulta confirmada." : "Consulta recusada.");
     }
 

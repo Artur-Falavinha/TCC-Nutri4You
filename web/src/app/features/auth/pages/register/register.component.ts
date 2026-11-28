@@ -28,19 +28,21 @@ import { URL_TERMOS, VERSAO_TERMOS } from '../../../privacidade/privacidade.comp
   styleUrl: './register.component.css'
 })
 export class RegisterComponent {
-  readonly urlTermos = URL_TERMOS;
+  readonly urlTermos = `${URL_TERMOS}/${VERSAO_TERMOS}`;
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly registerFlow = inject(RegisterFlowService);
 
   readonly emailConfirmado = this.registerFlow.getEmailConfirmado()?.email ?? '';
   private readonly dadosAnteriores = this.registerFlow.getDraft();
+  private readonly aceiteAnterior = this.dadosAnteriores?.versaoTermos === VERSAO_TERMOS
+    && this.dadosAnteriores.termsAccepted;
   submitted = false;
 
   form = this.fb.nonNullable.group({
     nome: [this.dadosAnteriores?.nome ?? '', [Validators.required, Validators.minLength(3)]],
     crn: [this.dadosAnteriores?.crn ?? '', [Validators.required, crnValidator()]],
-    termsAccepted: [this.dadosAnteriores?.termsAccepted ?? false, [Validators.requiredTrue]]
+    termsAccepted: [this.aceiteAnterior, [Validators.requiredTrue]]
   });
 
   submit(): void {

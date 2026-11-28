@@ -12,11 +12,12 @@ Base: `/api/v1/gestao-pacientes/{pacienteId}/consultas`.
 | --- | --- | --- |
 | GET | Base + `?pagina=0` | Pagina de 10 consultas, data e ID decrescentes |
 | POST | Base | Criação livre desativada; retorna 400 orientando agendar |
-| POST | Base + `/{id}/confirmacao` | Aprova solicitação futura pendente; exige `versao` |
+| POST | Base + `/{id}/confirmacao` | Confirma solicitação futura pendente; exige `versao` |
 | POST | Base + `/{id}/inicio` | Inicia consulta confirmada; exige `versao` |
-| POST | Base + `/{id}/cancelamento` | Cancela pendente/confirmada não iniciada; exige `versao` |
+| POST | Base + `/{id}/recusa` | Recusa solicitação futura pendente; exige `versao` |
+| POST | Base + `/{id}/cancelamento` | Cancela confirmada não iniciada; exige `versao` |
 | GET | Base + `/{id}` | Consulta e avaliacao vinculada |
-| PUT | Base + `/{id}` | Atualiza o mesmo registro; exige `versao` |
+| PUT | Base + `/{id}` | Atualiza consulta confirmada e iniciada; exige `versao`; concluídas retornam 400 |
 
 As respostas usam `ApiResponse`. Listagem retorna `itens`, `pagina`,
 `totalPaginas` e `total`. Erros: 400 validacao, 401 sem autenticacao,
@@ -60,12 +61,16 @@ clinica (`TIMESTAMP WITHOUT TIME ZONE`), interpretado em America/Sao_Paulo.
 
 ## Regras
 
+- Solicitações aguardando confirmação exibem Confirmar/Recusar na listagem, sem Abrir consulta. Depois de confirmada, a ação disponível é Cancelar, até o início. O GET de detalhe rejeita a abertura enquanto estiverem pendentes; após aprovação, a consulta pode ser aberta e iniciada.
+
+- A tela mostra **Em atendimento** quando a consulta está `CONFIRMADA` e possui `iniciadaEm`. Não há seletor manual de status: **Salvar andamento** persiste como `CONFIRMADA` e permite sair e retomar; **Concluir consulta** grava como `REALIZADA` e bloqueia edições posteriores. Salvar andamento não exige nenhum campo clínico: medidas isoladas são preservadas, e campos não preenchidos ficam nulos. Valores informados continuam sujeitos à validação de formato e limites. Concluir exige peso e altura.
+
 - Data/hora e status obrigatorios; datas entre 1900 e 2100.
-- Status: `AGUARDANDO_CONFIRMACAO`, `CONFIRMADA`, `REALIZADA`, `CANCELADA`.
+- Status: `AGUARDANDO_CONFIRMACAO`, `CONFIRMADA`, `REALIZADA`, `CANCELADA`, `RECUSADA`.
   A tela apresenta `REALIZADA` como **Concluida**.
 - Uma consulta ainda não iniciada não pode ser concluída no futuro. Depois de iniciada, ela pode permanecer em andamento e ser salva ou concluída a qualquer momento; conclusão exige peso e altura.
 - Ações de agenda não exigem avaliação. Edição de atendimento exige início prévio e não altera horário agendado.
-  Quando qualquer medida for enviada, peso e altura sao obrigatorios.
+  Durante o andamento, qualquer medida pode ser salva isoladamente. Peso e altura são obrigatórios somente para concluir.
 - Peso: 1 a 500 kg; altura: 0,30 a 2,70 m; gordura: 0 a 100%; massa muscular:
   0 a 300 kg; pregas: 0,1 a 100 mm; cintura/quadril: 0,1 a 300 cm;
   braco: 0,1 a 150 cm. Medidas aceitam ate duas casas decimais.
@@ -74,6 +79,7 @@ clinica (`TIMESTAMP WITHOUT TIME ZONE`), interpretado em America/Sao_Paulo.
 - O cálculo é limitado às faixas de validação das equações originais: homens de 18 a 61 anos e mulheres de 18 a 55 anos. Sexo e data de nascimento vêm do cadastro do paciente.
 - Referências do cálculo: [equação masculina de Jackson e Pollock](https://pubmed.ncbi.nlm.nih.gov/718832/), [equação feminina de Jackson, Pollock e Ward](https://pubmed.ncbi.nlm.nih.gov/7402053/) e [conversão de densidade corporal de Siri](https://escholarship.org/uc/item/6mh9f4nf).
 - Peso e altura que já existirem nas respostas finalizadas da anamnese, inclusive registros legados, são usados como valores iniciais na primeira avaliação da consulta. O atendimento apenas consome esses dados: os campos não são reativados nem adicionados novamente ao formulário da anamnese.
+- Cada consulta possui no máximo uma avaliação antropométrica. Avaliações longitudinais também podem existir sem consulta; quando vinculadas, o banco garante que avaliação e consulta pertencem ao mesmo paciente.
 - Edicao atualiza a avaliacao vinculada, sem duplicar; nao apaga avaliacao
   existente ao receber `null`. A data da avaliacao acompanha a consulta.
 - Bloqueio otimista protege tambem edicoes somente de medidas.
@@ -107,6 +113,6 @@ e restrito ao checksum conhecido; nao apagar volumes nem recalcular horarios.
 
 ## Início do atendimento
 
-O profissional responsável pode iniciar uma consulta confirmada a qualquer momento. O servidor retorna `iniciadaEm` e `podeIniciar` e valida a versão e o status no momento da ação. Uma consulta iniciada pode durar o tempo necessário e não pode ser iniciada novamente. Uma avulsa confirmada que não ocorreu deve ser cancelada pelo profissional para liberar uma nova solicitação sem vínculo.
+O profissional responsável pode iniciar uma consulta confirmada a qualquer momento. O servidor retorna `iniciadaEm` e `podeIniciar` e valida a versão e o status no momento da ação. Uma consulta iniciada pode durar o tempo necessário e não pode ser iniciada novamente. O fluxo separado de atendimento avulso foi removido; a confirmação da primeira consulta ativa o vínculo e integra o agendamento às consultas do paciente.
 
-V10 acrescenta o início sem fabricar dados para consultas legadas. Consultas históricas realizadas continuam editáveis; novos atendimentos exigem início. A edição aceita CONFIRMADA ou REALIZADA, sem reabrir uma realizada. Aprovação/cancelamento usam ações próprias. A rota web `/consultas/nova` redireciona à listagem. Novos atendimentos devem partir de solicitação aprovada.
+V10 acrescenta o início sem fabricar dados para consultas legadas. Consultas concluídas, inclusive históricas, ficam somente para leitura. A edição exige status CONFIRMADA e início registrado; a gravação pode concluir a consulta com status REALIZADA, mas depois nenhuma alteração ou reabertura é aceita. A tela mantém os registros visíveis, desabilita os campos e oculta Salvar. Aprovação/cancelamento usam ações próprias. A rota web `/consultas/nova` redireciona à listagem. Novos atendimentos devem partir de solicitação aprovada.

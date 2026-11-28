@@ -21,11 +21,13 @@ export interface MedidasConsulta {
   circunferenciaBraco: number | null;
 }
 
+export type ModoPercentualGordura = 'AUTOMATICO' | 'MANUAL';
+
 export interface ConsultaPayload {
   dataHora: string;
   status: string;
   observacao: string;
-  avaliacao: MedidasConsulta | null;
+  avaliacao: (MedidasConsulta & { modoPercentualGordura?: ModoPercentualGordura }) | null;
   versao: number | null;
 }
 
@@ -62,27 +64,14 @@ export class ConsultasService {
   buscar(pacienteId: number, id: number) {
     return this.api.get<Consulta>(`${this.path(pacienteId)}/${id}`);
   }
-  acao(pacienteId: number, c: Consulta, acao: 'inicio' | 'confirmacao' | 'cancelamento') {
+  verificarAcesso(pacienteId: number, id: number) {
+    return this.api.get<void>(`${this.path(pacienteId)}/${id}/acesso`);
+  }
+  acao(pacienteId: number, c: Consulta, acao: 'inicio' | 'confirmacao' | 'cancelamento' | 'recusa') {
     return this.api.post<Consulta>(`${this.path(pacienteId)}/${c.id}/${acao}`, { versao: c.versao });
   }
   salvar(pacienteId: number, id: number | null, payload: ConsultaPayload) {
     return id === null ? this.api.post<Consulta>(this.path(pacienteId), payload)
       : this.api.put<Consulta>(`${this.path(pacienteId)}/${id}`, payload);
   }
-}
-
-export interface AtendimentoClinico extends Consulta {
-  pacienteNome: string;
-  pacienteId: number | null;
-}
-
-@Injectable({ providedIn: 'root' })
-export class AtendimentosService {
-  private readonly api = inject(ApiService);
-  private readonly path = '/agenda-nutricionista/atendimentos';
-  listar() { return this.api.get<AtendimentoClinico[]>(this.path); }
-  buscar(id: number) { return this.api.get<AtendimentoClinico>(`${this.path}/${id}`); }
-  iniciar(c: AtendimentoClinico) { return this.api.post<AtendimentoClinico>(`${this.path}/${c.id}/inicio`, { versao: c.versao }); }
-  cancelar(c: AtendimentoClinico) { return this.api.post<void>(`${this.path}/${c.id}/cancelamento`, { versao: c.versao }); }
-  salvar(id: number, payload: ConsultaPayload) { return this.api.put<AtendimentoClinico>(`${this.path}/${id}`, payload); }
 }

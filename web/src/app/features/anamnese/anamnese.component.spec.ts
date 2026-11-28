@@ -1,12 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
+import { ToastService } from '../../core/services/toast.service';
 import { AuthService } from '../../core/services/auth.service';
+import { PacientesService } from '../../core/services/pacientes.service';
 import { AnamneseComponent } from './anamnese.component';
 import { AnamneseService } from './anamnese.service';
 import { Anamnese, AnamneseField } from './anamnese.models';
 
 describe('AnamneseComponent', () => {
+  let toast: jasmine.SpyObj<ToastService>;
   let fixture: ComponentFixture<AnamneseComponent>;
   let component: AnamneseComponent;
   let api: jasmine.SpyObj<AnamneseService>;
@@ -24,11 +27,18 @@ describe('AnamneseComponent', () => {
   });
 
   beforeEach(async () => {
+    toast = jasmine.createSpyObj<ToastService>('ToastService', ['sucesso', 'erro']);
     auth.authenticated = false;
     api = jasmine.createSpyObj('AnamneseService', ['fields', 'patients', 'user', 'get', 'save', 'discard']);
     await TestBed.configureTestingModule({
       imports: [AnamneseComponent],
-      providers: [provideRouter([]), { provide: AuthService, useValue: auth }, { provide: AnamneseService, useValue: api }]
+      providers: [
+        { provide: ToastService, useValue: toast },
+        provideRouter([]),
+        { provide: AuthService, useValue: auth },
+        { provide: AnamneseService, useValue: api },
+        { provide: PacientesService, useValue: { carregarFoto: () => of(null) } }
+      ]
     }).compileComponents();
     fixture = TestBed.createComponent(AnamneseComponent);
     component = fixture.componentInstance;
@@ -83,6 +93,31 @@ describe('AnamneseComponent', () => {
     expect(component.answers).toEqual({});
   });
 
+  for (const { campo, valorSalvo, rotulo } of [
+    { campo: 'urineColor', valorSalvo: '6 - Severamente Desidratado', rotulo: '6 - Âmbar escuro' },
+    { campo: 'bristol', valorSalvo: 'Tipo 5 - Pedaços suaves com bordas bem definidas', rotulo: 'Tipo 5 - Pedaços macios' }
+  ]) {
+    it(`exibe o novo rótulo de ${campo} e salva o valor legado do rascunho`, async () => {
+      component.fields = [field(campo, { type: 'select', options: [valorSalvo] })];
+      const respostas = { [campo]: valorSalvo };
+      const rascunho: Anamnese = { ...empty, versao: 2, status: 'RASCUNHO', rascunho: respostas };
+      component.data = rascunho;
+      api.save.and.returnValue(of(rascunho));
+
+      component.startEditing();
+      const formulario = form();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const select = formulario.querySelector<HTMLSelectElement>(`#${campo}`)!;
+
+      expect(select.value).toBe(valorSalvo);
+      expect(select.selectedOptions[0]?.textContent?.trim()).toBe(rotulo);
+      expect(component.dirty).toBeFalse();
+      await component.save(true, formulario);
+      expect(api.save).toHaveBeenCalledWith(patient.id, 2, respostas, true);
+    });
+  }
+
   it('blocks finalization of blank required answers without calling the API', async () => {
     component.startEditing();
     component.answers['profession'] = '   ';
@@ -113,7 +148,7 @@ describe('AnamneseComponent', () => {
     expect(component.editing).toBeTrue();
     expect(component.answers['profession']).toBe('Analista');
     expect(component.saving).toBeFalse();
-    expect(component.error).toContain('conectar');
+    expect(toast.erro).toHaveBeenCalledWith(jasmine.stringContaining('conectar'));
   });
 
   it('stops further saves on a version conflict', async () => {
@@ -144,6 +179,40 @@ describe('AnamneseComponent', () => {
     await component.save(false, form());
     expect(component.errors['emotionalHunger']).toBeUndefined();
     expect(api.save).toHaveBeenCalled();
+  });
+
+  it('saves checkbox selections without duplicates after repeated change events', async () => {
+    component.fields = [field('objectives', {
+      type: 'checkbox', options: ['Perder peso', 'Ganhar massa muscular']
+    })];
+    component.startEditing();
+    const formulario = form();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const checkboxes = formulario.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+
+    checkboxes[0].checked = true;
+    checkboxes[0].dispatchEvent(new Event('change', { bubbles: true }));
+    checkboxes[0].dispatchEvent(new Event('change', { bubbles: true }));
+    checkboxes[1].checked = true;
+    checkboxes[1].dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+    expect(component.answers['objectives']).toEqual(['Perder peso', 'Ganhar massa muscular']);
+
+    api.save.and.returnValue(of({ ...empty, versao: 0, status: 'RASCUNHO',
+      rascunho: { objectives: ['Perder peso', 'Ganhar massa muscular'] } }));
+    await component.save(true, formulario);
+    expect(api.save).toHaveBeenCalledWith(patient.id, null,
+      { objectives: ['Perder peso', 'Ganhar massa muscular'] }, true);
+
+    component.startEditing();
+    const retomado = form();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const primeiro = retomado.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    primeiro.checked = false;
+    primeiro.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(component.answers['objectives']).toEqual(['Ganhar massa muscular']);
   });
 
   it('makes the none diagnosis option exclusive', () => {

@@ -1,5 +1,6 @@
 package com.nutri4you.backend.controller;
 
+import com.nutri4you.backend.service.PrivacidadeService;
 import com.jayway.jsonpath.JsonPath;
 import com.nutri4you.backend.model.*;
 import com.nutri4you.backend.repository.*;
@@ -21,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest @AutoConfigureMockMvc @Transactional
 class FluxosClinicosControllerTest {
+    @Autowired PrivacidadeService privacidade;
     @Autowired MockMvc mvc;
     @Autowired NutricionistaRepository nutris;
     @Autowired PacienteRepository pacientes;
@@ -36,6 +38,7 @@ class FluxosClinicosControllerTest {
     @BeforeEach void preparar() throws Exception {
         n = nutris.save(TestDataFactory.nutricionista(encoder));
         p = pacientes.save(TestDataFactory.pacienteConfirmado(encoder));
+        TestDataFactory.registrarAceite(privacidade, n, p);
         relacoes.save(RelacaoClinica.criar(p, n));
         nutriToken = login(n.getEmail()); pacienteToken = login(p.getEmail());
         base = "/api/v1/gestao-pacientes/" + p.getId();
@@ -183,12 +186,14 @@ class FluxosClinicosControllerTest {
     @Test void examesIsolamPacientesENutricionistas() throws Exception {
         int id = solicitarExame();
         Paciente outro = pacientes.save(TestDataFactory.outroPaciente(encoder));
+        TestDataFactory.registrarAceite(privacidade, outro);
         String outroToken = login(outro.getEmail());
         mvc.perform(get("/api/v1/usuarios/me/exames/" + id + "/arquivo").header("Authorization", outroToken)).andExpect(status().isNotFound());
         mvc.perform(multipart("/api/v1/usuarios/me/exames/" + id + "/arquivo")
                 .file(new MockMultipartFile("arquivo", "x.pdf", "application/pdf", "%PDF-1.7".getBytes()))
                 .param("versao", "0").header("Authorization", outroToken)).andExpect(status().isNotFound());
         Nutricionista outroNutri = nutris.save(TestDataFactory.nutricionistaConfirmado("Outro", "outro@teste.com", encoder.encode("senha123"), "CRN8-98765"));
+        TestDataFactory.registrarAceite(privacidade, outroNutri);
         relacoes.save(RelacaoClinica.criar(p, outroNutri));
         mvc.perform(get(base + "/exames/" + id + "/arquivo").header("Authorization", login(outroNutri.getEmail()))).andExpect(status().isNotFound());
         mvc.perform(get(base + "/exames").header("Authorization", login(outroNutri.getEmail())))

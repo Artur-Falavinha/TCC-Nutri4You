@@ -53,6 +53,11 @@
   color: var(--color-text-primary);
 }
 
+.ui-button:focus-visible {
+  outline: 2px solid var(--color-brand-primary-hover);
+  outline-offset: 2px;
+}
+
 .ui-button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
@@ -89,5 +94,11 @@
 }
 
 .ui-button__label {
-  white-space: nowrap;
+  min-width: 0;
+  white-space: var(--ui-button-rotulo-espaco, nowrap);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-button, .ui-button__icon { transition: none; }
+  .ui-button .ph-spin { animation: none; }
 }

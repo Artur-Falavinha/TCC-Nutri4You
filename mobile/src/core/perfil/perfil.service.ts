@@ -1,4 +1,5 @@
 import { apiClient } from '../api/api-client';
+import { setToken } from '../auth/token-storage';
 
 export interface PacientePerfil {
   id: number;
@@ -22,12 +23,38 @@ export interface AtualizarPerfilPayload {
   dataNascimento?: string;
 }
 
+interface PreferenciaLembretesConsulta {
+  ativa: boolean;
+}
+
+const rotaLembretes = '/usuarios/me/lembretes-consulta';
+
+export function carregarLembretesConsulta(): Promise<PreferenciaLembretesConsulta> {
+  return apiClient.get<PreferenciaLembretesConsulta>(rotaLembretes);
+}
+
+export function salvarLembretesConsulta(ativa: boolean): Promise<PreferenciaLembretesConsulta> {
+  return apiClient.put<PreferenciaLembretesConsulta>(rotaLembretes, { ativa });
+}
+
 export function carregarPerfil(): Promise<PacientePerfil> {
   return apiClient.get<PacientePerfil>('/usuarios/me/perfil');
 }
 
 export function atualizarPerfil(payload: AtualizarPerfilPayload): Promise<PacientePerfil> {
   return apiClient.put<PacientePerfil>('/usuarios/me', payload);
+}
+
+export function iniciarAlteracaoEmail(novoEmail: string, senhaAtual: string): Promise<{ email: string }> {
+  return apiClient.post('/usuarios/me/email/iniciar', { novoEmail, senhaAtual });
+}
+
+export async function confirmarAlteracaoEmail(codigo: string): Promise<string> {
+  const { token, email } = await apiClient.post<{ token: string; email: string }>(
+    '/usuarios/me/email/confirmar', { codigo }
+  );
+  await setToken(token);
+  return email;
 }
 
 export function listarNutricionistas(): Promise<NutricionistaVinculo[]> {
@@ -46,16 +73,6 @@ export interface SolicitacaoVinculo {
 
 export function listarSolicitacoesVinculo(): Promise<SolicitacaoVinculo[]> {
   return apiClient.get<SolicitacaoVinculo[]>('/usuarios/me/solicitacoes-vinculo');
-}
-
-export interface NutricionistaEncontrado { id: number; nome: string }
-
-export function pesquisarNutricionistas(nome: string): Promise<NutricionistaEncontrado[]> {
-  return apiClient.get(`/usuarios/me/solicitacoes-vinculo/nutricionistas?nome=${encodeURIComponent(nome)}`);
-}
-
-export function solicitarVinculo(id: number): Promise<void> {
-  return apiClient.post(`/usuarios/me/solicitacoes-vinculo/nutricionistas/${id}`, {});
 }
 
 export function decidirSolicitacaoVinculo(

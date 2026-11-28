@@ -32,7 +32,59 @@ $v23 = Get-Content (Join-Path $migrations 'V23__solicitacao_de_vinculo_pelo_paci
 $v24 = Get-Content (Join-Path $migrations 'V24__termos_e_direitos_do_titular.sql') -Raw
 $v25 = Get-Content (Join-Path $migrations 'V25__confirmacao_email_nutricionista.sql') -Raw
 $v26 = Get-Content (Join-Path $migrations 'V26__cadastro_pendente.sql') -Raw
+$v27 = Get-Content (Join-Path $migrations 'V27__unicidade_cpf_paciente.sql') -Raw
+$v28 = Get-Content (Join-Path $migrations 'V28__exclusao_planos_alimentares.sql') -Raw
+$v29 = Get-Content (Join-Path $migrations 'V29__vinculo_por_agendamento_e_nutricionista_demo.sql') -Raw
+$v30 = Get-Content (Join-Path $migrations 'V30__remover_pedido_privacidade.sql') -Raw
+$v31 = Get-Content (Join-Path $migrations 'V31__integridade_escopo_clinico_e_precisao_consumo.sql') -Raw
+$v32 = Get-Content (Join-Path $migrations 'V32__identificar_reagendamento_consulta.sql') -Raw
+$v33 = Get-Content (Join-Path $migrations 'V33__foto_de_perfil.sql') -Raw
 $init = Get-Content (Join-Path $repo 'database/init.sql') -Raw
+
+$dadosLegadosCpfEPlano = @'
+INSERT INTO Paciente (id_paciente, nome, email, senha, cpf) VALUES
+    (900027, 'Paciente A', 'cpf-a@example.test', 'hash', '009.876.543-21'),
+    (900028, 'Paciente B', 'cpf-b@example.test', 'hash', '00987654321');
+INSERT INTO Consulta (id_consulta, id_paciente, id_nutricionista, data_hora)
+VALUES (900027, 900028, 1, '2026-11-22 09:00');
+INSERT INTO Plano_Alimentar (id_plano, id_paciente, id_nutricionista, id_consulta, status)
+VALUES (900027, 900028, 1, 900027, 'PUBLICADO');
+INSERT INTO Refeicao (id_refeicao, id_plano, nome, horario)
+VALUES (900027, 900027, 'Almoço', '12:00');
+INSERT INTO Consumo_Refeicao (id_paciente, id_refeicao, data_registro, consumida)
+VALUES (900028, 900027, '2026-11-22', TRUE);
+'@
+
+$assertionsCpfEPlano = @'
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM Paciente WHERE id_paciente = 900027
+        AND cpf = '00987654321' AND cpf_original_conflitante = '009.876.543-21')
+       OR NOT EXISTS (SELECT 1 FROM Paciente WHERE id_paciente = 900028
+        AND cpf IS NULL AND cpf_original_conflitante = '00987654321') THEN
+        RAISE EXCEPTION 'V27 must reserve the normalized CPF and preserve both legacy values';
+    END IF;
+    BEGIN
+        INSERT INTO Paciente (nome, email, senha, cpf)
+        VALUES ('Duplicado', 'cpf-duplicado@example.test', 'hash', '00987654321');
+        RAISE EXCEPTION 'V27 accepted a duplicate CPF';
+    EXCEPTION WHEN unique_violation THEN NULL;
+    END;
+    BEGIN
+        INSERT INTO Plano_Alimentar (id_paciente, id_nutricionista, id_consulta)
+        VALUES (900028, 1, 900027);
+        RAISE EXCEPTION 'V28 accepted two visible plans for one appointment';
+    EXCEPTION WHEN unique_violation THEN NULL;
+    END;
+    UPDATE Plano_Alimentar SET status = 'EXCLUIDO' WHERE id_plano = 900027;
+    INSERT INTO Plano_Alimentar (id_paciente, id_nutricionista, id_consulta)
+    VALUES (900028, 1, 900027);
+    IF NOT EXISTS (SELECT 1 FROM Consumo_Refeicao WHERE id_refeicao = 900027 AND consumida) THEN
+        RAISE EXCEPTION 'V28 did not preserve consumption after plan removal';
+    END IF;
+END;
+$$;
+'@
 
 # Every scenario uses a new schema inside a transaction, rolled back even on
 # failure when psql disconnects. No application tables or Flyway history change.
@@ -289,6 +341,10 @@ $v23
 $v24
 $v25
 $v26
+$dadosLegadosCpfEPlano
+$v27
+$v28
+$assertionsCpfEPlano
 DO `$`$
 BEGIN
     IF to_regclass('cadastro_pendente') IS NULL OR EXISTS (SELECT 1 FROM cadastro_pendente) THEN
@@ -299,17 +355,48 @@ BEGIN
     END IF;
 END;
 `$`$;
+$v29
+$v30
+$v31
+$v32
+$v33
+DO `$`$
+BEGIN
+    IF EXISTS (SELECT 1 FROM foto_perfil) THEN
+        RAISE EXCEPTION 'V33 created photos for existing accounts';
+    END IF;
+    INSERT INTO foto_perfil (paciente_id, arquivo) VALUES (1, decode('01', 'hex'));
+    INSERT INTO foto_perfil (nutricionista_id, arquivo) VALUES (1, decode('02', 'hex'));
+    BEGIN
+        INSERT INTO foto_perfil (paciente_id, nutricionista_id, arquivo)
+        VALUES (2, 1, decode('03', 'hex'));
+        RAISE EXCEPTION 'V33 accepted an ambiguous owner';
+    EXCEPTION WHEN check_violation THEN NULL;
+    END;
+END;
+`$`$;
 DO `$`$
 BEGIN
     IF EXISTS (SELECT 1 FROM Relacao_Clinica WHERE solicitada_pelo_paciente) THEN
         RAISE EXCEPTION 'V23 changed the initiator of a legacy relation';
     END IF;
-    IF to_regclass('aceite_termo') IS NULL OR to_regclass('pedido_privacidade') IS NULL THEN
-        RAISE EXCEPTION 'V24 did not create privacy records';
+    IF to_regclass('aceite_termo') IS NULL OR to_regclass('pedido_privacidade') IS NOT NULL THEN
+        RAISE EXCEPTION 'V30 must preserve term acceptance and remove internal privacy requests';
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM Nutricionista WHERE id_nutricionista = 1 AND aceita_consultas_avulsas = FALSE)
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'consumo_diario'
+          AND column_name = 'kcal_consumidas'
+          AND numeric_precision = 8
+          AND numeric_scale = 2
+    ) THEN
+        RAISE EXCEPTION 'V31 did not align daily calorie precision';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM Nutricionista WHERE id_nutricionista = 1 AND aceita_consultas_avulsas = TRUE)
+        OR NOT EXISTS (SELECT 1 FROM Nutricionista WHERE email = 'mariana@nutri4you.com' AND aceita_consultas_avulsas = TRUE)
         OR NOT EXISTS (SELECT 1 FROM Consulta WHERE id_consulta = 1 AND avulsa = FALSE) THEN
-        RAISE EXCEPTION 'V17 changed the visibility or type of legacy appointments';
+        RAISE EXCEPTION 'V17/V29 did not preserve appointment type or enable the demo catalog';
     END IF;
     IF EXISTS (SELECT 1 FROM Refeicao WHERE dia_semana IS NOT NULL) THEN
         RAISE EXCEPTION 'V14 changed the daily repetition of legacy meals';
@@ -317,8 +404,15 @@ BEGIN
     IF to_regclass('consumo_refeicao') IS NULL THEN
         RAISE EXCEPTION 'V16 did not create meal consumption history';
     END IF;
-    IF (SELECT count(*) FROM Horario_Atendimento) <> (SELECT count(*) * 48 FROM Nutricionista) THEN
-        RAISE EXCEPTION 'V12 did not preserve the legacy weekly schedule';
+    IF EXISTS (
+        SELECT 1 FROM Nutricionista n
+        WHERE n.email <> 'mariana@nutri4you.com'
+          AND (SELECT count(*) FROM Horario_Atendimento h
+               WHERE h.id_nutricionista = n.id_nutricionista) <> 48
+    ) OR (SELECT count(*) FROM Horario_Atendimento h
+          JOIN Nutricionista n ON n.id_nutricionista = h.id_nutricionista
+          WHERE n.email = 'mariana@nutri4you.com') <> 17 THEN
+        RAISE EXCEPTION 'V12/V29 did not preserve or create the expected weekly schedules';
     END IF;
     IF EXISTS (SELECT 1 FROM Plano_Alimentar WHERE id_paciente IS NULL OR id_nutricionista IS NULL) THEN
         RAISE EXCEPTION 'V6 lost plan ownership';
@@ -341,6 +435,25 @@ BEGIN
         INSERT INTO Horario_Atendimento (id_nutricionista, dia_semana, horario) VALUES (1, 8, '10:00');
         RAISE EXCEPTION 'Invalid weekday accepted';
     EXCEPTION WHEN check_violation THEN NULL;
+    END;
+    BEGIN
+        UPDATE Avaliacao_Antropometrica
+        SET id_paciente = 2
+        WHERE id_consulta = 1;
+        RAISE EXCEPTION 'Assessment accepted a patient different from its consultation';
+    EXCEPTION WHEN foreign_key_violation THEN NULL;
+    END;
+    BEGIN
+        INSERT INTO Exame (id_paciente, id_nutricionista, id_consulta, nome_exame)
+        VALUES (2, 1, 1, 'Escopo divergente');
+        RAISE EXCEPTION 'Exam accepted a patient different from its consultation';
+    EXCEPTION WHEN foreign_key_violation THEN NULL;
+    END;
+    BEGIN
+        INSERT INTO Plano_Alimentar (id_consulta, id_paciente, id_nutricionista)
+        VALUES (1, 2, 1);
+        RAISE EXCEPTION 'Plan accepted a patient different from its consultation';
+    EXCEPTION WHEN foreign_key_violation THEN NULL;
     END;
 END;
 `$`$;

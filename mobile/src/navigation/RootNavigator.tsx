@@ -7,6 +7,8 @@ import {
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { SideMenuProvider } from '../components/navigation/SideMenu';
+import { NotificacoesProvider } from '../features/notificacoes/NotificacoesProvider';
 import { apiClient } from '../core/api/api-client';
 import { clearToken, getToken } from '../core/auth/token-storage';
 import { extractResetTokenFromUrl } from '../core/utils/deep-link.util';
@@ -50,7 +52,10 @@ const linking = {
       Notificacoes: { path: 'notificacoes', alias: ['Notificacoes'] },
       DadosPessoais: 'dados-pessoais',
       Agenda: 'agenda',
-      HorariosDisponiveis: 'agenda/horarios',
+      HorariosDisponiveis: {
+        path: 'agenda/horarios',
+        parse: { nutricionistaId: Number, consultaId: Number, versao: Number }
+      },
       Health: 'health'
     }
   }
@@ -60,6 +65,11 @@ export function RootNavigator() {
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const [bootstrapped, setBootstrapped] = useState(false);
   const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>('Login');
+  const [rotaAtual, setRotaAtual] = useState<keyof RootStackParamList>();
+
+  const atualizarRota = useCallback(() => {
+    setRotaAtual(navigationRef.current?.getCurrentRoute()?.name);
+  }, []);
 
   const goToLogin = useCallback(async () => {
     await clearToken();
@@ -132,67 +142,73 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer
-      linking={linking}
-      ref={navigationRef}
-      documentTitle={{ formatter: () => 'Nutri4You' }}
-    >
-      <Stack.Navigator initialRouteName={initialRoute}>
-        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-        <Stack.Screen
-          name="TrocarSenha"
-          component={TrocarSenhaScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="NovaSenha"
-          component={NovaSenhaScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="CriarConta"
-          component={CriarContaScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Dashboard"
-          component={DashboardScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Evolucao"
-          component={EvolucaoScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen name="Dieta" component={MealPlanScreen} options={{ headerShown: false }} />
-        <Stack.Screen
-          name="Compras"
-          component={ShoppingListScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Exames"
-          component={ExamesScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="DadosPessoais"
-          component={HomeScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Agenda"
-          component={AppointmentsScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="HorariosDisponiveis"
-          component={AvailableSlotsScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen name="Health" component={HealthScreen} options={{ title: 'Status da API' }} />
-        <Stack.Screen name="Notificacoes" component={NotificationsScreen} options={{ headerShown: false }} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <NotificacoesProvider rota={rotaAtual}>
+      <SideMenuProvider>
+        <NavigationContainer
+          linking={linking}
+          ref={navigationRef}
+          onReady={atualizarRota}
+          onStateChange={atualizarRota}
+          documentTitle={{ formatter: () => 'Nutri4You' }}
+        >
+          <Stack.Navigator initialRouteName={initialRoute}>
+            <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+            <Stack.Screen
+              name="TrocarSenha"
+              component={TrocarSenhaScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="NovaSenha"
+              component={NovaSenhaScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="CriarConta"
+              component={CriarContaScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Dashboard"
+              component={DashboardScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Evolucao"
+              component={EvolucaoScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen name="Dieta" component={MealPlanScreen} options={{ headerShown: false }} />
+            <Stack.Screen
+              name="Compras"
+              component={ShoppingListScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Exames"
+              component={ExamesScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="DadosPessoais"
+              component={HomeScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Agenda"
+              component={AppointmentsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="HorariosDisponiveis"
+              component={AvailableSlotsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen name="Health" component={HealthScreen} options={{ title: 'Status da API' }} />
+            <Stack.Screen name="Notificacoes" component={NotificationsScreen} options={{ headerShown: false }} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SideMenuProvider>
+    </NotificacoesProvider>
   );
 }

@@ -14,19 +14,23 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 
+import static com.nutri4you.backend.model.NotificacaoExame.Tipo.PARECER_REGISTRADO;
+import static com.nutri4you.backend.model.NotificacaoExame.Tipo.RESULTADO_ENVIADO;
+import static com.nutri4you.backend.model.NotificacaoExame.Tipo.SOLICITADO;
+
 @Service
 public class ExameService {
     public static final long LIMITE_BYTES = 5 * 1024 * 1024;
     private final ExameRepository exames;
     private final GestaoPacienteService gestao;
-    private final AtendimentoClinicoService atendimentos;
     private final Clock clock;
+    private final NotificacaoExameService notificacoes;
     public ExameService(ExameRepository exames, GestaoPacienteService gestao,
-            AtendimentoClinicoService atendimentos, Clock clock) {
+            Clock clock, NotificacaoExameService notificacoes) {
         this.exames = exames;
         this.gestao = gestao;
-        this.atendimentos = atendimentos;
         this.clock = clock;
+        this.notificacoes = notificacoes;
     }
     public record Solicitacao(String nome, String descricao) {}
     public record Analise(String parecer, Long versao) {}
@@ -35,14 +39,16 @@ public class ExameService {
 
     @Transactional
     public ExameResponse solicitar(Nutricionista n, Integer pacienteId, Integer atendimentoId, Solicitacao r) {
-        Consulta consulta = atendimentoId == null ? null : atendimentos.exigirEmAndamento(n, atendimentoId, pacienteId);
-        Paciente p = consulta == null ? gestao.exigirAcesso(n, pacienteId) : consulta.getPaciente();
+        exigirAcessoAoEscopo(n, pacienteId, atendimentoId);
+        Paciente p = gestao.exigirAcesso(n, pacienteId);
         if (r == null || r.nome() == null || r.nome().isBlank() || r.nome().trim().length() > 150
                 || (r.descricao() != null && r.descricao().length() > 5000)) {
             throw new IllegalArgumentException("Informe nome de até 150 caracteres e descrição de até 5000 caracteres.");
         }
-        Exame exame = new Exame(p, n, consulta, r.nome().trim(), r.descricao(), LocalDate.now(clock));
-        return ExameResponse.from(exames.saveAndFlush(exame));
+        Exame exame = new Exame(p, n, null, r.nome().trim(), r.descricao(), LocalDate.now(clock));
+        Exame solicitado = exames.saveAndFlush(exame);
+        notificacoes.registrar(solicitado, SOLICITADO);
+        return ExameResponse.from(solicitado);
     }
     @Transactional(readOnly = true)
     public Pagina listar(Nutricionista n, Integer pacienteId, Integer atendimentoId, int pagina) {
@@ -76,6 +82,7 @@ public class ExameService {
         String nome = "exame-" + id + extensao(tipo);
         e.enviar(bytes, nome, tipo, LocalDate.now(clock));
         exames.flush();
+        if (e.getVersao() != versao) notificacoes.registrar(e, RESULTADO_ENVIADO);
         return ExameResponse.from(e);
     }
     @Transactional
@@ -96,7 +103,9 @@ public class ExameService {
         }
         versao(e, r.versao());
         if (!"ENVIADO".equals(e.getStatus())) throw new IllegalArgumentException("Somente exames enviados podem ser analisados.");
-        e.analisar(r.parecer().trim(), clock.instant()); exames.flush();
+        e.analisar(r.parecer().trim(), clock.instant());
+        exames.flush();
+        notificacoes.registrar(e, PARECER_REGISTRADO);
         return ExameResponse.from(e);
     }
     @Transactional(readOnly = true)
@@ -108,11 +117,10 @@ public class ExameService {
         return arquivo(exames.findByIdAndPaciente_Id(id, p.getId()).orElseThrow(ExameNaoEncontradoException::new));
     }
     private void exigirAcessoAoEscopo(Nutricionista n, Integer pacienteId, Integer atendimentoId) {
-        if (atendimentoId == null) {
-            gestao.exigirAcesso(n, pacienteId);
-        } else {
-            atendimentos.exigirComRegistro(n, atendimentoId, pacienteId);
+        if (atendimentoId != null) {
+            throw new IllegalArgumentException("Atendimento avulso não está mais disponível. Use os exames do paciente.");
         }
+        gestao.exigirAcesso(n, pacienteId);
     }
     private Exame exigir(Nutricionista n, Integer pacienteId, Integer atendimentoId, Integer id) {
         exigirAcessoAoEscopo(n, pacienteId, atendimentoId);

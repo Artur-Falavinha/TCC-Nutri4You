@@ -3,7 +3,9 @@ package com.nutri4you.backend.service;
 import com.nutri4you.backend.dto.PacienteResumoDTO;
 import com.nutri4you.backend.dto.PacienteResponseDTO;
 import com.nutri4you.backend.exception.AcessoNegadoException;
+import com.nutri4you.backend.exception.VinculoEncerradoException;
 import com.nutri4you.backend.model.Consulta;
+import com.nutri4you.backend.model.NotificacaoConsultaPaciente;
 import com.nutri4you.backend.model.Nutricionista;
 import com.nutri4you.backend.model.Paciente;
 import com.nutri4you.backend.model.RelacaoClinica;
@@ -27,18 +29,24 @@ public class GestaoPacienteService {
     private final ConsultaRepository consultaRepository;
     private final NutricionistaRepository nutricionistaRepository;
     private final Clock clock;
+    private final NotificacaoAgendaEmailService notificacoesEmail;
+    private final NotificacaoConsultaPacienteService notificacoesPaciente;
 
     public GestaoPacienteService(
             PacienteRepository pacienteRepository,
             RelacaoClinicaRepository relacaoClinicaRepository,
             ConsultaRepository consultaRepository,
             NutricionistaRepository nutricionistaRepository,
-            Clock clock) {
+            Clock clock,
+            NotificacaoAgendaEmailService notificacoesEmail,
+            NotificacaoConsultaPacienteService notificacoesPaciente) {
         this.pacienteRepository = pacienteRepository;
         this.relacaoClinicaRepository = relacaoClinicaRepository;
         this.consultaRepository = consultaRepository;
         this.nutricionistaRepository = nutricionistaRepository;
         this.clock = clock;
+        this.notificacoesEmail = notificacoesEmail;
+        this.notificacoesPaciente = notificacoesPaciente;
     }
 
     @Transactional(readOnly = true)
@@ -64,11 +72,11 @@ public class GestaoPacienteService {
             paciente = pacienteRepository.findByEmailIgnoreCase(email.trim())
                     .orElseThrow(PacienteNaoEncontradoException::new);
         } else {
-            String cpfDigitos = normalizarCpf(cpf);
-            if (cpfDigitos.isEmpty()) {
+            String cpfDigitos = Paciente.normalizarCpf(cpf);
+            if (cpfDigitos == null) {
                 throw new IllegalArgumentException("CPF inválido.");
             }
-            paciente = pacienteRepository.findByCpfDigitos(cpfDigitos)
+            paciente = pacienteRepository.findByCpfAndCpfOriginalConflitanteIsNull(cpfDigitos)
                     .orElseThrow(PacienteNaoEncontradoException::new);
         }
 
@@ -126,21 +134,60 @@ public class GestaoPacienteService {
                 "Não existe relação recorrente ativa com este nutricionista.");
     }
 
-    private void encerrarVinculo(Integer pacienteId, Integer nutricionistaId, String mensagemSemVinculo) {
+    void ativarVinculoAoAceitarAgendamento(Consulta consulta) {
+        if (!consulta.isAvulsa()) {
+            return;
+        }
+        Integer pacienteId = consulta.getPaciente().getId();
+        Integer nutricionistaId = consulta.getNutricionista().getId();
         nutricionistaRepository.findByIdForUpdate(nutricionistaId)
+                .orElseThrow(() -> new IllegalArgumentException("Nutricionista indisponível."));
+        pacienteRepository.findByIdForUpdate(pacienteId)
+                .orElseThrow(PacienteNaoEncontradoException::new);
+
+        relacaoClinicaRepository.findByPaciente_IdAndStatus(pacienteId, StatusRelacaoClinica.ATIVA)
+                .stream()
+                .filter(relacao -> !relacao.getNutricionista().getId().equals(nutricionistaId))
+                .findFirst()
+                .ifPresent(relacao -> {
+                    throw new IllegalArgumentException("O paciente já possui outro nutricionista vinculado.");
+                });
+
+        RelacaoClinica relacao = relacaoClinicaRepository
+                .findByPaciente_IdAndNutricionista_Id(pacienteId, nutricionistaId)
+                .orElseGet(() -> RelacaoClinica.criarSolicitacao(
+                        consulta.getPaciente(), consulta.getNutricionista()));
+        if (relacao.getStatus() != StatusRelacaoClinica.ATIVA) {
+            relacao.reativar();
+            relacaoClinicaRepository.save(relacao);
+        }
+    }
+
+    private void encerrarVinculo(Integer pacienteId, Integer nutricionistaId, String mensagemSemVinculo) {
+        Nutricionista nutricionista = nutricionistaRepository.findByIdForUpdate(nutricionistaId)
                 .orElseThrow(() -> new IllegalArgumentException(mensagemSemVinculo));
         pacienteRepository.findByIdForUpdate(pacienteId).orElseThrow(PacienteNaoEncontradoException::new);
         RelacaoClinica relacao = relacaoClinicaRepository
                 .findByPaciente_IdAndNutricionista_IdAndStatus(pacienteId, nutricionistaId, StatusRelacaoClinica.ATIVA)
                 .orElseThrow(() -> new IllegalArgumentException(mensagemSemVinculo));
 
-        consultaRepository.bloquearConsultasEmAberto(pacienteId, nutricionistaId, LocalDateTime.now(clock))
-                .forEach(Consulta::cancelar);
+        LocalDateTime agora = LocalDateTime.now(clock);
+        List<Consulta> canceladas = consultaRepository.bloquearConsultasEmAberto(pacienteId, nutricionistaId, agora);
+        canceladas.forEach(Consulta::cancelar);
         relacao.encerrar();
+        consultaRepository.flush();
+        canceladas.stream()
+                .filter(consulta -> !consulta.getDataHora().isBefore(agora) || consulta.getIniciadaEm() != null)
+                .forEach(consulta -> notificacoesPaciente.registrar(consulta, NotificacaoConsultaPaciente.Tipo.CANCELADA));
+        notificacoesEmail.agendarCancelamentosPorVinculo(nutricionista, canceladas.size());
     }
 
     private void validarAcessoNutricionista(Nutricionista nutricionista, Paciente paciente) {
         if (!relacaoAtiva(nutricionista, paciente)) {
+            if (relacaoClinicaRepository.existsByPaciente_IdAndNutricionista_IdAndEncerradaEmIsNotNull(
+                    paciente.getId(), nutricionista.getId())) {
+                throw new VinculoEncerradoException();
+            }
             throw new AcessoNegadoException("Sem permissão para acessar dados deste paciente.");
         }
     }
@@ -172,7 +219,4 @@ public class GestaoPacienteService {
                 paciente.getCpf());
     }
 
-    private String normalizarCpf(String cpf) {
-        return cpf.replaceAll("\\D", "");
-    }
 }

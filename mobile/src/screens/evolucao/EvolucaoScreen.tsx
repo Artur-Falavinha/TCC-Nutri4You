@@ -1,23 +1,26 @@
-import React, { ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from '../../components/feedback/toast';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 
 import { AppHeader } from '../../components/layout/AppHeader';
 import { MenuDestination, SideMenu } from '../../components/navigation/SideMenu';
 import { logout } from '../../core/auth/auth.service';
 import { carregarPerfil } from '../../core/perfil/perfil.service';
+import { formatarDataCivil } from '../../core/utils/date-mask.util';
 import {
   AvaliacaoHistorico,
   carregarEvolucao,
@@ -25,22 +28,44 @@ import {
   calcularVariacao
 } from '../../core/evolucao/evolucao.service';
 import { RootStackParamList } from '../../navigation/types';
+import { colors, fontFamily, radius, shadows, spacing } from '../../theme/tokens';
 import { ChartDataPoint, EvolucaoLineChart } from './components/EvolucaoLineChart';
 import { MedidasGridCarousel } from './components/MedidasGridCarousel';
+import { useCarrosselEvolucao } from './components/useCarrosselEvolucao';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Evolucao'>;
+
+const GRAFICOS = [
+  { titulo: 'Peso', rotulo: 'Peso', acessibilidade: 'Gráfico de Peso', unidade: 'kg' },
+  { titulo: 'Gordura Corporal (%)', rotulo: 'Gordura corporal', acessibilidade: 'Gráfico de Gordura Corporal', unidade: '%' }
+] as const;
+
+function VariacaoGrafico({ variacao }: { variacao: NonNullable<ReturnType<typeof calcularVariacao>> }) {
+  const { direcao, percentual } = variacao;
+  const icone = direcao === 'queda' ? 'arrow-down' : direcao === 'alta' ? 'arrow-up' : 'minus';
+  const descricao = direcao === 'queda' ? 'Queda' : direcao === 'alta' ? 'Aumento' : 'Estável';
+  return (
+    <View
+      accessible
+      accessibilityLabel={descricao + ', ' + Math.abs(percentual) + '%'}
+      style={styles.deltaBadge}
+    >
+      <Feather name={icone} size={14} color={colors.textSecondary} aria-hidden />
+      <Text style={styles.deltaBadgeTexto}>{Math.abs(percentual)}%</Text>
+    </View>
+  );
+}
 
 export function EvolucaoScreen({ navigation }: Props) {
   const [carregando, setCarregando] = useState(true);
   const [recarregando, setRecarregando] = useState(false);
   const [erro, setErro] = useState('');
-  const [aviso, setAviso] = useState('');
   const [nomePaciente, setNomePaciente] = useState('Paciente');
   const [menuVisible, setMenuVisible] = useState(false);
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoHistorico[]>([]);
-  const [graficoAba, setGraficoAba] = useState<0 | 1>(0); // 0: Peso, 1: Gordura Corporal
-  const [chartWidth, setChartWidth] = useState(Dimensions.get('window').width - 64);
-  const chartScrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
+  const { width } = useWindowDimensions();
+  const { definirRef: definirRefGrafico, pagina: graficoAba, largura: larguraGrafico,
+    irPara: selecionarGrafico, onLayout: medirGrafico, aoRolar: rolarGrafico } = useCarrosselEvolucao(GRAFICOS.length);
 
   const buscarDados = useCallback(async () => {
     const [historicoResp, perfilResp] = await Promise.all([
@@ -116,6 +141,7 @@ export function EvolucaoScreen({ navigation }: Props) {
     .filter((a) => a.peso != null)
     .map((a) => ({
       label: formatarDataMes(a.dataAvaliacao),
+      dataFormatada: formatarDataCivil(a.dataAvaliacao),
       value: Number(a.peso),
       formatted: `${Number(a.peso).toFixed(1)} kg`
     }));
@@ -125,6 +151,7 @@ export function EvolucaoScreen({ navigation }: Props) {
     .filter((a) => a.percentualGordura != null)
     .map((a) => ({
       label: formatarDataMes(a.dataAvaliacao),
+      dataFormatada: formatarDataCivil(a.dataAvaliacao),
       value: Number(a.percentualGordura),
       formatted: `${Number(a.percentualGordura).toFixed(1)}%`
     }));
@@ -212,222 +239,134 @@ export function EvolucaoScreen({ navigation }: Props) {
       return;
     }
     if (destino !== 'results') {
-      setAviso('Este módulo ainda não está disponível nesta etapa.');
+      toast.informacao('Este módulo ainda não está disponível nesta etapa.');
     }
   };
+
+  const metricas = [
+    { dados: pesoChartData, valor: atual?.peso, variacao: variacaoPesoRecente },
+    { dados: gorduraChartData, valor: atual?.percentualGordura, variacao: variacaoGorduraRecente }
+  ];
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
       <AppHeader onOpenMenu={() => setMenuVisible(true)} />
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        style={styles.scroll}
+        contentContainerStyle={[styles.content, width < 420 && styles.contentCompact, { maxWidth: width >= 640 ? 760 : 560 }]}
         refreshControl={
-          <RefreshControl refreshing={recarregando} onRefresh={onRefresh} colors={['#006f1e']} />
+          <RefreshControl refreshing={recarregando} onRefresh={onRefresh} colors={[colors.brand]} tintColor={colors.brand} />
         }
       >
-        {aviso ? (
-          <View style={styles.avisoBox}>
-            <Text style={styles.avisoText}>{aviso}</Text>
-          </View>
-        ) : null}
+        <View style={styles.heading}>
+          <Text style={styles.title} accessibilityRole="header" aria-level={1}>Resultados</Text>
+        </View>
         {carregando ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#006f1e" />
-            <Text style={styles.loadingText}>Carregando evolução...</Text>
+          <View style={[styles.surface, styles.stateCard]} aria-live="polite">
+            <ActivityIndicator color={colors.brand} />
+            <Text style={styles.bodyText}>Carregando evolução...</Text>
           </View>
         ) : erro ? (
-          <View style={styles.errorBox}>
-            <Ionicons name="alert-circle-outline" size={28} color="#b42318" />
+          <View style={styles.errorBox} accessibilityRole="alert">
+            <Feather name="alert-circle" size={24} color={colors.dangerText} aria-hidden />
             <Text style={styles.errorText}>{erro}</Text>
-            <Pressable style={styles.btnRetry} onPress={() => void carregarDados()}>
+            <Pressable
+              style={({ pressed }) => [styles.btnRetry, pressed && styles.pressionado]}
+              accessibilityRole="button"
+              onPress={() => void carregarDados()}
+            >
               <Text style={styles.btnRetryText}>Tentar novamente</Text>
             </Pressable>
           </View>
         ) : avaliacoes.length === 0 ? (
-          /* Estado sem dados suficientes */
-          <View style={styles.emptyCard} testID="estado-sem-dados-suficientes">
-            <View style={styles.emptyIconCircle}>
-              <Ionicons name="trending-up-outline" size={32} color="#006f1e" />
+          <View style={[styles.surface, styles.stateCard]} testID="estado-sem-dados-suficientes">
+            <View style={styles.sectionIcon} aria-hidden>
+              <Feather name="trending-up" size={22} color={colors.brand} />
             </View>
-            <Text style={styles.emptyTitle}>Sem dados suficientes para exibir a evolução</Text>
-            <Text style={styles.emptyDescription}>
+            <Text style={styles.emptyTitle} accessibilityRole="header" aria-level={2}>
+              Sem dados suficientes para exibir a evolução
+            </Text>
+            <Text style={[styles.bodyText, styles.centered]}>
               Seu nutricionista ainda não registrou avaliações antropométricas para o seu acompanhamento.
               Assim que forem adicionadas na sua consulta, seus gráficos e histórico de medidas aparecerão aqui.
             </Text>
-            <Pressable style={styles.btnEmptyRefresh} onPress={() => void carregarDados()}>
-              <Ionicons name="refresh-outline" size={18} color="#006f1e" />
-              <Text style={styles.btnEmptyRefreshText}>Verificar atualizações</Text>
-            </Pressable>
           </View>
         ) : (
-          /* Dashboard com dados */
           <>
-            {/* Card Progresso Geral */}
-            <View style={styles.progressoGeralCard} testID="progresso-geral-card">
-              <Text style={styles.progressoGeralTitulo}>Progresso Geral</Text>
-              <Text style={styles.progressoGeralTexto}>{gerarMensagemProgresso()}</Text>
+            <View style={styles.surface} testID="progresso-geral-card">
+              <View style={styles.sectionHeading}>
+                <View style={styles.sectionIcon} aria-hidden>
+                  <Feather name="trending-up" size={20} color={colors.brand} />
+                </View>
+                <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>Progresso Geral</Text>
+              </View>
+              <Text style={styles.bodyText} aria-live="polite" accessibilityLiveRegion="polite">
+                {gerarMensagemProgresso()}
+              </Text>
             </View>
 
-            {/* Carrossel 1: Gráficos de Evolução (Peso & Gordura Corporal) */}
-            <View
-              style={styles.chartCarouselCard}
-              testID="graficos-carousel-card"
-              onLayout={(e) => {
-                const w = e.nativeEvent.layout.width - 32;
-                if (w > 0) {
-                  setChartWidth(w);
-                }
-              }}
-            >
+            <View style={styles.surface} testID="graficos-carousel-card">
+              <View style={styles.seletorGrafico}>
+                {GRAFICOS.map((opcao, indice) => {
+                  const selecionado = graficoAba === indice;
+                  return (
+                    <Pressable
+                      key={opcao.unidade}
+                      style={({ pressed }) => [
+                        styles.seletorBotao, selecionado && styles.seletorAtivo, pressed && styles.pressionado
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={opcao.acessibilidade}
+                      accessibilityState={{ selected: selecionado }}
+                      {...(Platform.OS === 'web' && { 'aria-pressed': selecionado })}
+                      onPress={() => selecionarGrafico(indice)}
+                    >
+                      <Text style={[styles.seletorTexto, selecionado && styles.seletorTextoAtivo]}>{opcao.rotulo}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
               <ScrollView
-                ref={chartScrollRef}
+                ref={definirRefGrafico}
+                style={styles.carousel}
                 horizontal
                 pagingEnabled
                 nestedScrollEnabled
                 showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={(e) => {
-                  if (chartWidth > 0) {
-                    const page = Math.round(e.nativeEvent.contentOffset.x / chartWidth);
-                    setGraficoAba(page >= 1 ? 1 : 0);
-                  }
-                }}
+                onLayout={medirGrafico}
+                onMomentumScrollEnd={rolarGrafico}
+                onScroll={Platform.OS === 'web' ? rolarGrafico : undefined}
+                scrollEventThrottle={32}
               >
-                {/* Slide Peso */}
-                <View style={{ width: chartWidth }}>
-                  <View style={styles.chartHeader}>
-                    <View>
-                      <Text style={styles.chartTitulo}>Peso</Text>
-                      <Text style={styles.chartValorGrande}>
-                        {atual?.peso != null ? `${Number(atual.peso).toFixed(1)} kg` : '—'}
-                      </Text>
-                    </View>
-                    {variacaoPesoRecente && (
-                      <View
-                        style={[
-                          styles.deltaBadge,
-                          variacaoPesoRecente.direcao === 'queda' && styles.deltaBadgeVerde,
-                          variacaoPesoRecente.direcao === 'alta' && styles.deltaBadgeVermelho
-                        ]}
-                      >
-                        <Ionicons
-                          name={
-                            variacaoPesoRecente.direcao === 'queda'
-                              ? 'arrow-down'
-                              : variacaoPesoRecente.direcao === 'alta'
-                                ? 'arrow-up'
-                                : 'remove'
-                          }
-                          size={12}
-                          color={
-                            variacaoPesoRecente.direcao === 'queda'
-                              ? '#006f1e'
-                              : variacaoPesoRecente.direcao === 'alta'
-                                ? '#b42318'
-                                : '#64748b'
-                          }
-                        />
-                        <Text
-                          style={[
-                            styles.deltaBadgeTexto,
-                            variacaoPesoRecente.direcao === 'queda' && styles.deltaBadgeTextoVerde,
-                            variacaoPesoRecente.direcao === 'alta' && styles.deltaBadgeTextoVermelho
-                          ]}
-                        >
-                          {Math.abs(variacaoPesoRecente.percentual)}%
-                        </Text>
+                {GRAFICOS.map((opcao, indice) => {
+                  const { dados, valor, variacao } = metricas[indice];
+                  const ativo = graficoAba === indice;
+                  return (
+                    <View
+                      key={opcao.unidade}
+                      style={[styles.chartSlide, { width: larguraGrafico || '100%' }]}
+                      aria-hidden={!ativo}
+                      accessibilityElementsHidden={!ativo}
+                      importantForAccessibility={ativo ? 'auto' : 'no-hide-descendants'}
+                    >
+                      <View style={styles.chartHeader}>
+                        <View style={styles.chartIdentity}>
+                          <Text style={styles.chartTitulo} accessibilityRole="header" aria-level={2}>{opcao.titulo}</Text>
+                          <Text style={styles.chartValorGrande}>
+                            {valor != null ? Number(valor).toFixed(1) + (opcao.unidade === 'kg' ? ' kg' : '%') : '—'}
+                          </Text>
+                        </View>
+                        {variacao && <VariacaoGrafico variacao={variacao} />}
                       </View>
-                    )}
-                  </View>
-
-                  <EvolucaoLineChart
-                    data={pesoChartData}
-                    unidade="kg"
-                    cor="#006f1e"
-                    height={150}
-                  />
-                </View>
-
-                {/* Slide Gordura Corporal (%) */}
-                <View style={{ width: chartWidth }}>
-                  <View style={styles.chartHeader}>
-                    <View>
-                      <Text style={styles.chartTitulo}>Gordura Corporal (%)</Text>
-                      <Text style={styles.chartValorGrande}>
-                        {atual?.percentualGordura != null ? `${Number(atual.percentualGordura).toFixed(1)}%` : '—'}
-                      </Text>
+                      <EvolucaoLineChart data={dados} unidade={opcao.unidade} height={160} interativo={ativo} />
                     </View>
-                    {variacaoGorduraRecente && (
-                      <View
-                        style={[
-                          styles.deltaBadge,
-                          variacaoGorduraRecente.direcao === 'queda' && styles.deltaBadgeVerde,
-                          variacaoGorduraRecente.direcao === 'alta' && styles.deltaBadgeVermelho
-                        ]}
-                      >
-                        <Ionicons
-                          name={
-                            variacaoGorduraRecente.direcao === 'queda'
-                              ? 'arrow-down'
-                              : variacaoGorduraRecente.direcao === 'alta'
-                                ? 'arrow-up'
-                                : 'remove'
-                          }
-                          size={12}
-                          color={
-                            variacaoGorduraRecente.direcao === 'queda'
-                              ? '#006f1e'
-                              : variacaoGorduraRecente.direcao === 'alta'
-                                ? '#b42318'
-                                : '#64748b'
-                          }
-                        />
-                        <Text
-                          style={[
-                            styles.deltaBadgeTexto,
-                            variacaoGorduraRecente.direcao === 'queda' && styles.deltaBadgeTextoVerde,
-                            variacaoGorduraRecente.direcao === 'alta' && styles.deltaBadgeTextoVermelho
-                          ]}
-                        >
-                          {Math.abs(variacaoGorduraRecente.percentual)}%
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-
-                  <EvolucaoLineChart
-                    data={gorduraChartData}
-                    unidade="%"
-                    cor="#008726"
-                    height={150}
-                  />
-                </View>
+                  );
+                })}
               </ScrollView>
-
-              {/* Dots do Carrossel de Gráficos */}
-              <View style={styles.chartDotsRow}>
-                <Pressable
-                  onPress={() => {
-                    setGraficoAba(0);
-                    chartScrollRef.current?.scrollTo?.({ x: 0, animated: true });
-                  }}
-                  style={[styles.chartDot, graficoAba === 0 && styles.chartDotAtivo]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Gráfico de Peso"
-                />
-                <Pressable
-                  onPress={() => {
-                    setGraficoAba(1);
-                    chartScrollRef.current?.scrollTo?.({ x: chartWidth, animated: true });
-                  }}
-                  style={[styles.chartDot, graficoAba === 1 && styles.chartDotAtivo]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Gráfico de Gordura Corporal"
-                />
-              </View>
             </View>
 
-            {/* Carrossel 2: Medidas Antropométricas */}
             <MedidasGridCarousel avaliacoes={avaliacoes} />
           </>
         )}
@@ -444,238 +383,61 @@ export function EvolucaoScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#f8faf8'
+  safe: { flex: 1, backgroundColor: colors.page },
+  scroll: { flex: 1 },
+  content: { width: '100%', alignSelf: 'center', padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  contentCompact: { paddingHorizontal: spacing.sm },
+  heading: { paddingTop: spacing.xs },
+  title: { color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 30, lineHeight: 38 },
+  surface: {
+    backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border,
+    padding: spacing.md, gap: spacing.sm, ...shadows.card
   },
-  avisoBox: {
-    backgroundColor: '#e8f5e9',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 12
+  sectionHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  sectionIcon: {
+    width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.confirmedBackground,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0
   },
-  avisoText: {
-    color: '#006f1e',
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9'
-  },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  logoImage: {
-    width: 26,
-    height: 26
-  },
-  logoText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#006f1e',
-    letterSpacing: -0.5
-  },
-  topRightActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4
-  },
-  iconButton: {
-    padding: 6,
-    borderRadius: 8
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 36
-  },
-  loadingBox: {
-    paddingVertical: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12
-  },
-  loadingText: {
-    color: '#64748b',
-    fontSize: 14
+  sectionTitle: { flex: 1, color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 20, lineHeight: 27 },
+  bodyText: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 15, lineHeight: 23 },
+  centered: { textAlign: 'center' },
+  stateCard: { alignItems: 'center', padding: spacing.xl },
+  emptyTitle: {
+    color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 19, lineHeight: 26, textAlign: 'center'
   },
   errorBox: {
-    backgroundColor: '#fef3f2',
-    borderWidth: 1,
-    borderColor: '#fecdca',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    gap: 12,
-    marginVertical: 20
+    backgroundColor: colors.dangerButtonBackground, borderColor: colors.dangerBackground,
+    borderWidth: 1, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm, alignItems: 'flex-start'
   },
-  errorText: {
-    color: '#b42318',
-    fontSize: 14,
-    textAlign: 'center',
-    fontWeight: '500'
-  },
+  errorText: { color: colors.dangerText, fontFamily: fontFamily.semibold, fontSize: 15, lineHeight: 23 },
   btnRetry: {
-    backgroundColor: '#b42318',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8
+    backgroundColor: colors.brand, minHeight: 48, paddingHorizontal: spacing.md, paddingVertical: spacing.xs,
+    borderRadius: radius.md, alignItems: 'center', justifyContent: 'center'
   },
-  btnRetryText: {
-    color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 13
+  btnRetryText: { color: colors.white, fontFamily: fontFamily.bold, fontSize: 15, lineHeight: 22, textAlign: 'center' },
+  pressionado: { opacity: 0.8 },
+  seletorGrafico: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  seletorBotao: {
+    minHeight: 48, flexGrow: 1, flexShrink: 1, flexBasis: 110, borderRadius: radius.md,
+    backgroundColor: colors.page, borderWidth: 1, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xs, paddingVertical: spacing.xs
   },
-  emptyCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    alignItems: 'center',
-    marginTop: 10
-  },
-  emptyIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#e8f5e9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#0f172a',
-    textAlign: 'center',
-    marginBottom: 8
-  },
-  emptyDescription: {
-    fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 18
-  },
-  btnEmptyRefresh: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#006f1e',
-    backgroundColor: '#ffffff'
-  },
-  btnEmptyRefreshText: {
-    color: '#006f1e',
-    fontSize: 13,
-    fontWeight: '700'
-  },
-  progressoGeralCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    marginBottom: 14,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1
-  },
-  progressoGeralTitulo: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginBottom: 6
-  },
-  progressoGeralTexto: {
-    fontSize: 14,
-    color: '#64748b',
-    lineHeight: 20
-  },
-  chartCarouselCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2
-  },
-  chartHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8
-  },
-  chartTitulo: {
-    fontSize: 14,
-    color: '#64748b',
-    fontWeight: '600'
-  },
+  seletorAtivo: { backgroundColor: colors.brandDark, borderColor: colors.brandDark },
+  seletorTexto: { color: colors.brandDeep, fontFamily: fontFamily.bold, fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  seletorTextoAtivo: { color: colors.white },
+  carousel: { width: '100%', flexGrow: 0 },
+  chartSlide: { gap: spacing.sm },
+  chartHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: spacing.xs },
+  chartIdentity: { flexGrow: 1, flexShrink: 1, flexBasis: 136, gap: spacing.xxs },
+  chartTitulo: { color: colors.textSecondary, fontFamily: fontFamily.semibold, fontSize: 14, lineHeight: 21 },
   chartValorGrande: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#0f172a',
-    marginTop: 2
+    color: colors.brandDeep, fontFamily: fontFamily.extrabold, fontSize: 28, lineHeight: 36, fontVariant: ['tabular-nums']
   },
   deltaBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: '#f1f5f9'
-  },
-  deltaBadgeVerde: {
-    backgroundColor: '#e8f5e9'
-  },
-  deltaBadgeVermelho: {
-    backgroundColor: '#fef3f2'
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xxs, borderRadius: radius.sm, backgroundColor: colors.subtle
   },
   deltaBadgeTexto: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748b'
-  },
-  deltaBadgeTextoVerde: {
-    color: '#006f1e'
-  },
-  deltaBadgeTextoVermelho: {
-    color: '#b42318'
-  },
-  chartDotsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 12
-  },
-  chartDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#cbd5e1'
-  },
-  chartDotAtivo: {
-    width: 22,
-    backgroundColor: '#006f1e'
+    color: colors.textSecondary, fontFamily: fontFamily.bold, fontSize: 13, lineHeight: 18, fontVariant: ['tabular-nums']
   }
 });
