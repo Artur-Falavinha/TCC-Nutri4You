@@ -67,7 +67,7 @@ export class ConsultasService {
   verificarAcesso(pacienteId: number, id: number) {
     return this.api.get<void>(`${this.path(pacienteId)}/${id}/acesso`);
   }
-  acao(pacienteId: number, c: Consulta, acao: 'inicio' | 'confirmacao' | 'cancelamento') {
+  acao(pacienteId: number, c: Consulta, acao: 'inicio' | 'confirmacao' | 'cancelamento' | 'recusa') {
     return this.api.post<Consulta>(`${this.path(pacienteId)}/${c.id}/${acao}`, { versao: c.versao });
   }
   salvar(pacienteId: number, id: number | null, payload: ConsultaPayload) {

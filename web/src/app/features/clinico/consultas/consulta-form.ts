@@ -33,7 +33,8 @@ export const STATUS_CONSULTA = [
   { value: 'AGUARDANDO_CONFIRMACAO', label: 'Aguardando confirmação' },
   { value: 'CONFIRMADA', label: 'Confirmada' },
   { value: 'REALIZADA', label: 'Concluída' },
-  { value: 'CANCELADA', label: 'Cancelada' }
+  { value: 'CANCELADA', label: 'Cancelada' },
+  { value: 'RECUSADA', label: 'Recusada' }
 ];
 export function numero(valor: string): number | null {
   return valor.trim() === '' ? null : /^\d+(?:[.,]\d{1,2})?$/.test(valor.trim())
@@ -244,7 +245,7 @@ export class ConsultaForm {
       if (this.campoSomenteLeitura(c.key)) continue;
       const value = numero(this.medidas[c.key]);
       if (value === null) {
-        if (this.exigeMedidas && (c.key === 'peso' || c.key === 'altura')) errors[c.key] = 'Este campo é obrigatório.';
+        if (this.status === 'REALIZADA' && (c.key === 'peso' || c.key === 'altura')) errors[c.key] = 'Este campo é obrigatório.';
       } else if (c.key === 'percentualGordura' && !this.percentualValido(value)) {
         errors[c.key] = 'Informe um percentual maior que 0 e menor que 100, com até 2 casas decimais.';
       } else if (c.key === 'massaMuscularKg' && (!(value > 0) || (this.pesoValido(peso) && value >= peso))) {

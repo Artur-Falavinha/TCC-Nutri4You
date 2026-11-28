@@ -4,6 +4,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
 import { DataHoraClinicaPipe } from '../../shared/pipes/data-hora-clinica.pipe';
 
 import { Agenda, ClinicoService, Contagem } from '../clinico/clinico.service';
+import { criarLinkGoogleAgenda } from '../agenda/google-calendar-link';
 
 @Component({
   selector: 'app-dashboard',
@@ -12,6 +13,7 @@ import { Agenda, ClinicoService, Contagem } from '../clinico/clinico.service';
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent implements OnInit {
+  readonly googleAgendaUrl = criarLinkGoogleAgenda;
   private readonly clinico = inject(ClinicoService);
 
   readonly raio = 68;

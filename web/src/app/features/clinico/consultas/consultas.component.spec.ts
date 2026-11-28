@@ -65,12 +65,29 @@ describe('ConsultasComponent', () => {
     component.form.medidas.altura = '170';
   });
 
+  it('mantém aprovação na lista sem abrir consulta pendente e permite abrir após aprovar', () => {
+    fixture.destroy();
+    TestBed.inject(ActivatedRoute).snapshot.data['editor'] = false;
+    consultas.listar.and.returnValue(of({ pagina: 0, total: 2, totalPaginas: 1, itens: [
+      { ...consultaEmAndamento, id: 91, status: 'AGUARDANDO_CONFIRMACAO', iniciadaEm: null },
+      consultaEmAndamento
+    ] }));
+    fixture = TestBed.createComponent(ConsultasComponent);
+    fixture.detectChanges();
+    const linhas = fixture.nativeElement.querySelectorAll('.consulta-row') as NodeListOf<HTMLElement>;
+    expect(linhas[0].textContent).toContain('Confirmar');
+    expect(linhas[0].textContent).toContain('Recusar');
+    expect(linhas[0].textContent).not.toContain('Cancelar');
+    expect(linhas[0].querySelector('a[aria-label^="Abrir consulta"]')).toBeNull();
+    expect(linhas[1].querySelector('a[aria-label^="Abrir consulta"]')).not.toBeNull();
+  });
+
   it('exibe data e hora da consulta em formato brasileiro e mantém o ISO ao salvar', fakeAsync(() => {
     tick();
     fixture.detectChanges();
-    const campo = fixture.nativeElement.querySelector('#dataHora') as HTMLInputElement;
-    expect(campo.value).toBe('15/01/2025 14:30');
-    expect(campo.readOnly).toBeTrue();
+    const pagina = fixture.nativeElement as HTMLElement;
+    expect(pagina.querySelector('.consulta-meta time')?.textContent).toContain('15/01/2025 14:30');
+    expect(pagina.querySelector('#dataHora')).toBeNull();
     expect(component.form.payload().dataHora).toBe(consultaEmAndamento.dataHora);
   }));
 
@@ -113,7 +130,7 @@ describe('ConsultasComponent', () => {
   }));
 
   it('permite concluir a consulta iniciada e bloqueia novas alterações após salvar', () => {
-    component.salvar();
+    component.salvar(true);
     fixture.detectChanges();
 
     expect(consultas.salvar).toHaveBeenCalledOnceWith(12, 90, jasmine.objectContaining({ status: 'REALIZADA' }));
@@ -122,6 +139,32 @@ describe('ConsultasComponent', () => {
     expect(fixture.nativeElement.querySelector('button[type="submit"]')).toBeNull();
     component.salvar();
     expect(consultas.salvar).toHaveBeenCalledTimes(1);
+  });
+
+  it('salva andamento sem medidas, permite sair e recupera os dados ao reabrir', () => {
+    component.form.medidas.peso = '';
+    component.form.medidas.altura = '';
+    component.form.observacao = 'Continuar avaliação depois';
+    const salva = { ...consultaEmAndamento, observacao: component.form.observacao, versao: 4 };
+    consultas.salvar.and.returnValue(of(salva));
+    component.salvar();
+    expect(consultas.salvar).toHaveBeenCalledOnceWith(12, 90, jasmine.objectContaining({ status: 'CONFIRMADA', avaliacao: null }));
+    expect(component.podeEditar).toBeTrue();
+    expect(component.alterado).toBeFalse();
+    expect(component.podeSair()).toBeTrue();
+    consultas.buscar.and.returnValue(of(salva));
+    component.carregar();
+    expect(component.form.observacao).toBe('Continuar avaliação depois');
+    expect(component.statusLabel(component.consultaAtual!.status, component.consultaAtual!.iniciadaEm)).toBe('Em atendimento');
+  });
+
+  it('exige medidas para concluir e mantém a consulta em andamento quando inválida', () => {
+    component.form.medidas.peso = '';
+    component.form.medidas.altura = '';
+    component.salvar(true);
+    expect(consultas.salvar).not.toHaveBeenCalled();
+    expect(component.errors['peso']).toBeTruthy();
+    expect(component.podeEditar).toBeTrue();
   });
 
   it('abre consulta concluída somente para leitura e não envia alterações', fakeAsync(() => {

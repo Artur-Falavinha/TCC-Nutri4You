@@ -17,6 +17,8 @@
                     <time [attr.datetime]="item.dataHora">{{ item.dataHora | dataHoraClinica:'hora' }}</time>
                     <app-avatar-paciente [pacienteId]="item.pacienteId ?? null" />
                     <span>{{ item.pacienteNome }}</span>
+                    <a class="google-agenda" [href]="googleAgendaUrl(item)" target="_blank" rel="noopener noreferrer"
+                      [attr.aria-label]="'Adicionar consulta de ' + item.pacienteNome + ' ao Google Agenda'">Adicionar ao Google Agenda</a>
                   </li>
                 }
               </ul>

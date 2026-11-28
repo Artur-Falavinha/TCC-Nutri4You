@@ -2,6 +2,7 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import * as RN from 'react-native';
 import { ScrollView, Text } from 'react-native';
+import { dataIsoDaClinica } from '../../../core/utils/date-mask.util';
 
 import { addWater, getActiveMealPlan, getHydrationProgress } from '../../../features/dieta/dieta.service';
 import { Food, MealPlan, MealPlanItem, Nutrients } from '../../../features/dieta/dieta.models';
@@ -85,6 +86,8 @@ function mealPlan(): MealPlan {
   };
 }
 
+const mountedTrees: renderer.ReactTestRenderer[] = [];
+
 async function renderPlan(plan: MealPlan): Promise<renderer.ReactTestRenderer> {
   (getActiveMealPlan as jest.Mock).mockResolvedValueOnce(plan);
   const navigation = { navigate: jest.fn(), dispatch: jest.fn() };
@@ -97,6 +100,7 @@ async function renderPlan(plan: MealPlan): Promise<renderer.ReactTestRenderer> {
         route={{ key: 'Dieta', name: 'Dieta', params: undefined } as never}
       />
     );
+    mountedTrees.push(tree);
     await Promise.resolve();
   });
 
@@ -116,6 +120,14 @@ function renderedText(tree: renderer.ReactTestRenderer): string {
 describe('MealPlanScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    act(() => {
+      mountedTrees.splice(0).forEach(tree => tree.unmount());
+    });
+    jest.useRealTimers();
+    jest.restoreAllMocks();
   });
 
   it('exibe fibras e substitutos informativos sem alterar o plano prescrito', async () => {
@@ -219,14 +231,14 @@ describe('MealPlanScreen', () => {
     act(() => tree.unmount());
   });
 
-  it('não apresenta refeições nem totais fora da vigência', async () => {
-    const hoje = new Date();
-    const data = [
-      hoje.getFullYear(), String(hoje.getMonth() + 1).padStart(2, '0'),
-      String(hoje.getDate()).padStart(2, '0')
-    ].join('-');
+  it.each(['2026-11-28T01:00:00Z', '2026-11-28T03:00:00Z'])(
+    'não apresenta refeições nem totais fora da vigência em %s', async instante => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(instante));
+    const data = dataIsoDaClinica();
     const tree = await renderPlan({ ...mealPlan(), vigenciaInicio: data, vigenciaFim: data });
-    const outroDia = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'][(hoje.getDay() + 1) % 7];
+    const diaSemana = new Date(data + 'T12:00:00Z').getUTCDay();
+    const outroDia = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'][(diaSemana + 1) % 7];
     expect(renderedText(tree)).toContain('300 KCAL');
 
     act(() => tree.root.findByProps({ testID: 'day-selector-pill-' + outroDia }).props.onPress());

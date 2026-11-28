@@ -19,6 +19,12 @@ h3 { font-size: 18px; line-height: 1.4; }
 app-form-alert.form-alert-host--visible { display: block; margin-bottom: 16px; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 32px; }
 .subtitle { margin-top: 6px; color: var(--color-text-secondary); font-size: 14px; }
+.consulta-heading { min-width: 0; }
+.consulta-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 6px; color: var(--color-text-secondary); font-size: 14px; }
+.consulta-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; background: #eef2f6; color: #475569; font-size: 12px; font-weight: 600; }
+.consulta-badge--andamento { background: #e5f2fb; color: #185176; }
+.consulta-badge--concluida { background: #e7f5ea; color: #17662e; }
+.consulta-readonly { margin-bottom: 16px; color: var(--color-text-secondary); font-size: 14px; }
 .actions { display: flex; gap: 12px; flex-shrink: 0; }
 .action { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 44px; padding: 10px 20px; border: 1px solid transparent; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; text-decoration: none; text-align: center; cursor: pointer; }
 .action i { font-size: 20px; }
