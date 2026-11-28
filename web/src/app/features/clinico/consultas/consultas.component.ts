@@ -16,12 +16,12 @@ import { UiSelectComponent } from '../../../shared/components/ui-select/ui-selec
 import { DataHoraClinicaPipe } from '../../../shared/pipes/data-hora-clinica.pipe';
 import { DialogoConfirmacaoComponent } from '../../../shared/components/dialogo-confirmacao/dialogo-confirmacao.component';
 import { CAMPOS_MEDIDAS, CampoMedida, ConsultaForm, STATUS_CONSULTA, decimal } from './consulta-form';
-import { Consulta, ConsultasService, ModoPercentualGordura, PaginaConsultas } from './consultas.service';
-import { criarLinkGoogleAgenda } from '../../agenda/google-calendar-link';
+import { Consulta, ConsultaPayload, ConsultasService, ModoPercentualGordura, PaginaConsultas } from './consultas.service';
 
 const MENSAGENS_ACAO_CONSULTA = {
   inicio: 'Atendimento iniciado.',
   confirmacao: 'Consulta confirmada.',
+  recusa: 'Consulta recusada.',
   cancelamento: 'Consulta cancelada.'
 } as const;
 
@@ -37,7 +37,7 @@ type AcaoConsulta = keyof typeof MENSAGENS_ACAO_CONSULTA;
 export class ConsultasComponent implements OnInit {
   private readonly toast = inject(ToastService);
   modalSaida = false;
-  decisaoConsulta: { consulta: Consulta; tipo: 'confirmacao' | 'cancelamento' } | null = null;
+  decisaoConsulta: { consulta: Consulta; tipo: 'confirmacao' | 'cancelamento' | 'recusa' } | null = null;
   private respostaSaida: Subject<boolean> | null = null;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -48,7 +48,6 @@ export class ConsultasComponent implements OnInit {
   readonly consultaId = this.route.snapshot.paramMap.has('consultaId')
     ? Number(this.route.snapshot.paramMap.get('consultaId')) : null;
   readonly editor = !!this.route.snapshot.data['editor'];
-  readonly statusOptions = STATUS_CONSULTA.filter(s => ['CONFIRMADA', 'REALIZADA'].includes(s.value));
   readonly modosPercentualGordura = [
     { value: 'AUTOMATICO', label: 'Calcular pelas 7 pregas' },
     { value: 'MANUAL', label: 'Informar manualmente' }
@@ -125,9 +124,13 @@ export class ConsultasComponent implements OnInit {
     });
   }
 
-  salvar(): void {
+  salvar(concluir = false): void {
     if (this.salvando || this.carregando || !this.carregado || !this.podeEditar) return;
+    const statusAnterior = this.form.status;
+    this.form.status = concluir ? 'REALIZADA' : 'CONFIRMADA';
     this.errors = this.form.validar();
+    const payload = this.form.payload();
+    this.form.status = statusAnterior;
     this.erro = '';
     if (Object.keys(this.errors).length) {
       this.erro = 'Confira os campos destacados antes de salvar.';
@@ -135,7 +138,7 @@ export class ConsultasComponent implements OnInit {
       return;
     }
 
-    this.salvarConsulta();
+    this.salvarConsulta(payload);
   }
 
   atualizarMedida(campo: CampoMedida, valor: string): void {
@@ -149,17 +152,17 @@ export class ConsultasComponent implements OnInit {
     delete this.errors['percentualGordura'];
   }
 
-  private salvarConsulta(): void {
+  private salvarConsulta(payload: ConsultaPayload): void {
     this.salvando = true;
     this.erro = '';
-    const operacao = this.service.salvar(this.patientId, this.consultaId, this.form.payload());
+    const operacao = this.service.salvar(this.patientId, this.consultaId, payload);
     operacao.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: consulta => {
         this.consultaAtual = consulta;
+        this.form.carregar(consulta);
         this.original = this.form.assinatura();
         this.salvando = false;
-        this.toast.sucesso('Consulta salva com sucesso.');
-        void this.router.navigate(['/pacientes', this.patientId, 'consultas']);
+        this.toast.sucesso(consulta.status === 'REALIZADA' ? 'Consulta concluída.' : 'Andamento salvo. Você pode continuar depois.');
       },
       error: (error: ApiErrorResponse) => {
         this.tratarFalha(error, 'Não foi possível salvar. Seus campos foram mantidos.', true);
@@ -219,11 +222,9 @@ export class ConsultasComponent implements OnInit {
     this.original = this.form.assinatura();
   }
 
-  statusLabel(status: string): string {
+  statusLabel(status: string, iniciadaEm?: string | null): string {
+    if (status === 'CONFIRMADA' && iniciadaEm) return 'Em atendimento';
     return STATUS_CONSULTA.find(item => item.value === status)?.label || status;
-  }
-  googleAgendaUrl(consulta: Consulta): string {
-    return criarLinkGoogleAgenda({ dataHora: consulta.dataHora, pacienteNome: this.nome || 'Paciente' });
   }
   get alterado(): boolean { return this.editor && this.carregado && this.form.assinatura() !== this.original; }
   podeSair(): boolean | Observable<boolean> {

@@ -71,7 +71,11 @@ public class ConsultaService {
     @Transactional(readOnly = true)
     public ConsultaResponse buscar(Nutricionista nutricionista, Integer pacienteId, Integer id) {
         pacientes.exigirAcesso(nutricionista, pacienteId);
-        return respostaComMedidas(exigirConsulta(nutricionista, pacienteId, id));
+        Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
+        if ("AGUARDANDO_CONFIRMACAO".equals(consulta.getStatus())) {
+            throw new IllegalArgumentException("Confirme a solicitação antes de abrir a consulta.");
+        }
+        return respostaComMedidas(consulta);
     }
 
     @Transactional(readOnly = true)
@@ -114,6 +118,15 @@ public class ConsultaService {
     }
 
     @Transactional
+    public ConsultaResponse recusar(Nutricionista nutricionista, Integer pacienteId, Integer id, Long versao) {
+        bloquearAgenda(nutricionista.getId());
+        pacientes.exigirAcesso(nutricionista, pacienteId);
+        Consulta consulta = exigirConsulta(nutricionista, pacienteId, id);
+        decidirSolicitacao(consulta, versao, false);
+        return resposta(consulta, null);
+    }
+
+    @Transactional
     public ConsultaResponse cancelar(Nutricionista nutricionista, Integer pacienteId, Integer id, Long versao) {
         bloquearAgenda(nutricionista.getId());
         pacientes.exigirAcesso(nutricionista, pacienteId);
@@ -124,9 +137,9 @@ public class ConsultaService {
 
     void cancelarConsulta(Consulta consulta, Long versao) {
         exigirVersao(consulta, versao);
-        if (!("AGUARDANDO_CONFIRMACAO".equals(consulta.getStatus()) || "CONFIRMADA".equals(consulta.getStatus()))
+        if (!"CONFIRMADA".equals(consulta.getStatus())
                 || consulta.getIniciadaEm() != null) {
-            throw new IllegalArgumentException("Somente consultas pendentes ou confirmadas ainda não iniciadas podem ser canceladas.");
+            throw new IllegalArgumentException("Somente consultas confirmadas ainda não iniciadas podem ser canceladas.");
         }
         consulta.cancelar();
         consultas.flush();
@@ -259,7 +272,7 @@ public class ConsultaService {
         }
         AvaliacaoRequest a = request.avaliacao();
         if (a != null || "REALIZADA".equals(request.status())) {
-            MedidasAntropometricas.validarMedidas(a);
+            MedidasAntropometricas.validarMedidas(a, "REALIZADA".equals(request.status()));
             for (BigDecimal valor : Arrays.asList(a.peso(), a.altura(), a.percentualGordura(),
                     a.massaMuscularKg(), a.pregaBicipital(), a.pregaPeitoral(), a.pregaAxilarMedia(),
                     a.pregaTricipital(), a.pregaSubescapular(), a.pregaAbdominal(),

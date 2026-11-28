@@ -15,14 +15,19 @@ final class MedidasAntropometricas {
     private MedidasAntropometricas() {}
 
     static void validarMedidas(AvaliacaoRequest request) {
-        if (request == null || request.peso() == null || request.altura() == null) {
+        validarMedidas(request, true);
+    }
+
+    static void validarMedidas(AvaliacaoRequest request, boolean obrigatorias) {
+        if (obrigatorias && (request == null || request.peso() == null || request.altura() == null)) {
             throw new IllegalArgumentException("Peso e altura são obrigatórios.");
         }
-        if (request.peso().compareTo(BigDecimal.ONE) < 0 || request.peso().compareTo(new BigDecimal("500")) > 0) {
+        if (request == null) return;
+        if (request.peso() != null && (request.peso().compareTo(BigDecimal.ONE) < 0 || request.peso().compareTo(new BigDecimal("500")) > 0)) {
             throw new IllegalArgumentException("Peso deve ficar entre 1 e 500 kg.");
         }
-        if (request.altura().compareTo(new BigDecimal("0.30")) < 0
-                || request.altura().compareTo(new BigDecimal("2.70")) > 0) {
+        if (request.altura() != null && (request.altura().compareTo(new BigDecimal("0.30")) < 0
+                || request.altura().compareTo(new BigDecimal("2.70")) > 0)) {
             throw new IllegalArgumentException("Altura deve ficar entre 0,30 e 2,70 m.");
         }
         BigDecimal percentual = request.percentualGordura();
@@ -31,8 +36,8 @@ final class MedidasAntropometricas {
         }
         BigDecimal massaMuscular = request.massaMuscularKg();
         if (massaMuscular != null && (arredondar(massaMuscular).signum() <= 0
-                || massaMuscular.compareTo(request.peso()) >= 0
-                || arredondar(massaMuscular).compareTo(arredondar(request.peso())) >= 0)) {
+                || (request.peso() != null && (massaMuscular.compareTo(request.peso()) >= 0
+                || arredondar(massaMuscular).compareTo(arredondar(request.peso())) >= 0)))) {
             throw new IllegalArgumentException("A massa muscular deve ser positiva e menor que o peso corporal.");
         }
         validarOpcional(request.pregaBicipital(), new BigDecimal("0.1"), new BigDecimal("100"),
@@ -88,7 +93,7 @@ final class MedidasAntropometricas {
                 ? JacksonPollockSetePregas.calcularPercentual(paciente, avaliacao.getDataAvaliacao().toLocalDate(), request)
                 : request.percentualGordura();
         if (percentual != null) percentual = arredondar(percentual);
-        BigDecimal massaGorda = percentual == null ? null : arredondar(peso.multiply(percentual).movePointLeft(2));
+        BigDecimal massaGorda = percentual == null || peso == null ? null : arredondar(peso.multiply(percentual).movePointLeft(2));
         avaliacao.setMassaGordaKg(massaGorda);
         avaliacao.setMassaMagraKg(massaGorda == null ? null : peso.subtract(massaGorda));
         avaliacao.setPercentualGordura(percentual);
@@ -108,7 +113,7 @@ final class MedidasAntropometricas {
     }
 
     private static BigDecimal arredondar(BigDecimal valor) {
-        return valor.setScale(2, RoundingMode.HALF_UP);
+        return valor == null ? null : valor.setScale(2, RoundingMode.HALF_UP);
     }
 
     static AvaliacaoResponse paraResposta(AvaliacaoAntropometrica avaliacao) {

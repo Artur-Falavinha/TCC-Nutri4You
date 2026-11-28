@@ -92,6 +92,59 @@ class ConsultaControllerTest {
     }
 
     @Test
+    void salvaSomenteUmaMedidaERecuperaSemObrigarPesoOuAltura() throws Exception {
+        Consulta consulta = consultaIniciada();
+        String corpo = """
+                {"dataHora":"2025-01-15T14:30","status":"CONFIRMADA","versao":%d,
+                 "avaliacao":{"pregaBicipital":12,"percentualGordura":20,"massaMuscularKg":30}}
+                """.formatted(consulta.getVersao());
+        mvc.perform(put(base + "/" + consulta.getId()).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(corpo))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("CONFIRMADA"))
+                .andExpect(jsonPath("$.data.avaliacao.pregaBicipital").value(12))
+                .andExpect(jsonPath("$.data.avaliacao.peso").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.altura").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.imc").value(nullValue()))
+                .andExpect(jsonPath("$.data.avaliacao.massaGordaKg").value(nullValue()));
+        mvc.perform(get(base + "/" + consulta.getId()).header("Authorization", token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.avaliacao.pregaBicipital").value(12))
+                .andExpect(jsonPath("$.data.avaliacao.percentualGordura").value(20))
+                .andExpect(jsonPath("$.data.avaliacao.massaMuscularKg").value(30));
+    }
+
+    @Test
+    void bloqueiaAberturaPendentePelaUrlELiberaAposAprovar() throws Exception {
+        Consulta pendente = consultas.saveAndFlush(new Consulta(paciente, nutri, LocalDateTime.now().plusDays(1)));
+        String url = base + "/" + pendente.getId();
+        mvc.perform(get(url).header("Authorization", token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Confirme a solicitação antes de abrir a consulta."));
+        mvc.perform(post(url + "/confirmacao").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"versao\":" + pendente.getVersao() + "}"))
+                .andExpect(status().isOk());
+        mvc.perform(get(url).header("Authorization", token)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CONFIRMADA"));
+    }
+
+    @Test
+    void pendentePodeSerRecusadaMasNaoCanceladaEConfirmadaNaoPodeSerRecusada() throws Exception {
+        Consulta pendente = consultas.saveAndFlush(new Consulta(paciente, nutri, LocalDateTime.now().plusDays(2)));
+        String url = base + "/" + pendente.getId();
+        String versao = "{\"versao\":" + pendente.getVersao() + "}";
+        mvc.perform(post(url + "/cancelamento").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(versao)).andExpect(status().isBadRequest());
+        mvc.perform(post(url + "/recusa").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(versao))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("RECUSADA"));
+        mvc.perform(get(url).header("Authorization", token)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("RECUSADA"));
+        Consulta confirmada = consultaIniciada();
+        mvc.perform(post(base + "/" + confirmada.getId() + "/recusa").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"versao\":" + confirmada.getVersao() + "}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void editaMedidasSemDuplicarERejeitaVersaoAntiga() throws Exception {
         String json = criar(completa(80, "", "null")).andReturn().getResponse().getContentAsString();
         int id = JsonPath.read(json, "$.data.id");
@@ -203,9 +256,11 @@ class ConsultaControllerTest {
         mvc.perform(post(base).header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"dataHora\":\"2030-06-01T10:00\",\"status\":\"CONFIRMADA\"}"))
                 .andExpect(status().isBadRequest());
-        Consulta c = consultas.saveAndFlush(new Consulta(paciente, nutri, LocalDateTime.of(2030, 6, 1, 10, 0)));
+        Consulta c = new Consulta(paciente, nutri, LocalDateTime.of(2030, 6, 1, 10, 0));
+        c.atualizar(c.getDataHora(), "CONFIRMADA", null);
+        consultas.saveAndFlush(c);
         mvc.perform(post(base + "/" + c.getId() + "/cancelamento").header("Authorization", token)
-                .contentType(MediaType.APPLICATION_JSON).content("{\"versao\":0}"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"versao\":" + c.getVersao() + "}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("CANCELADA"));
         assertThat(consultas.findById(c.getId())).isPresent();
     }

@@ -50,7 +50,7 @@ WHERE p.email ~ '^paciente[0-9]+@teste\.com$'
   AND n.email = 'nutri@teste.com';
 
 INSERT INTO consulta (id_paciente, id_nutricionista, data_hora, status)
-SELECT p.id_paciente, n.id_nutricionista, CURRENT_DATE + horarios.hora, 'AGENDADA'
+SELECT p.id_paciente, n.id_nutricionista, CURRENT_DATE + horarios.hora, 'CONFIRMADA'
 FROM nutricionista n
 JOIN (
     VALUES
@@ -66,7 +66,7 @@ WHERE n.email = 'nutri@teste.com';
 INSERT INTO consulta (id_paciente, id_nutricionista, data_hora, status)
 SELECT p.id_paciente, n.id_nutricionista,
        date_trunc('week', CURRENT_DATE) + (dias.offset_dias || ' days')::interval + TIME '10:00',
-       'AGENDADA'
+       'CONFIRMADA'
 FROM nutricionista n
 JOIN (
     VALUES

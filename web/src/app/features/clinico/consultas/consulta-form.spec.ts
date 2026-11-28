@@ -27,9 +27,12 @@ describe('ConsultaForm', () => {
     expect(form.validar()).toEqual({});
     expect(form.payload().avaliacao).toBeNull();
   });
-  it('exige peso e altura quando qualquer medida for preenchida', () => {
+  it('permite salvar uma medida isolada durante o andamento', () => {
     form.status = 'CONFIRMADA'; form.medidas.pregaBicipital = '12';
-    expect(form.validar()['peso']).toBeTruthy(); expect(form.validar()['altura']).toBeTruthy();
+    expect(form.validar()).toEqual({});
+    expect(form.payload().avaliacao?.pregaBicipital).toBe(12);
+    expect(form.payload().avaliacao?.peso).toBeNull();
+    expect(form.payload().avaliacao?.altura).toBeNull();
   });
   it('rejeita valores fora do limite, altura fracionada e precisao excessiva', () => {
     form.medidas.peso = '501'; form.medidas.altura = '175,5'; form.medidas.percentualGordura = '20,001';
@@ -57,7 +60,9 @@ describe('ConsultaForm', () => {
         pregaSubescapular: null, pregaSuprailiaca: null, circunferenciaCintura: null,
         circunferenciaQuadril: null, circunferenciaBraco: null } });
     expect(form.medidas.altura).toBe('180'); expect(form.payload().versao).toBe(2);
-    form.status = 'CANCELADA'; form.medidas.peso = ''; form.medidas.altura = '';
+    form.status = 'CONFIRMADA'; form.medidas.peso = ''; form.medidas.altura = '';
+    expect(form.validar()['peso']).toBeUndefined();
+    form.status = 'REALIZADA';
     expect(form.validar()['peso']).toBeTruthy();
   });
   it('preserva segundos do agendamento legado ao editar somente medidas', () => {

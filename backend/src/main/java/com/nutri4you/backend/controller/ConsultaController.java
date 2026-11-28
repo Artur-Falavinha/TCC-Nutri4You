@@ -67,6 +67,12 @@ public class ConsultaController {
         return ApiResponse.ok(service.cancelar(nutricionista(auth), pacienteId, id, request.versao()), "Consulta cancelada.");
     }
 
+    @PostMapping("/{id}/recusa")
+    public ApiResponse<ConsultaResponse> recusar(Authentication auth, @PathVariable Integer pacienteId,
+            @PathVariable Integer id, @RequestBody CancelarConsultaRequest request) {
+        return ApiResponse.ok(service.recusar(nutricionista(auth), pacienteId, id, request.versao()), "Consulta recusada.");
+    }
+
     private Nutricionista nutricionista(Authentication auth) {
         if (auth == null || !(auth.getPrincipal() instanceof Nutricionista n)) {
             throw new AcessoNegadoException("Acesso restrito a nutricionistas.");

@@ -12,9 +12,10 @@ Base: `/api/v1/gestao-pacientes/{pacienteId}/consultas`.
 | --- | --- | --- |
 | GET | Base + `?pagina=0` | Pagina de 10 consultas, data e ID decrescentes |
 | POST | Base | Criação livre desativada; retorna 400 orientando agendar |
-| POST | Base + `/{id}/confirmacao` | Aprova solicitação futura pendente; exige `versao` |
+| POST | Base + `/{id}/confirmacao` | Confirma solicitação futura pendente; exige `versao` |
 | POST | Base + `/{id}/inicio` | Inicia consulta confirmada; exige `versao` |
-| POST | Base + `/{id}/cancelamento` | Cancela pendente/confirmada não iniciada; exige `versao` |
+| POST | Base + `/{id}/recusa` | Recusa solicitação futura pendente; exige `versao` |
+| POST | Base + `/{id}/cancelamento` | Cancela confirmada não iniciada; exige `versao` |
 | GET | Base + `/{id}` | Consulta e avaliacao vinculada |
 | PUT | Base + `/{id}` | Atualiza consulta confirmada e iniciada; exige `versao`; concluídas retornam 400 |
 
@@ -60,12 +61,16 @@ clinica (`TIMESTAMP WITHOUT TIME ZONE`), interpretado em America/Sao_Paulo.
 
 ## Regras
 
+- Solicitações aguardando confirmação exibem Confirmar/Recusar na listagem, sem Abrir consulta. Depois de confirmada, a ação disponível é Cancelar, até o início. O GET de detalhe rejeita a abertura enquanto estiverem pendentes; após aprovação, a consulta pode ser aberta e iniciada.
+
+- A tela mostra **Em atendimento** quando a consulta está `CONFIRMADA` e possui `iniciadaEm`. Não há seletor manual de status: **Salvar andamento** persiste como `CONFIRMADA` e permite sair e retomar; **Concluir consulta** grava como `REALIZADA` e bloqueia edições posteriores. Salvar andamento não exige nenhum campo clínico: medidas isoladas são preservadas, e campos não preenchidos ficam nulos. Valores informados continuam sujeitos à validação de formato e limites. Concluir exige peso e altura.
+
 - Data/hora e status obrigatorios; datas entre 1900 e 2100.
-- Status: `AGUARDANDO_CONFIRMACAO`, `CONFIRMADA`, `REALIZADA`, `CANCELADA`.
+- Status: `AGUARDANDO_CONFIRMACAO`, `CONFIRMADA`, `REALIZADA`, `CANCELADA`, `RECUSADA`.
   A tela apresenta `REALIZADA` como **Concluida**.
 - Uma consulta ainda não iniciada não pode ser concluída no futuro. Depois de iniciada, ela pode permanecer em andamento e ser salva ou concluída a qualquer momento; conclusão exige peso e altura.
 - Ações de agenda não exigem avaliação. Edição de atendimento exige início prévio e não altera horário agendado.
-  Quando qualquer medida for enviada, peso e altura sao obrigatorios.
+  Durante o andamento, qualquer medida pode ser salva isoladamente. Peso e altura são obrigatórios somente para concluir.
 - Peso: 1 a 500 kg; altura: 0,30 a 2,70 m; gordura: 0 a 100%; massa muscular:
   0 a 300 kg; pregas: 0,1 a 100 mm; cintura/quadril: 0,1 a 300 cm;
   braco: 0,1 a 150 cm. Medidas aceitam ate duas casas decimais.
