@@ -44,19 +44,14 @@ function VariacaoGrafico({ variacao }: { variacao: NonNullable<ReturnType<typeof
   const { direcao, percentual } = variacao;
   const icone = direcao === 'queda' ? 'arrow-down' : direcao === 'alta' ? 'arrow-up' : 'minus';
   const descricao = direcao === 'queda' ? 'Queda' : direcao === 'alta' ? 'Aumento' : 'Estável';
-  const cor = direcao === 'alta' ? colors.dangerText : colors.brandDeep;
   return (
     <View
       accessible
       accessibilityLabel={descricao + ', ' + Math.abs(percentual) + '%'}
-      style={[
-        styles.deltaBadge,
-        direcao === 'queda' && styles.deltaBadgeQueda,
-        direcao === 'alta' && styles.deltaBadgeAlta
-      ]}
+      style={styles.deltaBadge}
     >
-      <Feather name={icone} size={14} color={cor} aria-hidden />
-      <Text style={[styles.deltaBadgeTexto, { color: cor }]}>{Math.abs(percentual)}%</Text>
+      <Feather name={icone} size={14} color={colors.textSecondary} aria-hidden />
+      <Text style={styles.deltaBadgeTexto}>{Math.abs(percentual)}%</Text>
     </View>
   );
 }
@@ -440,9 +435,9 @@ const styles = StyleSheet.create({
   },
   deltaBadge: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xxs, borderRadius: radius.sm, backgroundColor: colors.page
+    paddingVertical: spacing.xxs, borderRadius: radius.sm, backgroundColor: colors.subtle
   },
-  deltaBadgeQueda: { backgroundColor: colors.confirmedBackground },
-  deltaBadgeAlta: { backgroundColor: colors.dangerButtonBackground },
-  deltaBadgeTexto: { fontFamily: fontFamily.bold, fontSize: 13, lineHeight: 18, fontVariant: ['tabular-nums'] }
+  deltaBadgeTexto: {
+    color: colors.textSecondary, fontFamily: fontFamily.bold, fontSize: 13, lineHeight: 18, fontVariant: ['tabular-nums']
+  }
 });

@@ -29,6 +29,7 @@ import {
 import {
   baixarResultadoExame,
   enviarResultadoExame,
+  ExameArquivoError,
   inferMimeTypeFromFileName,
   listarMeusExames,
   prepararArquivoWeb,
@@ -42,10 +43,10 @@ import { colors, fontFamily, radius, shadows, spacing } from '../../theme/tokens
 type Props = NativeStackScreenProps<RootStackParamList, 'Exames'>;
 
 function extractErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof ApiError) {
+  if (error instanceof ApiError && error.message.trim()) {
     return error.message;
   }
-  if (error instanceof Error && error.message.trim()) {
+  if (error instanceof ExameArquivoError && error.message.trim()) {
     return error.message;
   }
   return fallback;

@@ -136,11 +136,7 @@ export function MedidasGridCarousel({ avaliacoes }: Props) {
                   <View style={styles.cardMeta}>
                     <Text style={styles.cardSub}>Última medição</Text>
                     {item.variacaoTexto && (
-                      <Text style={[
-                        styles.badgeTexto,
-                        item.direcao === 'queda' && styles.badgeTextoQueda,
-                        item.direcao === 'alta' && styles.badgeTextoAlta
-                      ]}>
+                      <Text style={styles.badgeTexto}>
                         {item.variacaoTexto}
                       </Text>
                     )}
@@ -202,11 +198,9 @@ const styles = StyleSheet.create({
   cardMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xxs },
   cardSub: { flexShrink: 1, color: colors.textSecondary, fontFamily: fontFamily.semibold, fontSize: 12, lineHeight: 18 },
   badgeTexto: {
-    flexShrink: 1, color: colors.text, fontFamily: fontFamily.bold, fontSize: 12, lineHeight: 18,
+    flexShrink: 1, color: colors.textSecondary, fontFamily: fontFamily.bold, fontSize: 12, lineHeight: 18,
     borderRadius: radius.sm, paddingHorizontal: spacing.xxs, backgroundColor: colors.subtle
   },
-  badgeTextoQueda: { color: colors.brandDeep, backgroundColor: colors.confirmedBackground },
-  badgeTextoAlta: { color: colors.dangerText, backgroundColor: colors.dangerButtonBackground },
   pagesRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: spacing.xs },
   pageButton: {
     minHeight: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xs, paddingVertical: spacing.xxs,

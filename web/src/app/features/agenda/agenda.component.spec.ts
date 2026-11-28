@@ -62,4 +62,11 @@ describe('AgendaComponent — cópia de disponibilidade', () => {
     expect(agenda.totalHorarios()).toBe(224);
     expect(agenda.alterado()).toBeFalse();
   });
+
+  it('exibe a visualização "Agenda geral" por padrão ao abrir a aba Agenda', () => {
+    const agenda = TestBed.createComponent(AgendaComponent).componentInstance as unknown as {
+      verCalendario: () => boolean;
+    };
+    expect(agenda.verCalendario()).toBeTrue();
+  });
 });

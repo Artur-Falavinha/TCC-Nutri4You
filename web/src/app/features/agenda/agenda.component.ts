@@ -66,7 +66,7 @@ export class AgendaComponent implements OnInit {
   readonly diasAbertos = computed(() => this.semana().filter(dia => dia.horarios.length > 0).length);
   readonly totalHorarios = computed(() => this.horarios().length);
   readonly alterado = computed(() => JSON.stringify(this.horarios()) !== JSON.stringify(this.horariosSalvos()));
-  protected readonly verCalendario = signal(false);
+  protected readonly verCalendario = signal(true);
 
   hora = '08:00';
   carregando = true;
